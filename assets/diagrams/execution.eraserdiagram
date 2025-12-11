@@ -1,0 +1,26 @@
+title High-Level System Architecture: Reasoning vs Execution Separation
+
+// Left Side: Agent Layer
+ROA Agent [icon: user, color: blue, label: "ROA Agent"] {
+  LLM Reasoning [icon: brain, label: "LLM Reasoning"]
+  Memory History [icon: book, label: "Memory/History"]
+}
+
+// Policy Proposal document (output from Agent)
+Policy Proposal [icon: file-text, label: "Policy Proposal"]
+
+// Center: Barrier (represented as a group for visual separation)
+
+// Right Side: Runtime Layer (Deterministic)
+Runtime Layer [icon: server, color: green, label: "Runtime Layer"] {
+  DIM [icon: shield, label: "DIM (Validation & Safety)"]
+  Execution Engine [icon: play, label: "Execution Engine (API Calls / Market Orders)"]
+  Context Store [icon: database, label: "Context Store"]
+}
+
+// Connections (left-to-right flow, then feedback loop)
+LLM Reasoning > Policy Proposal: propose policy
+Policy Proposal > DIM: cross barrier
+DIM > Execution Engine: validate & forward
+Execution Engine > Context Store: update context
+Memory History < Context Store: feedback loop
