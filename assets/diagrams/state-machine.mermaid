@@ -1,0 +1,48 @@
+stateDiagram-v2
+    direction LR
+
+    %% Define States
+    state "CREATED" as Created
+    state "ACTIVE (Reasoning)" as Active
+    state "VALIDATING (DIM)" as Validating
+    state "ESCALATED (HITL)" as Escalated
+    state "ACCEPTED" as Accepted
+    state "EXECUTING" as Executing
+    state "CLOSED" as Closed
+    state "ABORTED" as Aborted
+
+    %% Initial Transition
+    [*] --> Created
+    Created --> Active : Context Compilation
+
+    %% Reasoning to Validation
+    Active --> Validating : Policy Proposal Emitted
+
+    %% Validation Logic (DIM)
+    Validating --> Accepted : Validation PASSED
+    Validating --> Aborted : Validation FAILED (Constraint/Auth)
+    Validating --> Escalated : Threshold/Ambiguity Reached
+
+    %% Escalation Logic (Human-in-the-Loop)
+    Escalated --> Accepted : Human OVERRIDE/MODIFY
+    Escalated --> Aborted : Human REJECT
+
+    %% Execution Logic
+    Accepted --> Executing : Create Execution Intent
+    Executing --> Closed : Success (Side Effect Recorded)
+    Executing --> Aborted : Runtime Error / Timeout
+
+    %% Terminal States
+    Closed --> [*]
+    Aborted --> [*]
+
+    %% Notes for context
+    note right of Validating
+        Decision Integrity Module
+        enforces logic & safety.
+    end note
+    
+    note right of Escalated
+        Governance by Exception:
+        Wait for Human Input.
+    end note

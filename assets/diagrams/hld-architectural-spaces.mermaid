@@ -1,0 +1,46 @@
+---
+config:
+  layout: fixed
+---
+flowchart TB
+ subgraph User_Space["User Space: Probabilistic Reasoning"]
+    direction TB
+        A1("Strategy Agent")
+        A2("Risk Agent")
+        A3("Monitor Agent")
+  end
+ subgraph DIR_Kernel["DIR Kernel: Deterministic Runtime"]
+    direction TB
+        B1["Context Compiler"]
+        B2{"DIM: Validation"}
+        B3["Execution Orchestrator"]
+  end
+ subgraph Infrastructure["Infrastructure: External Systems"]
+    direction TB
+        C1["Broker API"]
+        C2["Market Data Feed"]
+        C3["Database / Logs"]
+  end
+    B1 -- Working Context --> A1
+    A1 -- Policy Proposal --> B2
+    A2 -- Policy Proposal --> B2
+    B2 -- Accepted --> B3
+    B2 -- Rejected --> A1
+    B3 -- Execution Intent --> C1
+    C2 -- Raw Events --> B1
+    C1 -- Trade Confirmation --> B1
+    B3 -- Audit Log --> C3
+
+     A1:::userLayer
+     A2:::userLayer
+     A3:::userLayer
+     B1:::kernelLayer
+     B2:::kernelLayer
+     B3:::kernelLayer
+     C1:::infraLayer
+     C2:::infraLayer
+     C3:::infraLayer
+    classDef userLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef kernelLayer fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef infraLayer fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef note fill:#fff,stroke:#333,stroke-dasharray: 5 5

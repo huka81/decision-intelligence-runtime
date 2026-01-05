@@ -3,23 +3,24 @@
 
 **Author:** Artur Huk  
 **Repository:** https://github.com/huka81/decision-intelligence-runtime  
-**Last updated:** 2025-12-11
+**Created:** 2025-12-11
+**Last updated:** 2026-01-05
 
 
 ![Responsibility-Oriented Agents](../../assets/images/roa.png)
 
 # **0. Abstract**
 
-Large Language Models have enabled a new generation of AI systems—flexible, expressive, and capable of synthesizing insights across domains. Yet despite this progress, building reliable **decision-making** systems on top of LLMs remains surprisingly fragile. Most current “agent” frameworks wrap LLM calls in orchestration layers, hoping that structure will translate into coherent behavior. In practice, these systems often lack determinism, boundaries, accountability, and a clear separation between *reasoning* and *execution*.
+Large Language Models have enabled a new generation of AI systems-flexible, expressive, and capable of synthesizing insights across domains. Yet despite this progress, building reliable **decision-making** systems on top of LLMs remains surprisingly fragile. Most current “agent” frameworks wrap LLM calls in orchestration layers, hoping that structure will translate into coherent behavior. In practice, these systems often lack determinism, boundaries, accountability, and a clear separation between *reasoning* and *execution*.
 
-This article introduces **Responsibility-Oriented Agents (ROA)**: a conceptual architecture derived from practical experiments with LLM-driven systems. ROA does not attempt to replace existing tools but to address a fundamental gap: agents today do not have **responsibility**—a defining property of any real decision-making unit. The ROA model introduces explicit responsibility contracts, missions, authority boundaries, stateful long-lived agents, and a clean separation between policy formation and deterministic runtime execution.
+This article introduces **Responsibility-Oriented Agents (ROA)**: a conceptual architecture derived from practical experiments with LLM-driven systems. ROA does not attempt to replace existing tools but to address a fundamental gap: agents today do not have **responsibility**-a defining property of any real decision-making unit. The ROA model introduces explicit responsibility contracts, missions, authority boundaries, stateful long-lived agents, and a clean separation between policy formation and deterministic runtime execution.
 
-The goal is not to present a definitive solution, but to offer a structured perspective on how LLM-based agents might evolve into systems that behave predictably, can be audited, and can be trusted to act—not just generate text.
+The goal is not to present a definitive solution, but to offer a structured perspective on how LLM-based agents might evolve into systems that behave predictably, can be audited, and can be trusted to act-not just generate text.
 
 
 ---
 
-# **1. Introduction — When Powerful Models Are Not Enough**
+# **1. Introduction - When Powerful Models Are Not Enough**
 
 Over the past few years, advances in Large Language Models have created the impression that AI systems are on the verge of autonomous decision-making. Models can reason, explain, plan, and interact across APIs with surprising fluency. It is tempting to assume that wrapping an LLM in an “agent framework” is enough to turn it into a functional decision-maker.
 
@@ -31,19 +32,19 @@ Meanwhile, the industry’s response has mostly been to build increasingly elabo
 
 This is not a critique of any single tool. Many of these frameworks are impressive engineering efforts, and they solve real problems. But taken together, they reveal a deeper architectural gap:
 
-> **Our agents do not have responsibility. And responsibility—not raw capability—is what makes a system intelligent in a way we can rely on.**
+> **Our agents do not have responsibility. And responsibility-not raw capability-is what makes a system intelligent in a way we can rely on.**
 
 In human organizations, responsibilities are explicit:
 someone owns risk, someone owns execution, someone owns strategy.
-This separation is not a limitation—it is the foundation of coherent decision-making.
+This separation is not a limitation-it is the foundation of coherent decision-making.
 
 In current AI systems, this structure is largely absent. Agents are treated as generic orchestrators of LLM calls. They do not have a mission, boundaries, or persistent memory of what they decided before. They do not escalate when reaching the limits of their authority. They do not participate in a governance model that regulates how decisions propagate.
 
-The purpose of this article is to explore a different architectural direction—one rooted in **responsibility**, not emergent complexity. Over the last year, while building LLM-driven prototypes such as *AIvestor*, I began shaping an approach that feels more aligned with how decision-making actually works in real systems:
+The purpose of this article is to explore a different architectural direction-one rooted in **responsibility**, not emergent complexity. Over the last year, while building LLM-driven prototypes such as *AIvestor*, I began shaping an approach that feels more aligned with how decision-making actually works in real systems:
 
 **Responsibility-Oriented Agents (ROA)**.
 
-This article presents the foundational ideas behind ROA—
+This article presents the foundational ideas behind ROA-
 not as a final answer, but as a structured attempt to address the limitations I repeatedly encountered.
 
 If LLMs are the engine, ROA tries to define the steering, the brakes, and the structure that lets us use that engine responsibly.
@@ -56,7 +57,7 @@ The recent wave of “agent frameworks” has created an appealing narrative: if
 
 > **they lack a clear notion of responsibility.**
 
-This is not just a missing feature — it is an architectural void.
+This is not just a missing feature - it is an architectural void.
 
 ## **2.1 Agents today are orchestration, not decision-makers**
 
@@ -108,7 +109,7 @@ LLMs excel at interpreting context on demand, but relying on them inside tight d
 * **State loss**: without explicit memory, agents forget their own reasoning history.
 * **Unbounded autonomy**: agents may take actions that make sense locally but violate system-wide constraints.
 
-These issues are not signs of flawed engineering — they are natural consequences of building decision-making systems *around* an LLM rather than *on top of a structured architecture*.
+These issues are not signs of flawed engineering - they are natural consequences of building decision-making systems *around* an LLM rather than *on top of a structured architecture*.
 
 ## **2.4 Emergence is not a substitute for structure**
 
@@ -121,7 +122,7 @@ If agents do not know *what they own*, *what they optimize*, or *what they are a
 Looking at real organizations, one observation is striking:
 
 > **Intelligence arises not from individuals doing everything,
-> but from individuals doing specific things — with clarity.**
+> but from individuals doing specific things - with clarity.**
 
 Responsibility defines:
 
@@ -134,7 +135,7 @@ Responsibility defines:
 Current agent frameworks lack this foundational element.
 They treat agents as general-purpose wrappers around LLMs rather than as accountable units of a decision system.
 
-Responsibility is not a constraint — it is what *enables* intelligence to scale.
+Responsibility is not a constraint - it is what *enables* intelligence to scale.
 
 ROA is an attempt to make this principle explicit.
 
@@ -147,7 +148,7 @@ A Responsibility-Oriented Agent (ROA) is not a wrapper around an LLM and not a c
 
 If most contemporary agents answer the question *“What can the model do next?”*, ROA answers a different, more structural question:
 
-> **“What is this agent responsible for — and what would it mean to perform that responsibility well?”**
+> **“What is this agent responsible for - and what would it mean to perform that responsibility well?”**
 
 The distinction is subtle but profound.
 Instead of trying to make LLMs behave like autonomous generalists, ROA organizes the system around clearly defined responsibilities, just as real-world organizations do.
@@ -158,26 +159,39 @@ Below are the foundational elements of a Responsibility-Oriented Agent.
 
 ## **3.1 Responsibility Contract**
 
-Each agent in ROA is defined not by its personality or its toolset, but by a **Responsibility Contract** — a formal description of its role in the decision architecture.
+Each agent in ROA is defined not by its personality or its toolset, but by a **Responsibility Contract** - a formal description of its role in the decision architecture.
 
 A Responsibility Contract specifies:
 
-* **Scope of responsibility**
-  What domain or decision space the agent owns.
+* **Scope of responsibility:** What domain or decision space the agent owns.
+* **Authority boundaries:** Which actions it is allowed to take - and which actions it must not.
+* **Inputs and outputs:** What data the agent consumes and what forms of policy it produces.
+* **Escalation criteria:** When the agent must defer to a higher-level agent.
 
-* **Authority boundaries**
-  Which actions it is allowed to take — and which actions it must not.
+This contract acts as the "job description." To make this concrete, below is a simplified representation of how such a contract might be implemented in code (e.g., using Pydantic):
 
-* **Inputs and outputs**
-  What data, signals, or events the agent consumes, and what forms of policy or intent it produces.
+```python
+from pydantic import BaseModel, Field
+from typing import List, Literal
 
-* **Escalation criteria**
-  When the agent must defer to a higher-level agent or governance mechanism because it is reaching the edge of its mandate.
+class ResponsibilityContract(BaseModel):
+    agent_id: str
+    role: Literal["STRATEGIST", "EXECUTOR", "MONITOR"]
+    mission: str = "Protect capital while seeking alpha in low-volatility regimes."
+    
+    # Authority Boundaries (What the agent can touch)
+    authorized_instruments: List[str] = ["BTC-USD", "ETH-USD"]
+    max_drawdown_limit: float = 0.05  # 5%
+    
+    # Capability Manifest (What the agent can output)
+    allowed_policy_types: List[str] = ["ADJUST_POSITION", "EMERGENCY_CLOSE"]
+    
+    # Escalation Triggers (When the agent must stop)
+    escalate_on_uncertainty: float = 0.7  # Confidence threshold < 0.7 triggers escalation
 
-* **Success measures**
-  How to evaluate whether the agent is fulfilling its responsibility effectively.
+```
 
-This contract functions as the “job description” of the agent: it clarifies expectations, limits accidental autonomy, and stabilizes the overall behavior of the system.
+This explicit definition allows the system to validate the agent’s behavior *before* any action is taken.
 
 ---
 
@@ -194,7 +208,7 @@ A mission is the optimization target or guiding principle the agent follows. Dif
 
 In *AIvestor*, this was explicit: the agent’s mission was to operationalize the user’s strategy on a given financial instrument while respecting risk constraints and contextual signals.
 
-A mission provides continuity, coherence, and direction — elements missing from most contemporary agent patterns, where behavior is dominated by the short-term semantics of a single prompt.
+A mission provides continuity, coherence, and direction - elements missing from most contemporary agent patterns, where behavior is dominated by the short-term semantics of a single prompt.
 
 ---
 
@@ -210,11 +224,11 @@ Every agent operates within **authority boundaries**:
 
 Boundaries serve two purposes:
 
-1. **Safety** — preventing agents from taking actions beyond their intended scope.
-2. **Clarity** — enabling stable collaboration between agents without emergent conflicts.
+1. **Safety** - preventing agents from taking actions beyond their intended scope.
+2. **Clarity** - enabling stable collaboration between agents without emergent conflicts.
 
 Boundaries do not weaken the agent; they make it *useful*.
-Without explicit authority, every agent becomes a free-floating generalist — and the system becomes ungovernable.
+Without explicit authority, every agent becomes a free-floating generalist - and the system becomes ungovernable.
 
 ---
 
@@ -223,15 +237,15 @@ Without explicit authority, every agent becomes a free-floating generalist — a
 Unlike stateless LLM loops, ROA agents are **persistent entities**.
 Each agent maintains:
 
-* **State** — the current situation or environment it manages.
-* **Decision trajectory** — a record of previous choices and rationales.
-* **Policy history** — the evolution of its decision-making logic.
-* **Contextual memory** — relevant facts, constraints, or events.
+* **State** - the current situation or environment it manages.
+* **Decision trajectory** - a record of previous choices and rationales.
+* **Policy history** - the evolution of its decision-making logic.
+* **Contextual memory** - relevant facts, constraints, or events.
 
 This continuity matters.
 Without it, agents lack self-awareness, cannot improve, and cannot reason about the consequences of their past actions. With it, they can function as stable decision participants rather than isolated inference calls.
 
-Persistence also allows agents to be auditable — a critical requirement for systems that must justify their decisions.
+Persistence also allows agents to be auditable - a critical requirement for systems that must justify their decisions.
 
 ---
 
@@ -249,30 +263,32 @@ Responsibility-Oriented Agents build on top of principles familiar from the acto
 The actor model solves **how to execute concurrent behaviors**.
 ROA addresses **what these behaviors mean**, **why they exist**, and **how they should be governed within a decision system**.
 
-Where actors are primarily technical constructs, ROA introduces a *semantic layer* that aligns agents with organizational logic — bringing structure, constraints, and accountability to LLM-driven reasoning.
+Where actors are primarily technical constructs, ROA introduces a *semantic layer* that aligns agents with organizational logic - bringing structure, constraints, and accountability to LLM-driven reasoning.
 
 ---
 
 # **4. The Decision Lifecycle: From Explain to Policy**
 
-In Responsibility-Oriented Agents, the process of forming a decision is deliberately separated into clear, interpretable stages. This separation is necessary because LLMs are uniquely strong at certain cognitive tasks — contextual interpretation and generative reasoning — and equally unsuited for others, such as deterministic validation or operational execution.
+In Responsibility-Oriented Agents, the process of forming a decision is deliberately separated into clear, interpretable stages. This separation is necessary because LLMs are uniquely strong at certain cognitive tasks - contextual interpretation and generative reasoning - and equally unsuited for others, such as deterministic validation or operational execution.
 
 To prevent these roles from blending into a single opaque loop, ROA adopts a structured decision lifecycle:
 
 **Explain → Policy → (Self-Check) → Emit Policy Proposal**
 
-The remaining stages — **Validate** and **Execute** — are handled not by the agent but by the deterministic runtime. This division ensures that the agent remains responsible for *reasoning*, while the system remains responsible for *safety and correctness*.
+The remaining stages - **Validate** and **Execute** - are handled not by the agent but by the deterministic runtime. This division ensures that the agent remains responsible for *reasoning*, while the system remains responsible for *safety and correctness*.
+
+![Responsibility-Oriented Agents](../../assets/images/context-store.svg)
 
 ---
 
-## **4.1 Explain — Interpreting Context and Making Sense of the Situation**
+## **4.1 Explain - Interpreting Context and Making Sense of the Situation**
 
 The **Explain** stage is where the agent answers a simple but fundamental question:
 
 > *“What is happening, and why does it matter for my mission?”*
 
 An agent synthesizes signals from its context store, historical state, and external events.
-Explain is not just a description — it is interpretation:
+Explain is not just a description - it is interpretation:
 
 * identifying relevant patterns,
 * ignoring irrelevant noise,
@@ -286,7 +302,7 @@ It prepares the ground for it.
 
 ---
 
-## **4.2 Policy — Proposing a Course of Action**
+## **4.2 Policy - Proposing a Course of Action**
 
 Once the agent understands the situation, it formulates a **Policy**:
 
@@ -308,11 +324,11 @@ In ROA, the agent’s responsibility ends here.
 
 ---
 
-## **4.3 Self-Check — Ensuring Integrity Within Boundaries**
+## **4.3 Self-Check - Ensuring Integrity Within Boundaries**
 
 Before producing a Policy Proposal, the agent performs an internal **Self-Check**.
 
-This is not validation of correctness — that belongs to the runtime — but rather:
+This is not validation of correctness - that belongs to the runtime - but rather:
 
 * ensuring the Policy aligns with the agent’s mission,
 * confirming it stays within authority boundaries,
@@ -325,7 +341,7 @@ If the answer is no, the agent must escalate instead of producing a Policy.
 
 ---
 
-## **4.4 Policy Proposal — Output of the ROA Decision Process**
+## **4.4 Policy Proposal - Output of the ROA Decision Process**
 
 After Explain → Policy → Self-Check, the agent emits a **Policy Proposal**, which is:
 
@@ -374,14 +390,19 @@ The result is a system that is more predictable, more auditable, and better alig
 
 Responsibility-Oriented Agents are designed to **reason, interpret context, and propose policies**. They do not execute actions, enforce safety, or validate decisions.
 
-This separation is intentional.
-A system in which the same entity both *proposes* and *validates* actions quickly becomes brittle, ungovernable, and difficult to audit. LLM-based agents, in particular, are ill-suited for tasks that require determinism, strict constraints, or operational guarantees.
+This separation is intentional. A system in which the same entity both *proposes* and *validates* actions quickly becomes brittle, ungovernable, and difficult to audit.
+
+The relationship between ROA and its runtime can be best understood through an operating system analogy:
+
+> **User Space vs. Kernel Space**
+> Think of ROA as defining the application logic running in **User Space**-where creativity, reasoning, and synthesis happen. This space is powerful but potentially unstable (hallucinations, loops).
+> The Runtime, described in the companion **Decision Intelligence Runtime (DIR)** architecture, acts as the **Kernel**. It enforces memory protection, process isolation, and permission boundaries. An Agent crashing or hallucinating in User Space must never bring down the System (Kernel) or violate global safety invariants.
 
 The Runtime exists to provide exactly those guarantees. It is the part of the system that transforms *policy proposals* into *reliable, safe, and consistent actions*.
 
 ---
 
-## **5.1 Validation — Ensuring Decision Integrity**
+## **5.1 Validation - Ensuring Decision Integrity**
 
 Before any policy is executed, the Runtime performs **Validation**, handled by a dedicated, deterministic component often referred to as the **Decision Integrity Module (DIM)**.
 
@@ -399,7 +420,7 @@ DIM answers questions such as:
 * Has the environment changed since the policy was proposed?
 
 This module is deliberately **non-LLM**, deterministic, and auditable.
-Its purpose is to prevent both accidental and emergent misbehavior — a problem inherent to LLM-based decision flows.
+Its purpose is to prevent both accidental and emergent misbehavior - a problem inherent to LLM-based decision flows.
 
 Unless a proposal passes validation, it cannot move to execution.
 
@@ -407,7 +428,7 @@ This is the system’s equivalent of brakes and safety interlocks.
 
 ---
 
-## **5.2 Execution — Deterministic Action Handling**
+## **5.2 Execution - Deterministic Action Handling**
 
 Once a policy is validated, it is handed off to the **Execution layer**.
 
@@ -431,7 +452,7 @@ Examples:
 * updating system state.
 
 The agent does not “send orders” directly.
-The agent proposes — the runtime executes.
+The agent proposes - the runtime executes.
 
 This division ensures that decision-making remains interpretable and explainable, while execution remains safe and controlled.
 
@@ -440,7 +461,7 @@ This division ensures that decision-making remains interpretable and explainable
 
 ---
 
-## **5.3 Escalation — What Happens When Limits Are Reached**
+## **5.3 Escalation - What Happens When Limits Are Reached**
 
 Not every policy is safe to execute, and not every situation fits neatly within an agent’s responsibility.
 This is why the Runtime must implement **explicit escalation paths**.
@@ -452,12 +473,12 @@ Escalation can take several forms:
 * **Delegation**: forward the decision to a higher-level or broader-scope agent.
 * **Alerting**: notify a human operator when the system encounters ambiguous or high-risk situations.
 
-Escalation is not a failure mode —
+Escalation is not a failure mode -
 it is an essential part of any architecture where responsibility is taken seriously.
 
 ---
 
-## **5.4 DecisionFlow and Correlation — Tracking the Lifecycle of a Decision**
+## **5.4 DecisionFlow and Correlation - Tracking the Lifecycle of a Decision**
 
 Policies do not exist in isolation.
 A single decision may involve several agents, multiple states, and multiple steps of reasoning and execution.
@@ -492,7 +513,7 @@ Without a correlation mechanism, a multi-agent system quickly becomes opaque.
 
 This architectural separation reflects a simple principle:
 
-> **Agents think — the Runtime guarantees that thinking leads to correct, safe, and reliable outcomes.**
+> **Agents think - the Runtime guarantees that thinking leads to correct, safe, and reliable outcomes.**
 
 The Runtime:
 
@@ -507,7 +528,7 @@ The Runtime:
 ROA without a Runtime becomes unpredictable.
 A Runtime without ROA becomes inflexible.
 
-Together, they form a complete decision architecture —
+Together, they form a complete decision architecture -
 balancing the creativity and contextual intelligence of LLMs
 with the structure, governance, and reliability required in real systems.
 
@@ -519,7 +540,7 @@ In traditional software architectures, components tend to be static: they are in
 Decision-making systems, however, rarely behave this way. Problems emerge dynamically, contexts shift, responsibilities change, and units of work evolve as decisions unfold.
 
 Responsibility-Oriented Agents reflect this reality.
-They are not monolithic “super-agents” but **dynamic, context-dependent entities** that arise when a new responsibility emerges—then persist as long as they are needed.
+They are not monolithic “super-agents” but **dynamic, context-dependent entities** that arise when a new responsibility emerges-then persist as long as they are needed.
 
 This section introduces three architectural pillars that enable this behavior:
 
@@ -531,7 +552,7 @@ Together, these elements allow ROA-based systems to scale, maintain clarity, and
 
 ---
 
-## **6.1 Dynamic Agents — Created When Responsibility Appears**
+## **6.1 Dynamic Agents - Created When Responsibility Appears**
 
 In ROA, agents are not precompiled lists of roles.
 They are **instantiated when a new unit of responsibility is identified**.
@@ -548,22 +569,22 @@ This pattern emerged naturally in early experiments such as AIvestor:
   * its own boundary conditions.
 
 This mirrors real-world organizational behavior:
-when a new project, risk, or scenario arises, new responsible roles are created—not arbitrarily, but because the system requires them.
+when a new project, risk, or scenario arises, new responsible roles are created-not arbitrarily, but because the system requires them.
 
 Dynamic agents offer several benefits:
 
-* **Local reasoning** — each agent holds only the state relevant to its responsibility.
-* **Isolation of risk** — one agent’s failure does not cascade into unrelated domains.
-* **Scalability** — thousands of agents can operate concurrently, each focused on a narrow mission.
-* **Traceability** — every decision belongs to an identifiable entity with a clear scope.
+* **Local reasoning** - each agent holds only the state relevant to its responsibility.
+* **Isolation of risk** - one agent’s failure does not cascade into unrelated domains.
+* **Scalability** - thousands of agents can operate concurrently, each focused on a narrow mission.
+* **Traceability** - every decision belongs to an identifiable entity with a clear scope.
 
-The opposite approach—embedding all responsibilities into one “general-purpose” agent—quickly becomes unmanageable.
+The opposite approach-embedding all responsibilities into one “general-purpose” agent-quickly becomes unmanageable.
 
 ![Dynamic Agents and Hierarchy](../../assets/images/dynamic-agents.png)
 
 ---
 
-## **6.2 Agent Hierarchies — Structure Instead of Emergence**
+## **6.2 Agent Hierarchies - Structure Instead of Emergence**
 
 When agents are dynamic and responsibility-bound, a natural question arises:
 
@@ -595,7 +616,7 @@ If a lower-level agent encounters a situation beyond its authority, it escalates
 
 ### 3. **Governance**
 
-Higher-level agents can override, revise, or contextualize the policies of subordinate agents—*not arbitrarily, but within the governance model defined by the system*.
+Higher-level agents can override, revise, or contextualize the policies of subordinate agents-*not arbitrarily, but within the governance model defined by the system*.
 
 This avoids emergent chaos commonly observed in free-form multi-agent conversations.
 Agents do not negotiate endlessly or compete for control; instead, they follow structured, predictable relationships grounded in their responsibility contracts.
@@ -616,42 +637,29 @@ ROA distinguishes between **class-level agents** and **instance-level agents**:
   They are created when needed and retired when their lifecycle ends.
 
 This distinction keeps the system both flexible and structured.
-It allows a single conceptual role (e.g., “Position Manager”) to spawn many parallel instance agents—each independently managing its own decision context.
+It allows a single conceptual role (e.g., “Position Manager”) to spawn many parallel instance agents-each independently managing its own decision context.
 
 ---
 
-## **6.4 The Agent Registry — Identity, Lifecycle, Boundaries**
+## **6.4 The Agent Registry - Identity, Lifecycle, Boundaries**
 
 To coordinate a dynamic, hierarchical system, ROA relies on a **Runtime Agent Registry**.
 
-The registry is not a directory in the traditional sense; it is the system’s memory of:
+The registry is not merely a directory of names; it serves as the **Capabilities Contract** for the entire system. It is the source of truth for:
 
 * **Which agents exist**
-* **What they are responsible for**
-* **Their missions and boundaries**
+* **What they are responsible for** (their Mission)
+* **What they are allowed to do** (their Policies)
 * **Their current state**
-* **Their DecisionFlow participation**
-* **Their relationships to other agents**
 
-Without a registry, the system loses track of responsibilities.
-With it, the system becomes auditable and manageable.
+The Registry allows the Runtime to validate not just *who* the agent is, but whether strictly defined capabilities match the Policy they are trying to emit. Without this, the system cannot effectively enforce RBAC (Role-Based Access Control) on intelligence.
 
 The registry enables:
 
-* **Lifecycle management**
-  Create, initialize, persist, retire agents.
-
-* **Routing**
-  Send policies, context updates, or escalations to the correct agent.
-
-* **Conflict resolution**
-  Detect when multiple agents might overlap in responsibility.
-
-* **Governance**
-  Enforce global rules about who is allowed to act on what.
-
-* **Traceability**
-  Link every decision to a responsible entity.
+* **Lifecycle management** - Create, initialize, persist, retire agents.
+* **Routing** - Send policies, context updates, or escalations to the correct agent.
+* **Governance** - Enforce global rules about who is allowed to act on what.
+* **Traceability** - Link every decision to a responsible entity.
 
 Think of the registry as the **organizing principle** that binds the agent ecosystem together.
 Without it, a multi-agent system becomes an emergent swarm.
@@ -672,11 +680,11 @@ They address real architectural needs:
 
 Responsibility-Oriented Agents embrace these realities rather than abstracting them away.
 
-By combining dynamic instantiation, hierarchical delegation, and a runtime registry, ROA forms a coherent substrate for decision-making—one where responsibilities are explicit, traceable, and manageable.
+By combining dynamic instantiation, hierarchical delegation, and a runtime registry, ROA forms a coherent substrate for decision-making-one where responsibilities are explicit, traceable, and manageable.
 
 ---
 
-# **7. Context Store — How Agents Understand the World**
+# **7. Context Store - How Agents Understand the World**
 
 For an agent to act responsibly, it must have a clear, structured view of the world it operates in.
 Not a hallucinated one.
@@ -712,42 +720,41 @@ To anchor decisions in something stable, **state must live in a deterministic st
 
 ## **7.2 What the Context Store Contains**
 
-While the exact schema depends on the domain, ROA typically relies on several categories of context:
+While the exact schema depends on the domain, ROA aligns context into four distinct layers. This structure ensures that agents differentiate between transient signals, authoritative facts, and long-term history.
 
-### **1. Live Data**
+### **1. Session Context (Ephemeral)**
 
-Current signals from the environment.
-Example from AIvestor: real-time market data for an instrument.
+The "now." A short-lived, append-only record of the current decision loop. It captures the immediate stream of consciousness and stimuli that triggered the agent. It resets when the DecisionFlow closes.
 
-### **2. Derived Metrics and Indicators**
+* **Events and Observations:** The specific trigger (e.g., "Price crossed MA-50") or user action that woke the agent.
+* **Intermediate Reasoning:** Scratchpad thoughts, "Explain" outputs, and temporary calculations generated during the current analysis.
+* **Immediate History:** The prompt chain relevant only to this specific interaction.
 
-Processed information such as analytical signals, risk metrics, or behavioral patterns.
-These often serve as the agent’s sensory input.
+### **2. State Context (Authoritative)**
 
-### **3. Events and Observations**
+The system's "truth." This is the live, deterministic view of the world, synced from external systems or read-replicas. It acts as the ground truth against which validation occurs.
 
-System events, domain events, user actions, or environment changes that might affect responsibilities.
+* **Live Data:** Real-time signals from the environment (e.g., market quotes, order book depth).
+* **Derived Metrics:** Pre-calculated analytical signals (e.g., RSI, Volatility Index) or behavioral patterns provided by instrument-level agents.
+* **Resource State:** The hard facts of the system (e.g., current wallet balance, open positions, active locks).
+* **Agent Metadata:** The current operational status and boundaries of the agent, fetched dynamically from the **Agent Registry**.
 
-### **4. Prior Decisions and Policies**
+### **3. Memory Context (Long-term)**
 
-* Previous Explain outputs
-* Accepted or rejected policies
-* Decision rationale
-* Escalation history
-* Policy versions over time
+The agent's "experience." Curated, persistent insights that survive across sessions. This layer ensures continuity and prevents the agent from repeating past mistakes.
 
-These items allow the agent to maintain a coherent trajectory.
+* **Decision Trajectory:** A log of *Prior Decisions and Policies*, including rationales for why previous proposals were accepted or rejected.
+* **Policy Versions:** How the agent's strategy has evolved over time (e.g., "Shifted to defensive mode after drawdown").
+* **Escalation History:** Records of past authority breaches or manual interventions.
 
-### **5. Constraints and Global Rules**
+### **4. Artifacts Context (Reference)**
 
-Boundaries defined by the system: risk limits, business rules, safety constraints, and governance policies.
+The "library." Large, static, or reference data that is too voluminous to fit in a prompt but can be retrieved via tools or RAG mechanisms.
 
-### **6. Agent Metadata**
+* **Global Rules and Constraints:** Static business logic, compliance rulebooks, and safety definitions (e.g., "Wash Trading Prohibition").
+* **Reference Datasets:** Historical backtest data, strategy whitepapers, or large unstructured documents.
 
-Responsibilities, missions, boundaries, and relationships stored in the **Agent Registry**.
-
-This structured context enables predictable behavior and auditability.
-
+This structured approach ensures that agents always operate on a coherent slice of reality, rather than a noisy stream of raw events.
 ---
 
 ## **7.3 How Agents Use the Context Store**
@@ -844,7 +851,7 @@ LLM reasoning without a shared reality is unpredictable.
 
 The Context Store provides the grounding, continuity, and determinism required for ROA agents to behave coherently across time.
 
-It is not an optional component —
+It is not an optional component -
 it is the substrate against which responsibility becomes actionable.
 
 ---
@@ -855,7 +862,7 @@ The ideas behind Responsibility-Oriented Agents did not emerge from theory alone
 They grew out of practical experimentation with a system designed to support real-time decision-making in financial contexts: **AIvestor**.
 
 AIvestor was not intended to be a full ROA implementation.
-Instead, it served as a proving ground — a place where the strengths and limitations of LLM-driven agents could be observed under realistic constraints.
+Instead, it served as a proving ground - a place where the strengths and limitations of LLM-driven agents could be observed under realistic constraints.
 Many of the ROA principles described in this article surfaced organically as responses to concrete engineering challenges.
 
 Below is a structured summary of what AIvestor revealed and how those insights shaped ROA.
@@ -883,7 +890,7 @@ The system needed *structure*.
 
 ---
 
-## **8.2 Explain and Policy — Natural Separation of Concerns**
+## **8.2 Explain and Policy - Natural Separation of Concerns**
 
 AIvestor’s first architectural insight was the emergence of a stable two-step reasoning pattern:
 
@@ -901,7 +908,7 @@ Explain + Policy became the conceptual backbone of ROA’s decision lifecycle.
 
 ---
 
-## **8.3 Runtime Validation — The Need for Deterministic Safety**
+## **8.3 Runtime Validation - The Need for Deterministic Safety**
 
 When AIvestor attempted to rely solely on LLM-based reasoning inside the execution loop, several practical problems surfaced:
 
@@ -910,7 +917,7 @@ When AIvestor attempted to rely solely on LLM-based reasoning inside the executi
 * difficulty enforcing risk constraints,
 * divergence in reasoning across repeated runs.
 
-This led to the introduction of a deterministic **validation layer** — effectively the early form of what ROA now calls the **Decision Integrity Module (DIM)**.
+This led to the introduction of a deterministic **validation layer** - effectively the early form of what ROA now calls the **Decision Integrity Module (DIM)**.
 
 DIM ensured:
 
@@ -923,7 +930,7 @@ This reinforced a key ROA principle:
 
 ---
 
-## **8.4 Dynamic Agents — InstrumentAgent and PositionAgent**
+## **8.4 Dynamic Agents - InstrumentAgent and PositionAgent**
 
 One of the most important lessons came from managing trading positions.
 
@@ -960,7 +967,7 @@ This experience directly influenced ROA’s notion of **class agents** and **ins
 
 ---
 
-## **8.5 DecisionFlow — The Necessity of Correlation**
+## **8.5 DecisionFlow - The Necessity of Correlation**
 
 AIvestor introduced the concept of a **recommendation_id**, which later evolved into the more general **DecisionFlowId (DFID)**.
 
@@ -980,7 +987,7 @@ This is now a foundational element of ROA runtime design.
 
 ---
 
-## **8.6 Memory and Trajectory — Why Agents Must Be Long-Lived**
+## **8.6 Memory and Trajectory - Why Agents Must Be Long-Lived**
 
 In AIvestor, PositionAgents maintained:
 
@@ -996,11 +1003,11 @@ This continuity was critical to avoiding:
 * flip-flopping behavior,
 * or inconsistent risk management.
 
-This reinforced the idea that ROA agents must be **persistent, stateful, and historically aware** — not ephemeral LLM calls.
+This reinforced the idea that ROA agents must be **persistent, stateful, and historically aware** - not ephemeral LLM calls.
 
 ---
 
-## **8.7 The Limitations — Lessons Learned Honestly**
+## **8.7 The Limitations - Lessons Learned Honestly**
 
 AIvestor was not perfect, and several limitations informed ROA design:
 
@@ -1038,13 +1045,13 @@ But it was the **first empirical argument** that ROA could work.
 
 The goal of Responsibility-Oriented Agents is not to criticize existing frameworks or to dismiss the significant progress made in the field. Agent tooling has advanced rapidly, and many of these systems solve real engineering problems. Instead, the intention here is to highlight where current approaches succeed, where they fall short, and why ROA proposes a different architectural path.
 
-LLMs are still relatively new as decision-making components, and our collective understanding of how to integrate them into reliable systems is evolving. ROA is one contribution to that conversation — informed by practical experience and grounded in the need for structure, responsibility, and governance.
+LLMs are still relatively new as decision-making components, and our collective understanding of how to integrate them into reliable systems is evolving. ROA is one contribution to that conversation - informed by practical experience and grounded in the need for structure, responsibility, and governance.
 
 Below is a high-level comparison of the most common patterns in current agent frameworks.
 
 ---
 
-## **9.1 Tool-Oriented Agents — Strength in Execution, Weakness in Coherence**
+## **9.1 Tool-Oriented Agents - Strength in Execution, Weakness in Coherence**
 
 Many frameworks organize agents as entities that:
 
@@ -1071,7 +1078,7 @@ In ROA terms, these agents resemble *executors* more than *reasoners*.
 
 ---
 
-## **9.2 Multi-Agent Conversations — Emergence Without Governance**
+## **9.2 Multi-Agent Conversations - Emergence Without Governance**
 
 Another trend is to let multiple agents communicate via LLM-mediated dialogue. This can produce interesting behaviors, and in research settings, emergent cooperation can be a desirable phenomenon.
 
@@ -1092,7 +1099,7 @@ ROA approaches this differently by enforcing clear boundaries and structured esc
 
 ---
 
-## **9.3 Workflow-Driven Agents — Structure Without Semantics**
+## **9.3 Workflow-Driven Agents - Structure Without Semantics**
 
 Some frameworks focus on deterministic workflow graphs (DAGs or state machines), with LLMs filling in steps along the path. This provides:
 
@@ -1113,7 +1120,7 @@ ROA complements structured workflow execution but adds a layer of semantic respo
 
 ---
 
-## **9.4 Persona-Based Agents — Useful for Interaction, Limited for Decision-Making**
+## **9.4 Persona-Based Agents - Useful for Interaction, Limited for Decision-Making**
 
 Assigning a persona to an agent (“act as an analyst”, “act as a strategist”) can improve conversational grounding and style consistency. But a persona is not the same as responsibility.
 
@@ -1144,7 +1151,7 @@ But without responsibility:
 * governance becomes emergent instead of explicit,
 * and systems cannot reliably be audited or trusted.
 
-This is not a failure of framework design — it is a reflection of the fact that LLMs are fundamentally **semantic engines**, not decision engines.
+This is not a failure of framework design - it is a reflection of the fact that LLMs are fundamentally **semantic engines**, not decision engines.
 
 They are excellent at:
 
@@ -1153,7 +1160,7 @@ They are excellent at:
 * suggesting,
 * synthesizing.
 
-But they need a structured environment — missions, boundaries, context, state, escalation, governance — to behave as part of a stable decision ecosystem.
+But they need a structured environment - missions, boundaries, context, state, escalation, governance - to behave as part of a stable decision ecosystem.
 
 ---
 
@@ -1258,7 +1265,7 @@ ROA provides a conceptual structure, but mission alignment is an area where rigo
 
 ## **10.4 Memory and State Management Need More Research**
 
-Long-lived agents require long-lived memory — but:
+Long-lived agents require long-lived memory - but:
 
 * How much memory should be stored?
 * Which elements should be persisted versus computed on demand?
@@ -1336,7 +1343,7 @@ These questions will only be answered as more implementations emerge.
 
 ---
 
-## **10.10 ROA Is Early — and That Is Its Strength and Its Limitation**
+## **10.10 ROA Is Early - and That Is Its Strength and Its Limitation**
 
 ROA is not a finished blueprint.
 It is a proposal for how LLM-driven systems *might* mature into something more robust, accountable, and operationally trustworthy.
@@ -1354,7 +1361,7 @@ The hope is that ROA offers a conceptual foundation that others can refine, exte
 ## **Summary**
 
 ROA is not presented as *the solution*.
-It is a step — one that acknowledges both the promise of LLMs and the architectural gaps that prevent them from functioning as true decision-makers today.
+It is a step - one that acknowledges both the promise of LLMs and the architectural gaps that prevent them from functioning as true decision-makers today.
 
 Its limitations are an invitation:
 
@@ -1364,11 +1371,11 @@ Its limitations are an invitation:
 * and for collaboration.
 
 The open questions are significant.
-But they are the right questions — the questions any system must confront if we expect AI to participate in decisions that carry real consequences.
+But they are the right questions - the questions any system must confront if we expect AI to participate in decisions that carry real consequences.
 
 ---
 
-# **11. Conclusion — Toward Decision-Making Systems We Can Trust**
+# **11. Conclusion - Toward Decision-Making Systems We Can Trust**
 
 Large Language Models have transformed what software can understand and express.
 They interpret context, generalize across domains, and produce reasoning that often feels surprisingly human. But turning these capabilities into **reliable decision-making systems** requires more than chaining prompts or orchestrating tool calls.
@@ -1377,7 +1384,7 @@ It requires structure.
 It requires boundaries.
 It requires responsibility.
 
-Responsibility-Oriented Agents (ROA) are an attempt to move in that direction — not by overpowering LLMs with more complexity, but by giving them **a role** within a broader architecture. Instead of treating the model as a free-form problem solver, ROA treats it as a participant in a governed decision process: one that explains, proposes, and reasons within clearly defined limits.
+Responsibility-Oriented Agents (ROA) are an attempt to move in that direction - not by overpowering LLMs with more complexity, but by giving them **a role** within a broader architecture. Instead of treating the model as a free-form problem solver, ROA treats it as a participant in a governed decision process: one that explains, proposes, and reasons within clearly defined limits.
 
 Throughout this article, several principles emerged:
 
@@ -1390,22 +1397,22 @@ Throughout this article, several principles emerged:
 * **DecisionFlow correlation** makes decisions traceable and auditable.
 
 None of these ideas are radical on their own.
-What is new is the combination — the shift from “let the agent figure it out” to “define what the agent is responsible for, and let architecture do the rest.”
+What is new is the combination - the shift from “let the agent figure it out” to “define what the agent is responsible for, and let architecture do the rest.”
 
 ROA is far from complete.
-It has limitations, open questions, and areas where stronger theoretical or empirical grounding is needed. But it offers a direction — a way to bring the creativity of LLM reasoning into structured, predictable, and trustworthy systems.
+It has limitations, open questions, and areas where stronger theoretical or empirical grounding is needed. But it offers a direction - a way to bring the creativity of LLM reasoning into structured, predictable, and trustworthy systems.
 
 If we expect AI to participate in decisions that matter, we cannot rely on emergence or improvisation.
 We need systems where reasoning is interpretable, actions are validated, responsibilities are explicit, and outcomes are governable.
 
 ROA does not claim to provide the final answer.
-It simply proposes that **responsibility** — the same concept that underpins human organizations — may also be the missing foundation for AI systems that must not only converse, but act.
+It simply proposes that **responsibility** - the same concept that underpins human organizations - may also be the missing foundation for AI systems that must not only converse, but act.
 
 The hope is that this article contributes to a broader conversation about how to design such systems.
 Feedback, critique, and alternative perspectives are welcome.
 No one will solve decision-making AI in isolation.
 
-What we can do, however, is take the next step — together — toward architectures that make intelligence not only possible, but trustworthy.
+What we can do, however, is take the next step - together - toward architectures that make intelligence not only possible, but trustworthy.
 
 ---
 

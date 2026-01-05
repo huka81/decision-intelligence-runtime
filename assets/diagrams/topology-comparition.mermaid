@@ -1,0 +1,52 @@
+flowchart TB
+    %% Global Styles
+    classDef container fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    classDef component fill:#fff,stroke:#333,stroke-width:1px;
+    classDef db fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,shape:cylinder;
+    classDef bus fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,shape:trapezoid;
+
+    %% TOPOLOGY A: MONOLITH
+    subgraph Topology_A [Topology A: Single-Process Monolith]
+        direction TB
+        
+        subgraph Single_Process [Single Python Process / Container]
+            direction TB
+            Mono_Agent1[Agent Logic 1]:::component
+            Mono_Agent2[Agent Logic 2]:::component
+            Mono_Queue((In-Memory<br/>Queue)):::component
+            Mono_Runtime[DIR Runtime Core]:::component
+        end
+        
+        Mono_DB[(Local DB<br/>SQLite)]:::db
+
+        %% Connections A
+        Mono_Agent1 -->|Object Ref| Mono_Queue
+        Mono_Agent2 -->|Object Ref| Mono_Queue
+        Mono_Queue -->|Async Event| Mono_Runtime
+        Mono_Runtime <-->|Direct I/O| Mono_DB
+    end
+
+    %% TOPOLOGY B: DISTRIBUTED MESH
+    subgraph Topology_B [Topology B: Distributed Event Mesh]
+        direction TB
+        
+        Dist_Agent1[Agent Service 1<br/>Pod A]:::component
+        Dist_Agent2[Agent Service 2<br/>Pod B]:::component
+        
+        Dist_Bus[/Message Bus<br/>Kafka / NATS / RabbitMQ/]:::bus
+        
+        Dist_Runtime[DIR Runtime Service<br/>Pod C]:::component
+        Dist_DB[(Distributed State<br/>Redis / Postgres)]:::db
+
+        %% Connections B
+        Dist_Agent1 -->|Pub: PolicyProposal| Dist_Bus
+        Dist_Agent2 -->|Pub: PolicyProposal| Dist_Bus
+        Dist_Bus -->|Sub: PolicyProposal| Dist_Runtime
+        Dist_Runtime -->|Pub: ExecutionIntent| Dist_Bus
+        Dist_Runtime <-->|ACID Trans| Dist_DB
+    end
+
+    %% Style Subgraphs
+    style Topology_A fill:#f4f4f4,stroke:#666,stroke-dasharray: 5 5
+    style Topology_B fill:#f4f4f4,stroke:#666,stroke-dasharray: 5 5
+    style Single_Process fill:#e8eaf6,stroke:#3f51b5

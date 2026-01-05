@@ -1,0 +1,45 @@
+---
+config:
+  layout: fixed
+---
+flowchart LR
+ subgraph Context_Store["Context Store (Source of Truth)"]
+        State_DB[("State Context  (Authoritative Snapshot)")]
+        Session_DB[("Session Context (Event Log)")]
+        Memory_DB[("Memory Context (Long-term History)")]
+        Artifact_DB[("Artifacts Context  (Static Rules/Docs)")]
+  end
+ subgraph Compilation_Pipeline["Context Compilation Pipeline"]
+        Trigger(("Invoked"))
+        Step1_Snapshot["1. Snapshot State\n(Optimistic Lock)"]
+        Step2_TimeFilter["2. Time Window Filter\n(Relevance Scope)"]
+        Step3_Retrieval["3. RAG / Retrieval\n(Semantic Search)"]
+        Step4_Format["4. Assembly (Token Budgeting)"]
+  end
+    Trigger --> Step1_Snapshot
+    State_DB -.-> Step1_Snapshot
+    Step1_Snapshot --> Step2_TimeFilter
+    Session_DB -.-> Step2_TimeFilter
+    Step2_TimeFilter --> Step3_Retrieval
+    Memory_DB -.-> Step3_Retrieval
+    Artifact_DB -.-> Step3_Retrieval
+    Step3_Retrieval L_Step3_Retrieval_Step4_Format_0@--> Step4_Format
+    Step4_Format --> Output_Object[/"Working Context Object  (Immutable View)"/]
+    Output_Object --> Agent_Reasoning("Agent Reasoning (LLM)")
+
+     State_DB:::storage
+     Session_DB:::storage
+     Memory_DB:::storage
+     Artifact_DB:::storage
+     Step1_Snapshot:::process
+     Step2_TimeFilter:::process
+     Step3_Retrieval:::process
+     Step4_Format:::process
+     Output_Object:::artifact
+     Agent_Reasoning:::agent
+    classDef storage fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#000
+    classDef process fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,color:#000
+    classDef artifact fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray: 5 5,color:#000
+    classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+
+    L_Step3_Retrieval_Step4_Format_0@{ curve: natural }

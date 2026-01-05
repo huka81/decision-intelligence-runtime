@@ -1,0 +1,34 @@
+graph LR
+    %% Styling definitions
+    classDef storage fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef terminal fill:#ffab91,stroke:#d84315,stroke-width:2px;
+    classDef process fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
+
+    %% 1. Input Source
+    CS[("Context Store")]:::storage
+
+    %% 2. User Space: The Agent's Reasoning
+    subgraph UserSpace ["User Space (Agent)"]
+        direction TB
+        EXP["Explain (Interpret Situation)"]:::process
+        POL["Policy (Propose Intent)"]:::process
+        
+        EXP --> POL
+    end
+
+    %% 3. Kernel Space: The Runtime's Enforcement
+    subgraph KernelSpace ["Kernel Space (Runtime)"]
+        direction TB
+        DIM["Validate (Decision Integrity Module)"]:::process
+        EXEC["Execute (Deterministic Action)"]:::process
+        
+        DIM --> EXEC
+    end
+
+    %% 4. Output
+    SE("Side Effect (Real World Action)"):::terminal
+
+    %% Connections
+    CS -- "Reads State" --> EXP
+    POL -- "Policy Proposal (JSON)" --> DIM
+    EXEC -- "Execution Intent" --> SE
