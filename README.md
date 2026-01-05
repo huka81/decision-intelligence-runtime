@@ -15,20 +15,23 @@ This repository serves as the home for the architectural concepts, whitepapers, 
 *Current Status: Published*
 
 ROA is the architectural pattern for the agents themselves. Instead of open-ended loops, ROA defines agents by:
-* **Responsibility Contracts** (What they own).
-* **Missions** (What they optimize).
-* **Boundaries** (What they cannot do).
-* **Decision Lifecycle** (Explain → Policy → Runtime Validation).
+* **Responsibility Contracts:** Explicit definitions of scope and authority.
+* **Missions:** Clear optimization goals (Why the agent exists).
+* **Stateful Existence:** Long-lived memory and identity.
+* **Decision Lifecycle:** Explain → Policy → Proposal (Separating reasoning from execution).
 
 **[Read the ROA Manifesto](./docs/01-roa-manifesto/ROA_Manifesto.md)**
 
 ### 2. The Runtime Architecture
-*Current Status: Coming Soon (ETA: Late 2024)*
+*Current Status: Published*
 
 The environment where agents live. It handles:
-* **Decision Integrity Module (DIM):** Deterministic validation of AI policies.
-* **Context Store:** Shared, immutable reality for agents.
-* **DecisionFlow:** Traceability and audit logs for every state change.
+* **Decision Integrity Module (DIM):** Deterministic validation (Schema, RBAC, Risk).
+* **Context Compilation:** Providing immutable, relevant state snapshots.
+* **DecisionFlow:** Distributed tracing for reasoning chains.
+* **Safety Invariants:** Idempotency, TTL, and Escalation protocols.
+
+**[Read the DIR Architectural Pattern](./docs/02-decision-runtime/DIR_Architectural_Pattern.md)**
 
 ## 🛠️ Repository Structure
 
