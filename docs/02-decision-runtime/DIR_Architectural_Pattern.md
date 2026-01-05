@@ -56,6 +56,8 @@ It shifts the design philosophy from **Agent-Centric** (how smart is the model?)
 * Agents answer: "What should we do and why?"
 * The Runtime answers: "Is this action allowed, valid, and safe to execute right now?"
 
+A note on terminology: Throughout this document, 'ROA' refers to **Responsibility-Oriented Agents**, a pattern for bounding AI autonomy, unrelated to the older Resource-Oriented Architecture definition.
+
 The following sections define the components of this runtime, illustrating how to wrap "fuzzy" agent logic in a "hard" engineering shell.
 
 
@@ -91,6 +93,9 @@ DIR introduces an **Agent Registry**-a service discovery mechanism for intellige
 
 * **Registration:** On startup, an agent registers its `Manifest`: its ID, its subscribed inputs (Context), and its authorized outputs (Policy Types).
 * **Capability Contract:** The Registry acts as the source of truth for ROA constraints. When the Validation Layer asks "Can Agent X trade Asset Y?", it queries the Registry, not the Agent. This prevents agents from self-granting permissions via prompt injection.
+
+**Note on Schema Evolution:**
+This dynamism requires that Agents do not "memorize" the policy schema indefinitely. Instead, the Agent Registry serves the current version of the JSON schema dynamically during the Context compilation step. This ensures that even as capabilities evolve, the Agent always reasons against a valid, up-to-date interface contract.
 
 ## 3. System Invariants
 
@@ -184,6 +189,9 @@ In practice, I found that LLMs perform better when allowed to "think out loud" b
 
 The Runtime validates *only* the Policy. The Explanation is treated as metadata (comments). This separation prevents the system from mistaking a narrative justification for an executable instruction.
 
+**Intent vs. Execution Tactics**
+It is important to clarify that a Policy Proposal is not a raw market order (e.g., "Buy at market NOW"). Given the latency of LLM inference, such an approach would suffer from inevitable slippage. Instead, ROA Agents emit **Strategic Intents** (e.g., "Acquire position with 5% aggressiveness, limit slippage to 0.5%"). The Runtime is responsible for the **Tactical Execution** of this intent using deterministic algorithms (e.g., TWAP/VWAP or limit chasing). This effectively decouples the "slow" reasoning of the Agent from the "fast" execution of the market interaction layer. The `valid_until` constraint protects the strategy from becoming stale, not the individual network packet.
+
 **Example Structure (JSON):**
 
 ```json
@@ -232,6 +240,10 @@ The pipeline functions as a **Policy Enforcement Point (PEP)**. It evaluates pro
 
 A subtle failure mode in LLMs is "proxy gaming," where the model's narrative ("I am reducing risk") contradicts its structured policy (`{"action": "BUY_LEVERAGE"}`).
 To counter this, DIR supports an optional **Semantic Alignment Check**. Before execution, a separate, smaller model (or strict logic) compares the `explanation` field against the `policy` payload. If the semantic intent diverges from the technical instruction, the proposal is rejected as **HALLUCINATION_MISMATCH**.
+
+**The Determinism Trade-off**
+
+Critics might argue that introducing a semantic check (using a smaller model) into the validation pipeline violates the principle of a purely deterministic Runtime. This is a deliberate trade-off. While the "Hard Gates" (Schema, RBAC, Risk Limits) are purely algorithmic and blocking, the Semantic Check acts as a **Probabilistic Guardrail** for high-stakes anomalies (e.g., detecting if an agent's narrative contradicts its JSON payload). In production, this check can be configured as blocking (for high-risk actions) or async-audit (for low-risk actions), allowing the operator to tune the balance between absolute determinism and semantic safety.
 
 ### 6.4 Time as a Hard Constraint
 
@@ -355,6 +367,9 @@ DIR implements an **Escalation Budget**.
 * *Mechanism:* Each agent has a token bucket for escalations (e.g., 3 per hour).
 * *Action:* If the budget is exhausted, the agent is automatically demoted to a `PASSIVE` (Read-Only) state, and the DecisionFlow is silently aborted. This protects the operator from alert floods.
 
+**Resource Quotas**
+Beyond simple rate-limiting, the Runtime enforces a "Computation Budget" (token usage or max reasoning steps) per DecisionFlow. If an agent cannot reach a policy conclusion within N steps, the flow is aborted to prevent "financial DDoS" caused by inconclusive reasoning loops.
+
 ### 9.4 The Human Interface
 
 When a flow is escalated, the human acts as a **Super-User**.
@@ -402,7 +417,7 @@ For enterprise scale, DIR maps naturally to an **Event-Driven Architecture**.
 * **State:** Distributed Key-Value Store (Redis) + Time Series DB.
 * **Pattern:** The **Event-Oriented Agent Mesh**. Agents emit `PolicyProposal` events to a topic; the Runtime consumes them, validates, and emits `ExecutionIntent` events.
 
-![Diagram comparing Topology A (Monolith) vs Topology B (Distributed Mesh)](../../assets/images/topology-comparition.svg)
+![Diagram comparing Topology A (Monolith) vs Topology B (Distributed Mesh)](../../assets/images/topology-comparison.svg)
 
 * *Left:* Agents inside the same box as Runtime.
 * *Right:* Agents and Runtime connected by a Message Bus.
@@ -441,6 +456,9 @@ DIR introduces a "Validation Tax." Every decision must be serialized, validated,
 
 * *Trade-off:* In High-Frequency Trading (HFT), where microseconds matter, DIR is too slow.
 * *Fit:* DIR is optimized for "Human-Speed" or "Business-Speed" decisions (seconds to minutes), where safety outweighs raw speed.
+
+**Why Blocking Validation Matters**
+In many recommender systems, bad decisions affect "reputation" or "ranking" asynchronously. In financial or physical systems, a bad decision creates an irreversible loss (financial or kinetic). Therefore, DIR favors **Pre-flight Validation** over **Post-flight Audit**. While this introduces latency, it enforces the "Safety First" invariant. A missed trade due to aggressive validation is an opportunity cost; a realized hallucination is an actual loss. The system is designed to fail safe (reject) rather than fail open (execute and apologize).
 
 ### 12.2 Complexity Overhead
 

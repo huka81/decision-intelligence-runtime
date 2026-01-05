@@ -20,6 +20,10 @@ The goal is not to present a definitive solution, but to offer a structured pers
 
 ---
 
+> **A Note on Nomenclature:** Readers familiar with RESTful architectures will recognize ROA as Resource-Oriented Architecture. In the context of Autonomous AI, we consciously repurpose this acronym to stand for Responsibility-Oriented Agents. Just as classic ROA treats Resources as the primary addressable entities, our architecture treats Responsibilities (bounded scopes of authority) as the primary primitives of the system. We believe that in the age of probabilistic AI, defining "Who is responsible?" is as foundational as defining "What is the resource?" in the age of the web.
+
+---
+
 # **1. Introduction - When Powerful Models Are Not Enough**
 
 Over the past few years, advances in Large Language Models have created the impression that AI systems are on the verge of autonomous decision-making. Models can reason, explain, plan, and interact across APIs with surprising fluency. It is tempting to assume that wrapping an LLM in an “agent framework” is enough to turn it into a functional decision-maker.
