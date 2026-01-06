@@ -13,7 +13,9 @@
 
 Most contemporary AI agent frameworks operate on a simple loop: observe, reason, and act. While effective for conversational tasks, this model fails in high-stakes environments where actions have financial or physical consequences. The core issue is architectural: Large Language Models (LLMs) are probabilistic engines, yet they are often given direct control over deterministic interfaces (APIs, databases).
 
-This paper introduces the **Decision Intelligence Runtime (DIR)**, an architectural pattern derived from two years of prototyping **AIvestor**, an autonomous algorithmic trading system. DIR applies principles from distributed systems orchestration (sagas, idempotency) and security (policy enforcement points) to the domain of AI agents. It proposes a strict separation of concerns where agents are responsible for **Reasoning** (proposing strategies) and a deterministic runtime is responsible for **Execution** (validating and applying those strategies).
+This paper introduces the **Decision Intelligence Runtime (DIR)**, an architectural pattern derived from two years of prototyping **AIvestor**, an autonomous algorithmic trading system. While born in the financial domain, DIR is not a trading-specific tool. It was designed to create a "Digital Investment Twin"—a system capable of understanding a user's strategy, executing transactions on their behalf, and rigorously documenting every decision. This pattern is equally applicable to any domain requiring auditable autonomy, from cloud infrastructure management to supply chain logistics.
+
+DIR applies principles from distributed systems orchestration (sagas, idempotency) and security (policy enforcement points) to the domain of AI agents. It proposes a strict separation of concerns where agents are responsible for **Reasoning** (proposing strategies) and a deterministic runtime is responsible for **Execution** (validating and applying those strategies).
 
 By decoupling intent from action, DIR solves common stability issues such as race conditions, hallucinations in function calls, and execution of stale decisions. This document outlines the pattern's core components, including the DecisionFlow ID (an adaptation of distributed tracing for reasoning chains) and the Decision Integrity Module, offering a blueprint for moving agents from experimental scripts to reliable production systems.
 
@@ -97,6 +99,9 @@ DIR introduces an **Agent Registry**-a service discovery mechanism for intellige
 **Note on Schema Evolution:**
 This dynamism requires that Agents do not "memorize" the policy schema indefinitely. Instead, the Agent Registry serves the current version of the JSON schema dynamically during the Context compilation step. This ensures that even as capabilities evolve, the Agent always reasons against a valid, up-to-date interface contract.
 
+**Strict Versioning (Avoiding "Contract Hell"):**
+In distributed agent systems, mismatched expectations lead to failures. The Agent Registry mandates **Semantic Versioning (SemVer)** alignment. An agent initialized with `v1.2` capability manifests must negotiate with a Runtime supporting `v1.x` schemas. If a disconnect is detected, the Runtime rejects the agent's registration during the handshake, preventing runtime parsing errors in production.
+
 ## 3. System Invariants
 
 Instead of a "manifesto," DIR relies on a set of architectural invariants. These are the constraints that must hold true for the system to be considered safe, regardless of how "creative" the LLM becomes.
@@ -137,6 +142,8 @@ In AI agents, the complexity lies not just in *where* the request went, but *how
 ### 4.1 The DFID (DecisionFlow ID)
 
 To solve this in AIvestor, I introduced the **DecisionFlow ID (DFID)**. Conceptually, this is a Correlation ID, but it spans a wider scope than a typical HTTP request. A DFID acts as a container for the entire lifecycle of a single intent.
+
+All operations—observations, prompts, reasonings, and execution results—are persisted in a database, tagged with this ID. In an event-driven implementation, this ID propagates through the Event Bus, allowing subscribers (like an Audit Service) to reconstruct the full causality chain.
 
 It binds together:
 
@@ -241,9 +248,9 @@ The pipeline functions as a **Policy Enforcement Point (PEP)**. It evaluates pro
 A subtle failure mode in LLMs is "proxy gaming," where the model's narrative ("I am reducing risk") contradicts its structured policy (`{"action": "BUY_LEVERAGE"}`).
 To counter this, DIR supports an optional **Semantic Alignment Check**. Before execution, a separate, smaller model (or strict logic) compares the `explanation` field against the `policy` payload. If the semantic intent diverges from the technical instruction, the proposal is rejected as **HALLUCINATION_MISMATCH**.
 
-**The Determinism Trade-off**
+**The Determinism Trade-off (Use with Caution)**
 
-Critics might argue that introducing a semantic check (using a smaller model) into the validation pipeline violates the principle of a purely deterministic Runtime. This is a deliberate trade-off. While the "Hard Gates" (Schema, RBAC, Risk Limits) are purely algorithmic and blocking, the Semantic Check acts as a **Probabilistic Guardrail** for high-stakes anomalies (e.g., detecting if an agent's narrative contradicts its JSON payload). In production, this check can be configured as blocking (for high-risk actions) or async-audit (for low-risk actions), allowing the operator to tune the balance between absolute determinism and semantic safety.
+Critics might argue that introducing a semantic check (using a smaller model) into the validation pipeline violates the principle of a purely deterministic Runtime. This is a deliberate trade-off. While the "Hard Gates" (Schema, RBAC, Risk Limits) are purely algorithmic and blocking, the Semantic Check acts as a **Probabilistic Guardrail** for high-stakes anomalies. In production, this check should be used sparingly-only when the cost of execution failure significantly outweighs the cost of false-positive rejection. It can be configured as blocking (for critical actions) or async-audit (for lower-risk actions), allowing the operator to tune the balance.
 
 ### 6.4 Time as a Hard Constraint
 
@@ -293,7 +300,8 @@ To organize information effectively, the **Context Store** is structured into fo
 
 Agents do not query the database directly. Instead, the Runtime executes a deterministic **Context Compilation** step before invoking the agent. This is analogous to the **Retrieval-Augmented Generation (RAG)** pattern, but strictly structured.
 
-The Compiler filters noise, enforcing a "Need-to-Know" policy.
+The Compiler filters noise, enforcing a "Need-to-Know" policy. To prevent context window overflow, strict limits (e.g., "last X news items", "positions opened in last 24h") are enforced at the query level, ensuring the agent sees only the most relevant, recent slice of reality.
+
 ![Diagram illustrating the "Context Compilation Pipeline](../../assets/images/compilation-pipeline.svg)
 
 * *Inputs:* Raw Event Log, Market State, Static Rules.
@@ -375,6 +383,9 @@ Beyond simple rate-limiting, the Runtime enforces a "Computation Budget" (token 
 When a flow is escalated, the human acts as a **Super-User**.
 The Runtime presents the `WorkingContext`, the `PolicyProposal`, and the `Reason` for escalation. The human then issues a binding decision: **OVERRIDE**, **MODIFY**, or **ABORT**.
 
+**Defense Against "Rubber Stamping":**
+A critical risk in Human-in-the-Loop systems is operator fatigue, leading to reflexive approval of bad decisions. To mitigate this, the UI should never offer a simple "Approve" button. Instead, it must require active confirmation of consequences (e.g., displaying a "Diff" of the state change) or force the operator to select the specific component of the plan they are authorizing.
+
 **[Escalation Event]**
 
 ```json
@@ -446,6 +457,10 @@ After a week of operation, the portfolio balance drifted inexplicably. Logs show
 
 * *Lesson:* Logs are useless without correlation. Implementing **DecisionFlow ID (DFID)** allowed me to visualize the entire chain: *Market Signal -> Prompt -> Agent Thought -> Policy -> Action*.
 
+### 11.4 What's Next
+
+This document outlines the architectural pattern. In a forthcoming article, I will detail the specific implementation of **AIvestor**, demonstrating how these abstract concepts map to a concrete stack (Python, Event Bus, SQL). Additionally, I plan to release a set of **ROA/DIR Code Templates** in this repository to help developers bootstrap reliable agents without reinventing the wheel.
+
 ## 12. Trade-offs and Limitations
 
 Engineering is about trade-offs. Adopting DIR introduces friction and cost. It is not a silver bullet.
@@ -470,6 +485,14 @@ Implementing a Context Compiler, Policy Engine, and State Machine is significant
 
 DIR moves the complexity from "Prompt Engineering" to "Policy Engineering." Defining the JSON schemas, RBAC roles, and validation rules (Rego/Python) requires domain expertise that cannot be automated. You still need humans to define *what* is safe.
 
+### 12.4 The "Garbage Policy In" Risk
+
+DIR guarantees that an agent cannot violate the *syntax* or *permissions* of the system. However, it cannot guarantee that a syntactically valid decision is *smart*. If a policy allows an agent to "Delete Database" and the agent requests it in a valid JSON format, the Runtime will execute it. **Safety is only as strong as the weakest rule in the Policy Enforcement Point.** This places a burden on "Policy Engineering"-developers must define granular, least-privilege constraints (e.g., "Delete only records created by this agent").
+
+### 12.5 Adversarial Robustness (Defense in Depth)
+
+While DIR prevents accidents, it is not a silver bullet against targeted adversarial attacks. If a malicious actor successfully performs a specific prompt injection that forces the LLM to output a valid, authorized, but malicious Policy Proposal (e.g., "Sell at minimum allowable price"), limits may be respected but intent subverted. DIR is a layer of **Defense in Depth**; it must be complemented by upstream defenses like input sanitization and semantic monitoring.
+
 ## 13. Conclusion: From Chatbots to Systems
 
 We are currently in the "wild west" phase of Agentic AI. Developers are connecting powerful probabilistic models directly to sensitive APIs, relying on "prompt injection defense" as their only safety net.
@@ -479,5 +502,19 @@ This is unsustainable.
 As we move from building chatbots to building autonomous systems, we must stop treating AI as a magic box and start treating it as an untrusted component in a critical system.
 **The Decision Intelligence Runtime (DIR)** is an architectural response to this reality. By separating **Reasoning** (the Agent) from **Execution** (the Runtime), and enforcing strict invariants like **Idempotency**, **Temporal Validity**, and **Auditability**, we can build systems that are not just "smart," but also safe, reliable, and accountable.
 
-AIvestor proved that an LLM can trade stocks without going broke-but only when it is put in a straightjacket of deterministic engineering.
+AIvestor proved that an LLM can trade stocks without going broke—but only when it is put in a straightjacket of deterministic engineering.
+
+## 14. Glossary
+
+*   **Decision Intelligence Runtime (DIR)**: An architectural pattern that separates probabilistic agent reasoning from deterministic execution to ensure safety and reliability.
+*   **Responsibility-Oriented Agents (ROA)**: A design pattern for bounding AI autonomy where agents operate within strict functional contracts.
+*   **DecisionFlow ID (DFID)**: A unique correlation identifier that traces the entire lifecycle of a decision, from trigger to execution result.
+*   **Decision Validity Window (DVW)**: The time period during which a proposed decision is considered valid. If execution is attempted after this window, it is rejected.
+*   **Decision Integrity Module (DIM)**: The deterministic component of the runtime acting as a gatekeeper (Policy Enforcement Point) that validates all proposals.
+*   **Policy Proposal**: A structure defining the agent's desired action (intent) submitted to the runtime for validation.
+*   **Execution Intent**: A validated and approved object derived from a Policy Proposal, authorized to trigger external side effects.
+*   **Policy Enforcement Point (PEP)**: A security architectural component that acts as a gatekeeper, intercepting requests and validating them against a set of policies before allowing execution. In DIR, the Decision Integrity Module (DIM) functions as the PEP.
+*   **Context Compilation**: The process of deterministically assembling a snapshot of relevant data (state, history, rules) for the agent before invocation.
+*   **Semantic Alignment Check**: A validation step that compares the agent's natural language explanation with its structured policy to detect hallucinations or mismatches.
+*   **Escalation Budget**: A rate-limiting mechanism that restricts how many times an agent can request human intervention within a given timeframe.
 
