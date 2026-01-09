@@ -6,7 +6,7 @@
 **Last updated:** 2026-01-05
 
 
-![Responsibility-Oriented Agents](../../assets/images/roa.png)
+![Responsibility-Oriented Agents](../../assets/images/roa-dir.jpg)
 
 
 ## 0. Abstract
@@ -75,7 +75,64 @@ In this architecture, the **Decision Intelligence Runtime (DIR)** acts as the Ke
 
 DIR sits strictly between the probabilistic agents and the deterministic infrastructure.
 
-![High-level architectural diagram showing three layers](../../assets/images/hld-architectural-spaces.png)
+```mermaid
+---
+title: Decision Intelligence Runtime - High-Level Architecture
+config:
+  theme: neutral
+  look: classic
+---
+flowchart LR
+    %% Professional color scheme with improved contrast
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+    classDef logStyle fill:#FFEBEE,stroke:#C62828,stroke-width:1px,color:#B71C1C;
+
+    subgraph Kernel_Space ["`**KERNEL SPACE**<br/>Deterministic Runtime`"]
+        subgraph User_Space ["`**USER SPACE**<br/>Probabilistic Reasoning`"]
+            Agent1(["`**Agent A**<br/>Strategist`"]):::userSpace
+            Agent2(["`**Agent B**<br/>Executor`"]):::userSpace
+            Agent3(["`**Agent C**<br/>Analyst`"]):::userSpace
+            
+            Agent1 -->|Proposes| Policies
+            Agent2 -->|Proposes| Policies
+            Agent3 -->|Proposes| Policies
+            
+            Policies["`**Policy Proposals**<br/>Claims, not Facts`"]:::userSpace
+        end
+
+        DIM{"`**Decision Integrity**<br/>**Module**<br/>Validation Gate`"}:::kernelSpace
+        ContextCompiler["`**Context Compiler**`"]:::kernelSpace
+        EscalationManager["`**Escalation Manager**`"]:::kernelSpace
+        ExecutionEngine["`**Execution Engine**<br/>Idempotent Side Effects`"]:::kernelSpace
+        RejectLog["`**Audit Log**`"]:::logStyle
+        ContextStore["`**Context Store**<br/>Session State & Memory`"]:::kernelSpace
+        
+        Policies ==>|Submit| DIM
+        DIM -.->|Reject/Expire| RejectLog
+        DIM -.->|Reject/Feedback| Agent2
+        DIM ==>|Accept| ExecutionEngine
+        DIM -.->|Ambiguous| EscalationManager
+        ContextStore --> ContextCompiler
+        ContextCompiler -->|Working Context| Agent1
+    end
+
+    subgraph Infrastructure_Space ["`**INFRASTRUCTURE**<br/>External Systems`"]
+        ExtAPI1["`**API**`"]:::infraSpace
+        ExtAPI2["`**Database/ERP**`"]:::infraSpace
+        ExtAPI3["`**Notification Service**`"]:::infraSpace
+        
+        ExecutionEngine -->|Execute| ExtAPI1
+        ExecutionEngine -->|Execute| ExtAPI2
+        ExecutionEngine -->|Execute| ExtAPI3
+    end
+
+    %% Clean subgraph styling
+    style User_Space fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px
+    style Kernel_Space fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style Infrastructure_Space fill:#FAFAFA,stroke:#F57C00,stroke-width:3px
+````
 
 Its responsibilities are scoped to:
 
@@ -101,6 +158,40 @@ This dynamism requires that Agents do not "memorize" the policy schema indefinit
 
 **Strict Versioning (Avoiding "Contract Hell"):**
 In distributed agent systems, mismatched expectations lead to failures. The Agent Registry mandates **Semantic Versioning (SemVer)** alignment. An agent initialized with `v1.2` capability manifests must negotiate with a Runtime supporting `v1.x` schemas. If a disconnect is detected, the Runtime rejects the agent's registration during the handshake, preventing runtime parsing errors in production.
+
+```mermaid
+---
+title: The Capabilities Handshake - Startup Sequence
+config:
+  look: classic
+---
+sequenceDiagram
+    autonumber
+    participant Agent as Agent (User Space)
+    participant Registry as Agent Registry (Kernel)
+
+    Note over Agent: **Startup Phase**<br/>Agent loads local config
+
+    Agent->>Registry: **REGISTER**<br/>{ ID: "Trader_Alpha", Ver: "1.2", Caps: ["TRADE"] }
+    
+    activate Registry
+    Note right of Registry: **Verification Gate**<br/>1. Is "Trader_Alpha" allowed?<br/>2. Is v1.2 supported by v1.5 Runtime?
+
+    alt Version Mismatch (e.g. Runtime is v2.0)
+        Registry-->>Agent: **REJECT** (406 Not Acceptable)
+        Note over Agent: **Enter Safe Mode**<br/>(Passive / Retry with v2.0)
+    else Handshake Successful
+        Registry-->>Agent: **ACCEPT** (Session Token)
+        
+        Note over Agent: **Schema Sync**<br/>Don't assume, Ask.
+        
+        Agent->>Registry: GET /schema/policy/latest
+        Registry-->>Agent: { "schema": "v1.5.2-stable" }
+        
+        Note over Agent: **Ready** (Listening for Triggers)
+    end
+    deactivate Registry
+```
 
 ## 3. System Invariants
 
@@ -154,6 +245,56 @@ It binds together:
 5. **The Validation Outcome:** Why the runtime accepted or rejected it.
 6. **The Execution Result:** The final side effect (e.g., transaction ID).
 
+```mermaid
+---
+title: DecisionFlow - The Traceability Backbone
+config:
+  theme: neutral
+  look: classic
+---
+flowchart LR
+    %% Styles from Project Standard
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+    classDef traceStyle fill:#F3E5F5,stroke:#8E24AA,stroke-width:2px,color:#4A148C,stroke-dasharray: 5 5;
+    classDef logStyle fill:#FFEBEE,stroke:#C62828,stroke-width:1px,color:#B71C1C;
+
+    subgraph Runtime_Lifecycle ["`**DECISION LIFECYCLE**<br/>Operational Pipeline`"]
+        direction LR
+        Trigger((Event)):::kernelSpace --> Context
+        Context["`**1. Context**<br/>Snapshot`"]:::kernelSpace
+        Context --> Agent
+        Agent(["`**2. Reasoning**<br/>Logic`"]):::userSpace
+        Agent --> Props
+        Props["`**3. Proposal**<br/>Intent`"]:::userSpace
+        Props --> DIM
+        DIM{"`**4. Gate**<br/>Valid?`"}:::kernelSpace
+        DIM ==>|Yes| Exec["`**5. Action**<br/>Side Effect`"]:::infraSpace
+        DIM -.->|No| Drop(("`**Drop**`")):::logStyle
+    end
+
+    subgraph Audit_Layer ["`**DECISION FLOW RECORD (DFID: 550e84...)**<br/>Immutable Audit Trail (Persisted in DB)`"]
+        direction LR
+        DFID_Log1[/"`**Logic Layout**<br/>Agent Thoughts`"\]:::traceStyle
+        DFID_Log2[/"`**Policy Artifact**<br/>JSON Document`"\]:::traceStyle
+        DFID_Log3[/"`**Audit Result**<br/>Validation Notes`"\]:::traceStyle
+        DFID_Log4[/"`**Tx Receipt**<br/>Ext System ID`"\]:::traceStyle
+        
+        DFID_Log1 -.- DFID_Log2 -.- DFID_Log3 -.- DFID_Log4
+    end
+
+    %% Telemetry Links - Linking the Live Action to the Record
+    Agent -.->|Trace| DFID_Log1
+    Props -.->|Trace| DFID_Log2
+    DIM -.->|Trace| DFID_Log3
+    Exec -.->|Trace| DFID_Log4
+    
+    %% Visual connection between layers
+    style Runtime_Lifecycle fill:#FAFAFA,stroke:#757575,stroke-width:1px
+    style Audit_Layer fill:#FAFAFA,stroke:#8E24AA,stroke-width:2px
+```
+
 ### 4.2 Hierarchical DecisionFlows
 
 In complex domains, decisions are rarely atomic. A strategic decision ("Reduce Tech Exposure") often spawns multiple tactical decisions ("Sell AAPL", "Buy Put Options").
@@ -163,6 +304,36 @@ DIR supports **Parent-Child relationships** between DFIDs.
 * **Child Flows:** Represent the granular actions (Execution).
 This hierarchy allows for precise auditing. If a trade fails, we can trace it back not just to the specific tactical agent, but to the parent strategic mandate that authorized it.
 
+```mermaid
+---
+title: The "Umbrella" Pattern - One Strategy, Many Actions
+config:
+  theme: neutral
+  look: classic
+---
+flowchart LR
+    classDef parent fill:#E8EAF6,stroke:#3F51B5,stroke-width:3px,color:#1A237E,font-weight:bold
+    classDef child fill:#FFF3E0,stroke:#F57C00,stroke-width:1px,color:#E65100
+
+    %% The Parent Flow (Long-running)
+    Strategy("`**PARENT FLOW (Strategy)**<br/>Intent: *Manage AAPL Swing Trade*<br/>Status: *Active for 3 days*`"):::parent
+
+    %% The Child Flows (Atomic Actions)
+    subgraph Timeline ["`**EXECUTION TIMELINE (Child Flows)**`"]
+        direction LR
+        Step1["`**T=0h: BUY**<br/>Open 100 shares`"]:::child
+        Step2["`**T=4h: WATCH**<br/>Adjust Stop Loss`"]:::child
+        Step3["`**T=24h: SELL**<br/>Take Profit (+5%)`"]:::child
+        
+        Step1 --> Step2 --> Step3
+    end
+
+    %% Relationships - The "Why" link
+    Strategy ==>|1. Authorizes| Step1
+    Strategy -.->|2. Monitors| Step2
+    Strategy ==>|3. Closes| Step3
+```
+
 ### 4.3 Lifecycle Management
 
 Unlike a stateless HTTP request, a DecisionFlow is a stateful entity. It follows a strict lifecycle managed by the Runtime:
@@ -171,6 +342,9 @@ Unlike a stateless HTTP request, a DecisionFlow is a stateful entity. It follows
 * **ACTIVE:** The agent is reasoning or a proposal is being validated.
 * **CLOSED:** Execution completed successfully.
 * **ABORTED:** The flow was terminated due to validation failure, timeout (TTL), or error.
+
+
+
 
 ## 5. The Interface: Policies as Contracts
 
@@ -275,6 +449,33 @@ To protect against this, DIR assigns a deterministic **Idempotency Key** to ever
 * If the Runtime sees a duplicate key, it returns the *cached result* of the previous execution rather than triggering the API again.
 * This ensures that "Retry" logic is safe and does not result in opening two positions instead of one.
 
+```mermaid
+---
+title: Idempotency Logic - Preventing Double Execution
+config:
+  look: classic
+---
+flowchart LR
+    Start(["`**Inbound Execution Intent**`"]) --> KeyGen["`**Generate Idempotency Key**<br/>Hash: DFID + ActionType`"]
+    KeyGen --> CheckCache{"`**Key exists in**<br/>State Store?`"}
+    
+    CheckCache -- YES --> ReturnCached["`**Return Cached Result**<br/>(No Side Effect)`"]
+    
+    CheckCache -- NO --> Execute["`**EXECUTE SIDE EFFECT**<br/>Call External API`"]
+    
+    Execute --> Success{"`**Success?**`"}
+    
+    Success -- YES --> StoreResult["`**Store Result in Cache**<br/>Key = Result`"]
+    StoreResult --> ReturnNew(["`**Return New Result**`"])
+    
+    Success -- NO --> ErrorHandler{"`**Error Type?**`"}
+    ErrorHandler -- Transient --> Retry["`**Retry with Backoff**`"]
+    ErrorHandler -- Terminal --> Fail["`**Mark DFID as Failed**`"]
+
+    style Execute fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+    style ReturnCached fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,stroke-dasharray: 5 5
+```
+
 ### 7.3 Handling "Unsafe" Executors
 
 Not all external APIs are transactional. In AIvestor, I adopted an **At-Most-Once** delivery strategy for high-risk actions. If an execution fails with an ambiguous error (e.g., timeout), the Runtime marks the DecisionFlow as `SUSPENDED` rather than blindly retrying. It is safer to miss a trade than to execute a trade in an unknown state.
@@ -302,7 +503,60 @@ Agents do not query the database directly. Instead, the Runtime executes a deter
 
 The Compiler filters noise, enforcing a "Need-to-Know" policy. To prevent context window overflow, strict limits (e.g., "last X news items", "positions opened in last 24h") are enforced at the query level, ensuring the agent sees only the most relevant, recent slice of reality.
 
-![Diagram illustrating the "Context Compilation Pipeline](../../assets/images/compilation-pipeline.svg)
+
+```mermaid
+---
+title: Context Compilation Pipeline
+config:
+  look: classic
+---
+flowchart LR
+ subgraph Compilation_Pipeline["**COMPILATION PIPELINE**<br>Context Assembly"]
+        Step1_Snapshot["**Step 1**<br>Snapshot State<br>Optimistic Lock"]
+        Step2_TimeFilter["**Step 2**<br>Time Window Filter<br>Relevance Scope"]
+        Step3_Retrieval["**Step 3**<br>RAG Retrieval<br>Semantic Search"]
+        Step4_Format["**Step 4**<br>Assembly<br>Token Budgeting"]
+  end
+ subgraph Context_Store["**CONTEXT STORE**<br>Source of Truth"]
+        State_DB["**State Context**<br>Authoritative Snapshot"]
+        Session_DB["**Session Context**<br>Event Log"]
+        Memory_DB["**Memory Context**<br>Long-term History"]
+        Artifact_DB["**Artifacts Context**<br>Static Rules &amp; Docs"]
+  end
+    Trigger(["**Trigger**<br>Invoked"]) ==> Step1_Snapshot
+    State_DB -. Read .-> Step1_Snapshot
+    Step1_Snapshot ==> Step2_TimeFilter
+    Session_DB L_Session_DB_Step2_TimeFilter_0@-. Read .-> Step2_TimeFilter
+    Step2_TimeFilter ==> Step3_Retrieval
+    Memory_DB L_Memory_DB_Step3_Retrieval_0@-. Query .-> Step3_Retrieval
+    Artifact_DB L_Artifact_DB_Step3_Retrieval_0@-. Query .-> Step3_Retrieval
+    Step3_Retrieval ==> Step4_Format
+    Step4_Format ==> Output_Object["**Working Context**<br>Immutable View"]
+    Output_Object --> Agent_Reasoning(["**Agent Reasoning**<br>LLM"])
+
+    State_DB@{ shape: db}
+    Session_DB@{ shape: db}
+    Memory_DB@{ shape: db}
+    Artifact_DB@{ shape: db}
+     State_DB:::storage
+     Session_DB:::storage
+     Memory_DB:::storage
+     Artifact_DB:::storage
+     Trigger:::process
+     Step1_Snapshot:::process
+     Step2_TimeFilter:::process
+     Step3_Retrieval:::process
+     Step4_Format:::process
+     Output_Object:::artifact
+     Agent_Reasoning:::agent
+    classDef storage fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold
+    classDef process fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold
+    classDef artifact fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold
+    classDef agent fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold
+    style Context_Store fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style Compilation_Pipeline fill:#FAFAFA,stroke:#F57C00,stroke-width:3px
+````
+
 
 * *Inputs:* Raw Event Log, Market State, Static Rules.
 * *Process:* Filter by Time -> Filter by Relevance (RAG) -> Format (JSON/Text).
@@ -349,7 +603,61 @@ Escalation is not an error; it is a valid state transition in the DecisionFlow.
 When the Runtime encounters a situation it cannot resolve deterministically (e.g., ambiguity, risk limit violation, or repeated API failures), it transitions the flow to `ESCALATED`.
 
 
-![State Machine Diagram - DecisionFlow Lifecycle](../../assets/images/state-machine.svg)
+```mermaid
+---
+title: Policy Lifecycle State Machine
+config:
+  look: classic
+---
+stateDiagram-v2
+    direction LR
+
+    %% Define States with consistent formatting
+    state "CREATED" as Created
+    state "ACTIVE - Reasoning" as Active
+    state "VALIDATING - DIM" as Validating
+    state "ESCALATED - HITL" as Escalated
+    state "ACCEPTED" as Accepted
+    state "EXECUTING" as Executing
+    state "CLOSED" as Closed
+    state "ABORTED" as Aborted
+
+    %% Initial Transition
+    [*] --> Created
+    Created --> Active : Context Compilation
+
+    %% Reasoning to Validation
+    Active --> Validating : Policy Proposal Emitted
+
+    %% Validation Logic (DIM)
+    Validating --> Accepted : Validation PASSED
+    Validating --> Aborted : Validation FAILED
+    Validating --> Escalated : Threshold Reached
+
+    %% Escalation Logic (Human-in-the-Loop)
+    Escalated --> Accepted : Human Override
+    Escalated --> Aborted : Human Reject
+
+    %% Execution Logic
+    Accepted --> Executing : Create Execution Intent
+    Executing --> Closed : Success
+    Executing --> Aborted : Runtime Error
+
+    %% Terminal States
+    Closed --> [*]
+    Aborted --> [*]
+
+    %% Notes for context
+    note right of Validating
+        Decision Integrity Module
+        Enforces Logic & Safety
+    end note
+    
+    note right of Escalated
+        Governance by Exception
+        Awaiting Human Input
+    end note
+````
 
 * *Nodes:* CREATED -> ACTIVE -> (Validation) -> [ACCEPTED | REJECTED | ESCALATED].
 * *Transitions:*
@@ -428,7 +736,78 @@ For enterprise scale, DIR maps naturally to an **Event-Driven Architecture**.
 * **State:** Distributed Key-Value Store (Redis) + Time Series DB.
 * **Pattern:** The **Event-Oriented Agent Mesh**. Agents emit `PolicyProposal` events to a topic; the Runtime consumes them, validates, and emits `ExecutionIntent` events.
 
-![Diagram comparing Topology A (Monolith) vs Topology B (Distributed Mesh)](../../assets/images/topology-comparison.svg)
+
+```mermaid
+
+---
+title: Topology Comparison - Monolith vs Distributed Architecture
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#f0f4f8"
+    primaryTextColor: "#1a202c"
+    primaryBorderColor: "#4a5568"
+    lineColor: "#4a5568"
+    secondaryColor: "#e2e8f0"
+    tertiaryColor: "#cbd5e0"
+---
+flowchart TB
+    %% Professional Color Scheme
+    classDef component fill:#ffffff,stroke:#2d3748,stroke-width:2px,color:#1a202c
+    classDef agentNode fill:#667eea,stroke:#5a67d8,stroke-width:2px,color:#ffffff
+    classDef queueNode fill:#48bb78,stroke:#38a169,stroke-width:2px,color:#ffffff
+    classDef runtimeNode fill:#ed8936,stroke:#dd6b20,stroke-width:2px,color:#ffffff
+    classDef dbNode fill:#4299e1,stroke:#3182ce,stroke-width:2px,color:#ffffff
+    classDef busNode fill:#f6ad55,stroke:#ed8936,stroke-width:2px,color:#1a202c
+
+    %% TOPOLOGY A: MONOLITH
+    subgraph Topology_A [" 🏢 Topology A: Single-Process Monolith "]
+        direction TB
+        
+        subgraph Single_Process [" 📦 Single Python Process / Container "]
+            direction TB
+            Mono_Agent1[Agent Logic 1]:::agentNode
+            Mono_Agent2[Agent Logic 2]:::agentNode
+            Mono_Queue((In-Memory Queue)):::queueNode
+            Mono_Runtime[DIR Runtime Core]:::runtimeNode
+        end
+        
+        Mono_DB[(Local DB<br/>SQLite)]:::dbNode
+
+        %% Connections A
+        Mono_Agent1 -.->|Object Ref| Mono_Queue
+        Mono_Agent2 -.->|Object Ref| Mono_Queue
+        Mono_Queue ==>|Async Event| Mono_Runtime
+        Mono_Runtime <===>|Direct I/O| Mono_DB
+    end
+
+    %% TOPOLOGY B: DISTRIBUTED MESH
+    subgraph Topology_B [" ☁️ Topology B: Distributed Event Mesh "]
+        direction TB
+        
+        Dist_Agent1[Agent Service 1<br/>Pod A]:::agentNode
+        Dist_Agent2[Agent Service 2<br/>Pod B]:::agentNode
+        
+        Dist_Bus[/Message Bus<br/>Kafka / NATS / RabbitMQ/]:::busNode
+        
+        Dist_Runtime[DIR Runtime Service<br/>Pod C]:::runtimeNode
+        Dist_DB[(Distributed State<br/>Redis / Postgres)]:::dbNode
+
+        %% Connections B
+        Dist_Agent1 ==>|Pub: PolicyProposal| Dist_Bus
+        Dist_Agent2 ==>|Pub: PolicyProposal| Dist_Bus
+        Dist_Bus ==>|Sub: PolicyProposal| Dist_Runtime
+        Dist_Runtime ==>|Pub: ExecutionIntent| Dist_Bus
+        Dist_Runtime <===>|ACID Trans| Dist_DB
+    end
+
+    %% Style Subgraphs
+    style Topology_A fill:#f7fafc,stroke:#4a5568,stroke-width:3px,rx:10,ry:10
+    style Topology_B fill:#f7fafc,stroke:#4a5568,stroke-width:3px,rx:10,ry:10
+    style Single_Process fill:#edf2f7,stroke:#667eea,stroke-width:2px,rx:8,ry:8
+
+
+````
 
 * *Left:* Agents inside the same box as Runtime.
 * *Right:* Agents and Runtime connected by a Message Bus.
