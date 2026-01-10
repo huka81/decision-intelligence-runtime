@@ -111,7 +111,8 @@ flowchart LR
         
         Policies ==>|Submit| DIM
         DIM -.->|Reject/Expire| RejectLog
-        DIM -.->|Reject/Feedback| Agent2
+        DIM -.->|Reject Reason / Feedback| Agent1
+        DIM -.->|Reject Reason / Feedback| Agent2
         DIM ==>|Accept| ExecutionEngine
         DIM -.->|Ambiguous| EscalationManager
         ContextStore --> ContextCompiler
@@ -139,6 +140,7 @@ Its responsibilities are scoped to:
 1. **Orchestration:** Receiving unvalidated proposals from agents and processing them through a deterministic pipeline.
 2. **Validation:** Functioning as a **Policy Enforcement Point (PEP)**, similar to OPA (Open Policy Agent) in cloud-native security.
 3. **Translation:** Converting "soft" agent intents (policies) into "hard" execution commands (API calls) with idempotency guarantees.
+4. **Feedback:** Closing the loop by returning `ValidationFeedback` events to the Agent. When a policy is rejected (e.g., `RISK_LIMIT_EXCEEDED`), the Runtime must inform the Agent *why*, so it can attempt self-correction in the next cycle.
 
 ### 2.2 What It Is Not (Scope Exclusion)
 
@@ -152,6 +154,8 @@ DIR introduces an **Agent Registry**-a service discovery mechanism for intellige
 
 * **Registration:** On startup, an agent registers its `Manifest`: its ID, its subscribed inputs (Context), and its authorized outputs (Policy Types).
 * **Capability Contract:** The Registry acts as the source of truth for ROA constraints. When the Validation Layer asks "Can Agent X trade Asset Y?", it queries the Registry, not the Agent. This prevents agents from self-granting permissions via prompt injection.
+
+Beyond capability tracking, the Agent Registry facilitates **Resource Locking and Reservation**. In environments where multiple agents (e.g., concurrent PositionAgents) operate on a shared finite resource—such as a single capital pool or a limited API throughput—the Registry acts as a synchronization point. It allows the Runtime to grant temporary 'Reservation Locks' to a DecisionFlow. If a Policy Proposal attempts to utilize a resource already committed to another active flow, the DIM rejects it with a RESOURCE_CONTENTION error. This prevents race conditions and ensures that probabilistic agents do not over-leverage a shared environment based on stale local context.
 
 **Note on Schema Evolution:**
 This dynamism requires that Agents do not "memorize" the policy schema indefinitely. Instead, the Agent Registry serves the current version of the JSON schema dynamically during the Context compilation step. This ensures that even as capabilities evolve, the Agent always reasons against a valid, up-to-date interface contract.
@@ -200,7 +204,7 @@ Instead of a "manifesto," DIR relies on a set of architectural invariants. These
 ### 3.1 Invariant 1: Deterministic State Transitions
 
 While the inputs to the system (market data, agent prompts) are non-deterministic, the transition from a **Validated Policy** to an **Execution** must be deterministic.
-Given the same Policy Proposal, the same Context Snapshot, and the same Time, the Runtime must always produce the exact same Validation Result. This requires that validation logic be implemented in standard code (Python/Go/Rust) or a policy engine (Rego), never via another LLM call.
+Given the same Policy Proposal, the same Context Snapshot, and the same Time, the Runtime must always produce the exact same Validation Result. This requires that blocking validation logic be implemented in standard code (Python/Go/Rust) or a policy engine (Rego). Any probabilistic validation (LLM-based) must be decoupled as a non-blocking "Soft Guard," ensuring the execution path remains predictable.
 
 ### 3.2 Invariant 2: The "Reasoning-Execution" Wall
 
@@ -210,13 +214,14 @@ This is an adaptation of the **Command Query Responsibility Segregation (CQRS)**
 * **Runtime (Execution):** The Runtime validates the proposal. Only if validation passes does it trigger a side effect.
 * **Constraint:** No agent is ever permitted to hold API keys or database write credentials. Agents only have permission to "submit proposals" to the Runtime's internal bus.
 
-### 3.3 Invariant 3: Temporal Validity (Deadline Propagation)
+### 3.3 Invariant 3: Execution Parametrization (Constraints over Deadlines)
 
-In distributed systems like gRPC, we use "Deadline Propagation" to ensure calls don't hang forever. In AI decision systems, we need a similar concept for *information freshness*.
-A decision proposed by an agent is only valid for a specific window of time. I call this the **Decision Validity Window (DVW)**.
+In distributed systems, we often use "Deadline Propagation." However, relying solely on a hard TTL (Time-To-Live) for AI decisions is brittle. If an LLM takes 8 seconds to "think" and the queue takes 3 seconds, a 10s TTL rejects valid decisions.
+DIR replaces robust "race-against-the-clock" logic with **Execution Parametrization**.
 
-* *Example:* If an agent proposes "Buy Asset X" based on a price snapshot from `T=0`, and the Runtime processes this at `T+10s`, the validity might have expired.
-* *Mechanism:* The Runtime enforces a hard TTL (Time-To-Live) on every proposal. Expired proposals are rejected immediately, preventing "stale" logic from executing in a changed environment.
+*   **Logic:** The Agent does not propose: *"Buy at the price I saw in the snapshot ($100)."*
+*   **Constraint:** The Agent proposes: *"Buy with a limit of $102 (Acceptable Slippage: 2%)."*
+*   **Mechanism:** The Runtime checks the **Execution Constraints** at the exact moment of execution. This effectively decouples "slow" reasoning time from "fast" execution time, ensuring that latency does not invalidate the strategy, provided the market conditions remain within the Agent's defined bounds.
 
 ### 3.4 Invariant 4: Auditability by Correlation
 
@@ -371,7 +376,9 @@ In practice, I found that LLMs perform better when allowed to "think out loud" b
 The Runtime validates *only* the Policy. The Explanation is treated as metadata (comments). This separation prevents the system from mistaking a narrative justification for an executable instruction.
 
 **Intent vs. Execution Tactics**
-It is important to clarify that a Policy Proposal is not a raw market order (e.g., "Buy at market NOW"). Given the latency of LLM inference, such an approach would suffer from inevitable slippage. Instead, ROA Agents emit **Strategic Intents** (e.g., "Acquire position with 5% aggressiveness, limit slippage to 0.5%"). The Runtime is responsible for the **Tactical Execution** of this intent using deterministic algorithms (e.g., TWAP/VWAP or limit chasing). This effectively decouples the "slow" reasoning of the Agent from the "fast" execution of the market interaction layer. The `valid_until` constraint protects the strategy from becoming stale, not the individual network packet.
+It is important to clarify that a Policy Proposal is not a raw market order (e.g., "Buy at market NOW"). Given the latency of LLM inference, such an approach would suffer from inevitable slippage. Instead, ROA Agents emit **Strategic Intents** with explicit **Execution Constraints**.
+
+The Agent defines the *boundary conditions* (e.g., "Buy up to $102"), and the Runtime executes within those bounds. This separates the "thinking time" from the "market timestamp."
 
 **Example Structure (JSON):**
 
@@ -380,13 +387,17 @@ It is important to clarify that a Policy Proposal is not a raw market order (e.g
   "dfid": "550e8400-e29b-41d4-a716-446655440000",
   "agent_id": "risk_manager_v1",
   "policy_kind": "ADJUST_POSITION",
+  "execution_constraints": {
+    "max_slippage_bps": 50,
+    "validity_window_sec": 30,
+    "requires_market_state": "OPEN"
+  },
   "params": {
     "symbol": "BTC-USD",
     "action": "REDUCE",
     "quantity": 0.5
   },
-  "context_ref": "snapshot_hash_x9823",
-  "valid_until": "2024-01-05T12:00:10Z"
+  "context_ref": "snapshot_hash_x9823"
 }
 
 ```
@@ -416,15 +427,23 @@ The pipeline functions as a **Policy Enforcement Point (PEP)**. It evaluates pro
 1. **Schema & Integrity:** Does the JSON match the versioned schema?
 2. **Authority (RBAC):** Is this agent authorized in the *Agent Registry* to execute this Policy Kind?
 3. **State Consistency (Optimistic Concurrency):** Does the `context_hash` in the proposal match the current system state? If slippage occurred, reject with `STALE_CONTEXT`.
+4. **Resource Availability (Semantic Locking):** To prevent "Horizontal Resource Contention" (where two agents compete for the same cash/inventory), the DIM places a temporary lock or reservation on the required assets during the validation phase. If Agent A has reserved the last unit of capital, Agent B's simultaneous request is rejected with `INSUFFICIENT_LIQUIDITY`, preventing race conditions.
+
+The pipeline incorporates an **Intent Retry Governor** to mitigate the risk of 'Feedback Poisoning.' When the Runtime returns ValidationFeedback to an agent following a rejection (e.g., a risk limit violation), the agent is permitted a strictly limited number of attempts (Maximum Intent Retries, typically 3) to correct its proposal within the same DecisionFlow. If the agent continues to produce non-compliant policies after these attempts, the Runtime forcibly terminates the flow with a REASONING_EXHAUSTION status. This protects the system from infinite reasoning loops and prevents a hallucinating model from draining the Token Budget through unproductive attempts to bypass deterministic guards.
 
 ### 6.3 Semantic Alignment Check (The "Liar" Detection)
 
 A subtle failure mode in LLMs is "proxy gaming," where the model's narrative ("I am reducing risk") contradicts its structured policy (`{"action": "BUY_LEVERAGE"}`).
-To counter this, DIR supports an optional **Semantic Alignment Check**. Before execution, a separate, smaller model (or strict logic) compares the `explanation` field against the `policy` payload. If the semantic intent diverges from the technical instruction, the proposal is rejected as **HALLUCINATION_MISMATCH**.
+To counter this, DIR supports an optional **Semantic Alignment Check**.
 
-**The Determinism Trade-off (Use with Caution)**
+**Hard Gates vs. Soft Guards**
 
-Critics might argue that introducing a semantic check (using a smaller model) into the validation pipeline violates the principle of a purely deterministic Runtime. This is a deliberate trade-off. While the "Hard Gates" (Schema, RBAC, Risk Limits) are purely algorithmic and blocking, the Semantic Check acts as a **Probabilistic Guardrail** for high-stakes anomalies. In production, this check should be used sparingly-only when the cost of execution failure significantly outweighs the cost of false-positive rejection. It can be configured as blocking (for critical actions) or async-audit (for lower-risk actions), allowing the operator to tune the balance.
+To preserve the determinism of the runtime (Invariant 1), we distinguish between:
+
+1.  **Hard Gates (Deterministic):** Rego policies, schema validation, and RBAC code. These are blocking.
+2.  **Soft Guards (Probabilistic):** LLM-based semantic checks. These operate primarily as **Auditors**.
+
+If a Soft Guard detects a mismatch (Semantic Mismatch), it typically does **not** block execution automatically. Instead, it flags the transaction as `NEEDS_REVIEW` (post-execution) or triggers an async alert. Blocking is reserved only for "Emergency Stop" scenarios where the confidence score is extremely high (>0.99). This ensures that a "hallucinating validator" does not randomly gum up the works, while still providing safety oversight "from the back seat."
 
 ### 6.4 Time as a Hard Constraint
 
@@ -476,9 +495,13 @@ flowchart LR
     style ReturnCached fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,stroke-dasharray: 5 5
 ```
 
-### 7.3 Handling "Unsafe" Executors
+### 7.3 Complex Execution: The Saga Pattern
 
-Not all external APIs are transactional. In AIvestor, I adopted an **At-Most-Once** delivery strategy for high-risk actions. If an execution fails with an ambiguous error (e.g., timeout), the Runtime marks the DecisionFlow as `SUSPENDED` rather than blindly retrying. It is safer to miss a trade than to execute a trade in an unknown state.
+Not all external APIs are transactional/atomic. A Policy might require executing a sequence of dependent actions (e.g., "Sell Asset A to fund purchase of Asset B").
+DIR rejects the "all-or-nothing" fantasy.
+
+*   **State: PARTIAL_SUCCESS_DIRTY:** If a 3-step policy fails at step 2, the DFID is not simply "failed." It is tagged as `DIRTY`.
+*   **Compensation:** This triggers a **Saga Compensation** workflow. Unlike a simple retry, this logic attempts to undo Step 1 or flag the anomaly for human resolution. The Agent is effectively locked out of new operations until the runtime confirms the state has converged back to consistency.
 
 ---
 
@@ -514,7 +537,7 @@ flowchart LR
  subgraph Compilation_Pipeline["**COMPILATION PIPELINE**<br>Context Assembly"]
         Step1_Snapshot["**Step 1**<br>Snapshot State<br>Optimistic Lock"]
         Step2_TimeFilter["**Step 2**<br>Time Window Filter<br>Relevance Scope"]
-        Step3_Retrieval["**Step 3**<br>RAG Retrieval<br>Semantic Search"]
+        Step3_Retrieval["**Step 3**<br>Deterministic Query<br>Execution"]
         Step4_Format["**Step 4**<br>Assembly<br>Token Budgeting"]
   end
  subgraph Context_Store["**CONTEXT STORE**<br>Source of Truth"]
@@ -581,7 +604,7 @@ def compile_working_context(agent_id: str, dfid: str) -> dict:
     
     # 4. Assemble Immutable Context Object
     return {
-        "snapshot_id": current_state.hash, # For optimistic locking later
+        "snapshot_id": current_state.hash, # CRITICAL: This ID is verified by DIM (Sec 6.2) to prevent Stale State execution
         "market_data": current_state.data,
         "recent_history": session_events,
         "mission": mission
@@ -675,16 +698,22 @@ In AIvestor, I defined clear criteria for when the machine must wake the human:
 3. **Operational Failure:** Broker API returns 5xx error more than 3 times.
 4. **Silence Watchdog:** No decision produced for >30 minutes during market hours.
 
-### 9.3 Escalation Throttling (The Circuit Breaker)
+### 9.3 Escalation Throttling & Cost Control
 
-A failing agent can generate hundreds of escalation requests per minute, essentially DDoS-ing the human operator.
-DIR implements an **Escalation Budget**.
+A failing agent can generate hundreds of escalation requests per minute, essentially DDoS-ing the human operator or the wallet.
 
-* *Mechanism:* Each agent has a token bucket for escalations (e.g., 3 per hour).
-* *Action:* If the budget is exhausted, the agent is automatically demoted to a `PASSIVE` (Read-Only) state, and the DecisionFlow is silently aborted. This protects the operator from alert floods.
+**The Escalation Budget**
+Each agent has a token bucket for escalations (e.g., 3 per hour). If the budget is exhausted, the agent is automatically demoted to a `PASSIVE` (Read-Only) state, and the DecisionFlow is silently aborted.
 
-**Resource Quotas**
-Beyond simple rate-limiting, the Runtime enforces a "Computation Budget" (token usage or max reasoning steps) per DecisionFlow. If an agent cannot reach a policy conclusion within N steps, the flow is aborted to prevent "financial DDoS" caused by inconclusive reasoning loops.
+**Computation Budget (Token Cap per DFID)**
+DIR extends budget control to compute costs. Each DecisionFlow is assigned a hard limit (e.g., $0.50 or 10k tokens).
+*   **Mechanism:** Middleware tracks token accumulation across the reasoning chain.
+*   **Enforcement:** If an agent gets stuck in a "Chain-of-Thought" loop and fails to emit a Policy Proposal before the budget is drained, the Runtime executes a `SIGKILL` on the thought process. This prevents "financial DDoS" from a buggy, rambling model.
+
+**Protection against "Feedback Poisoning" (Maximum Intent Retries)**
+A rejection by the DIM often triggers an agent retry loop. There is a specific risk that an agent, trying to bypass a safety check (e.g., Risk Limit), begins to "hallucinate compliance" or argue with the validator without changing the underlying parameters.
+*   **Mechanism:** The Runtime enforces `Maximum Intent Retries` (e.g., 3 attempts per DFID).
+*   **Enforcement:** If validation fails 3 times, the DecisionFlow is strictly `ABORTED` (not escalated). The system assumes the agent is caught in a "delusion loop" or "feedback poisoning" cycle and must be reset to prevent resource exhaustion.
 
 ### 9.4 The Human Interface
 
@@ -692,7 +721,13 @@ When a flow is escalated, the human acts as a **Super-User**.
 The Runtime presents the `WorkingContext`, the `PolicyProposal`, and the `Reason` for escalation. The human then issues a binding decision: **OVERRIDE**, **MODIFY**, or **ABORT**.
 
 **Defense Against "Rubber Stamping":**
-A critical risk in Human-in-the-Loop systems is operator fatigue, leading to reflexive approval of bad decisions. To mitigate this, the UI should never offer a simple "Approve" button. Instead, it must require active confirmation of consequences (e.g., displaying a "Diff" of the state change) or force the operator to select the specific component of the plan they are authorizing.
+A critical risk in Human-in-the-Loop systems is operator fatigue, leading to reflexive approval. The UI must never offer a simple "Approve" button next to a raw JSON block.
+**Requirement: Impact Categorization & Context**
+While a full "State Diff" simulation is the gold standard, it is often technically prohibitive. As a practical invariant, the Runtime must assign an **Impact Category** to every escalation:
+*   **LOW_IMPACT (Informational/Reversible):** e.g., "Change Logging Level", "Update Watchlist".
+*   **HIGH_IMPACT (Financial/Irreversible):** e.g., "Transfer Funds", "Execute Trade", "Delete Record".
+
+The UI must visualize these categories (e.g., Red borders for HIGH_IMPACT) to disrupt "click-through" behavior. The operator approves the *risk category*, not just the JSON syntax.
 
 **[Escalation Event]**
 
@@ -866,7 +901,7 @@ DIR moves the complexity from "Prompt Engineering" to "Policy Engineering." Defi
 
 ### 12.4 The "Garbage Policy In" Risk
 
-DIR guarantees that an agent cannot violate the *syntax* or *permissions* of the system. However, it cannot guarantee that a syntactically valid decision is *smart*. If a policy allows an agent to "Delete Database" and the agent requests it in a valid JSON format, the Runtime will execute it. **Safety is only as strong as the weakest rule in the Policy Enforcement Point.** This places a burden on "Policy Engineering"-developers must define granular, least-privilege constraints (e.g., "Delete only records created by this agent").
+DIR guarantees that an agent cannot violate the *syntax* or *permissions* of the system. However, it cannot guarantee that a syntactically valid decision is *smart*. If a policy allows an agent to "Delete Database" and the agent requests it in a valid JSON format, the Runtime will execute it. **Safety is only as strong as the weakest rule in the Policy Enforcement Point.** This places a burden on "Policy Engineering"-developers must define granular, least-privilege constraints (e.g., "Delete only records created by this agent"). DIR acts as a "Safety Kernel," not an "Oracle"; it guarantees that an action is permissible, not that it is wise.
 
 ### 12.5 Adversarial Robustness (Defense in Depth)
 
