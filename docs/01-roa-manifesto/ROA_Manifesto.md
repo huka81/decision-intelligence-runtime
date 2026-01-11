@@ -332,12 +332,15 @@ In ROA, the agent’s responsibility ends here.
 
 Before producing a Policy Proposal, the agent performs an internal **Self-Check**.
 
-This is not validation of correctness - that belongs to the runtime - but rather:
+This is strictly a mechanism of **Internal Hygiene**—a "sanity check" performed by the model on itself.
+It is **not** a security control. The Runtime operates on a **Zero Trust** basis and will re-validate every constraint deterministically, regardless of whether the agent claims to have checked it.
 
-* ensuring the Policy aligns with the agent’s mission,
-* confirming it stays within authority boundaries,
-* recognizing when escalation is required,
-* detecting if the situation falls outside the agent’s responsibility domain.
+The purpose of the Self-Check is to:
+
+* reduce the noise of invalid proposals sent to the Runtime,
+* catch obvious hallucinations early (saving token costs),
+* ensure the Policy aligns with the agent’s mission,
+* recognizing when escalation is required.
 
 Self-checks prevent agents from taking inappropriate or overly ambitious roles. They function as a form of introspective governance: *“Is this still my job?”*
 

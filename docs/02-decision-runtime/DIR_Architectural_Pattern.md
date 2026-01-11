@@ -155,7 +155,12 @@ DIR introduces an **Agent Registry**-a service discovery mechanism for intellige
 * **Registration:** On startup, an agent registers its `Manifest`: its ID, its subscribed inputs (Context), and its authorized outputs (Policy Types).
 * **Capability Contract:** The Registry acts as the source of truth for ROA constraints. When the Validation Layer asks "Can Agent X trade Asset Y?", it queries the Registry, not the Agent. This prevents agents from self-granting permissions via prompt injection.
 
-Beyond capability tracking, the Agent Registry facilitates **Resource Locking and Reservation**. In environments where multiple agents (e.g., concurrent PositionAgents) operate on a shared finite resource—such as a single capital pool or a limited API throughput—the Registry acts as a synchronization point. It allows the Runtime to grant temporary 'Reservation Locks' to a DecisionFlow. If a Policy Proposal attempts to utilize a resource already committed to another active flow, the DIM rejects it with a RESOURCE_CONTENTION error. This prevents race conditions and ensures that probabilistic agents do not over-leverage a shared environment based on stale local context.
+Beyond capability tracking, the Agent Registry facilitates **Resource Locking and Reservation**. In environments where multiple agents (e.g., concurrent PositionAgents) operate on a shared finite resource—such as a single capital pool or a limited API throughput—the Registry acts as a synchronization point. It allows the Runtime to grant temporary 'Reservation Locks' to a DecisionFlow.
+
+**Operational Resilience (Addressing SPOF):**
+The Registry is a critical component. To prevent it from becoming a Single Point of Failure (SPOF), the Runtime implements **Local Manifest Caching**.
+*   **Cache Strategy:** The Runtime caches Agent Manifests locally with a short TTL (e.g., 60 seconds).
+*   **Degraded Mode:** If the Registry is unreachable, the Runtime continues to serve known agents using cached definitions. New agent registrations or schema updates are rejected until connectivity is restored.
 
 **Note on Schema Evolution:**
 This dynamism requires that Agents do not "memorize" the policy schema indefinitely. Instead, the Agent Registry serves the current version of the JSON schema dynamically during the Context compilation step. This ensures that even as capabilities evolve, the Agent always reasons against a valid, up-to-date interface contract.
@@ -203,8 +208,12 @@ Instead of a "manifesto," DIR relies on a set of architectural invariants. These
 
 ### 3.1 Invariant 1: Deterministic State Transitions
 
-While the inputs to the system (market data, agent prompts) are non-deterministic, the transition from a **Validated Policy** to an **Execution** must be deterministic.
-Given the same Policy Proposal, the same Context Snapshot, and the same Time, the Runtime must always produce the exact same Validation Result. This requires that blocking validation logic be implemented in standard code (Python/Go/Rust) or a policy engine (Rego). Any probabilistic validation (LLM-based) must be decoupled as a non-blocking "Soft Guard," ensuring the execution path remains predictable.
+While the inputs to the system (User Space reasoning) are probabilistic, the transition from a **Validated Policy** to an **Execution** (Kernel Space) must be deterministic.
+
+*   **User Space (Probabilistic):** Agents, LLMs, prompts.
+*   **Kernel Space (Deterministic):** Validation logic, state machines, API calls.
+
+Given the same Policy Proposal, the same Context Snapshot, and the same Time, the Runtime must always produce the exact same Validation Result. This requires that **Hard Gates** (blocking validation) be implemented in standard code (Python/Go/Rust) or a policy engine (Rego). Probabilistic validation (LLM-based checks) must remain in the User Space or serve as non-blocking observers, unless explicitly configured otherwise (see Sec 6.3).
 
 ### 3.2 Invariant 2: The "Reasoning-Execution" Wall
 
@@ -440,14 +449,34 @@ To counter this, DIR supports an optional **Semantic Alignment Check**.
 
 To preserve the determinism of the runtime (Invariant 1), we distinguish between:
 
-1.  **Hard Gates (Deterministic):** Rego policies, schema validation, and RBAC code. These are blocking.
-2.  **Soft Guards (Probabilistic):** LLM-based semantic checks. These operate primarily as **Auditors**.
+1.  **Hard Gates (Deterministic):** Rego policies, schema validation, RBAC code, and arithmetic checks. These are **blocking**.
+2.  **Soft Guards (Probabilistic):** LLM-based semantic checks. These operate strictly as **Auditors**.
 
-If a Soft Guard detects a mismatch (Semantic Mismatch), it typically does **not** block execution automatically. Instead, it flags the transaction as `NEEDS_REVIEW` (post-execution) or triggers an async alert. Blocking is reserved only for "Emergency Stop" scenarios where the confidence score is extremely high (>0.99). This ensures that a "hallucinating validator" does not randomly gum up the works, while still providing safety oversight "from the back seat."
+**Default Behavior: Audit Only**
+By default, if a Soft Guard detects a mismatch (`SEMANTIC_MISMATCH`), it **does not** block execution. Instead, it:
+*   Flags the resulting DecisionFlow as `NEEDS_REVIEW` (Post-Execution Audit).
+*   Triggers an asynchronous alert to the operator.
+*   Allows the transaction to proceed if all Hard Gates are satisfied.
+
+**Strict Mode (Optional Exception)**
+For systems where safety is paramount over availability, an architect may enable `strict_semantic_blocking: true`.
+*   **Effect:** A Semantic Mismatch triggers an immediate `ABORT`.
+*   **Warning:** This configuration **violates Invariant 1 (Determinism)**. A non-deterministic model update could cause previously valid transactions to fail. This mode is recommended only for low-throughput, high-risk environments where false positives are an acceptable cost.
 
 ### 6.4 Time as a Hard Constraint
 
 The Runtime enforces the **Decision Validity Window**. If `current_time > policy.valid_until`, the proposal is rejected immediately. This prevents the "queued command" problem where a backlog of old decisions suddenly executes hours later.
+
+### 6.5 Just-In-Time State Re-verification (The Anti-TOCTOU Check)
+
+Validation occurs *before* execution, but in high-concurrency systems, the state may change while the request is in flight. This creates a **Time-of-Check to Time-of-Use (TOCTOU)** vulnerability.
+To mitigate this, the Execution Engine enforces a **Just-In-Time (JIT) State Check**.
+
+*   **Mechanism:** Immediately before dispatching the `ExecutionIntent` (after locking limits but before the network call), the Runtime performs a lightweight assertion against the live `Authoritative Context`.
+*   **Assertion:** Verifies that critical invariants (e.g., `current_price` is roughly equal to `snapshot_price`, `balance` >= `required_amount`, `record_version` matches).
+*   **Action:** If the state has drifted beyond the allowed tolerance (e.g., price changed by >0.5% during validation), the Runtime aborts with `STATE_DRIFT_DETECTED` and forces the Agent to re-reason.
+
+> **Architectural Note:** This introduces a performance penalty (an extra read operation). DIR accepts this cost ("Safety over Speed") to guarantee that no decision executes against a phantom reality.
 
 ## 7. Execution: Idempotency and Side Effects
 
@@ -462,11 +491,16 @@ Agents (User Space) never hold API keys or database credentials. They cannot ope
 
 ### 7.2 Idempotency: The "Double-Spend" Protection
 
-LLMs can get stuck in loops, proposing the same action repeatedly. Network retries can also deliver the same message twice.
-To protect against this, DIR assigns a deterministic **Idempotency Key** to every Execution Intent, derived from the `DFID`.
+LLMs can get stuck in loops, and network retries can deliver duplicate messages. To protect against this, DIR assigns a deterministic **Idempotency Key** to every Execution Intent.
 
-* If the Runtime sees a duplicate key, it returns the *cached result* of the previous execution rather than triggering the API again.
-* This ensures that "Retry" logic is safe and does not result in opening two positions instead of one.
+**The Key Formula:**
+`IdempotencyKey = SHA256(DFID + Step_ID + Attempt_Number + Canonical_Params)`
+
+*   **DFID:** The trace ID of the reasoning chain.
+*   **Step_ID:** For multi-step sequences.
+*   **Canonical_Params:** A sorted string of the action parameters.
+
+If the Runtime sees a duplicate key, it returns the *cached result* of the previous execution rather than triggering the API again. This ensures that "Retry" logic is safe and does not result in opening two positions instead of one.
 
 ```mermaid
 ---
@@ -490,13 +524,18 @@ flowchart LR
     Success -- NO --> ErrorHandler{"`**Error Type?**`"}
     ErrorHandler -- Transient --> Retry["`**Retry with Backoff**`"]
     ErrorHandler -- Terminal --> Fail["`**Mark DFID as Failed**`"]
+Atomicity and Parent-Child Sagas
 
-    style Execute fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
-    style ReturnCached fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,stroke-dasharray: 5 5
-```
+DIR treats every `ExecutionIntent` as **Atomic**. The Runtime does not natively support "multi-step transactions" within a single intent because they are typically non-deterministic during failure.
 
-### 7.3 Complex Execution: The Saga Pattern
+**Parent-Child Sagas**
+For complex workflows (e.g., "Sell Asset A to fund purchase of Asset B"), DIR utilizes a **Parent-Child DecisionFlow** pattern:
 
+1.  **Parent Agent (Saga Manager):** Maintains the state of the complex transaction. It emits a Policy to spawn a Child Flow for Step 1.
+2.  **Child Agent (Executor):** Receives the mandate, acts atomically (e.g., "Sell A"), and reports success/failure to the Parent.
+3.  **Failure Handling:** If Step 1 succeeds but Step 2 fails, the *Runtime* does not guess how to rollback. Instead, it reports the failure to the Parent Agent. The Parent Agent then reasons about the partial state and emits a new Policy: **Compensation Action** (e.g., "Re-buy Asset A" or "Alert Human").
+
+This keeps the Runtime "dumb" and deterministic, while moving the complex recovery logic back to the entity capable of reasoning: the Agent
 Not all external APIs are transactional/atomic. A Policy might require executing a sequence of dependent actions (e.g., "Sell Asset A to fund purchase of Asset B").
 DIR rejects the "all-or-nothing" fantasy.
 
@@ -618,7 +657,15 @@ def compile_working_context(agent_id: str, dfid: str) -> dict:
 
 The goal of autonomy is to reduce human toil, yet many agent frameworks default to a "Mother-May-I" pattern where a human must approve every single step. This leads to **Alert Fatigue**.
 
-DIR adopts a **Governance by Exception** model. The system acts autonomously within defined bounds and requests help *only* when those bounds are crossed.
+DIR adopts a **Governance by Exception** model. The system acts autonomousl, it initiates an escalation routine.
+
+**Hierarchical Escalation (Agent -> Agent)**
+Before alerting a human, the system attempts **Hierarchical Escalation**:
+1.  **Peer/Supervisor Review:** A `PositionAgent` blocked by a risk limit can escalate the decision to its parent `StrategyAgent`.
+2.  **Scope Expansion:** The `StrategyAgent` has a broader context and higher authority limits. It may approve the action (override), modify the mandate, or reject it.
+3.  **Human Alert:** Only if the `StrategyAgent` also fails to resolve the issue (or lacks authority), does the system trigger a "Human-in-the-Loop" alert. This reduces "Alert Fatigue" for operators.
+
+When the flow finally transitions to `ESCALATED` (Human required), the Runtime pauses execution and awaits external input
 
 ### 9.1 Escalation as a System State
 
@@ -875,7 +922,22 @@ After a week of operation, the portfolio balance drifted inexplicably. Logs show
 
 This document outlines the architectural pattern. In a forthcoming article, I will detail the specific implementation of **AIvestor**, demonstrating how these abstract concepts map to a concrete stack (Python, Event Bus, SQL). Additionally, I plan to release a set of **ROA/DIR Code Templates** in this repository to help developers bootstrap reliable agents without reinventing the wheel.
 
-## 12. Trade-offs and Limitations
+## 12. Observability & Metrics
+
+To pass a "Production Readiness" audit, the Runtime must be observable. Operators need to know not just *what* happened, but *how* the system is performing. DIR mandates the export of the following golden signals:
+
+| Metric | Type | Description |
+| :--- | :--- | :--- |
+| `validation_latency_ms` | Histogram | Time spent in DIM. Split by `type=hard` (code) and `type=soft` (LLM). |
+| `stale_context_reject_rate` | Counter | Number of proposals rejected by JIT State Check (`STATE_DRIFT`). High rates indicate need for optimization. |
+| `escalation_count` | Counter | Total escalations, tagged by `agent_id` and `reason`. Helps identify "needy" agents. |
+| `resource_lock_contention` | Gauge | Number of active locks vs. configured limits. |
+| `token_budget_burn` | Histogram | Tokens consumed per DecisionFlow. |
+| `idempotency_hit_rate` | Counter | Number of times the Runtime saved a redundant API call. |
+
+These metrics should be scraped by a standard observability stack (Prometheus/Grafana) to visualize the "health" of the cognitive architecture.
+
+## 13. Trade-offs and Limitations
 
 Engineering is about trade-offs. Adopting DIR introduces friction and cost. It is not a silver bullet.
 
