@@ -89,19 +89,19 @@ flowchart LR
     classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
     classDef logStyle fill:#FFEBEE,stroke:#C62828,stroke-width:1px,color:#B71C1C;
 
-    subgraph Kernel_Space ["`**KERNEL SPACE**<br/>Deterministic Runtime`"]
-        subgraph User_Space ["`**USER SPACE**<br/>Probabilistic Reasoning`"]
-            Agent1(["`**Agent A**<br/>Strategist`"]):::userSpace
-            Agent2(["`**Agent B**<br/>Executor`"]):::userSpace
-            Agent3(["`**Agent C**<br/>Analyst`"]):::userSpace
-            
-            Agent1 -->|Proposes| Policies
-            Agent2 -->|Proposes| Policies
-            Agent3 -->|Proposes| Policies
-            
-            Policies["`**Policy Proposals**<br/>Claims, not Facts`"]:::userSpace
-        end
+    subgraph User_Space ["`**USER SPACE**<br/>Probabilistic Reasoning`"]
+        Agent1(["`**Agent A**<br/>Strategist`"]):::userSpace
+        Agent2(["`**Agent B**<br/>Executor`"]):::userSpace
+        Agent3(["`**Agent C**<br/>Analyst`"]):::userSpace
+        
+        Agent1 -->|Proposes| Policies
+        Agent2 -->|Proposes| Policies
+        Agent3 -->|Proposes| Policies
+        
+        Policies["`**Policy Proposals**<br/>Claims, not Facts`"]:::userSpace
+    end
 
+    subgraph Kernel_Space ["`**KERNEL SPACE**<br/>Deterministic Runtime`"]
         DIM{"`**Decision Integrity**<br/>**Module**<br/>Validation Gate`"}:::kernelSpace
         ContextCompiler["`**Context Compiler**`"]:::kernelSpace
         EscalationManager["`**Escalation Manager**`"]:::kernelSpace
@@ -138,7 +138,7 @@ flowchart LR
 Its responsibilities are scoped to:
 
 1. **Orchestration:** Receiving unvalidated proposals from agents and processing them through a deterministic pipeline.
-2. **Validation:** Functioning as a **Policy Enforcement Point (PEP)**, similar to OPA (Open Policy Agent) in cloud-native security.
+2. **Validation:** Functioning as a **Policy Enforcement Point (PEP)**[^1], similar to OPA (Open Policy Agent)[^2] in cloud-native security.
 3. **Translation:** Converting "soft" agent intents (policies) into "hard" execution commands (API calls) with idempotency guarantees.
 4. **Feedback:** Closing the loop by returning `ValidationFeedback` events to the Agent. When a policy is rejected (e.g., `RISK_LIMIT_EXCEEDED`), the Runtime must inform the Agent *why*, so it can attempt self-correction in the next cycle.
 
@@ -150,7 +150,7 @@ Crucially, the Runtime is **not** an Agent. It contains no LLMs and performs no 
 
 In a static system, hard-coding agent permissions works. In AIvestor, as specialized agents (e.g., "Momentum Trader", "Hedge Manager") were added and removed dynamically, hard-coding failed.
 
-DIR introduces an **Agent Registry**-a service discovery mechanism for intelligence.
+DIR introduces an **Agent Registry**-a service discovery[^3] mechanism for intelligence.
 
 * **Registration:** On startup, an agent registers its `Manifest`: its ID, its subscribed inputs (Context), and its authorized outputs (Policy Types).
 * **Capability Contract:** The Registry acts as the source of truth for ROA constraints. When the Validation Layer asks "Can Agent X trade Asset Y?", it queries the Registry, not the Agent. This prevents agents from self-granting permissions via prompt injection.
@@ -167,6 +167,9 @@ This dynamism requires that Agents do not "memorize" the policy schema indefinit
 
 **Strict Versioning (Avoiding "Contract Hell"):**
 In distributed agent systems, mismatched expectations lead to failures. The Agent Registry mandates **Semantic Versioning (SemVer)** alignment. An agent initialized with `v1.2` capability manifests must negotiate with a Runtime supporting `v1.x` schemas. If a disconnect is detected, the Runtime rejects the agent's registration during the handshake, preventing runtime parsing errors in production.
+
+**Registry Updates and Flow Binding:**
+Registry updates are versioned. A `DecisionFlow` is bound to the Registry snapshot version active at `CREATED` state. Any mid-flow authority revocation (e.g., security kill-switch) triggers an immediate `ABORT` on the next JIT check, ensuring no policy executes under revoked permissions.
 
 ```mermaid
 ---
@@ -217,7 +220,7 @@ Given the same Policy Proposal, the same Context Snapshot, and the same Time, th
 
 ### 3.2 Invariant 2: The "Reasoning-Execution" Wall
 
-This is an adaptation of the **Command Query Responsibility Segregation (CQRS)** pattern.
+This is an adaptation of the **Command Query Responsibility Segregation (CQRS)**[^4] pattern.
 
 * **Agents (Write Model via Proposal):** Agents perform the reasoning and emit a `PolicyProposal`. This is equivalent to a Command in CQRS, but with a critical distinction: it is *tentative*.
 * **Runtime (Execution):** The Runtime validates the proposal. Only if validation passes does it trigger a side effect.
@@ -240,7 +243,7 @@ Every artifact in the system (from the initial observation to the final API resp
 
 ## 4. DecisionFlow: Distributed Tracing for Reasoning
 
-In microservices, we use **Distributed Tracing** (e.g., OpenTelemetry) to follow a request across service boundaries. We assign a `TraceID` at the ingress and propagate it everywhere.
+In microservices, we use **Distributed Tracing**[^5] (e.g., OpenTelemetry) to follow a request across service boundaries. We assign a `TraceID` at the ingress and propagate it everywhere.
 
 In AI agents, the complexity lies not just in *where* the request went, but *how* the decision was formed. Standard application logs show "Database Updated," but they don't show the prompt, the context snapshot, or the LLM's rationale that led to that update.
 
@@ -368,7 +371,7 @@ In DIR, the interface between the Agent (Reasoning) and the Runtime (Execution) 
 
 ### 5.1 Agents Propose, Runtimes Dispose
 
-This follows the **Declarative API** pattern (similar to Kubernetes manifests).
+This follows the **Declarative API** pattern[^6] (similar to Kubernetes manifests).
 
 * The Agent does not say: *"Call the API to buy Apple stock."* (Imperative)
 * The Agent emits a Policy Object: *"I desire a state where we own 10 shares of AAPL, given current price X."* (Declarative)
@@ -435,8 +438,10 @@ The pipeline functions as a **Policy Enforcement Point (PEP)**. It evaluates pro
 
 1. **Schema & Integrity:** Does the JSON match the versioned schema?
 2. **Authority (RBAC):** Is this agent authorized in the *Agent Registry* to execute this Policy Kind?
-3. **State Consistency (Optimistic Concurrency):** Does the `context_hash` in the proposal match the current system state? If slippage occurred, reject with `STALE_CONTEXT`.
+3. **State Consistency (Optimistic Concurrency)[^7]:** Does the `context_hash` in the proposal match the current system state? If slippage occurred, reject with `STALE_CONTEXT`.
 4. **Resource Availability (Semantic Locking):** To prevent "Horizontal Resource Contention" (where two agents compete for the same cash/inventory), the DIM places a temporary lock or reservation on the required assets during the validation phase. If Agent A has reserved the last unit of capital, Agent B's simultaneous request is rejected with `INSUFFICIENT_LIQUIDITY`, preventing race conditions.
+    *   **Linear Lock Acquisition:** To prevent deadlocks in multi-resource requests, resources MUST be requested in alphabetical order of their Global Resource IDs. Failure of the Agent to adhere to this sorting order in the Policy Proposal results in immediate rejection by the DIM. A mandatory `LockTimeout` (e.g., 5s) ensures that stalled flows are `ABORTED` with `RESOURCE_CONTENTION_TIMEOUT`.
+5. **Mission Invariant Check:** The DIM MUST verify that the Policy Proposal contains a `mission_context_hash`. The Runtime compares this against the registered Agent Mission. If the agent’s reasoning context has drifted from its assigned mission, the DIM rejects the proposal with `MISSION_DISSONANCE`.
 
 The pipeline incorporates an **Intent Retry Governor** to mitigate the risk of 'Feedback Poisoning.' When the Runtime returns ValidationFeedback to an agent following a rejection (e.g., a risk limit violation), the agent is permitted a strictly limited number of attempts (Maximum Intent Retries, typically 3) to correct its proposal within the same DecisionFlow. If the agent continues to produce non-compliant policies after these attempts, the Runtime forcibly terminates the flow with a REASONING_EXHAUSTION status. This protects the system from infinite reasoning loops and prevents a hallucinating model from draining the Token Budget through unproductive attempts to bypass deterministic guards.
 
@@ -474,7 +479,8 @@ To mitigate this, the Execution Engine enforces a **Just-In-Time (JIT) State Che
 
 *   **Mechanism:** Immediately before dispatching the `ExecutionIntent` (after locking limits but before the network call), the Runtime performs a lightweight assertion against the live `Authoritative Context`.
 *   **Assertion:** Verifies that critical invariants (e.g., `current_price` is roughly equal to `snapshot_price`, `balance` >= `required_amount`, `record_version` matches).
-*   **Action:** If the state has drifted beyond the allowed tolerance (e.g., price changed by >0.5% during validation), the Runtime aborts with `STATE_DRIFT_DETECTED` and forces the Agent to re-reason.
+    *   **Drift Tolerance:** State drift tolerance MUST be explicitly defined in the `ExecutionConstraints`. Defaulting to 'absolute' matching for balances and 'threshold-based' (e.g., <0.1%) for telemetry.
+*   **Action:** If the state has drifted beyond the allowed tolerance or if the context age exceeds a hard threshold (e.g., `current_state_age > 500ms`), the Runtime aborts with `STATE_DRIFT_DETECTED` and forces the Agent to re-reason.
 
 > **Architectural Note:** This introduces a performance penalty (an extra read operation). DIR accepts this cost ("Safety over Speed") to guarantee that no decision executes against a phantom reality.
 
@@ -491,39 +497,62 @@ Agents (User Space) never hold API keys or database credentials. They cannot ope
 
 ### 7.2 Idempotency: The "Double-Spend" Protection
 
-LLMs can get stuck in loops, and network retries can deliver duplicate messages. To protect against this, DIR assigns a deterministic **Idempotency Key** to every Execution Intent.
+LLMs can get stuck in loops, and network retries can deliver duplicate messages. To protect against this, DIR assigns a deterministic **Idempotency Key**[^8] to every Execution Intent.
 
 **The Key Formula:**
-`IdempotencyKey = SHA256(DFID + Step_ID + Attempt_Number + Canonical_Params)`
+`IdempotencyKey = SHA256(DFID + Step_ID + Canonical_Params)`
 
 *   **DFID:** The trace ID of the reasoning chain.
 *   **Step_ID:** For multi-step sequences.
 *   **Canonical_Params:** A sorted string of the action parameters.
 
-If the Runtime sees a duplicate key, it returns the *cached result* of the previous execution rather than triggering the API again. This ensures that "Retry" logic is safe and does not result in opening two positions instead of one.
+The `Attempt_Number` is logged for observability but MUST NOT be part of the key. This ensures that retries of the same intent resolve to the same side effect. If the Runtime sees a duplicate key, it returns the *cached result* of the previous execution rather than triggering the API again.
 
 ```mermaid
 ---
 title: Idempotency Logic - Preventing Double Execution
 config:
+  theme: neutral
   look: classic
 ---
 flowchart LR
-    Start(["`**Inbound Execution Intent**`"]) --> KeyGen["`**Generate Idempotency Key**<br/>Hash: DFID + ActionType`"]
-    KeyGen --> CheckCache{"`**Key exists in**<br/>State Store?`"}
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+    classDef stop fill:#FFEBEE,stroke:#C62828,stroke-width:2px,color:#B71C1C,font-weight:bold;
+
+    Intent(["`**Execution Intent**`"]):::userSpace
+
+    subgraph Key_Logic ["`**1. Deterministic Key Generation**`"]
+        direction TB
+        Inputs["`**Inputs:**<br/>1. DFID<br/>2. Step ID<br/>3. Canonical Params`"]:::kernelSpace
+        NoSalt["`**Excluded:**<br/>Attempt Number`"]:::stop
+        Hash["`**SHA256 Hash**`"]:::kernelSpace
+        
+        Inputs --> Hash
+        NoSalt -.-x Hash
+    end
+
+    Intent --> Key_Logic
+    Hash --> Check{"`**2. Check Cache**<br/>Key Exists?`"}:::kernelSpace
+
+    Check -- YES --> Hit["`**CACHE HIT**<br/>Return Saved Result`"]:::userSpace
+    Check -- NO --> Miss["`**CACHE MISS**<br/>Proceed to Execute`"]:::kernelSpace
+
+    Miss --> API["`**3. External API**<br/>(Side Effect)`"]:::infraSpace
+    API --> Result{"`**Outcome?**`"}:::kernelSpace
+
+    Result -- SUCCESS --> Persist["`**4. Update Cache**<br/>Store: Key = Result`"]:::kernelSpace
+    Persist --> Output(["`**Return Result**`"]):::userSpace
+    Hit --> Output
+
+    Result -- FAILURE --> Handler{"`**Error Type?**`"}:::kernelSpace
+    Handler -- TRANSIENT --> Retry["`**Retry**<br/>(Backoff)`"]:::infraSpace
+    Handler -- TERMINAL --> Abort(["`**Mark Failed**`"]):::stop
     
-    CheckCache -- YES --> ReturnCached["`**Return Cached Result**<br/>(No Side Effect)`"]
-    
-    CheckCache -- NO --> Execute["`**EXECUTE SIDE EFFECT**<br/>Call External API`"]
-    
-    Execute --> Success{"`**Success?**`"}
-    
-    Success -- YES --> StoreResult["`**Store Result in Cache**<br/>Key = Result`"]
-    StoreResult --> ReturnNew(["`**Return New Result**`"])
-    
-    Success -- NO --> ErrorHandler{"`**Error Type?**`"}
-    ErrorHandler -- Transient --> Retry["`**Retry with Backoff**`"]
-    ErrorHandler -- Terminal --> Fail["`**Mark DFID as Failed**`"]
+    Retry -.-> Intent
+```
+
 Atomicity and Parent-Child Sagas
 
 DIR treats every `ExecutionIntent` as **Atomic**. The Runtime does not natively support "multi-step transactions" within a single intent because they are typically non-deterministic during failure.
@@ -540,7 +569,7 @@ Not all external APIs are transactional/atomic. A Policy might require executing
 DIR rejects the "all-or-nothing" fantasy.
 
 *   **State: PARTIAL_SUCCESS_DIRTY:** If a 3-step policy fails at step 2, the DFID is not simply "failed." It is tagged as `DIRTY`.
-*   **Compensation:** This triggers a **Saga Compensation** workflow. Unlike a simple retry, this logic attempts to undo Step 1 or flag the anomaly for human resolution. The Agent is effectively locked out of new operations until the runtime confirms the state has converged back to consistency.
+*   **Compensation:** This triggers a **Saga Compensation** workflow[^9]. Unlike a simple retry, this logic attempts to undo Step 1 or flag the anomaly for human resolution. Dirty states freeze the Agent instance in `MAINTENANCE_MODE` until a Compensation Policy is executed or human intervention clears the lock.
 
 ---
 
@@ -561,7 +590,10 @@ To organize information effectively, the **Context Store** is structured into fo
 
 ### 8.2 Context Compilation Pipeline
 
-Agents do not query the database directly. Instead, the Runtime executes a deterministic **Context Compilation** step before invoking the agent. This is analogous to the **Retrieval-Augmented Generation (RAG)** pattern, but strictly structured.
+Agents do not query the database directly. Instead, the Runtime executes a deterministic **Context Compilation** step before invoking the agent. This is analogous to the **Retrieval-Augmented Generation (RAG)**[^10] pattern, but strictly structured.
+
+**Context-Schema Validation:**
+The `WorkingContext` is version-stamped. Before invocation, the Agent Registry validates that the Agent's `ReasoningEngineVersion` is compatible with the `ContextSchemaVersion`. This prevents agents from interpreting malformed or outdated data snapshots after a system update.
 
 The Compiler filters noise, enforcing a "Need-to-Know" policy. To prevent context window overflow, strict limits (e.g., "last X news items", "positions opened in last 24h") are enforced at the query level, ensuring the agent sees only the most relevant, recent slice of reality.
 
@@ -755,7 +787,7 @@ Each agent has a token bucket for escalations (e.g., 3 per hour). If the budget 
 **Computation Budget (Token Cap per DFID)**
 DIR extends budget control to compute costs. Each DecisionFlow is assigned a hard limit (e.g., $0.50 or 10k tokens).
 *   **Mechanism:** Middleware tracks token accumulation across the reasoning chain.
-*   **Enforcement:** If an agent gets stuck in a "Chain-of-Thought" loop and fails to emit a Policy Proposal before the budget is drained, the Runtime executes a `SIGKILL` on the thought process. This prevents "financial DDoS" from a buggy, rambling model.
+*   **Enforcement:** If an agent gets stuck in a "Chain-of-Thought" loop and fails to emit a Policy Proposal before the budget is drained, the Runtime aborts the operation (Timeout and Reject). This prevents "financial DDoS" from a buggy, rambling model.
 
 **Protection against "Feedback Poisoning" (Maximum Intent Retries)**
 A rejection by the DIM often triggers an agent retry loop. There is a specific risk that an agent, trying to bypass a safety check (e.g., Risk Limit), begins to "hallucinate compliance" or argue with the validator without changing the underlying parameters.
@@ -811,7 +843,7 @@ For most prototypes and early-stage production systems (like the current version
 
 ### 10.2 The Distributed Event-Driven Architecture (EDA)
 
-For enterprise scale, DIR maps naturally to an **Event-Driven Architecture**.
+For enterprise scale, DIR maps naturally to an **Event-Driven Architecture**[^11].
 
 * **Infrastructure:** Microservices (Agents are services, Runtime is a service).
 * **Communication:** Message Bus (e.g., Kafka, RabbitMQ, NATS).
@@ -963,11 +995,11 @@ DIR moves the complexity from "Prompt Engineering" to "Policy Engineering." Defi
 
 ### 12.4 The "Garbage Policy In" Risk
 
-DIR guarantees that an agent cannot violate the *syntax* or *permissions* of the system. However, it cannot guarantee that a syntactically valid decision is *smart*. If a policy allows an agent to "Delete Database" and the agent requests it in a valid JSON format, the Runtime will execute it. **Safety is only as strong as the weakest rule in the Policy Enforcement Point.** This places a burden on "Policy Engineering"-developers must define granular, least-privilege constraints (e.g., "Delete only records created by this agent"). DIR acts as a "Safety Kernel," not an "Oracle"; it guarantees that an action is permissible, not that it is wise.
+DIR guarantees that an agent cannot violate the *syntax* or *permissions* of the system. However, it cannot guarantee that a syntactically valid decision is *smart*. If a policy allows an agent to "Delete Database" and the agent requests it in a valid JSON format, the Runtime will execute it. **Safety is only as strong as the weakest rule in the Policy Enforcement Point.** This places a burden on "Policy Engineering"-developers must define granular, least-privilege constraints (e.g., "Delete only records created by this agent"). DIR acts as a "Safety Kernel," not an "Oracle"; it guarantees that an action is permissible, not that it is wise. Safety is a property of the whole system, not just the model.
 
 ### 12.5 Adversarial Robustness (Defense in Depth)
 
-While DIR prevents accidents, it is not a silver bullet against targeted adversarial attacks. If a malicious actor successfully performs a specific prompt injection that forces the LLM to output a valid, authorized, but malicious Policy Proposal (e.g., "Sell at minimum allowable price"), limits may be respected but intent subverted. DIR is a layer of **Defense in Depth**; it must be complemented by upstream defenses like input sanitization and semantic monitoring.
+While DIR prevents accidents, it is not a silver bullet against targeted adversarial attacks. If a malicious actor successfully performs a specific prompt injection that forces the LLM to output a valid, authorized, but malicious Policy Proposal (e.g., "Sell at minimum allowable price"), limits may be respected but intent subverted. DIR is a layer of **Defense in Depth**[^12]; it must be complemented by upstream defenses like input sanitization and semantic monitoring.
 
 ## 13. Conclusion: From Chatbots to Systems
 
@@ -993,4 +1025,30 @@ AIvestor proved that an LLM can trade stocks without going broke—but only when
 *   **Context Compilation**: The process of deterministically assembling a snapshot of relevant data (state, history, rules) for the agent before invocation.
 *   **Semantic Alignment Check**: A validation step that compares the agent's natural language explanation with its structured policy to detect hallucinations or mismatches.
 *   **Escalation Budget**: A rate-limiting mechanism that restricts how many times an agent can request human intervention within a given timeframe.
+
+## 15. References
+
+[^1]: **Policy Enforcement Point (PEP)** - Defined in [RFC 2753](https://datatracker.ietf.org/doc/html/rfc2753) and adopted in [NIST SP 800-207 Zero Trust Architecture](https://csrc.nist.gov/publications/detail/sp/800-207/final).
+
+[^2]: **Open Policy Agent (OPA)** - The standard for policy-as-code. [openpolicyagent.org](https://www.openpolicyagent.org/).
+
+[^3]: **Service Discovery** - Richardson, C. Microservices Patterns. [microservices.io/patterns/client-side-discovery.html](https://microservices.io/patterns/client-side-discovery.html).
+
+[^4]: **CQRS (Command Query Responsibility Segregation)** - Fowler, M. [martinfowler.com/bliki/CQRS.html](https://martinfowler.com/bliki/CQRS.html).
+
+[^5]: **Distributed Tracing** - The underlying concept for OpenTelemetry. [opentelemetry.io/docs/concepts/signals/traces/](https://opentelemetry.io/docs/concepts/signals/traces/).
+
+[^6]: **Declarative API** - A core principle of Kubernetes. [kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/).
+
+[^7]: **Optimistic Concurrency Control** - Fowler, M. [martinfowler.com/eaaCatalog/optimisticOfflineLock.html](https://martinfowler.com/eaaCatalog/optimisticOfflineLock.html).
+
+[^8]: **Idempotency** - Ensuring requests can be retried safely. See [Stripe API Idempotency](https://stripe.com/docs/api/idempotent_requests) or [IETF Draft](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header).
+
+[^9]: **Saga Pattern** - Managing failures in distributed transactions. [microservices.io/patterns/data/saga.html](https://microservices.io/patterns/data/saga.html).
+
+[^10]: **Retrieval-Augmented Generation (RAG)** - Lewis et al. (2020). [arxiv.org/abs/2005.11401](https://arxiv.org/abs/2005.11401).
+
+[^11]: **Event-Driven Architecture** - Decoupling services via events. [martinfowler.com/articles/201701-event-driven.html](https://martinfowler.com/articles/201701-event-driven.html).
+
+[^12]: **Defense in Depth** - A security strategy overlapping multiple defensive layers. [csrc.nist.gov/glossary/term/defense_in_depth](https://csrc.nist.gov/glossary/term/defense_in_depth).
 

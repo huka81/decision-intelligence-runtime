@@ -20,7 +20,7 @@ The goal is not to present a definitive solution, but to offer a structured pers
 
 ---
 
-> **A Note on Nomenclature:** Readers familiar with RESTful architectures will recognize ROA as Resource-Oriented Architecture. In the context of Autonomous AI, we consciously repurpose this acronym to stand for Responsibility-Oriented Agents. Just as classic ROA treats Resources as the primary addressable entities, our architecture treats Responsibilities (bounded scopes of authority) as the primary primitives of the system. We believe that in the age of probabilistic AI, defining "Who is responsible?" is as foundational as defining "What is the resource?" in the age of the web.
+> **A Note on Nomenclature:** Readers familiar with RESTful architectures will recognize ROA as Resource-Oriented Architecture[^1]. In the context of Autonomous AI, we consciously repurpose this acronym to stand for Responsibility-Oriented Agents. Just as classic ROA treats Resources as the primary addressable entities, our architecture treats Responsibilities (bounded scopes of authority) as the primary primitives of the system. We believe that in the age of probabilistic AI, defining "Who is responsible?" is as foundational as defining "What is the resource?" in the age of the web.
 
 ---
 
@@ -255,7 +255,7 @@ Persistence also allows agents to be auditable - a critical requirement for syst
 
 ## **3.5 Relationship to the Actor Model**
 
-Responsibility-Oriented Agents build on top of principles familiar from the actor model: isolation, message passing, and concurrency. But ROA adds something the actor model does not attempt to provide:
+Responsibility-Oriented Agents build on top of principles familiar from the actor model[^2]: isolation, message passing, and concurrency. But ROA adds something the actor model does not attempt to provide:
 
 * **semantics of responsibility**,
 * **missions**,
@@ -333,7 +333,7 @@ In ROA, the agent’s responsibility ends here.
 Before producing a Policy Proposal, the agent performs an internal **Self-Check**.
 
 This is strictly a mechanism of **Internal Hygiene**—a "sanity check" performed by the model on itself.
-It is **not** a security control. The Runtime operates on a **Zero Trust** basis and will re-validate every constraint deterministically, regardless of whether the agent claims to have checked it.
+It is **not** a security control. The Runtime operates on a **Zero Trust**[^3] basis and will re-validate every constraint deterministically, regardless of whether the agent claims to have checked it.
 
 The purpose of the Self-Check is to:
 
@@ -401,7 +401,7 @@ This separation is intentional. A system in which the same entity both *proposes
 
 The relationship between ROA and its runtime can be best understood through an operating system analogy:
 
-> **User Space vs. Kernel Space**
+> **User Space vs. Kernel Space**[^4]
 > Think of ROA as defining the application logic running in **User Space**-where creativity, reasoning, and synthesis happen. This space is powerful but potentially unstable (hallucinations, loops).
 > The Runtime, described in the companion **Decision Intelligence Runtime (DIR)** architecture, acts as the **Kernel**. It enforces memory protection, process isolation, and permission boundaries. An Agent crashing or hallucinating in User Space must never bring down the System (Kernel) or violate global safety invariants.
 
@@ -411,7 +411,7 @@ The Runtime exists to provide exactly those guarantees. It is the part of the sy
 
 ## **5.1 Validation - Ensuring Decision Integrity**
 
-Before any policy is executed, the Runtime performs **Validation**, handled by a dedicated, deterministic component often referred to as the **Decision Integrity Module (DIM)**.
+Before any policy is executed, the Runtime performs **Validation**, handled by a dedicated, deterministic component often referred to as the **Decision Integrity Module (DIM)**[^5].
 
 Validation is fundamentally different from the agent’s self-check:
 
@@ -490,7 +490,7 @@ it is an essential part of any architecture where responsibility is taken seriou
 Policies do not exist in isolation.
 A single decision may involve several agents, multiple states, and multiple steps of reasoning and execution.
 
-To make this process traceable, the Runtime introduces **DecisionFlow**, identified by a **DecisionFlowId (DFID)**.
+To make this process traceable, the Runtime introduces **DecisionFlow**, identified by a **DecisionFlowId (DFID)**. This concept draws from **Distributed Tracing**[^6] and principles of **Data Provenance**[^9].
 
 A DecisionFlow is the logical container for:
 
@@ -650,7 +650,7 @@ It allows a single conceptual role (e.g., “Position Manager”) to spawn many 
 
 ## **6.4 The Agent Registry - Identity, Lifecycle, Boundaries**
 
-To coordinate a dynamic, hierarchical system, ROA relies on a **Runtime Agent Registry**.
+To coordinate a dynamic, hierarchical system, ROA relies on a **Runtime Agent Registry**—a form of **Service Discovery**[^7].
 
 The registry is not merely a directory of names; it serves as the **Capabilities Contract** for the entire system. It is the source of truth for:
 
@@ -756,7 +756,7 @@ The agent's "experience." Curated, persistent insights that survive across sessi
 
 ### **4. Artifacts Context (Reference)**
 
-The "library." Large, static, or reference data that is too voluminous to fit in a prompt but can be retrieved via tools or RAG mechanisms.
+The "library." Large, static, or reference data that is too voluminous to fit in a prompt but can be retrieved via tools or **RAG (Retrieval-Augmented Generation)**[^8] mechanisms.
 
 * **Global Rules and Constraints:** Static business logic, compliance rulebooks, and safety definitions (e.g., "Wash Trading Prohibition").
 * **Reference Datasets:** Historical backtest data, strategy whitepapers, or large unstructured documents.
@@ -1422,6 +1422,40 @@ No one will solve decision-making AI in isolation.
 What we can do, however, is take the next step - together - toward architectures that make intelligence not only possible, but trustworthy.
 
 ---
+
+# **12. Glossary**
+
+*   **Responsibility-Oriented Agents (ROA)**: An architectural pattern where agents are defined by their specific responsibilities, boundaries, and missions rather than generic capabilities.
+*   **Responsibility Contract**: A formal definition of an agent's scope, authority, inputs, and authorized outputs.
+*   **Decision Intelligence Runtime (DIR)**: The deterministic system that orchestrates, validates, and executes the policies proposed by ROA agents.
+*   **Mission**: The fundamental optimization target or goal function of an agent (e.g., "Minimize risk while maintaining market exposure").
+*   **Policy**: A structured object emitted by an agent representing a proposed course of action, subject to validation by the Runtime.
+*   **Context Store**: A structured, layered data store (Session, State, Memory, Artifacts) that serves as the single source of truth for an agent's reasoning.
+*   **DecisionFlow**: A traceable container for the entire lifecycle of a decision, linking context, reasoning, proposals, and execution results via a unique ID (DFID).
+*   **Agent Registry**: A system service that maintains the canonical list of active agents, their contracts, and their current operational state.
+*   **Decision Integrity Module (DIM)**: The component of the Runtime responsible for deterministic validation of Policy Proposals against safety and business rules.
+*   **Explain Stage**: The initial phase of an agent's reasoning process where it interprets context into a natural language narrative before formulating a structured Policy.
+
+# **13. References**
+
+[^1]: **Resource-Oriented Architecture (ROA)** - Richardson, L., & Ruby, S. (2007). *RESTful Web Services*. O'Reilly Media. [oreilly.com/library/view/restful-web-services/9780596529260/ch04.html](https://www.oreilly.com/library/view/restful-web-services/9780596529260/ch04.html).
+
+[^2]: **Actor Model** - Hewitt, C., Bishop, P., & Steiger, R. (1973). *A Universal Modular ACTOR Formalism for Artificial Intelligence*. [researchgate.net/publication/220812785](https://www.researchgate.net/publication/220812785_A_Universal_Modular_ACTOR_Formalism_for_Artificial_Intelligence).
+
+[^3]: **Zero Trust Architecture** - NIST Special Publication 800-207. [csrc.nist.gov/publications/detail/sp/800-207/final](https://csrc.nist.gov/publications/detail/sp/800-207/final).
+
+[^4]: **Kernel Space/User Space** - Operating System Access Control Rings. [en.wikipedia.org/wiki/Protection_ring](https://en.wikipedia.org/wiki/Protection_ring).
+
+[^5]: **Policy Enforcement Point (PEP)** - RFC 2753. [datatracker.ietf.org/doc/html/rfc2753](https://datatracker.ietf.org/doc/html/rfc2753).
+
+[^6]: **Distributed Tracing** - Dapper, a Large-Scale Distributed Systems Tracing Infrastructure. [research.google/pubs/pub36356/](https://research.google/pubs/pub36356/).
+
+[^7]: **Service Discovery** - Microservices Patterns. [microservices.io/patterns/client-side-discovery.html](https://microservices.io/patterns/client-side-discovery.html).
+
+[^8]: **Retrieval-Augmented Generation (RAG)** - Lewis, P., et al. (2020). *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*. [arxiv.org/abs/2005.11401](https://arxiv.org/abs/2005.11401).
+
+[^9]: **Data Provenance** - Buneman, P., Khanna, S., & Tan, W. C. (2001). *Why and Where: A Characterization of Data Provenance*. ICDT.
+
 
 
 
