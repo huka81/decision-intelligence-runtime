@@ -133,7 +133,7 @@ flowchart LR
     style User_Space fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px
     style Kernel_Space fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
     style Infrastructure_Space fill:#FAFAFA,stroke:#F57C00,stroke-width:3px
-````
+```
 
 Its responsibilities are scoped to:
 
@@ -649,7 +649,7 @@ flowchart LR
     classDef agent fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold
     style Context_Store fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
     style Compilation_Pipeline fill:#FAFAFA,stroke:#F57C00,stroke-width:3px
-````
+```
 
 
 * *Inputs:* Raw Event Log, Market State, Static Rules.
@@ -759,7 +759,7 @@ stateDiagram-v2
         Governance by Exception
         Awaiting Human Input
     end note
-````
+```
 
 * *Nodes:* CREATED -> ACTIVE -> (Validation) -> [ACCEPTED | REJECTED | ESCALATED].
 * *Transitions:*
@@ -920,8 +920,7 @@ flowchart TB
     style Topology_B fill:#f7fafc,stroke:#4a5568,stroke-width:3px,rx:10,ry:10
     style Single_Process fill:#edf2f7,stroke:#667eea,stroke-width:2px,rx:8,ry:8
 
-
-````
+```
 
 * *Left:* Agents inside the same box as Runtime.
 * *Right:* Agents and Runtime connected by a Message Bus.
