@@ -155,6 +155,17 @@ DIR introduces an **Agent Registry**-a service discovery[^3] mechanism for intel
 * **Registration:** On startup, an agent registers its `Manifest`: its ID, its subscribed inputs (Context), and its authorized outputs (Policy Types).
 * **Capability Contract:** The Registry acts as the source of truth for ROA constraints. When the Validation Layer asks "Can Agent X trade Asset Y?", it queries the Registry, not the Agent. This prevents agents from self-granting permissions via prompt injection.
 
+### *Conceptual Decomposition (Single Service, Multiple Authorities)*
+
+> *Although implemented as a single service, the Registry fulfills multiple **conceptual authorities**:
+>
+> * Identity & Capability Authority
+> * Schema Authority
+> * Reservation / Lock Authority
+> * Lifecycle Authority
+>
+> This decomposition is conceptual, not necessarily physical, and exists to prevent semantic overloading of responsibility.*
+
 Beyond capability tracking, the Agent Registry facilitates **Resource Locking and Reservation**. In environments where multiple agents (e.g., concurrent PositionAgents) operate on a shared finite resource—such as a single capital pool or a limited API throughput—the Registry acts as a synchronization point. It allows the Runtime to grant temporary 'Reservation Locks' to a DecisionFlow.
 
 **Operational Resilience (Addressing SPOF):**
@@ -442,7 +453,14 @@ The pipeline functions as a **Policy Enforcement Point (PEP)**. It evaluates pro
 4. **Resource Availability (Semantic Locking):** To prevent "Horizontal Resource Contention" (where two agents compete for the same cash/inventory), the DIM places a temporary lock or reservation on the required assets during the validation phase. If Agent A has reserved the last unit of capital, Agent B's simultaneous request is rejected with `INSUFFICIENT_LIQUIDITY`, preventing race conditions.
     *   **Linear Lock Acquisition:** To prevent deadlocks in multi-resource requests, resources MUST be requested in alphabetical order of their Global Resource IDs. Failure of the Agent to adhere to this sorting order in the Policy Proposal results in immediate rejection by the DIM. A mandatory `LockTimeout` (e.g., 5s) ensures that stalled flows are `ABORTED` with `RESOURCE_CONTENTION_TIMEOUT`.
 5. **Mission Invariant Check:** The DIM MUST verify that the Policy Proposal contains a `mission_context_hash`. The Runtime compares this against the registered Agent Mission. If the agent’s reasoning context has drifted from its assigned mission, the DIM rejects the proposal with `MISSION_DISSONANCE`.
+    > *The Runtime does not interpret mission semantics.
+    > It validates **contractual alignment**, not semantic intent.
+    > The `mission_context_hash` represents an immutable contract snapshot, not a philosophical goal.*
+Drift & Explanation-Intent Divergence
 
+> *Semantic Alignment is not a security mechanism.
+> It does not prevent malicious or incorrect actions.
+> It exists to preserve **operator trust and audit clarity**, not system safety.*
 The pipeline incorporates an **Intent Retry Governor** to mitigate the risk of 'Feedback Poisoning.' When the Runtime returns ValidationFeedback to an agent following a rejection (e.g., a risk limit violation), the agent is permitted a strictly limited number of attempts (Maximum Intent Retries, typically 3) to correct its proposal within the same DecisionFlow. If the agent continues to produce non-compliant policies after these attempts, the Runtime forcibly terminates the flow with a REASONING_EXHAUSTION status. This protects the system from infinite reasoning loops and prevents a hallucinating model from draining the Token Budget through unproductive attempts to bypass deterministic guards.
 
 ### 6.3 Semantic Alignment Check (The "Liar" Detection)

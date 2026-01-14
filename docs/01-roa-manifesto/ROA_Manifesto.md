@@ -17,6 +17,10 @@ This article introduces **Responsibility-Oriented Agents (ROA)**: a conceptual a
 
 The goal is not to present a definitive solution, but to offer a structured perspective on how LLM-based agents might evolve into systems that behave predictably, can be audited, and can be trusted to act-not just generate text.
 
+> **ROA agents are epistemic entities.
+> They interpret, explain, and propose.
+> They provide no safety, correctness, or enforcement guarantees.**
+
 
 ---
 
@@ -52,6 +56,9 @@ This article presents the foundational ideas behind ROA-
 not as a final answer, but as a structured attempt to address the limitations I repeatedly encountered.
 
 If LLMs are the engine, ROA tries to define the steering, the brakes, and the structure that lets us use that engine responsibly.
+
+> *Responsibility is the only abstraction that simultaneously binds authority, memory, escalation, and accountability into a single, governable unit.
+> Capability, intent, or role alone cannot do this.*
 
 ---
 
@@ -210,6 +217,10 @@ A mission is the optimization target or guiding principle the agent follows. Dif
 * A portfolio-level agent may aim to balance risk and reward.
 * A position-specific agent may aim to manage exposure according to a particular strategy.
 
+
+> *Mission in ROA is **not executable intent**.
+> It is an interpretive constraint used exclusively during Explain and Policy formation.
+> ROA agents may misunderstand or partially misapply their mission.*
 In *AIvestor*, this was explicit: the agent’s mission was to operationalize the user’s strategy on a given financial instrument while respecting risk constraints and contextual signals.
 
 A mission provides continuity, coherence, and direction - elements missing from most contemporary agent patterns, where behavior is dominated by the short-term semantics of a single prompt.
@@ -328,15 +339,9 @@ In ROA, the agent’s responsibility ends here.
 
 ---
 
-## **4.3 Self-Check - Ensuring Integrity Within Boundaries**
-
-Before producing a Policy Proposal, the agent performs an internal **Self-Check**.
-
-This is strictly a mechanism of **Internal Hygiene**—a "sanity check" performed by the model on itself.
-It is **not** a security control. The Runtime operates on a **Zero Trust**[^3] basis and will re-validate every constraint deterministically, regardless of whether the agent claims to have checked it.
-
-The purpose of the Self-Check is to:
-
+> *Self-Check is a **cost-optimization and noise-reduction heuristic**.
+> It exists solely to reduce invalid or low-quality Policy Proposals before they reach the Runtime.
+> Self-Check has no authority, no security value, and no correctness guarantees.*
 * reduce the noise of invalid proposals sent to the Runtime,
 * catch obvious hallucinations early (saving token costs),
 * ensure the Policy aligns with the agent’s mission,
@@ -407,6 +412,9 @@ The relationship between ROA and its runtime can be best understood through an o
 
 The Runtime exists to provide exactly those guarantees. It is the part of the system that transforms *policy proposals* into *reliable, safe, and consistent actions*.
 
+> *Any notion of safety, correctness, auditability, or governance attributed to ROA is accidental unless enforced by the Runtime.
+> ROA agents are not trusted components.*
+
 ---
 
 ## **5.1 Validation - Ensuring Decision Integrity**
@@ -415,7 +423,7 @@ Before any policy is executed, the Runtime performs **Validation**, handled by a
 
 Validation is fundamentally different from the agent’s self-check:
 
-* Self-check ensures *alignment with mission and boundaries*.
+* Self-check checks for *alignment with mission and boundaries*.
 * Validation ensures *alignment with system-wide constraints and safety*.
 
 DIM answers questions such as:
