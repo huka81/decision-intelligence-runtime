@@ -33,6 +33,16 @@ The environment where agents live. It handles:
 
 **[Read the DIR Architectural Pattern](./docs/02-decision-runtime/DIR_Architectural_Pattern.md)**
 
+### 3. Decision Intelligence Topologies
+*Current Status: Published*
+
+A pluralistic approach to agent orchestration. A single "loop" cannot satisfy all requirements, so DIR defines three distinct operational modes:
+* **Topology A (EOAM):** Decentralized organizational choreography for complex strategy.
+* **Topology B (SDS):** Sovereign streams for high-velocity, constrained execution.
+* **Topology C (DL+PCI):** Formal verification where "Proof-Carrying Intents" replace trust.
+
+**[Read Decision Intelligence Topologies](./docs/03-topologies/DIR_Topologies.md)**
+
 ## 🛠️ Repository Structure
 
 - `/docs` - Whitepapers, manifestos, and deep-dive conceptual documentation.
