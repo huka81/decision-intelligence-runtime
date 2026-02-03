@@ -34,7 +34,7 @@ The environment where agents live. It handles:
 **[Read the DIR Architectural Pattern](./docs/02-decision-runtime/DIR_Architectural_Pattern.md)**
 
 ### 3. Decision Intelligence Topologies
-*Current Status: Published*
+*Current Status: Work in Progress*
 
 A pluralistic approach to agent orchestration. A single "loop" cannot satisfy all requirements, so DIR defines three distinct operational modes:
 * **Topology A (EOAM):** Decentralized organizational choreography for complex strategy.
