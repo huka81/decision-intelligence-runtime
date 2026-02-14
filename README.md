@@ -9,6 +9,12 @@ Current "agent frameworks" often treat Large Language Models (LLMs) as autonomou
 
 This repository serves as the home for the architectural concepts, whitepapers, and future reference implementations of this system.
 
+## Start Here
+
+If you're new to DIR/ROA, start with the introduction article that explains the core motivation ("Day Two" failures), and the Kernel Space vs. User Space separation:
+
+**[Read: Beyond Prompt Engineering — Building a Deterministic Runtime for Responsible AI Agents](./docs/00-introduction/DIR-introduction.md)**
+
 ## Core Concepts
 
 ### 1. Responsibility-Oriented Agents (ROA)
