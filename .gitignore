@@ -210,3 +210,4 @@ __marimo__/
 /docs/00-do-not-publish
 /docs/00-implementation-guidelines
 /docs/references
+*.not-push*
