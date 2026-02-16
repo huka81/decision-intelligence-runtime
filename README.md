@@ -9,6 +9,22 @@ Current "agent frameworks" often treat Large Language Models (LLMs) as autonomou
 
 This repository serves as the home for the architectural concepts, whitepapers, and future reference implementations of this system.
 
+---
+
+### DIR/ROA: The Implementation Layer for Intelligent AI Delegation
+
+On February 12, 2026, Google DeepMind published *Intelligent AI Delegation* (arXiv:2602.11865). Their theoretical findings on "Responsibility Transfer" and "Adaptive Coordination" converge remarkably with the architectural patterns validated in this repository since 2025.
+
+We have mapped the two frameworks to show how **Decision Intelligence Runtime (DIR)** provides the production-ready implementation of Google's theoretical concepts:
+
+* **Google's "Responsibility Transfer"** ➔ **ROA Responsibility Contracts**
+* **Google's "Auditability"** ➔ **DecisionFlow ID (DFID)**
+* **Google's "Permission Handling"** ➔ **Kernel Space / DIM**
+
+**[Read the full framework mapping: Google DeepMind vs. DIR/ROA](./docs/00-introduction/Intelligent_Delegation_Framework_Mapping.md)**
+
+---
+
 ## Start Here
 
 If you're new to DIR/ROA, start with the introduction article that explains the core motivation ("Day Two" failures), and the Kernel Space vs. User Space separation:
