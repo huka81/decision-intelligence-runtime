@@ -1,0 +1,86 @@
+# EOAM Live Simulation - ROA agents with missions from config
+# See docs/01-roa-manifesto/ROA_Manifesto.md and docs/03-topologies/DIR_Topologies.md
+
+simulation:
+  instruments: ["BTC-USD", "ETH-USD"]
+  simulation_ticks: 20
+  tick_interval_sec: 0.3
+  news_every_n_ticks: 5
+  max_news_events: 4
+  initial_prices:
+    BTC-USD: 67500.0
+    ETH-USD: 3500.0
+  news_score_threshold: 0.6
+  seeds:
+    quote: 42
+    news: 43
+
+# Priority for arbitration: lower number = higher priority (EOAM Priority-Based Preemption)
+priority_matrix:
+  RISK_ALERT: 1
+  CLOSE: 2
+  CLOSE_POSITION: 2
+  TAKE_PROFIT: 3
+  ADJUST_STOP: 4
+  ADJUST_RISK: 4
+  OPEN_POSITION: 5
+  NEWS_QUALIFIED: 6
+  HOLD: 10
+
+# Optional LLM defaults (overridable per agent)
+llm_defaults:
+  model: "gemma3:12b"
+  base_url: "http://localhost:11434"
+
+agents:
+  # Instrument agents - one per instrument (scope = instrument)
+  - agent_id: "instrument_btc_usd"
+    type: instrument
+    scope: "BTC-USD"
+    mission: "Interpret market signals for BTC-USD and open positions when trend is favorable and volatility is acceptable."
+    contract:
+      role: STRATEGIST
+      authorized_instruments: ["BTC-USD"]
+      allowed_policy_types: ["OPEN_POSITION", "CLOSE_POSITION", "ADJUST_RISK", "HOLD"]
+      escalate_on_uncertainty: 0.65
+      max_drawdown_limit: 0.05
+    priority: 5
+
+  - agent_id: "instrument_eth_usd"
+    type: instrument
+    scope: "ETH-USD"
+    mission: "Interpret market signals for ETH-USD; seek alpha while respecting risk limits."
+    contract:
+      role: STRATEGIST
+      authorized_instruments: ["ETH-USD"]
+      allowed_policy_types: ["OPEN_POSITION", "CLOSE_POSITION", "ADJUST_RISK", "HOLD"]
+      escalate_on_uncertainty: 0.65
+      max_drawdown_limit: 0.05
+    priority: 5
+
+  # News scorer - reacts to NEWS events (scope = null, all news)
+  - agent_id: "news_scorer"
+    type: news_scorer
+    scope: null
+    mission: "Score news relevance for trading; emit NEWS_QUALIFIED when score exceeds threshold to signal opportunity."
+    contract:
+      role: MONITOR
+      authorized_instruments: []
+      allowed_policy_types: ["NEWS_QUALIFIED", "HOLD"]
+      escalate_on_uncertainty: 0.6
+      max_drawdown_limit: 0.05
+    priority: 6
+
+  # Position agent template - used when spawning dynamic PositionAgents (OPEN_POSITION accepted)
+  - agent_id: "position_template"
+    type: position
+    scope: null  # Set per spawned instance
+    mission: "Manage this position according to risk constraints; close or take profit when drawdown or target reached."
+    contract:
+      role: EXECUTOR
+      authorized_instruments: []  # Filled at spawn: [instrument]
+      allowed_policy_types: ["ADJUST_STOP", "TAKE_PROFIT", "CLOSE", "HOLD"]
+      escalate_on_uncertainty: 0.60
+      max_drawdown_limit: 0.03
+      parent_agent_id: null  # Filled at spawn
+    priority: 4
