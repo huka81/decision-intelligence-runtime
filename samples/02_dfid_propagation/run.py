@@ -22,7 +22,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from dir import (
+from dir_runtime import (
     ContextSnapshot,
     DecisionFlow,
     EscalationRequest,
@@ -33,7 +33,7 @@ from dir import (
     new_dfid,
     new_dfid_with_parent,
 )
-from dir.logging_utils import log_with_dfid
+from dir_runtime.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

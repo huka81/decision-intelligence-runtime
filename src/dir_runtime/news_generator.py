@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterator, List, Optional
 
-from dir.market_events import NewsEvent
+from .market_events import NewsEvent
 
 
 # Default headline templates; {instrument} and {pct} can be filled.

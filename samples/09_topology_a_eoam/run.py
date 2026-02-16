@@ -6,9 +6,9 @@ Requires PYTHONPATH including workspace src/ (see .vscode/settings.json).
 """
 import logging
 
-from dir import EventBus, EventType, new_dfid, PolicyProposal
-from dir.dim import validate
-from dir.logging_utils import log_with_dfid
+from dir_runtime import EventBus, EventType, new_dfid, PolicyProposal
+from dir_runtime.dim import validate_proposal
+from dir_runtime.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -35,13 +35,16 @@ def main() -> None:
             policy_kind="ADJUST",
             params={"priority": i, "action": "HOLD"},
         )
+        # Wrap proposal in payload
         bus.publish(EventType.POLICY_PROPOSAL, {"proposal": prop})
     bus.unsubscribe(EventType.POLICY_PROPOSAL, collect_proposal)
 
     # Arbitrate: take first (or by priority)
     chosen = proposals[0] if proposals else None
     if chosen:
-        result, reason = validate(chosen)
+        # DIM Validation with dummy context
+        context = {"state": {"risk_score": 0.1}}
+        result, reason = validate_proposal(chosen, context)
         log_with_dfid(logger, dfid, logging.INFO, "DIM result=%s reason=%s", result, reason)
         log_with_dfid(logger, dfid, logging.INFO, "Mock execution for %s", chosen.agent_id)
 

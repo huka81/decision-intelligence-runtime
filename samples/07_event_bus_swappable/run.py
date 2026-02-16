@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
-from dir import (
+from dir_runtime import (
     Event,
     EventBus,
     EventMetadata,
@@ -32,7 +32,7 @@ from dir import (
     create_event_bus,
     new_dfid,
 )
-from dir.logging_utils import log_with_dfid
+from dir_runtime.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterator, Optional
 
-from dir.market_events import QuoteTick
+from .market_events import QuoteTick
 
 
 class QuoteGenerator:

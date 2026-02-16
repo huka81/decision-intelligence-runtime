@@ -5,8 +5,8 @@ Provides: DFID, event bus, bootstrap SQLite, models, logging helpers.
 Samples import from this package after `pip install -e .` from repo root.
 """
 
-from dir.dfid import new_dfid, new_dfid_with_parent
-from dir.event_bus import (
+from .dfid import new_dfid, new_dfid_with_parent
+from .event_bus import (
     Event,
     EventBus,
     EventMetadata,
@@ -14,8 +14,8 @@ from dir.event_bus import (
     LoggingEventBus,
     create_event_bus,
 )
-from dir.market_events import NewsEvent, QuoteTick
-from dir.models import (
+from .market_events import NewsEvent, QuoteTick
+from .models import (
     AgentState,
     ContextSnapshot,
     DecisionFlow,
@@ -29,8 +29,8 @@ from dir.models import (
     ResponsibilityContract,
     SelfCheckResult,
 )
-from dir.news_generator import NewsGenerator, score_news
-from dir.quote_generator import QuoteGenerator
+from .news_generator import NewsGenerator, score_news
+from .quote_generator import QuoteGenerator
 
 __all__ = [
     "new_dfid",

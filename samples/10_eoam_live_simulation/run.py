@@ -20,7 +20,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from dir import (
+from dir_runtime import (
     EventBus,
     EventMetadata,
     EventType,
@@ -28,10 +28,14 @@ from dir import (
     create_event_bus,
     new_dfid,
 )
-from dir.dim import validate
-from dir.logging_utils import log_with_dfid
-from dir.news_generator import NewsGenerator
-from dir.quote_generator import QuoteGenerator
+from dir_runtime.dim import validate_proposal
+
+def validate(proposal: PolicyProposal) -> tuple[str, str]:
+    """Shim for simple validation without context/RBAC."""
+    return validate_proposal(proposal, context={}, allowed_agents=None)
+from dir_runtime.logging_utils import log_with_dfid
+from dir_runtime.news_generator import NewsGenerator
+from dir_runtime.quote_generator import QuoteGenerator
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
