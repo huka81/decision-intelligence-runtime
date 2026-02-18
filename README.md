@@ -56,7 +56,7 @@ If you are new to DIR/ROA, begin with the introduction article. It explains the 
 
 ## Why use DIR today?
 
-Big Tech providers are beginning to theorize about "Agent Runtimes" as proprietary cloud services. **DIR offers an open, infrastructure-agnostic standard.**
+Big Tech providers are beginning to theorize about "Agent Runtimes" as proprietary cloud services. **DIR is the first open-source implementation of the Zero Trust Agents philosophy** — agents propose, the runtime verifies; no implicit trust in LLM output.
 
 * **No Vendor Lock-in:** Run your agents on AWS, Azure, GCP, or on-premise. The runtime logic is yours.
 * **Ready for Production:** Solves "Day Two" problems (loops, drifts, audit) that simple orchestration libraries ignore.
@@ -102,7 +102,8 @@ A pluralistic approach to agent orchestration. No single execution model satisfi
 
 ## Prerequisites
 - **Python 3.12+**
-- **SQLite3**
+- **SQLite3** (optional — only for samples that use persistent storage)
+- **Ollama** (optional — for local LLM inference in samples such as `31_finance_trading`; use `USE_MOCK_LLM=1` to run without it)
 
 ## Installation
 
@@ -118,36 +119,54 @@ pip install -e .
 
 ```text
 decision-intelligence-runtime/
+├── README.md
+├── pyproject.toml            # pip install -e . installs dir_runtime
+├── requirements.txt          # Shared dependencies
 ├── src/
-│   └── dir_runtime/          # Core framework (Context, DIM, EventBus, etc.)
-├── samples/                  # Reference implementations & Topologies
-├── docs/                     # Architectural documentation (Specifications)
-├── pyproject.toml            # Build configuration
-└── README.md                 # This file
+│   └── dir_runtime/          # Core framework (DFID, DIM, EventBus, Context, etc.)
+├── samples/                  # Reference implementations (01–11 mechanics, 31+ use cases)
+│   ├── README.md             # Sample catalog and run instructions
+│   ├── 01_roa_agent/ … 11_topology_c_dl_pci/
+│   └── 31_finance_trading/ … 33_fraud_gate/
+├── docs/                     # Architectural documentation
+│   ├── 00-introduction/      # DIR intro, framework mapping
+│   ├── 00-implementation-guidelines/
+│   ├── 01-roa-manifesto/
+│   ├── 02-decision-runtime/
+│   ├── 03-topologies/
+│   └── references/
+└── assets/                   # Images, diagrams
 ```
 
 ## Samples & Reference Implementations
 
 Execute any sample from the repository root: `python samples/<folder>/run.py`
 
-### Foundation Patterns
+*Full list and details: [samples/README.md](samples/README.md)*
 
-| Sample | Description | Key Concepts |
-|--------|-------------|--------------|
-| **01_roa_agent** | Basic ROA Agent | Responsibility Contract, Mission, Lifecycle |
-| **02_dfid_propagation** | DecisionFlow ID | Distributed Tracing, Correlation |
-| **03_idempotency_guard** | Execution Safety | Exact-once execution, Caching |
-| **04_context_store** | State Management | Session vs. State vs. Memory layers |
-| **05_dim_validation** | Decision Integrity | Schema Validation, RBAC, State Consistency |
-| **06_agent_registry** | Discovery | Capability Contracts, Manifests, Priority |
+### Mechanics & Topologies (01–11)
 
-### Topologies
+| # | Sample | Focus | Description |
+|---|--------|-------|--------------|
+| 01 | `01_roa_agent` | ROA Manifesto | Contract, Explain → Policy → Proposal |
+| 02 | `02_dfid_propagation` | DIR Pattern | DecisionFlow ID: generation, propagation, logging |
+| 03 | `03_idempotency_guard` | DIR Pattern | Idempotency: preventing duplicate side effects |
+| 04 | `04_context_store` | DIR Pattern | 4 Layers of Context: Session, State, Memory, Artifacts |
+| 05 | `05_dim_validation` | DIR Pattern | Decision Integrity Module: deterministic validation gate |
+| 06 | `06_agent_registry` | DIR Pattern | Agent Registry: manifests and capability handshake |
+| 07 | `07_event_bus_swappable` | Infrastructure | In-memory Event Bus; note on swapping for Kafka/PubSub |
+| 08 | `08_bootstrap_sqlite` | Infrastructure | Bootstrap: ensure DB and tables exist before run |
+| 09 | `09_topology_a_eoam` | Topology A | Event-Oriented Agent Mesh |
+| 10 | `10_topology_b_sds` | Topology B | Sovereign Decision Stream |
+| 11 | `11_topology_c_dl_pci` | Topology C | Decision Ledger & Proof-Carrying Intents |
 
-| Sample | Topology | Constraint Profile | Mechanisms |
-|--------|----------|-------------------|-------------|
-| **09_topology_a_eoam** | **EOAM** (Event-Oriented Agent Mesh) | Complex strategy, multi-agent coordination | Event Bus, Arbitration, Reactive Choreography |
-| **10_topology_b_sds** | **SDS** (Structural Decision Stream) | High-velocity, low-latency execution | Grammar Validation, JIT State Drift Detection |
-| **11_topology_c_dl_pci** | **DL+PCI** (Decision Ledger + Proof-Carrying Intents) | High-stakes regulatory environments | Immutable Ledger, Cryptographic Intent Proofs |
+### Business Use Cases (31+)
+
+| # | Sample | Topology | Description |
+|---|--------|----------|--------------|
+| 31 | `31_finance_trading` | EOAM | Finance Trading: market quotes, news, parallel agents |
+| 32 | `32_insurance_underwriting` | DL+PCI | Insurance Underwriting: risk evaluation with PCI |
+| 33 | `33_fraud_gate` | SDS | Real-Time Fraud Gate: constrained decoding, JIT state drift |
 
 ---
 ## Documentation
