@@ -200,7 +200,7 @@ flowchart TB
         Orch["orchestrator"]
     end
 
-    subgraph Dir["dir_runtime"]
+    subgraph Dir["dir"]
         Bus["EventBus"]
         DIM["dim"]
         Models["models"]
@@ -226,7 +226,7 @@ flowchart TB
 - **llm_client:** `OllamaClient` (sync HTTP to Ollama) or `MockLLM`; interface `generate(prompt, system=None) -> str`.
 - **roa_agents:** ROA base (Explain → Policy → Self-Check → Proposal) and concrete agents (Instrument, Position, NewsScorer) using the LLM and config-driven contracts.
 - **orchestrator:** Registers agents with the bus (OBSERVATION by scope, NEWS global), emits observations/news with DFID, collects proposals per DFID, arbitrates by priority_matrix, spawns position agents from template.
-- **dir_runtime:** EventBus (scope-based dispatch), DIM (validate_proposal), models (ResponsibilityContract, PolicyProposal, etc.), QuoteGenerator, NewsGenerator.
+- **dir:** EventBus (scope-based dispatch), DIM (validate_proposal), models (ResponsibilityContract, PolicyProposal, etc.), QuoteGenerator, NewsGenerator.
 
 ---
 
@@ -270,9 +270,9 @@ python samples/31_finance_trading/run.py
 
 ---
 
-## Generators (dir_runtime)
+## Generators (dir)
 
-- **QuoteGenerator** (`dir_runtime.quote_generator`): One instrument; multiplicative random walk in price; `next_tick()` → `QuoteTick`, `to_payload()` for OBSERVATION. Optional seed for reproducibility.
-- **NewsGenerator** (`dir_runtime.news_generator`): Template-based headlines, sentiment, category; `score_news()` for raw_score; `news_payloads(max_events, sleep_between)` yields payloads with optional dfid. Optional seed for reproducibility.
+- **QuoteGenerator** (`dir.quote_generator`): One instrument; multiplicative random walk in price; `next_tick()` → `QuoteTick`, `to_payload()` for OBSERVATION. Optional seed for reproducibility.
+- **NewsGenerator** (`dir.news_generator`): Template-based headlines, sentiment, category; `score_news()` for raw_score; `news_payloads(max_events, sleep_between)` yields payloads with optional dfid. Optional seed for reproducibility.
 
 In production, news scoring could be LLM- or RAG-based; here it is rule-based for determinism and no API keys.

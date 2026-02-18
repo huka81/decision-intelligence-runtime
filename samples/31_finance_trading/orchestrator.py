@@ -11,8 +11,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Protocol
 
-from dir_runtime import EventBus, EventMetadata, EventType, PolicyProposal, new_dfid
-from dir_runtime.logging_utils import log_with_dfid
+from dir import EventBus, EventMetadata, EventType, PolicyProposal, new_dfid
+from dir.logging_utils import log_with_dfid
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +140,7 @@ class EOAMOrchestrator:
             raise RuntimeError(
                 "Orchestrator.set_spawn_deps(llm, position_template) must be called before spawn"
             )
-        from dir_runtime import ResponsibilityContract
+        from dir import ResponsibilityContract
         try:
             from .roa_agents import ROAPositionAgent
         except ImportError:

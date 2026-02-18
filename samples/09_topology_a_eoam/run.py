@@ -11,7 +11,7 @@ Requires PYTHONPATH including workspace src/ (see .vscode/settings.json).
 import logging
 from typing import Any, Dict, List, Optional
 
-from dir_runtime import (
+from dir import (
     EventBus,
     EventMetadata,
     EventType,
@@ -19,8 +19,8 @@ from dir_runtime import (
     QuoteGenerator,
     new_dfid,
 )
-from dir_runtime.dim import validate_proposal
-from dir_runtime.logging_utils import log_with_dfid
+from dir.dim import validate_proposal
+from dir.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

@@ -1,0 +1,64 @@
+{
+  "agent_type": "InstrumentAgent",
+  "contract": {
+    "agent_id": "instrument_btc_usd",
+    "role": "STRATEGIST",
+    "mission": "Interpret market signals and manage positions for BTC-USD",
+    "authorized_instruments": [
+      "BTC-USD"
+    ],
+    "allowed_policy_types": [
+      "OPEN_POSITION",
+      "CLOSE_POSITION",
+      "ADJUST_RISK",
+      "HOLD"
+    ],
+    "escalate_on_uncertainty": 0.65,
+    "max_drawdown_limit": 0.05,
+    "escalation_triggers": [
+      "uncertainty_threshold",
+      "authority_breach",
+      "risk_limit_exceeded"
+    ],
+    "parent_agent_id": null
+  },
+  "state": {
+    "agent_id": "instrument_btc_usd",
+    "created_at": "2026-02-18T17:20:46.759054Z",
+    "last_active": "2026-02-18T17:20:46.770785Z",
+    "decision_trajectory": [
+      {
+        "dfid": "84e5aa7a-24b8-49a6-958a-8f00943fc296",
+        "timestamp": "2026-02-18T17:20:46.760055Z",
+        "explain_summary": "[Mission: Interpret market signals and manage posi...] With balanced assessment: BTC-USD at 62000, v",
+        "policy_action": "OPEN_POSITION",
+        "policy_confidence": 0.82,
+        "outcome": "ACCEPTED",
+        "outcome_reason": null
+      },
+      {
+        "dfid": "61c73e2d-f5f8-4805-934f-4311af936538",
+        "timestamp": "2026-02-18T17:20:46.762512Z",
+        "explain_summary": "[Mission: Interpret market signals and manage posi...] With balanced assessment: BTC-USD at 55000, v",
+        "policy_action": "HOLD",
+        "policy_confidence": 0.55,
+        "outcome": "ESCALATED",
+        "outcome_reason": "Confidence 0.55 below threshold 0.65"
+      },
+      {
+        "dfid": "537f230f-feef-4d23-b7b2-ea1ec3791e09",
+        "timestamp": "2026-02-18T17:20:46.770785Z",
+        "explain_summary": "[Mission: Interpret market signals and manage posi...] With balanced assessment: BTC-USD at 65000, v",
+        "policy_action": "OPEN_POSITION",
+        "policy_confidence": 0.82,
+        "outcome": "ACCEPTED",
+        "outcome_reason": null
+      }
+    ],
+    "policy_version": 1,
+    "current_context": {},
+    "is_active": true
+  },
+  "child_agents": {},
+  "instrument": "BTC-USD"
+}

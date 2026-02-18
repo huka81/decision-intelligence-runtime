@@ -12,7 +12,7 @@ import hashlib
 import json
 import logging
 
-from dir_runtime import new_dfid
+from dir import new_dfid
 
 try:
     from .agent import FraudGuardAgent

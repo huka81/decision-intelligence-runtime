@@ -1,6 +1,6 @@
 # 08 - Bootstrap SQLite
 
-**Goal:** Before running, ensure the database file exists; if not, create it and create all tables required by the sample. Other samples that use SQLite call the same bootstrap from `dir_runtime`.
+**Goal:** Before running, ensure the database file exists; if not, create it and create all tables required by the sample. Other samples that use SQLite call the same bootstrap from `dir`.
 
 **ROA/DIR:** Implementation guideline: every sample using SQLite must run bootstrap first.
 

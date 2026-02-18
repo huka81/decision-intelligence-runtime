@@ -1,8 +1,8 @@
 # Decision Intelligence Runtime (DIR)
 
-![Responsibility-Oriented Agents](./assets/images/2_dir_roa_scratch.png)
-
 **An architectural framework for building reliable, accountable, and stateful AI decision systems.**
+
+![Responsibility-Oriented Agents](./assets/images/2_dir_roa_scratch.png)
 
 ## Project Goal
 
@@ -130,11 +130,9 @@ decision-intelligence-runtime/
 │   └── 31_finance_trading/ … 33_fraud_gate/
 ├── docs/                     # Architectural documentation
 │   ├── 00-introduction/      # DIR intro, framework mapping
-│   ├── 00-implementation-guidelines/
 │   ├── 01-roa-manifesto/
 │   ├── 02-decision-runtime/
-│   ├── 03-topologies/
-│   └── references/
+│   └── 03-topologies/
 └── assets/                   # Images, diagrams
 ```
 
@@ -165,8 +163,8 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 | # | Sample | Topology | Description |
 |---|--------|----------|--------------|
 | 31 | `31_finance_trading` | EOAM | Finance Trading: market quotes, news, parallel agents |
-| 32 | `32_insurance_underwriting` | DL+PCI | Insurance Underwriting: risk evaluation with PCI |
-| 33 | `33_fraud_gate` | SDS | Real-Time Fraud Gate: constrained decoding, JIT state drift |
+| 32 | `32_fraud_gate` | SDS | Real-Time Fraud Gate: constrained decoding, JIT state drift |
+| 33 | `33_insurance_underwriting` | DL+PCI | Insurance Underwriting: risk evaluation with PCI |
 
 ---
 ## Documentation

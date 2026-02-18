@@ -11,7 +11,7 @@ This implementation mocks the constrained inference with deterministic logic.
 import logging
 from typing import Optional
 
-from dir_runtime import new_dfid
+from dir import new_dfid
 
 try:
     from .risk_cache import RiskCache

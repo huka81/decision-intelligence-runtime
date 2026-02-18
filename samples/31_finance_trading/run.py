@@ -18,11 +18,11 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List
 
-from dir_runtime import PolicyProposal, ResponsibilityContract, create_event_bus
-from dir_runtime.dim import validate_proposal
-from dir_runtime.logging_utils import log_with_dfid
-from dir_runtime.news_generator import NewsGenerator
-from dir_runtime.quote_generator import QuoteGenerator
+from dir import PolicyProposal, ResponsibilityContract, create_event_bus
+from dir.dim import validate_proposal
+from dir.logging_utils import log_with_dfid
+from dir.news_generator import NewsGenerator
+from dir.quote_generator import QuoteGenerator
 
 try:
     from .llm_client import MockLLM, OllamaClient

@@ -15,9 +15,9 @@ import logging
 from pathlib import Path
 from pprint import pprint
 
-from dir_runtime import new_dfid
-from dir_runtime.bootstrap_sqlite import ensure_db
-from dir_runtime.context_store import ContextStore
+from dir import new_dfid
+from dir.bootstrap_sqlite import ensure_db
+from dir.context_store import ContextStore
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")

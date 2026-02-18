@@ -22,9 +22,9 @@ from typing import List, Optional
 from pydantic import BaseModel, ValidationError
 
 # Using DIM for final policy check
-from dir_runtime.dim import validate_proposal
-from dir_runtime.models import PolicyProposal
-from dir_runtime import new_dfid
+from dir.dim import validate_proposal
+from dir.models import PolicyProposal
+from dir import new_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

@@ -7,7 +7,7 @@ Requires PYTHONPATH including workspace src/ (see .vscode/settings.json).
 import sqlite3
 from pathlib import Path
 
-from dir_runtime.bootstrap_sqlite import ensure_db
+from dir.bootstrap_sqlite import ensure_db
 
 
 def create_tables(conn: sqlite3.Connection) -> None:

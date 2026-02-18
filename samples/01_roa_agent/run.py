@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from dir_runtime import (
+from dir import (
     AgentState,
     DecisionRecord,
     EscalationRequest,
@@ -33,7 +33,7 @@ from dir_runtime import (
     SelfCheckResult,
     new_dfid,
 )
-from dir_runtime.logging_utils import log_with_dfid
+from dir.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

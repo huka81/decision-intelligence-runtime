@@ -33,8 +33,8 @@ Przykłady typu biznesowy use case, łączące mechanizmy w pełne scenariusze.
 | # | Sample | Primary Topology | Description |
 |---|---|---|---|
 | 31 | [31_finance_trading](31_finance_trading/) | [Topology A](../docs/03-topologies/DIR_Topologies.md) | **Finance Trading**: Market quotes, news, parallel agents, dynamic position spawning. |
-| 32 | [32_insurance_underwriting](32_insurance_underwriting/) | [Topology C](../docs/03-topologies/DIR_Topologies.md) | **Insurance Underwriting**: Risk evaluation with cryptographic Proof-Carrying Intents (PCI). |
-| 33 | [33_fraud_gate](33_fraud_gate/) | [Topology B](../docs/03-topologies/DIR_Topologies.md) | **Real-Time Fraud Gate**: Constrained decoding, JIT state drift, drift-attack demo. |
+| 32 | [32_fraud_gate](33_fraud_gate/) | [Topology B](../docs/03-topologies/DIR_Topologies.md) | **Real-Time Fraud Gate**: Constrained decoding, JIT state drift, drift-attack demo. |
+| 33 | [33_insurance_underwriting](32_insurance_underwriting/) | [Topology C](../docs/03-topologies/DIR_Topologies.md) | **Insurance Underwriting**: Risk evaluation with cryptographic Proof-Carrying Intents (PCI). |
 
 ---
 
@@ -42,7 +42,7 @@ Przykłady typu biznesowy use case, łączące mechanizmy w pełne scenariusze.
 
 - **Python 3.12+**
 - **From repo root**: `pip install -e .` or `pip install -r requirements.txt`.
-- **Workspace:** `.vscode/settings.json` sets `PYTHONPATH` to `src/` and `python.analysis.extraPaths`, so in Cursor/VS Code the samples run and resolve `dir_runtime` without code in `run.py`. Outside the IDE, set `PYTHONPATH` to the repo `src` directory or use `pip install -e .`.
+- **Workspace:** `.vscode/settings.json` sets `PYTHONPATH` to `src/` and `python.analysis.extraPaths`, so in Cursor/VS Code the samples run and resolve `dir` without code in `run.py`. Outside the IDE, set `PYTHONPATH` to the repo `src` directory or use `pip install -e .`.
 
 ## Running a sample
 

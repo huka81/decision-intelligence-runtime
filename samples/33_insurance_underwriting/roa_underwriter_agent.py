@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 try:
-    from dir_runtime import new_dfid
+    from dir import new_dfid
 except ImportError:
     import uuid
     def new_dfid() -> str:

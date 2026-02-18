@@ -13,7 +13,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
-from dir_runtime import (
+from dir import (
     AgentState,
     EscalationRequest,
     ExplainResult,
@@ -23,8 +23,8 @@ from dir_runtime import (
     SelfCheckResult,
     new_dfid,
 )
-from dir_runtime.logging_utils import log_with_dfid
-from dir_runtime.models import DecisionRecord
+from dir.logging_utils import log_with_dfid
+from dir.models import DecisionRecord
 
 try:
     from .llm_client import LLMClient

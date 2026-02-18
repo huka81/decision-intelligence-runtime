@@ -15,9 +15,9 @@ import time
 from pathlib import Path
 from typing import Any, Dict
 
-from dir_runtime import new_dfid
-from dir_runtime.bootstrap_sqlite import ensure_db
-from dir_runtime.idempotency import IdempotencyGuard, SQLiteBackend
+from dir import new_dfid
+from dir.bootstrap_sqlite import ensure_db
+from dir.idempotency import IdempotencyGuard, SQLiteBackend
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")

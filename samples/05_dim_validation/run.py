@@ -11,8 +11,8 @@ Shows:
 import logging
 from typing import Dict, Any
 
-from dir_runtime.dim import validate_proposal
-from dir_runtime.models import PolicyProposal
+from dir.dim import validate_proposal
+from dir.models import PolicyProposal
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
