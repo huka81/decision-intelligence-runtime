@@ -1,5 +1,7 @@
 # Decision Intelligence Runtime (DIR)
 
+![Responsibility-Oriented Agents](./assets/images/2_dir_roa_scratch.png)
+
 **An architectural framework for building reliable, accountable, and stateful AI decision systems.**
 
 ## Project Goal
@@ -30,6 +32,18 @@ The independent convergence is notable:
 
 This alignment reinforces that these patterns are not vendor-specific abstractions—they are architectural necessities for production-grade agentic systems.
 
+### Industry Validation: Google DeepMind vs. DIR Implementation
+
+While Google's *Intelligent AI Delegation* (2026) outlines the *theoretical* requirements for safe agentic systems, **DIR provides the open-source architectural implementation available today.**
+
+| Requirement (Google DeepMind) | DIR Implementation (This Repo) | Status |
+| :--- | :--- | :--- |
+| **Verifiable Task Completion** | **Topology C (DL+PCI)** <br> *Cryptographic Proof-Carrying Intents* | ✅ Implemented |
+| **Transfer of Authority** | **Responsibility Contracts** <br> *Machine-readable scope definitions* | ✅ Implemented |
+| **Permission Handling** | **Kernel Space (DIM)** <br> *Deterministic policy enforcement* | ✅ Implemented |
+| **Structural Transparency** | **DecisionFlow ID (DFID)** <br> *End-to-end distributed tracing* | ✅ Implemented |
+
+
 **[Read the full framework comparison: Google DeepMind vs. DIR/ROA](./docs/00-introduction/Intelligent_Delegation_Framework_Mapping.md)**
 
 ---
@@ -39,6 +53,14 @@ This alignment reinforces that these patterns are not vendor-specific abstractio
 If you are new to DIR/ROA, begin with the introduction article. It explains the core motivation ("Day Two" failures in production systems), the Kernel Space vs. User Space architectural boundary, and why traditional agentic loops are insufficient for high-stakes environments.
 
 **[Read: Beyond Prompt Engineering — Building a Deterministic Runtime for Responsible AI Agents](./docs/00-introduction/DIR-introduction.md)**
+
+## Why use DIR today?
+
+Big Tech providers are beginning to theorize about "Agent Runtimes" as proprietary cloud services. **DIR offers an open, infrastructure-agnostic standard.**
+
+* **No Vendor Lock-in:** Run your agents on AWS, Azure, GCP, or on-premise. The runtime logic is yours.
+* **Ready for Production:** Solves "Day Two" problems (loops, drifts, audit) that simple orchestration libraries ignore.
+* **Language Agnostic Architecture:** While the reference implementation is Python, the patterns (Kernel/User separation, DFID) are universal.
 
 ## Core Concepts
 

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Underwriter - Audit Report</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --surface: #16213e;
+            --accent: #0f3460;
+            --text: #eaeaea;
+            --ok: #4ade80;
+            --reject: #f87171;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        h1 { color: #7dd3fc; margin-bottom: 0.5rem; }
+        h2 { color: #a5b4fc; font-size: 1.1rem; margin-top: 1.5rem; }
+        .meta { color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem; }
+        .scenario-block {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        details { margin: 0.5rem 0; }
+        summary { cursor: pointer; padding: 0.3rem 0; }
+        .section-content { padding: 0.5rem 0 1rem 1rem; }
+        .data-table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid var(--accent);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .data-table th { width: 180px; color: #94a3b8; }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .badge.ok { background: var(--ok); color: #052e16; }
+        .badge.reject { background: var(--reject); color: #450a0a; }
+        .outcome.bound { color: var(--ok); }
+        .outcome.rejected { color: var(--reject); }
+        code { background: var(--accent); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.9em; }
+        .summary-box {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+        h4 { color: #94a3b8; font-size: 0.95rem; margin: 1rem 0 0.5rem 0; }
+    </style>
+</head>
+<body>
+    <h1>Digital Underwriter – Audit Report</h1>
+    <p class="meta">Generated: 2026-02-17 21:44:22 UTC | Topology C (DL+PCI)</p>
+
+    <div class="summary-box">
+        <h2>Summary</h2>
+        <p><strong>Policy (version):</strong> 1.0.0</p>
+        <p><strong>Created by:</strong> compliance@example.com</p>
+        <p><strong>Created at:</strong> 2025-02-17T10:00:00Z</p>
+        <p><strong>Ledger entries (verified):</strong> 1</p>
+        <p><strong>Scenarios:</strong> 3</p>
+    </div>
+
+    
+    <div class="scenario-block">
+        <h2>Scenario: Retail</h2>
+        
+    <details>
+        <summary><strong>1. Input data (what the agent received)</strong></summary>
+        <div class="section-content">
+    <table class="data-table">
+        <tr><th>business_type</th><td>Retail</td></tr>
+        <tr><th>revenue</th><td>$500,000</td></tr>
+        <tr><th>industry</th><td>Retail</td></tr>
+    </table></div>
+    </details>
+    <details>
+        <summary><strong>2. Processing (Explain)</strong></summary>
+        <div class="section-content">
+    <p><em>Narrative:</em> This application represents a retail business with $500,000 in annual revenue. Based on our standard underwriting guidelines, we propose a General Liability policy with coverage equal to twice the annual revenue, capped at a maximum limit of $2,000,000. This results in a coverage amount of $1,000,000. The proposed premium for this coverage is approximately 2% of the coverage amount, totaling $20,000 annually. This policy will provide broad liability protection for common retail risks such as slip-and-fall incidents, product liability, and advertising injury. We consider the revenue level sufficient to warrant this coverage, but continuous monitoring of operations and risk mitigation strategies will be expected.</p>
+    <p><strong>Signals:</strong> Retail Industry, $500, 000 Revenue, General Liability Request, Standard Risk Profile.</p>
+    <p><strong>Risks:</strong> Slip and Fall Accidents, Product Liability Claims, Advertising Injury, Employee Negligence, Property Damage to Third Parties.</p>
+    <p><strong>Opportunities:</strong> Cross-selling with Commercial Property Insurance, Reviewing Loss Prevention Plans, Offering Risk Management Services.</p></div>
+    </details>
+    <details>
+        <summary><strong>3. Applied policy (Policy)</strong></summary>
+        <div class="section-content">
+    <h4>Policy audit metadata</h4>
+    <table class="data-table">
+        <tr><th>version</th><td>1.0.0</td></tr>
+        <tr><th>created_by</th><td>compliance@example.com</td></tr>
+        <tr><th>created_at</th><td>2025-02-17T10:00:00Z</td></tr>
+    </table>
+    <h4>Proposal</h4>
+    <table class="data-table">
+        <tr><th>coverage_limit</th><td>$1,000,000</td></tr>
+        <tr><th>premium</th><td>$20,000</td></tr>
+        <tr><th>industry</th><td>Retail</td></tr>
+    </table></div>
+    </details>
+    <details>
+        <summary><strong>4. Agent Self-Check</strong></summary>
+        <div class="section-content">
+    <p><span class="badge ok">PASSED</span></p>
+    <p><em>Reason:</em> —</p>
+    <p><em>Evidence hash forged:</em> No</p>
+    <p><em>DFID:</em> <code>fb8ea4b3...</code></p></div>
+    </details>
+    <details>
+        <summary><strong>5. DIR (DIM) verification</strong></summary>
+        <div class="section-content">
+    <p><span class="badge ok">Policy Bound</span></p>
+    <p>DIR (Decision Integrity Module) verified Evidence Hash and business rules.
+    Policy was approved and committed to Ledger.</p></div>
+    </details>
+    <details>
+        <summary><strong>6. Final outcome</strong></summary>
+        <div class="section-content">
+    <p class="outcome bound">
+        <strong>Policy: BOUND</strong>
+    </p>
+    <p><em>Reason:</em> Policy Bound</p></div>
+    </details>
+    </div>
+    <div class="scenario-block">
+        <h2>Scenario: Fireworks</h2>
+        
+    <details>
+        <summary><strong>1. Input data (what the agent received)</strong></summary>
+        <div class="section-content">
+    <table class="data-table">
+        <tr><th>business_type</th><td>Fireworks Factory</td></tr>
+        <tr><th>revenue</th><td>$1,000,000</td></tr>
+        <tr><th>industry</th><td>Fireworks</td></tr>
+    </table></div>
+    </details>
+    <details>
+        <summary><strong>2. Processing (Explain)</strong></summary>
+        <div class="section-content">
+    <p><em>Narrative:</em> ** This application is for a Fireworks Factory with a reported annual revenue of $1,000,000. Due to our company policy, we **cannot** offer insurance coverage for businesses operating in the Fireworks industry. This industry presents unacceptable risk profiles. Application rejected.
+
+**</p>
+    <p><strong>Signals:</strong> ** Prohibited Industry, High Risk, Policy Exclusion
+
+**</p>
+    <p><strong>Risks:</strong> ** Catastrophic Loss Potential (Explosions, Fire, Environmental Damage), Regulatory Scrutiny, Legal Liability, Reputational Damage, Inherent Instability, Uninsurability
+
+**</p>
+    <p><strong>Opportunities:</strong> ** N/A - Application rejected due to prohibited industry.</p></div>
+    </details>
+    <details>
+        <summary><strong>3. Applied policy (Policy)</strong></summary>
+        <div class="section-content">
+    <h4>Policy audit metadata</h4>
+    <table class="data-table">
+        <tr><th>version</th><td>1.0.0</td></tr>
+        <tr><th>created_by</th><td>compliance@example.com</td></tr>
+        <tr><th>created_at</th><td>2025-02-17T10:00:00Z</td></tr>
+    </table>
+    <h4>Proposal</h4>
+    <table class="data-table">
+        <tr><th>coverage_limit</th><td>$2,000,000</td></tr>
+        <tr><th>premium</th><td>$40,000</td></tr>
+        <tr><th>industry</th><td>Fireworks</td></tr>
+    </table></div>
+    </details>
+    <details>
+        <summary><strong>4. Agent Self-Check</strong></summary>
+        <div class="section-content">
+    <p><span class="badge reject">FAILED</span></p>
+    <p><em>Reason:</em> Industry Fireworks is prohibited</p>
+    <p><em>Evidence hash forged:</em> No</p>
+    <p><em>DFID:</em> <code>31c4473a...</code></p></div>
+    </details>
+    <details>
+        <summary><strong>5. DIR (DIM) verification</strong></summary>
+        <div class="section-content">
+    <p><span class="badge reject">Prohibited Industry</span></p>
+    <p>DIR (Decision Integrity Module) verified Evidence Hash and business rules.
+    Policy was rejected.</p></div>
+    </details>
+    <details>
+        <summary><strong>6. Final outcome</strong></summary>
+        <div class="section-content">
+    <p class="outcome rejected">
+        <strong>Policy: REJECTED</strong>
+    </p>
+    <p><em>Reason:</em> Prohibited Industry</p></div>
+    </details>
+    </div>
+    <div class="scenario-block">
+        <h2>Scenario: Forged hash</h2>
+        
+    <details>
+        <summary><strong>1. Input data (what the agent received)</strong></summary>
+        <div class="section-content">
+    <table class="data-table">
+        <tr><th>business_type</th><td>Fireworks Factory</td></tr>
+        <tr><th>revenue</th><td>$1,000,000</td></tr>
+        <tr><th>industry</th><td>Fireworks</td></tr>
+    </table></div>
+    </details>
+    <details>
+        <summary><strong>2. Processing (Explain)</strong></summary>
+        <div class="section-content">
+    <p><em>Narrative:</em> ** This application from a Fireworks Factory is immediately rejected due to the prohibited nature of the Fireworks industry. Our underwriting guidelines explicitly exclude coverage for businesses involved in the manufacturing, storage, or sale of fireworks. Therefore, no policy will be offered.
+
+**</p>
+    <p><strong>Signals:</strong> ** Prohibited Industry, Application Rejection
+
+**</p>
+    <p><strong>Risks:</strong> ** Regulatory Non-Compliance, Reputational Damage (if attempting to provide coverage), Legal Action
+
+**</p>
+    <p><strong>Opportunities:</strong> ** N/A - Application rejected. No opportunity for policy creation or assessment.</p></div>
+    </details>
+    <details>
+        <summary><strong>3. Applied policy (Policy)</strong></summary>
+        <div class="section-content">
+    <h4>Policy audit metadata</h4>
+    <table class="data-table">
+        <tr><th>version</th><td>1.0.0</td></tr>
+        <tr><th>created_by</th><td>compliance@example.com</td></tr>
+        <tr><th>created_at</th><td>2025-02-17T10:00:00Z</td></tr>
+    </table>
+    <h4>Proposal</h4>
+    <table class="data-table">
+        <tr><th>coverage_limit</th><td>$2,000,000</td></tr>
+        <tr><th>premium</th><td>$40,000</td></tr>
+        <tr><th>industry</th><td>Fireworks</td></tr>
+    </table></div>
+    </details>
+    <details>
+        <summary><strong>4. Agent Self-Check</strong></summary>
+        <div class="section-content">
+    <p><span class="badge reject">FAILED</span></p>
+    <p><em>Reason:</em> Industry Fireworks is prohibited</p>
+    <p><em>Evidence hash forged:</em> Yes</p>
+    <p><em>DFID:</em> <code>385e2625...</code></p></div>
+    </details>
+    <details>
+        <summary><strong>5. DIR (DIM) verification</strong></summary>
+        <div class="section-content">
+    <p><span class="badge reject">Evidence Invalid</span></p>
+    <p>DIR (Decision Integrity Module) verified Evidence Hash and business rules.
+    Policy was rejected.</p></div>
+    </details>
+    <details>
+        <summary><strong>6. Final outcome</strong></summary>
+        <div class="section-content">
+    <p class="outcome rejected">
+        <strong>Policy: REJECTED</strong>
+    </p>
+    <p><em>Reason:</em> Evidence Invalid</p></div>
+    </details>
+    </div>
+
+    <p class="meta" style="margin-top: 2rem;">
+        Day Two prevention: Only verified decisions are binding. Unverified agent
+        outputs (hallucinations, forged proofs) never reach the Ledger.
+    </p>
+</body>
+</html>

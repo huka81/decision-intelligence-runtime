@@ -11,7 +11,7 @@ The AI revolution is here, but the way we think about AI agents is fundamentally
 
 Without a chassis, brakes, and a safety cage, an engine is just a drivetrain bolted to a workbench. It can spin its wheels, but it cannot steer, stop, or ensure safety. This is the state of most "AI agent" systems today: impressive prototypes that demonstrate potential but lack the infrastructure to operate reliably in the real world.
 
-![The Hook](1_roa_scratch.png)
+![The Hook](../../assets/images/1_roa_scratch.png)
 *Figure 1. The evolution of agent architecture: An engine alone does not make a vehicle. Moving from raw models (Left) to engineered systems (Right).*
 
 On Day One, the demo dazzles. The agent reasons about context, proposes actions, and executes them with apparent intelligence. Stakeholders are impressed. The future seems bright.
@@ -93,7 +93,7 @@ The gap was not in reasoning, but in execution semantics. Without validation pip
 
 ## Section 2: The Wall - Kernel Space vs. User Space
 
-![The Wall](2_dir_roa_scratch.png)
+![The Wall](../../assets/images/2_dir_roa_scratch.png)
 *Figure 2. The Architectural Wall: Probabilistic reasoning (User Space 'Brain') must be strictly separated from deterministic execution (Kernel Space 'Machine') via a secure runtime interface.*
 
 To solve the problems exposed by AIvestor, I stopped thinking about agents as chatbots and started thinking about them as operating system processes.
@@ -565,7 +565,7 @@ The runtime caches these keys. A cache hit short-circuits execution and returns 
 
 The ROA/DIR separation defines *who* proposes and *how* validation occurs. However, it leaves open a critical architectural question: *how do signals flow through the system?*
 
-![Topologies](3_topologies_scratch.png)
+![Topologies](../../assets/images/3_topologies_scratch.png)
 *Figure 3. Architectural Pluralism: Different decision classes require distinct coordination infrastructures - Mesh (Roads), Stream (Air), and Ledger (Rail). Each is optimized for specific decision-making needs.*
 
 Think about transportation infrastructure. Roads, airspace, and railways all move things from point A to point B, but they use fundamentally different coordination models. Drivers negotiate locally and produce traffic jams. Pilots follow controlled separation rules enforced by air traffic control. Trains move on predetermined routes with authoritative signals - no runtime negotiation at all.

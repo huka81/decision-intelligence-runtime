@@ -1,4 +1,4 @@
-# 10 – EOAM Live Simulation (Topology A)
+# 31 – Business Case: Finance Trading (Topology A)
 
 **Goal:** Demonstrate **Topology A (Event-Oriented Agent Mesh, EOAM)** with a live-like simulation: a stream of market quotes, periodic news events, and ROA (Responsibility-Oriented Architecture) agents that interpret context via an LLM, propose policies, and are coordinated by scope-based events, priority arbitration, and the Decision Integrity Module (DIM). Position agents can be spawned dynamically when the runtime accepts an `OPEN_POSITION` proposal.
 
@@ -239,12 +239,12 @@ pip install -e ".[eoam]"
 # Or: pip install -e . && pip install pyyaml
 
 # With Ollama running locally (ollama serve, ollama pull <model>):
-python samples/10_eoam_live_simulation/run.py
+python samples/31_finance_trading/run.py
 
 # Without Ollama (MockLLM, no server required):
 # Windows: set USE_MOCK_LLM=1
 # Unix:    export USE_MOCK_LLM=1
-python samples/10_eoam_live_simulation/run.py
+python samples/31_finance_trading/run.py
 ```
 
 **Ollama:** Run `ollama serve` and `ollama pull <model>` (e.g. `llama3.2` or `gemma3:12b` as in config) for real LLM-backed agents. Otherwise set `USE_MOCK_LLM=1` to use MockLLM.

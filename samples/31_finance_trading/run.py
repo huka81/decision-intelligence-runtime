@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-10_eoam_live_simulation - Topology A (EOAM) with full ROA agents backed by LLM (Ollama).
+31_finance_trading - Topology A (EOAM) with full ROA agents backed by LLM (Ollama).
 
 - Missions and Responsibility Contracts from config.yaml (ROA Manifesto §3)
 - Explain → Policy → Self-Check → Proposal lifecycle via LLM (§4)
 - Event bus, scope-based subscription, priority arbitration, DIM, dynamic PositionAgents (§2 EOAM)
 
-Run from repo root: python samples/10_eoam_live_simulation/run.py
+Run from repo root: python samples/31_finance_trading/run.py
 Requires: pip install -e .  and  pip install pyyaml
 Optional: run Ollama locally (ollama serve, ollama pull llama3.2) or use MockLLM (env USE_MOCK_LLM=1).
 """
