@@ -226,7 +226,11 @@ Never execute cloud APIs directly. All proposals cross The Wall to Kernel Space.
         print("\n  → Mission CONTRACT transforms unbounded task into governed responsibility")
         print("="*70 + "\n")
 
-    def _simulate_agent_decision(self, idle_instances: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _simulate_agent_decision(
+        self,
+        idle_instances: List[Dict[str, Any]],
+        trust_input_labels: bool = False,
+    ) -> Dict[str, Any]:
         """
         [DEMO] Simulate mission-aware agent reasoning to select target instance.
 
@@ -234,24 +238,38 @@ Never execute cloud APIs directly. All proposals cross The Wall to Kernel Space.
             agent_executor = AgentExecutor(agent=react_agent, tools=[self._tool])
             result = agent_executor.invoke({"input": context, "mission": self._system_prompt})
 
-        This simulation demonstrates mission-bounded reasoning:
-        - Agent sees ALL instances (including PROD)
-        - Agent recognizes PROD violates mission boundaries
-        - Agent selects best target WITHIN allowed_environments
+        Args:
+            idle_instances: List of idle instance dicts
+            trust_input_labels: If True, agent uses environment from input (simulates
+                trusting data source). Used for DIM REJECT demo: mislabeled data causes
+                agent to propose PROD; DIM validates against authoritative Context Store.
+
+        When trust_input_labels=False: Infer environment from ID (mission-aware).
+        When trust_input_labels=True: Use instance.get("environment") - agent trusts input.
         """
         if not idle_instances:
             return {"action": "NOOP", "resource_id": None, "reason": "No idle instances found"}
 
-        # [MISSION-AWARE REASONING]
-        # Identify instances by environment (simulated - real agent would reason via LLM)
-        prod_instances = [i for i in idle_instances if "prod" in i.get("id", "").lower()]
-        allowed_instances = [
-            i for i in idle_instances 
-            if "dev" in i.get("id", "").lower() or "stg" in i.get("id", "").lower()
-        ]
+        allowed_envs_upper = [e.upper() for e in self.contract.allowed_environments]
 
-        # Mission awareness: Log detection of out-of-bounds instances
-        if prod_instances:
+        if trust_input_labels:
+            # Agent trusts input labels (simulates: data source provides environment)
+            # Mislabeled data (PROD tagged as DEV) will cause agent to propose PROD
+            allowed_instances = [
+                i for i in idle_instances
+                if i.get("environment", "").upper() in allowed_envs_upper
+            ]
+            prod_instances = []  # No ID-based prod detection when trusting labels
+        else:
+            # [MISSION-AWARE REASONING] Infer from ID
+            prod_instances = [i for i in idle_instances if "prod" in i.get("id", "").lower()]
+            allowed_instances = [
+                i for i in idle_instances
+                if "dev" in i.get("id", "").lower() or "stg" in i.get("id", "").lower()
+            ]
+
+        # Mission awareness: Log detection of out-of-bounds instances (only when not trusting labels)
+        if prod_instances and not trust_input_labels:
             logger.info(
                 "[%s] Mission boundary awareness: Detected %d PROD instance(s) with total %d idle hours, "
                 "but mission contract restricts to %s. Will not propose PROD actions.",
@@ -281,7 +299,13 @@ Never execute cloud APIs directly. All proposals cross The Wall to Kernel Space.
             ),
         }
 
-    def run(self, dfid: str, idle_resources_json: str, show_mission_demo: bool = False) -> PolicyProposal:
+    def run(
+        self,
+        dfid: str,
+        idle_resources_json: str,
+        show_mission_demo: bool = False,
+        trust_input_labels: bool = False,
+    ) -> PolicyProposal:
         """
         Invoke the agent with idle resources context. Returns PolicyProposal (Claim).
 
@@ -289,6 +313,7 @@ Never execute cloud APIs directly. All proposals cross The Wall to Kernel Space.
             dfid: Decision Flow ID for traceability
             idle_resources_json: JSON string with idle instances list
             show_mission_demo: If True, print mission injection demonstration
+            trust_input_labels: If True, agent uses environment from input (for DIM REJECT demo)
 
         Returns:
             PolicyProposal - the agent's intent, ready for DIM validation
@@ -311,7 +336,7 @@ Never execute cloud APIs directly. All proposals cross The Wall to Kernel Space.
         # [PRODUCTION: This would be LangChain AgentExecutor with system_prompt]
         # agent_executor = AgentExecutor(agent=react_agent, tools=[self._tool])
         # result = agent_executor.invoke({"input": instances, "mission": self._system_prompt})
-        decision = self._simulate_agent_decision(instances)
+        decision = self._simulate_agent_decision(instances, trust_input_labels=trust_input_labels)
         proposal_json = json.dumps(decision)
 
         log_with_dfid(
@@ -423,12 +448,18 @@ def run_scenario(
     context_store: Dict[str, Any],
     contract: FinOpsContract,
     show_mission_demo: bool = False,
+    trust_input_labels: bool = False,
 ) -> Tuple[PolicyProposal, str, str]:
     """Run a single scenario and return proposal + verdict."""
     dfid = new_dfid()
     log_with_dfid(logger, dfid, logging.INFO, "Starting scenario: %s", name)
 
-    proposal = wrapper.run(dfid, json.dumps(idle_resources), show_mission_demo=show_mission_demo)
+    proposal = wrapper.run(
+        dfid,
+        json.dumps(idle_resources),
+        show_mission_demo=show_mission_demo,
+        trust_input_labels=trust_input_labels,
+    )
     verdict, reason = validate_finops_proposal(
         proposal, context_store, contract, allowed_agents=[contract.agent_id]
     )
@@ -518,27 +549,62 @@ def main() -> None:
         print("  -> Unexpected REJECT for DEV instance.")
 
     # -------------------------------------------------------------------------
+    # Scenario C: Mislabeled data - Agent trusts wrong labels, proposes PROD
+    # DIM REJECTS (validates against authoritative Context Store)
+    # -------------------------------------------------------------------------
+    print("\n[SCENARIO C] Agent receives mislabeled data (PROD tagged as DEV)")
+    print("-" * 70)
+
+    # Bug in log exporter: i-prod-api-01 incorrectly labeled as DEV
+    idle_resources_c = {
+        "instances": [
+            {"id": "i-prod-api-01", "idle_hours": 72, "environment": "DEV"},  # WRONG
+        ]
+    }
+
+    proposal_c, verdict_c, reason_c = run_scenario(
+        "DIM REJECT - mislabeled data",
+        wrapper,
+        idle_resources_c,
+        context_store,
+        contract,
+        trust_input_labels=True,  # Agent trusts input labels
+    )
+
+    if verdict_c == "REJECT":
+        print("  -> Agent trusted input labels; DIM validated against Context Store.")
+        print("  -> Catastrophic production outage PREVENTED by DIM.")
+    else:
+        print("  -> Unexpected ACCEPT for PROD instance (should have been REJECT).")
+
+    # -------------------------------------------------------------------------
     # Summary
     # -------------------------------------------------------------------------
     print("\n" + "=" * 70)
     print("[SUMMARY] LangChain ROA Wrapper - FinOps Demo")
     print("=" * 70)
     print(f"  Scenario A: Agent saw PROD (72h) + DEV (48h)")
-    print(f"    → Mission-aware agent selected: DEV (within bounds)")
-    print(f"    → DIM verdict: {verdict_a}")
+    print(f"    -> Mission-aware agent selected: DEV (within bounds)")
+    print(f"    -> DIM verdict: {verdict_a}")
     print(f"  Scenario B: Agent saw only DEV (48h)")
-    print(f"    → Agent selected: DEV")
-    print(f"    → DIM verdict: {verdict_b}")
+    print(f"    -> Agent selected: DEV")
+    print(f"    -> DIM verdict: {verdict_b}")
+    print(f"  Scenario C: Agent received mislabeled data (PROD as DEV)")
+    print(f"    -> Agent proposed PROD (trusted wrong labels)")
+    print(f"    -> DIM verdict: {verdict_c}")
+    print(f"    -> DIM validates against authoritative Context Store. Last line of defense.")
     print()
     print("  KEY INSIGHT: Mission injection transforms agent behavior BEFORE DIM.")
     print("  The wrapper doesn't just intercept - it makes the agent")
     print("  mission-aware during reasoning, not just during validation.")
     print()
-    print("  A naked LangChain agent would have selected PROD (highest idle)")
-    print("  → Direct AWS termination → catastrophic outage.")
+    print("  When input quality fails (Scenario C), DIM catches dangerous proposals")
+    print("  by validating against Context Store - not agent input.")
     print()
-    print("  ROA-wrapped agent respects mission boundaries in its reasoning")
-    print("  → Proposes DEV → DIM validates → Safe execution.")
+    print("  A naked LangChain agent would have selected PROD (highest idle)")
+    print("  -> Direct AWS termination -> catastrophic outage.")
+    print()
+    print("  ROA: Mission injection + DIM validation = defense in depth.")
     print("=" * 70)
 
 

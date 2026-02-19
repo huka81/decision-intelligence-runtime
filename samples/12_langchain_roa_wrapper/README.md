@@ -243,7 +243,13 @@ The DIM strictly prevents the catastrophic action. Day Two failure avoided.
 
 ### Second Scenario: DEV Instance
 
-When the agent proposes TERMINATE on `i-9876543210` (tagged DEV), the DIM **ACCEPTS**. The instance is within the agent's authority. The proposal would proceed to execution in a full system.
+When the agent proposes TERMINATE on `i-dev-worker-03` (tagged DEV), the DIM **ACCEPTS**. The instance is within the agent's authority. The proposal would proceed to execution in a full system.
+
+### Scenario C: Mislabeled Data (DIM as Last Line of Defense)
+
+When the agent's data source has a bug (e.g., log exporter tags PROD as DEV), the agent may propose a dangerous action. The agent trusts its input; DIM validates against the **authoritative Context Store**. DIM **REJECTS** — catastrophic outage prevented.
+
+This demonstrates why DIM is essential even when mission injection works: input quality cannot be guaranteed. The Context Store is the source of truth; agent input is never trusted for validation.
 
 ---
 
@@ -432,6 +438,17 @@ INFO [DFID=...] [finops_autoscaler_v1] Proposal intercepted: TERMINATE i-dev-wor
   Reason: Validation passed
   -> Safe to execute (DEV within allowed_environments).
 
+[SCENARIO C] Agent receives mislabeled data (PROD tagged as DEV)
+----------------------------------------------------------------------
+INFO [DFID=...] Starting scenario: DIM REJECT - mislabeled data
+INFO [DFID=...] [finops_autoscaler_v1] Agent invoking Submit_Policy_Proposal: i-prod-api-01
+INFO [DFID=...] [finops_autoscaler_v1] Proposal intercepted: TERMINATE i-prod-api-01
+  Proposal: TERMINATE i-prod-api-01
+  DIM Verdict: REJECT
+  Reason: Instance i-prod-api-01 is PROD; agent allowed_environments=['DEV', 'STG']
+  -> Agent trusted input labels; DIM validated against Context Store.
+  -> Catastrophic production outage PREVENTED by DIM.
+
 ======================================================================
 [SUMMARY] LangChain ROA Wrapper - FinOps Demo
 ======================================================================
@@ -441,6 +458,10 @@ INFO [DFID=...] [finops_autoscaler_v1] Proposal intercepted: TERMINATE i-dev-wor
   Scenario B: Agent saw only DEV (48h)
     → Agent selected: DEV
     → DIM verdict: ACCEPT
+  Scenario C: Agent received mislabeled data (PROD as DEV)
+    → Agent proposed PROD (trusted wrong labels)
+    → DIM verdict: REJECT
+    → DIM validates against authoritative Context Store. Last line of defense.
 
   KEY INSIGHT: Mission injection transforms agent behavior BEFORE DIM.
   The wrapper doesn't just intercept - it makes the agent
@@ -454,7 +475,7 @@ INFO [DFID=...] [finops_autoscaler_v1] Proposal intercepted: TERMINATE i-dev-wor
 ======================================================================
 ```
 
-**Note:** The key difference from a naked agent: In Scenario A, the mission-aware agent **autonomously chooses DEV instance** despite PROD having higher idle hours, because PROD violates its mission contract. This demonstrates mission boundaries working at the reasoning level, before DIM validation.
+**Note:** In Scenario A, the mission-aware agent **autonomously chooses DEV instance** despite PROD having higher idle hours. In Scenario C, the agent receives mislabeled data (PROD tagged as DEV) and proposes PROD; DIM **REJECTS** by validating against the authoritative Context Store. This demonstrates defense in depth: mission injection + DIM validation.
 
 ---
 
