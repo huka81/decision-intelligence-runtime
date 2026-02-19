@@ -25,6 +25,7 @@ Proste syntetyczne przykłady ilustrujące implementacje poszczególnych mechani
 | 10 | [10_topology_b_sds](10_topology_b_sds/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | Topology B: Sovereign Decision Stream |
 | 11 | [11_topology_c_dl_pci](11_topology_c_dl_pci/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | Topology C: Decision Ledger & Proof-Carrying Intents |
 | 12 | [12_langchain_roa_wrapper](12_langchain_roa_wrapper/) | [ROA Manifesto](../docs/01-roa-manifesto/ROA_Manifesto.md), [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | **Mission Injection**: Wraps LangChain ReAct agent in ROA interface. Demonstrates task-oriented → mission-oriented transformation via Submit_Policy_Proposal interception. Shows mission-aware reasoning preventing PROD termination in FinOps use case. |
+| 88 | [88_meta_context_engineering](88_meta_context_engineering/) | [Topologies](../docs/03-topologies/DIR_Topologies.md), Meta-Sample | **Meta-Context Engineering**: System Prompt Toolkit — no executable Python. Markdown as compiler instruction set for AI agents. Paste `3_meta_architect_prompt.md` into Cursor/Claude to generate the Autonomous Flight Delay Refund System (Topology C, DL+PCI). |
 
 ---
 

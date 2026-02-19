@@ -127,8 +127,9 @@ decision-intelligence-runtime/
 │   └── dir_runtime/          # Core framework (DFID, DIM, EventBus, Context, etc.)
 ├── samples/                  # Reference implementations (01–11 mechanics, 31+ use cases)
 │   ├── README.md             # Sample catalog and run instructions
-│   ├── 01_roa_agent/ … 11_topology_c_dl_pci/
-│   └── 31_finance_trading/ … 33_fraud_gate/
+│   ├── 01_roa_agent/ … 12_langchain_roa_wrapper/
+│   ├── 31_finance_trading/ … 33_insurance_underwriting/
+│   └── 88_meta_context_engineering/   # Meta-sample: System Prompt Toolkit
 ├── docs/                     # Architectural documentation
 │   ├── 00-introduction/      # DIR intro, framework mapping
 │   ├── 01-roa-manifesto/
@@ -159,6 +160,7 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 | 10 | `10_topology_b_sds` | Topology B | Sovereign Decision Stream |
 | 11 | `11_topology_c_dl_pci` | Topology C | Decision Ledger & Proof-Carrying Intents |
 | 12 | `12_langchain_roa_wrapper` | ROA + DIR | **Mission Injection**: LangChain ReAct → ROA; task-oriented → mission-oriented transformation |
+| 88 | `88_meta_context_engineering` | Meta-Sample | **Meta-Context Engineering**: System Prompt Toolkit — Markdown as compiler for AI; generates Flight Delay Refund (Topology C) |
 
 ### Business Use Cases (31+)
 
