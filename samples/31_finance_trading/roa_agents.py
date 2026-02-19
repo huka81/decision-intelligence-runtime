@@ -216,12 +216,23 @@ class ROAAgentLLMBase:
             )
         return SelfCheckResult(passed=True)
 
-    def emit_proposal(self, dfid: str, policy: Policy, context: Optional[Dict[str, Any]] = None) -> PolicyProposal:
+    def emit_proposal(
+        self,
+        dfid: str,
+        policy: Policy,
+        context: Optional[Dict[str, Any]] = None,
+        explain_result: Optional[ExplainResult] = None,
+    ) -> PolicyProposal:
         """§4.4: Build PolicyProposal; subclasses can add params via _enrich_params."""
         params: Dict[str, Any] = {
             "assumptions": policy.assumptions,
             "expected_outcomes": policy.expected_outcomes,
         }
+        if explain_result:
+            params["explain_narrative"] = explain_result.narrative
+            params["explain_signals"] = explain_result.identified_signals
+            params["explain_risks"] = explain_result.risks
+            params["explain_opportunities"] = explain_result.opportunities
         proposal = PolicyProposal(
             dfid=dfid,
             agent_id=self.agent_id,
@@ -231,10 +242,15 @@ class ROAAgentLLMBase:
             justification=policy.justification,
             explain_ref=policy.explain_ref,
         )
-        self._enrich_proposal_params(proposal, context or {})
+        self._enrich_proposal_params(proposal, context or {}, explain_result)
         return proposal
 
-    def _enrich_proposal_params(self, proposal: PolicyProposal, context: Dict[str, Any]) -> None:
+    def _enrich_proposal_params(
+        self,
+        proposal: PolicyProposal,
+        context: Dict[str, Any],
+        explain_result: Optional[ExplainResult] = None,
+    ) -> None:
         """Override in subclasses to add instrument, price, position_id, pnl_pct, etc."""
         pass
 
@@ -299,7 +315,7 @@ class ROAAgentLLMBase:
             )
             self.record_decision(dfid, explain_result, policy, "ESCALATED", check_result.reason)
             return self.create_escalation(dfid, policy, check_result.escalation_trigger or "unknown")
-        proposal = self.emit_proposal(dfid, policy, context)
+        proposal = self.emit_proposal(dfid, policy, context, explain_result)
         self.record_decision(dfid, explain_result, policy, "ACCEPTED")
         log_with_dfid(
             logger, dfid, logging.INFO,
@@ -325,7 +341,12 @@ class ROAInstrumentAgent(ROAAgentLLMBase):
     def scope(self) -> Optional[str]:
         return self.instrument
 
-    def _enrich_proposal_params(self, proposal: PolicyProposal, context: Dict[str, Any]) -> None:
+    def _enrich_proposal_params(
+        self,
+        proposal: PolicyProposal,
+        context: Dict[str, Any],
+        explain_result: Optional[ExplainResult] = None,
+    ) -> None:
         proposal.params["instrument"] = self.instrument
         if "price" in context:
             proposal.params["price"] = context["price"]
@@ -375,7 +396,12 @@ class ROAPositionAgent(ROAAgentLLMBase):
     def scope(self) -> Optional[str]:
         return self.instrument
 
-    def _enrich_proposal_params(self, proposal: PolicyProposal, context: Dict[str, Any]) -> None:
+    def _enrich_proposal_params(
+        self,
+        proposal: PolicyProposal,
+        context: Dict[str, Any],
+        explain_result: Optional[ExplainResult] = None,
+    ) -> None:
         price = context.get("price", self.entry_price)
         pnl_pct = (price - self.entry_price) / self.entry_price if self.entry_price else 0.0
         proposal.params["position_id"] = self.position_id
@@ -426,6 +452,15 @@ class ROANewsScorerAgent(ROAAgentLLMBase):
     def on_observation(self, payload: Dict[str, Any]) -> Optional[PolicyProposal]:
         return None
 
+    def _enrich_proposal_params(
+        self,
+        proposal: PolicyProposal,
+        context: Dict[str, Any],
+        explain_result: Optional[ExplainResult] = None,
+    ) -> None:
+        proposal.params["headline"] = context.get("headline", "")
+        proposal.params["instruments_affected"] = context.get("instruments_affected", [])
+
     def on_news(self, payload: Dict[str, Any]) -> Optional[PolicyProposal]:
         raw_score = payload.get("raw_score", 0.0)
         if raw_score < self.score_threshold:
@@ -435,6 +470,7 @@ class ROANewsScorerAgent(ROAAgentLLMBase):
             "headline": payload.get("headline", ""),
             "raw_score": raw_score,
             "news_id": payload.get("news_id"),
+            "instruments_affected": payload.get("instruments_affected", []),
             "dfid": dfid,
         }
         result = self.run_decision_cycle(dfid, context)

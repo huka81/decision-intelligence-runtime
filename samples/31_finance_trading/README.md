@@ -1,6 +1,6 @@
 # 31 – Business Case: Finance Trading (Topology A)
 
-**Goal:** Demonstrate **Topology A (Event-Oriented Agent Mesh, EOAM)** with a live-like simulation: a stream of market quotes, periodic news events, and ROA (Responsibility-Oriented Architecture) agents that interpret context via an LLM, propose policies, and are coordinated by scope-based events, priority arbitration, and the Decision Integrity Module (DIM). Position agents can be spawned dynamically when the runtime accepts an `OPEN_POSITION` proposal.
+**Goal:** Demonstrate **Topology A (Event-Oriented Agent Mesh, EOAM)** with a live-like simulation: a stream of market quotes, periodic news events, and ROA (Responsibility-Oriented Architecture) agents that interpret context via an LLM, propose policies, and are coordinated by scope-based events, priority arbitration, and the Decision Integrity Module (DIM). Position agents can be spawned dynamically when the runtime accepts an `OPEN_POSITION` proposal or when the **news agent** emits `NEWS_QUALIFIED` (hierarchical DFID: news → instrument manager). At the end of the simulation, an **HTML report** is generated with price charts, decision points, and full position lifecycle.
 
 **DIR alignment:** DIR Topologies §2 (EOAM), §2.1–2.4 (scope-based choreography, DFID correlation, priority-based preemption). ROA Manifesto §3 (Responsibility Contract, mission), §4 (Explain → Policy → Self-Check → Proposal).
 
@@ -45,7 +45,8 @@ flowchart TB
 - **UC5:** Agents subscribed to the event (by scope) run their ROA decision cycle (Explain → Policy → Self-Check) and may emit one `PolicyProposal` per event.
 - **UC6:** The orchestrator collects all proposals for that event’s DFID and selects the **winner** by the configured priority (lower number = higher priority).
 - **UC7:** The winner is validated by DIM (schema, RBAC, context); result is ACCEPT or REJECT.
-- **UC8:** If the result is ACCEPT and the winner’s `policy_kind` is `OPEN_POSITION`, the orchestrator spawns a new position agent (from the config template) and registers it for future observations on that instrument.
+- **UC8:** If the result is ACCEPT and the winner’s `policy_kind` is `OPEN_POSITION` or `NEWS_QUALIFIED`, the orchestrator spawns a new position/instrument manager agent (from the config template) and registers it for future observations on that instrument. `NEWS_QUALIFIED` creates a hierarchical DFID link (parent_dfid = news event DFID).
+- **UC9:** At simulation end, an HTML report is generated (`simulation_report.html`) with price charts, decision points, DFID hierarchy, and position lifecycle.
 
 ---
 
@@ -53,7 +54,10 @@ flowchart TB
 
 ### Time and ticks
 
-- The simulation runs for a fixed number of **simulation_ticks** (e.g. 20). Each tick corresponds to one **market observation** for exactly one instrument.
+- The simulation runs until one of the end conditions is met:
+  - **simulation_ticks** (or **simulation_ticks**): maximum number of ticks (e.g. 20).
+  - **simulation_max_seconds** (optional): maximum wall-clock time in seconds; if set, the simulation stops when elapsed time exceeds this value.
+- Each tick corresponds to one **market observation** for exactly one instrument.
 - Instruments are iterated in **round-robin** (e.g. tick 0 → BTC-USD, tick 1 → ETH-USD, tick 2 → BTC-USD, …).
 - Optionally, **tick_interval_sec** can be used to sleep between ticks (e.g. 0.3 s) for a slower, observable run.
 
@@ -99,6 +103,7 @@ Only one proposal per agent per event is collected; escalations are not sent to 
 - The **winner** is passed to **DIM** (`validate_proposal`): schema, optional RBAC, and context checks. The result is **ACCEPT** or **REJECT** with a reason.
 - On **ACCEPT:**
   - If **policy_kind == OPEN_POSITION**, the orchestrator **spawns a new position agent** from the **position template** in config (mission, contract, with instrument and entry_price set), and registers it for OBSERVATION on that instrument.
+  - If **policy_kind == NEWS_QUALIFIED**, the orchestrator **spawns an instrument manager agent** for each instrument in `instruments_affected` (from the news payload), with **parent_dfid** set to the news event DFID for hierarchical DFID correlation. The agent's `parent_agent_id` is set to `news_scorer`.
   - Otherwise, execution is **mock** (e.g. log “Mock execution: CLOSE”).
 - On **REJECT**, no execution and no spawn; the event is still considered processed.
 
@@ -249,13 +254,15 @@ python samples/31_finance_trading/run.py
 
 **Ollama:** Run `ollama serve` and `ollama pull <model>` (e.g. `llama3.2` or `gemma3:12b` as in config) for real LLM-backed agents. Otherwise set `USE_MOCK_LLM=1` to use MockLLM.
 
+**Report:** The HTML report (`simulation_report.html`) requires `plotly` for charts; it is included in the `eoam` extra.
+
 ---
 
 ## Configuration (config.yaml)
 
 | Section | Purpose |
 |--------|--------|
-| **simulation** | `instruments`, `simulation_ticks`, `tick_interval_sec`, `news_every_n_ticks`, `max_news_events`, `initial_prices`, `news_score_threshold`, `seeds` (quote, news). |
+| **simulation** | `instruments`, `simulation_ticks` / `simulation_ticks`, `simulation_max_seconds` (optional), `tick_interval_sec`, `news_every_n_ticks`, `max_news_events`, `initial_prices`, `news_score_threshold`, `seeds` (quote, news). |
 | **priority_matrix** | Maps `policy_kind` to numeric priority (lower = higher). Used by the orchestrator to choose the winning proposal. |
 | **llm_defaults** | Optional `model`, `base_url` for Ollama. |
 | **agents** | List of agent definitions: `agent_id`, `type` (instrument \| news_scorer \| position), `scope` (for instrument), `mission`, `contract` (role, authorized_instruments, allowed_policy_types, escalate_on_uncertainty, max_drawdown_limit, parent_agent_id), `priority`. The **position** entry is a template for spawned position agents. |
@@ -267,6 +274,12 @@ python samples/31_finance_trading/run.py
 - **Per tick:** Logs for observation dispatch (DFID, scope, listener count), each agent’s decision cycle (Explain, Policy, Self-Check, proposal or escalation), arbitration (number of proposals, winner, policy_kind), DIM result (ACCEPT/REJECT, reason), and mock execution or position spawn.
 - **Per news event:** Same pattern for the news DFID.
 - **Summary:** Total ticks, news events, number of position agents spawned, total bus event count.
+- **Report:** `simulation_report.html` in the sample directory, containing:
+  - **Summary:** Ticks, news events, elapsed time, decisions, positions.
+  - **Price charts:** One chart per instrument (Plotly), with decision points marked (HOLD, REDUCE, CLOSE, NEWS_QUALIFIED).
+  - **DFID hierarchy tree:** Parent (news) → child (instrument manager) links.
+  - **Decision details:** Table with DFID, agent, policy_kind, DIM result, justification, explain narrative.
+  - **Position lifecycle:** For each position: entry tick/price, trigger (news headline or OPEN_POSITION), lifecycle events (HOLD/REDUCE/CLOSE).
 
 ---
 

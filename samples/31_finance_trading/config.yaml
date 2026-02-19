@@ -3,7 +3,8 @@
 
 simulation:
   instruments: ["BTC-USD", "ETH-USD"]
-  simulation_ticks: 20
+  simulation_ticks: 25  # Max ticks; simulation ends when reached
+  simulation_max_seconds: null  # Optional: max wall-clock seconds (null = no limit)
   tick_interval_sec: 0.3
   news_every_n_ticks: 5
   max_news_events: 4
@@ -71,16 +72,16 @@ agents:
       max_drawdown_limit: 0.05
     priority: 6
 
-  # Position agent template - used when spawning dynamic PositionAgents (OPEN_POSITION accepted)
+  # Instrument manager / position template - spawned by NEWS_QUALIFIED or OPEN_POSITION
   - agent_id: "position_template"
     type: position
     scope: null  # Set per spawned instance
-    mission: "Manage this position according to risk constraints; close or take profit when drawdown or target reached."
+    mission: "Manage this position according to risk constraints; hold, reduce or close when drawdown or target reached."
     contract:
       role: EXECUTOR
       authorized_instruments: []  # Filled at spawn: [instrument]
-      allowed_policy_types: ["ADJUST_STOP", "TAKE_PROFIT", "CLOSE", "HOLD"]
+      allowed_policy_types: ["ADJUST_STOP", "TAKE_PROFIT", "REDUCE", "CLOSE", "HOLD"]
       escalate_on_uncertainty: 0.60
       max_drawdown_limit: 0.03
-      parent_agent_id: null  # Filled at spawn
+      parent_agent_id: null  # Filled at spawn: news_scorer when from NEWS_QUALIFIED
     priority: 4

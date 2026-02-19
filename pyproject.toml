@@ -14,7 +14,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "ruff>=0.1"]
-eoam = ["httpx", "pyyaml"]
+eoam = ["httpx", "pyyaml", "plotly"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

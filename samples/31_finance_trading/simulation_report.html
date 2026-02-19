@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Trading — Simulation Report</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --surface: #16213e;
+            --accent: #0f3460;
+            --text: #eaeaea;
+            --ok: #4ade80;
+            --reject: #f87171;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        h1 { color: #7dd3fc; margin-bottom: 0.5rem; }
+        h2 { color: #a5b4fc; font-size: 1.1rem; margin-top: 1.5rem; }
+        .meta { color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem; }
+        .summary-box {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+        .chart-container {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        details { margin: 0.5rem 0; }
+        summary { cursor: pointer; padding: 0.3rem 0; }
+        .section-content { padding: 0.5rem 0 1rem 1rem; }
+        .data-table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid var(--accent);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .data-table th { width: 180px; color: #94a3b8; }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .badge.ok { background: var(--ok); color: #052e16; }
+        .badge.reject { background: var(--reject); color: #450a0a; }
+        .badge.policy { background: var(--accent); color: var(--text); }
+        code { background: var(--accent); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.9em; }
+        .position-block {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        h4 { color: #94a3b8; font-size: 0.95rem; margin: 1rem 0 0.5rem 0; }
+    </style>
+</head>
+<body>
+    <h1>Finance Trading — Simulation Report</h1>
+    <p class="meta">Generated: 2026-02-18 20:50:43 UTC | Hierarchical DFID (EOAM)</p>
+
+    <div class="summary-box">
+        <h2>Summary</h2>
+        <p><strong>Ticks:</strong> 25</p>
+        <p><strong>News events:</strong> 4</p>
+        <p><strong>Elapsed:</strong> 4255.3s</p>
+        <p><strong>Decisions:</strong> 27</p>
+        <p><strong>Positions:</strong> 5</p>
+    </div>
+
+    
+    <details>
+        <summary><strong>1. Price charts with decision points</strong></summary>
+        <div class="section-content"><div class="chart-container"><div>                        <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.3.1.min.js" integrity="sha256-4rD3fugVb/nVJYUv5Ky3v+fYXoouHaBSP20WIJuEiWg=" crossorigin="anonymous"></script>                <div id="7ab11b89-3489-43e9-a4ac-0acb54d66081" class="plotly-graph-div" style="height:350px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("7ab11b89-3489-43e9-a4ac-0acb54d66081")) {                    Plotly.newPlot(                        "7ab11b89-3489-43e9-a4ac-0acb54d66081",                        [{"line":{"color":"#7dd3fc","width":2},"mode":"lines","name":"Price","x":[0,2,4,6,8,10,12,14,16,18,20,22,24],"y":[67305.48,67155.63,66984.27,67429.47,67136.88,67448.8,68334.58,67325.53,67657.23,67713.6,68433.77,68006.36,69194.3],"type":"scatter"},{"marker":{"color":["#4ade80","#94a3b8","#4ade80","#60a5fa","#4ade80","#4ade80","#4ade80","#fbbf24","#4ade80","#4ade80","#4ade80","#4ade80","#4ade80","#4ade80"],"line":{"width":2},"size":12,"symbol":"diamond"},"mode":"markers+text","name":"Decisions","text":[" HOLD"," ADJUST_RISK"," HOLD"," OPEN_POSITION"," HOLD"," HOLD"," HOLD"," REDUCE"," HOLD"," HOLD"," HOLD"," HOLD"," HOLD"," HOLD"],"textposition":"top center","x":[0,4,5,6,8,10,12,14,15,16,18,20,22,24],"y":[67305.48,66984.27,66984.27,67429.47,67136.88,67448.8,68334.58,67325.53,67325.53,67657.23,67713.6,68433.77,68006.36,69194.3],"type":"scatter"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"font":{"color":"#eaeaea"},"margin":{"t":50,"b":50,"l":50,"r":50},"title":{"text":"Price: BTC-USD"},"xaxis":{"title":{"text":"Tick index"}},"yaxis":{"title":{"text":"Price"}},"paper_bgcolor":"rgba(26,26,46,0)","plot_bgcolor":"rgba(22,33,62,0.5)","height":350},                        {"responsive": true}                    )                };            </script>        </div></div>
+<div class="chart-container"><div>                            <div id="5119e532-4f35-4baa-a89e-8f312523d0db" class="plotly-graph-div" style="height:350px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("5119e532-4f35-4baa-a89e-8f312523d0db")) {                    Plotly.newPlot(                        "5119e532-4f35-4baa-a89e-8f312523d0db",                        [{"line":{"color":"#7dd3fc","width":2},"mode":"lines","name":"Price","x":[1,3,5,7,9,11,13,15,17,19,21,23],"y":[3604.9,3654.57,3593.26,3512.48,3586.7,3489.15,3377.12,3338.62,3411.88,3390.12,3310.99,3323.47],"type":"scatter"},{"marker":{"color":["#4ade80","#60a5fa","#4ade80","#60a5fa","#fbbf24","#60a5fa","#4ade80","#fbbf24","#fbbf24","#4ade80","#fbbf24","#fbbf24","#fbbf24","#fbbf24","#60a5fa"],"line":{"width":2},"size":12,"symbol":"diamond"},"mode":"markers+text","name":"Decisions","text":[" HOLD"," OPEN_POSITION"," HOLD"," OPEN_POSITION"," REDUCE"," OPEN_POSITION"," HOLD"," REDUCE"," REDUCE"," HOLD"," REDUCE"," ADJUST_STOP"," REDUCE"," REDUCE"," OPEN_POSITION"],"textposition":"top center","x":[1,3,5,5,7,9,10,11,13,15,15,17,19,21,23],"y":[3604.9,3654.57,3593.26,3593.26,3512.48,3586.7,3586.7,3489.15,3377.12,3338.62,3338.62,3411.88,3390.12,3310.99,3323.47],"type":"scatter"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"font":{"color":"#eaeaea"},"margin":{"t":50,"b":50,"l":50,"r":50},"title":{"text":"Price: ETH-USD"},"xaxis":{"title":{"text":"Tick index"}},"yaxis":{"title":{"text":"Price"}},"paper_bgcolor":"rgba(26,26,46,0)","plot_bgcolor":"rgba(22,33,62,0.5)","height":350},                        {"responsive": true}                    )                };            </script>        </div></div></div>
+    </details>
+
+    
+    <details>
+        <summary><strong>2. DFID hierarchy tree</strong></summary>
+        <div class="section-content">
+    <table class="data-table">
+        <tr><th>DFID / Agent</th><th>Description</th></tr>
+        <tr><td><code>POS_1</code></td><td>Instrument manager for ETH-USD (parent: —...)</td></tr><tr><td><code>POS_2</code></td><td>Instrument manager for ETH-USD (parent: —...)</td></tr><tr><td><code>POS_3</code></td><td>Instrument manager for BTC-USD (parent: —...)</td></tr><tr><td><code>POS_4</code></td><td>Instrument manager for ETH-USD (parent: —...)</td></tr><tr><td><code>POS_5</code></td><td>Instrument manager for ETH-USD (parent: —...)</td></tr>
+    </table></div>
+    </details>
+
+    
+    <details>
+        <summary><strong>3. Decision details</strong></summary>
+        <div class="section-content">
+    <table class="data-table">
+        <tr><th>Tick</th><th>DFID</th><th>Agent</th><th>Policy</th><th>DIM</th><th>Instrument</th><th>Details</th></tr>
+        
+            <tr>
+                <td>0</td>
+                <td><code>ed343e00-467...</code></td>
+                <td>instrument_btc_usd</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Given the bearish trend and low volatility, immediate action isn't warranted. Monitoring for potential recovery or strategic dips is prudent.</p>
+                        <p><strong>Explain:</strong> The price of BTC-USD is currently $67305.48 and exhibiting a bearish trend with low volatility.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td><code>359b2ec2-eac...</code></td>
+                <td>instrument_eth_usd</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> The bullish trend and low volatility suggest continued stable growth, aligning with a HOLD strategy.</p>
+                        <p><strong>Explain:</strong> ETH-USD is currently exhibiting a bullish trend with relatively low volatility.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td><code>456f59a2-26e...</code></td>
+                <td>instrument_eth_usd</td>
+                <td><span class="badge policy">OPEN_POSITION</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Bullish trend with low volatility suggests a favorable entry point for a long position.</p>
+                        <p><strong>Explain:</strong> The ETH-USD instrument is currently exhibiting a bullish trend with relatively low volatility. This suggests potential for continued price appreciation, but caution is warranted given the inherent ris</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td><code>681b4b09-c45...</code></td>
+                <td>instrument_btc_usd</td>
+                <td><span class="badge policy">ADJUST_RISK</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Given the bearish trend and increased volatility, adjusting risk (e.g., tightening stop-loss) is prudent to mitigate potential losses while still allowing for a possible short-term bounce or accumulation.</p>
+                        <p><strong>Explain:</strong> The price of BTC-USD is currently $66984.27 and exhibiting a bearish trend with moderate volatility.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td><code>2cb8e9ba-a23...</code></td>
+                <td>news_scorer</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> The news suggests a potential stabilization, but risks like unexpected data remain. A hold allows observation of market reaction.</p>
+                        <p><strong>Explain:</strong> The Federal Reserve indicated a pause in interest rate hikes, leading to stability in financial markets. This news impacts Bitcoin and Ethereum, suggesting a potential reprieve from recent volatility.</p>
+                        <p><strong>DIM:</strong> </p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td><code>5f99008b-3d8...</code></td>
+                <td>instrument_eth_usd</td>
+                <td><span class="badge policy">OPEN_POSITION</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> The bearish trend indicates a potential for profit with a short position, while low volatility limits significant downside risk.</p>
+                        <p><strong>Explain:</strong> The ETH-USD instrument is currently exhibiting a bearish trend with relatively low volatility. This suggests a potential for continued downward pressure but also a limited range of price fluctuation.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td><code>206a5cf3-05d...</code></td>
+                <td>instrument_btc_usd</td>
+                <td><span class="badge policy">OPEN_POSITION</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Bullish trend and low volatility suggest a good entry point for a long position, capitalizing on potential appreciation.</p>
+                        <p><strong>Explain:</strong> The price of BTC-USD is currently $67,429.47 and exhibiting a bullish trend with relatively low volatility.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td><code>bd8faba1-6e0...</code></td>
+                <td>position_POS_1</td>
+                <td><span class="badge policy">REDUCE</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Bearish trend and slight drawdown warrant a risk reduction.</p>
+                        <p><strong>Explain:</strong> The ETH-USD position is currently in a bearish trend with a slight loss (-0.03888008712379299) from the entry price. Given the bearish trend and drawdown, a reduction of the position is recommended to</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td><code>cd8e7dac-8b9...</code></td>
+                <td>instrument_btc_usd</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Given the bearish trend and low volatility, immediate action isn't warranted. Monitoring for a trend reversal is prudent.</p>
+                        <p><strong>Explain:</strong> The price of BTC-USD is currently $67,136.88, exhibiting a bearish trend with relatively low volatility.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>9</td>
+                <td><code>270a3c95-8e2...</code></td>
+                <td>instrument_eth_usd</td>
+                <td><span class="badge policy">OPEN_POSITION</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Bullish trend suggests potential for price appreciation.</p>
+                        <p><strong>Explain:</strong> The ETH-USD instrument is currently exhibiting a bullish trend with moderate volatility. This suggests potential for continued price appreciation, but with inherent risks associated with market fluctu</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>10</td>
+                <td><code>8b6abe14-984...</code></td>
+                <td>news_scorer</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> While demand suggests upward movement, risks like volatility and news warrant caution. A HOLD allows for observing the situation before committing.</p>
+                        <p><strong>Explain:</strong> The ETH-USD pair is experiencing strong demand during the Asian trading session, suggesting potential upward price movement.</p>
+                        <p><strong>DIM:</strong> </p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>10</td>
+                <td><code>13481dc1-19c...</code></td>
+                <td>instrument_btc_usd</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> The bullish trend and consolidation opportunity outweigh the risks, suggesting maintaining the current position is prudent.</p>
+                        <p><strong>Explain:</strong> BTC-USD is currently exhibiting a bullish trend with relatively low volatility. This suggests a period of consolidation or a steady upward climb, but the low volatility also implies a potential for a </p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>11</td>
+                <td><code>bb845568-181...</code></td>
+                <td>position_POS_1</td>
+                <td><span class="badge policy">REDUCE</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Position is underwater and exhibiting a bearish trend; reducing risk exposure.</p>
+                        <p><strong>Explain:</strong> The ETH-USD position is currently exhibiting a bearish trend and is underwater since entry. While volatility is relatively low, the price is below the entry price, and the P&amp;L is negative. Given the b</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>12</td>
+                <td><code>72e4039b-66a...</code></td>
+                <td>instrument_btc_usd</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> The bullish trend outweighs current risks, and holding allows us to capitalize on potential price appreciation.</p>
+                        <p><strong>Explain:</strong> Bitcoin is currently exhibiting a bullish trend with moderate volatility.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>13</td>
+                <td><code>5ec5b7c8-d38...</code></td>
+                <td>position_POS_1</td>
+                <td><span class="badge policy">REDUCE</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Drawdown and bearish trend necessitate reducing risk exposure.</p>
+                        <p><strong>Explain:</strong> The ETH-USD position is currently in a bearish trend with a negative P&amp;L. Given the drawdown from the entry price, and aligned with the risk management strategy, a reduction in position size is recomm</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>14</td>
+                <td><code>d4dc1c6b-dc1...</code></td>
+                <td>position_POS_3</td>
+                <td><span class="badge policy">REDUCE</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Bearish trend and minor loss necessitate reducing risk exposure.</p>
+                        <p><strong>Explain:</strong> The position in BTC-USD is currently slightly underwater and trending bearish with low volatility. Given the bearish trend and minor loss, I will reduce the position to manage risk.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>15</td>
+                <td><code>51b511f1-c1d...</code></td>
+                <td>news_scorer</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> While risk-off sentiment presents a short-term challenge, the opportunities for long-term value and diversification remain compelling. A reactive sell would miss potential future gains.</p>
+                        <p><strong>Explain:</strong> Risk-off sentiment is negatively impacting the price of Bitcoin (BTC-USD) and Ethereum (ETH-USD).</p>
+                        <p><strong>DIM:</strong> </p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>15</td>
+                <td><code>bf83b7b1-600...</code></td>
+                <td>position_POS_1</td>
+                <td><span class="badge policy">REDUCE</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Mitigate losses due to bearish trend and drawdown.</p>
+                        <p><strong>Explain:</strong> The ETH-USD position is currently exhibiting a bearish trend with a negative P&amp;L. Given the drawdown from the entry price, and adhering to the risk management mission, a reduction of the position is a</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>16</td>
+                <td><code>f211484b-75a...</code></td>
+                <td>instrument_btc_usd</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> The bullish trend and low volatility suggest a favorable environment to maintain the current position for long-term gains.</p>
+                        <p><strong>Explain:</strong> Bitcoin is currently exhibiting a bullish trend with relatively low volatility, suggesting potential for continued upward momentum but also a limited scope for significant price swings.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>17</td>
+                <td><code>489fc9ba-e7e...</code></td>
+                <td>position_POS_1</td>
+                <td><span class="badge policy">ADJUST_STOP</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Protect against further drawdown while allowing for potential trend continuation.</p>
+                        <p><strong>Explain:</strong> The ETH-USD position is currently showing a slight loss (-0.0664%) since entry. Despite a bullish trend and relatively low volatility, the price is below the entry price of 3654.57. We need to conside</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>18</td>
+                <td><code>b5289ea5-305...</code></td>
+                <td>instrument_btc_usd</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> The market is trading neutrally with low volatility, and a hold seems appropriate given the potential for a trend reversal and long-term investment opportunities.</p>
+                        <p><strong>Explain:</strong> BTC-USD is currently trading neutrally at $67713.6 with low volatility.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>19</td>
+                <td><code>805e23b4-4e0...</code></td>
+                <td>position_POS_1</td>
+                <td><span class="badge policy">REDUCE</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Drawdown in a bearish trend indicates risk management requires reducing exposure.</p>
+                        <p><strong>Explain:</strong> The ETH-USD position is currently in a bearish trend and experiencing a drawdown from the entry price. While volatility is relatively low, the negative P&amp;L warrants consideration of reducing or closin</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>20</td>
+                <td><code>fe5b7f1b-f0d...</code></td>
+                <td>instrument_btc_usd</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> The bullish trend and low volatility suggest continued upward momentum, while acknowledging potential risks.</p>
+                        <p><strong>Explain:</strong> Bitcoin is currently trading at $68,433.77, exhibiting a bullish trend with relatively low volatility.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>21</td>
+                <td><code>2c1ce39d-2f9...</code></td>
+                <td>position_POS_1</td>
+                <td><span class="badge policy">REDUCE</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Mitigate risk given bearish trend and current drawdown.</p>
+                        <p><strong>Explain:</strong> The ETH-USD position is currently in a bearish trend with a negative P&amp;L of -0.09%. Given the drawdown from the entry price of 3654.57 and the bearish trend, a reduction of the position is warranted t</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>22</td>
+                <td><code>f18f0ca3-ea9...</code></td>
+                <td>instrument_btc_usd</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> Moderate volatility and a bearish trend suggest caution; holding allows observation and avoids premature action.</p>
+                        <p><strong>Explain:</strong> The price of BTC-USD is currently experiencing a bearish trend with moderate volatility. This suggests potential downward pressure, but the relatively low volatility indicates a lack of extreme price </p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>23</td>
+                <td><code>95cf7898-311...</code></td>
+                <td>instrument_eth_usd</td>
+                <td><span class="badge policy">OPEN_POSITION</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>ETH-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> The bullish trend suggests a potential for gains, making it a suitable time to enter a position.</p>
+                        <p><strong>Explain:</strong> ETH-USD is currently exhibiting a bullish trend with moderate volatility.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+            <tr>
+                <td>24</td>
+                <td><code>711c5e61-e90...</code></td>
+                <td>instrument_btc_usd</td>
+                <td><span class="badge policy">HOLD</span></td>
+                <td><span class="badge ok">ACCEPT</span></td>
+                <td>BTC-USD</td>
+                <td>
+                    <details>
+                        <summary>Details</summary>
+                        <p><strong>Justification:</strong> The bullish trend with low volatility suggests continued upward momentum; holding allows participation in potential breakout.</p>
+                        <p><strong>Explain:</strong> Bitcoin is currently exhibiting a bullish trend with relatively low volatility, suggesting a period of consolidation or a steady upward climb.</p>
+                        <p><strong>DIM:</strong> Validation passed</p>
+                    </details>
+                </td>
+            </tr>
+    </table></div>
+    </details>
+
+    
+    <details>
+        <summary><strong>4. Position lifecycle</strong></summary>
+        <div class="section-content">
+            <div class="position-block">
+                <h4>POS_1 — ETH-USD</h4>
+                
+            <p><strong>Opened:</strong> tick 3, price 3654.57</p>
+            <p><strong>Trigger:</strong> OPEN_POSITION</p>
+            <p><strong>Parent DFID:</strong> <code>—...</code></p>
+        <p><strong>Lifecycle:</strong></p><ul><li>Tick 7: REDUCE @ 3512.48 — Bearish trend and slight drawdown warrant a risk reduction....</li><li>Tick 11: REDUCE @ 3489.15 — Position is underwater and exhibiting a bearish trend; reducing risk exposure....</li><li>Tick 13: REDUCE @ 3377.12 — Drawdown and bearish trend necessitate reducing risk exposure....</li><li>Tick 15: REDUCE @ 3338.62 — Mitigate losses due to bearish trend and drawdown....</li><li>Tick 17: ADJUST_STOP @ 3411.88 — Protect against further drawdown while allowing for potential trend continuation...</li><li>Tick 19: REDUCE @ 3390.12 — Drawdown in a bearish trend indicates risk management requires reducing exposure...</li><li>Tick 21: REDUCE @ 3310.99 — Mitigate risk given bearish trend and current drawdown....</li></ul>
+            </div>
+
+            <div class="position-block">
+                <h4>POS_2 — ETH-USD</h4>
+                
+            <p><strong>Opened:</strong> tick 5, price 3593.26</p>
+            <p><strong>Trigger:</strong> OPEN_POSITION</p>
+            <p><strong>Parent DFID:</strong> <code>—...</code></p>
+        <p><em>No lifecycle events recorded.</em></p>
+            </div>
+
+            <div class="position-block">
+                <h4>POS_3 — BTC-USD</h4>
+                
+            <p><strong>Opened:</strong> tick 6, price 67429.47</p>
+            <p><strong>Trigger:</strong> OPEN_POSITION</p>
+            <p><strong>Parent DFID:</strong> <code>—...</code></p>
+        <p><strong>Lifecycle:</strong></p><ul><li>Tick 14: REDUCE @ 67325.53 — Bearish trend and minor loss necessitate reducing risk exposure....</li></ul>
+            </div>
+
+            <div class="position-block">
+                <h4>POS_4 — ETH-USD</h4>
+                
+            <p><strong>Opened:</strong> tick 9, price 3586.70</p>
+            <p><strong>Trigger:</strong> OPEN_POSITION</p>
+            <p><strong>Parent DFID:</strong> <code>—...</code></p>
+        <p><em>No lifecycle events recorded.</em></p>
+            </div>
+
+            <div class="position-block">
+                <h4>POS_5 — ETH-USD</h4>
+                
+            <p><strong>Opened:</strong> tick 23, price 3323.47</p>
+            <p><strong>Trigger:</strong> OPEN_POSITION</p>
+            <p><strong>Parent DFID:</strong> <code>—...</code></p>
+        <p><em>No lifecycle events recorded.</em></p>
+            </div></div>
+    </details>
+
+    <p class="meta" style="margin-top: 2rem;">
+        Hierarchical DFID: News agent (parent) spawns Instrument Manager (child).
+        Full decision lifecycle and reasoning trace preserved for audit.
+    </p>
+</body>
+</html>

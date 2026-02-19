@@ -134,8 +134,19 @@ class EOAMOrchestrator:
     def clear_pending(self, dfid: str) -> None:
         self._pending.pop(dfid, None)
 
-    def spawn_position_agent(self, instrument: str, entry_price: float) -> Any:
-        """Create and register a new ROA PositionAgent from config template."""
+    def spawn_position_agent(
+        self,
+        instrument: str,
+        entry_price: float,
+        parent_dfid: Optional[str] = None,
+        parent_agent_id: Optional[str] = None,
+        news_headline: Optional[str] = None,
+    ) -> Any:
+        """Create and register a new ROA PositionAgent (instrument manager) from config template.
+
+        When spawned from NEWS_QUALIFIED, parent_dfid links to the news event DFID for
+        hierarchical DFID correlation.
+        """
         if not self._llm or not self._position_template:
             raise RuntimeError(
                 "Orchestrator.set_spawn_deps(llm, position_template) must be called before spawn"
@@ -152,7 +163,7 @@ class EOAMOrchestrator:
         contract_dict = dict(t.get("contract", {}))
         contract_dict["agent_id"] = f"position_{position_id}"
         contract_dict["authorized_instruments"] = [instrument]
-        contract_dict["parent_agent_id"] = contract_dict.get("parent_agent_id")
+        contract_dict["parent_agent_id"] = parent_agent_id or contract_dict.get("parent_agent_id")
         contract_dict["mission"] = t.get("mission", "")
         contract = ResponsibilityContract(**contract_dict)
         agent = ROAPositionAgent(
@@ -162,10 +173,14 @@ class EOAMOrchestrator:
             instrument=instrument,
             entry_price=entry_price,
         )
+        if parent_dfid:
+            setattr(agent, "_parent_dfid", parent_dfid)
+        if news_headline:
+            setattr(agent, "_news_headline", news_headline)
         self.register_agent(agent)
         log_with_dfid(
             logger, "", logging.INFO,
-            "Spawned %s for %s at %.2f",
-            agent.agent_id, instrument, entry_price,
+            "Spawned %s for %s at %.2f (parent_dfid=%s)",
+            agent.agent_id, instrument, entry_price, parent_dfid or "—",
         )
         return agent
