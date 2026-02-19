@@ -60,6 +60,7 @@ Big Tech providers are beginning to theorize about "Agent Runtimes" as proprieta
 
 * **No Vendor Lock-in:** Run your agents on AWS, Azure, GCP, or on-premise. The runtime logic is yours.
 * **Ready for Production:** Solves "Day Two" problems (loops, drifts, audit) that simple orchestration libraries ignore.
+* **Works with Existing Frameworks:** DIR is not a competitor to LangChain, AutoGen, or LangGraph — it's the execution shell. Wrap task-oriented agents in ROA contracts, inject mission boundaries, and enforce deterministic validation. *(See: [sample 12_langchain_roa_wrapper](samples/12_langchain_roa_wrapper/))*
 * **Language Agnostic Architecture:** While the reference implementation is Python, the patterns (Kernel/User separation, DFID) are universal.
 
 ## Core Concepts
@@ -157,6 +158,7 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 | 09 | `09_topology_a_eoam` | Topology A | Event-Oriented Agent Mesh |
 | 10 | `10_topology_b_sds` | Topology B | Sovereign Decision Stream |
 | 11 | `11_topology_c_dl_pci` | Topology C | Decision Ledger & Proof-Carrying Intents |
+| 12 | `12_langchain_roa_wrapper` | ROA + DIR | **Mission Injection**: LangChain ReAct → ROA; task-oriented → mission-oriented transformation |
 
 ### Business Use Cases (31+)
 
