@@ -1,16 +1,9 @@
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-02-13 | Last updated: 2026-02-20 </sup>
+
+---
+
 # Beyond Prompt Engineering: Building a Deterministic Runtime for Responsible AI Agents
 ### From experimental scripts to production-grade decision systems
-
-<sub>
-
-| | |
-|---|---|
-| Author | Artur Huk |
-| Repository | [decision-intelligence-runtime](https://github.com/huka81/decision-intelligence-runtime) |
-| Created | 2026-02-13 |
-| Last updated | 2026-02-20 |
-
-</sub>
 
 ![The Evolution of Agent Architecture](../../assets/images/1_roa_scratch.png)
 
