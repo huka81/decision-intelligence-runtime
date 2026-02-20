@@ -1018,6 +1018,26 @@ DIR guarantees that an agent cannot violate the *syntax* or *permissions* of the
 
 While DIR prevents accidents, it is not a silver bullet against targeted adversarial attacks. If a malicious actor successfully performs a specific prompt injection that forces the LLM to output a valid, authorized, but malicious Policy Proposal (e.g., "Sell at minimum allowable price"), limits may be respected but intent subverted. DIR is a layer of **Defense in Depth**[^12]; it must be complemented by upstream defenses like input sanitization and semantic monitoring.
 
+### 12.6 Scope of the OS Analogy
+
+The Kernel Space / User Space analogy used throughout DIR is **architectural, not mechanistic**. LLM inference does not work like a system call. Token sampling is not equivalent to instruction execution. The analogy is pedagogical, not literal.
+
+What the analogy *does* capture accurately:
+
+* **Privilege separation:** Unprivileged processes (agents) request actions; the privileged kernel validates and executes them.
+* **Failure isolation:** A crashing user process cannot corrupt kernel state — a hallucinating agent cannot corrupt authoritative system state.
+* **Access control:** User processes cannot self-grant permissions — agents cannot self-grant execution authority.
+
+What the analogy does *not* imply:
+
+* That DIR reduces the *probability* of agent failure — it does not. Agents will hallucinate regardless of runtime discipline.
+* That the mechanisms of OS protection rings map to LLM internals — they do not.
+* That deterministic validation eliminates probabilistic risk — it contains its *consequences*, not its *occurrence*.
+
+The goal of DIR is containment, not prevention. An agent can be wrong, loop, or hallucinate in User Space — the Kernel prevents those failures from propagating into irreversible side effects. This is analogous to how an OS kernel protects filesystem integrity from a buggy process, without making the process less buggy.
+
+A similar separation — arriving independently from delegation theory rather than systems engineering — is documented in Google DeepMind's *Intelligent AI Delegation* (arXiv:2602.11865, 2026), which converges on the same primitive: decoupling reasoning authority from execution authority.
+
 ## 13. Conclusion: From Chatbots to Systems
 
 We are currently in the "wild west" phase of Agentic AI. Developers are connecting powerful probabilistic models directly to sensitive APIs, relying on "prompt injection defense" as their only safety net.

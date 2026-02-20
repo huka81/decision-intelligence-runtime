@@ -5,7 +5,7 @@
 
 ## Introduction
 
-The "Decision Intelligence Runtime" (DIR) repository differs from traditional software libraries. It is not designed as a monolithic framework or a turnkey solution. Instead, it functions as a repository of context—a foundational structure for developers, architects, and AI coding agents to assist in designing robust decision-making systems.
+The "Decision Intelligence Runtime" (DIR) repository differs from traditional software libraries. It is not designed as a monolithic framework or a turnkey solution. Instead, it functions as a repository of context - a foundational structure for developers, architects, and AI coding agents to assist in designing robust decision-making systems.
 
 This document serves as a reflection on the design philosophy behind the repository. It explains why the executable code is intentionally minimal, emphasizing architectural patterns over extensive boilerplate. The goal is to align software architecture with the capabilities of modern AI-assisted development tools and the LLM-driven SDLC.
 
@@ -13,7 +13,7 @@ This document serves as a reflection on the design philosophy behind the reposit
 
 ## DIR: A Pattern with a Reference Implementation
 
-The Decision Intelligence Runtime (DIR) is designed primarily as a pattern—a methodology for structuring AI systems to be safe, auditable, and reliable. It draws inspiration from established architectural paradigms like Model-View-Controller (MVC) or CQRS, which provide structure rather than just tooling.
+The Decision Intelligence Runtime (DIR) is designed primarily as a pattern - a methodology for structuring AI systems to be safe, auditable, and reliable. It draws inspiration from established architectural paradigms like Model-View-Controller (MVC) or CQRS, which provide structure rather than just tooling.
 
 DIR provides the architectural constraints necessary for "AI Safety" by design. It defines the separation of probabilistic reasoning (AI logic) from deterministic execution (system logic). It introduces concepts like DecisionFlow IDs and Responsibility Contracts to ensure systems remain predictable.
 
@@ -35,7 +35,7 @@ DIR embraces a "minimal core" approach. It provides only the essential component
 
 As AI coding tools (like GitHub Copilot, Cursor, or Devin) become integrated into the workflow, the role of the developer evolves. Syntax creation becomes commoditized, while **Context Quality** becomes the primary determinant of system reliability.
 
-The developer moves towards the role of a "Context Coordinator," responsible for defining the boundaries and deterministic gates that govern the system. The documentation in this repository—such as the ROA Manifesto and topology definitions—serves a dual purpose: it educates human engineers and acts as a **system prompt** for AI agents.
+The developer moves towards the role of a "Context Coordinator," responsible for defining the boundaries and deterministic gates that govern the system. The documentation in this repository - such as the ROA Manifesto and topology definitions - serves a dual purpose: it educates human engineers and acts as a **system prompt** for AI agents.
 
 In this paradigm, Markdown files are not just passive documentation; they are active inputs that guide the generation of code. They define the "physics" of the system that the AI must adhere to.
 
@@ -65,5 +65,5 @@ This repository offers a "tailored suit" approach. It provides the foundational 
 
 The Decision Intelligence Runtime is more than a set of Python files; it is a pragmatic adaptation to how software is actually built today. It challenges the traditional notion that more code equals more value and instead emphasizes the importance of context, architecture, and responsibility.
 
-As you explore this repository, remember that its true value lies not in the lines of code but in the ideas, patterns, and principles it embodies. DIR is a tool for thinking, a guide for designing, and a foundation for building reliable AI systems. It is a repository of context—and in the AI era, context is code.
+As you explore this repository, remember that its true value lies not in the lines of code but in the ideas, patterns, and principles it embodies. DIR is a tool for thinking, a guide for designing, and a foundation for building reliable AI systems. It is a repository of context - and in the AI era, context act as a code.
 

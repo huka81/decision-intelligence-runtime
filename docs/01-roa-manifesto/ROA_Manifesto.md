@@ -441,6 +441,8 @@ Unless a proposal passes validation, it cannot move to execution.
 
 This is the system’s equivalent of brakes and safety interlocks.
 
+> **A note on model confidence and execution authority:** A high confidence score or low perplexity in the agent's output is not an execution boundary. In ROA, authority is defined by the Agent Registry and validated deterministically by the Runtime - not inferred from the agent's self-assessed certainty. An agent may be highly confident in a proposal that violates schema, exceeds its authority scope, references stale state, or breaches resource limits. The Runtime will reject it regardless. Confidence may inform escalation thresholds (see Section 3.1), but it never grants execution privilege. *Prompts are not permissions.*
+
 ---
 
 ## **5.2 Execution - Deterministic Action Handling**
@@ -1370,6 +1372,28 @@ Its limitations reflect the reality that we are still collectively figuring out:
 * and what architectures will allow AI to act reliably, not just speak fluently.
 
 The hope is that ROA offers a conceptual foundation that others can refine, extend, and challenge.
+
+---
+
+## **10.11 The Absence of Reinforcement Learning and Online Policy Improvement**
+
+ROA provides structure for *deploying* agent reasoning, but it does not improve the *quality* of that reasoning over time. There is no built-in mechanism for:
+
+* reinforcement learning from execution outcomes,
+* online policy improvement based on feedback signals,
+* latent coordination learned across agent interactions,
+* or model-level adaptation to system-specific behavior.
+
+This is a conscious scoping decision, not an oversight. ROA and RL address different layers of the same problem:
+
+* **RL** improves the quality of agent proposals — reducing hallucinations, stabilizing behavior, and adapting to domain-specific use cases.
+* **DIR** ensures that whatever the agent proposes, the system executes safely — regardless of proposal quality.
+
+Even an RL-trained agent can generate proposals that violate authority boundaries, reference stale state, trigger duplicate execution, or exceed resource limits. DIR's deterministic validation gates remain necessary at any level of agent quality.
+
+Notably, the ROA/DIR architecture is *RL-ready* by design. The Memory Context, Decision Trajectory, and DFID-linked audit trail constitute a structured experience record — the equivalent of an experience replay buffer. This data substrate can directly feed offline RL or supervised fine-tuning pipelines aimed at improving agent behavior over time.
+
+The integration of RL-based policy improvement — frameworks such as rLLM or ART — with the DIR runtime layer is an open and valuable research direction. The two approaches are complementary, not competing: RL makes agents smarter; DIR makes their deployment safe enough to trust in production.
 
 ---
 
