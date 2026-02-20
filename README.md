@@ -177,6 +177,7 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 - **[ROA Manifesto](./docs/01-roa-manifesto/ROA_Manifesto.md)** - Responsibility-oriented agent design.
 - **[DIR Architecture](./docs/02-decision-runtime/DIR_Architectural_Pattern.md)** - Runtime components and invariants.
 - **[Topologies](./docs/03-topologies/DIR_Topologies.md)** - Operational modes (EOAM, SDS, DL+PCI).
+- **[Context as Code](./docs/08-conclusion/Context_as_Code.md)** - The philosophy of treating documentation as a system prompt.
 
 ---
 
