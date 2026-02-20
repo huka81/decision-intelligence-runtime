@@ -62,6 +62,7 @@ Big Tech providers are beginning to theorize about "Agent Runtimes" as proprieta
 * **Ready for Production:** Solves "Day Two" problems (loops, drifts, audit) that simple orchestration libraries ignore.
 * **Works with Existing Frameworks:** DIR is not a competitor to LangChain, AutoGen, or LangGraph — it's the execution shell. Wrap task-oriented agents in ROA contracts, inject mission boundaries, and enforce deterministic validation. *(See: [sample 12_langchain_roa_wrapper](samples/12_langchain_roa_wrapper/))*
 * **Language Agnostic Architecture:** While the reference implementation is Python, the patterns (Kernel/User separation, DFID) are universal.
+* **Context as Code:** Documentation is the new compiler — Markdown files act as system prompts for AI agents. *([Context as Code](./docs/08-conclusion/Context_as_Code.md))*
 
 ## Core Concepts
 
@@ -134,7 +135,8 @@ decision-intelligence-runtime/
 │   ├── 00-introduction/      # DIR intro, framework mapping
 │   ├── 01-roa-manifesto/
 │   ├── 02-decision-runtime/
-│   └── 03-topologies/
+│   ├── 03-topologies/
+│   └── 08-conclusion/        # Context as Code philosophy
 └── assets/                   # Images, diagrams
 ```
 
