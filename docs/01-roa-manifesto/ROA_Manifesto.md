@@ -4,7 +4,7 @@
 **Author:** Artur Huk  
 **Repository:** https://github.com/huka81/decision-intelligence-runtime  
 **Created:** 2025-12-11
-**Last updated:** 2026-01-05
+**Last updated:** 2026-02-20
 
 
 ![Responsibility-Oriented Agents](../../assets/images/roa.png)
@@ -660,7 +660,7 @@ It allows a single conceptual role (e.g., “Position Manager”) to spawn many 
 
 ## **6.4 The Agent Registry - Identity, Lifecycle, Boundaries**
 
-To coordinate a dynamic, hierarchical system, ROA relies on a **Runtime Agent Registry**—a form of **Service Discovery**[^7].
+To coordinate a dynamic, hierarchical system, ROA relies on a **Runtime Agent Registry**-a form of **Service Discovery**[^7].
 
 The registry is not merely a directory of names; it serves as the **Capabilities Contract** for the entire system. It is the source of truth for:
 
@@ -1386,14 +1386,14 @@ ROA provides structure for *deploying* agent reasoning, but it does not improve 
 
 This is a conscious scoping decision, not an oversight. ROA and RL address different layers of the same problem:
 
-* **RL** improves the quality of agent proposals — reducing hallucinations, stabilizing behavior, and adapting to domain-specific use cases.
-* **DIR** ensures that whatever the agent proposes, the system executes safely — regardless of proposal quality.
+* **RL** improves the quality of agent proposals - reducing hallucinations, stabilizing behavior, and adapting to domain-specific use cases.
+* **DIR** ensures that whatever the agent proposes, the system executes safely - regardless of proposal quality.
 
 Even an RL-trained agent can generate proposals that violate authority boundaries, reference stale state, trigger duplicate execution, or exceed resource limits. DIR's deterministic validation gates remain necessary at any level of agent quality.
 
-Notably, the ROA/DIR architecture is *RL-ready* by design. The Memory Context, Decision Trajectory, and DFID-linked audit trail constitute a structured experience record — the equivalent of an experience replay buffer. This data substrate can directly feed offline RL or supervised fine-tuning pipelines aimed at improving agent behavior over time.
+Notably, the ROA/DIR architecture is *RL-ready* by design. The Memory Context, Decision Trajectory, and DFID-linked audit trail constitute a structured experience record - the equivalent of an experience replay buffer. This data substrate can directly feed offline RL or supervised fine-tuning pipelines aimed at improving agent behavior over time.
 
-The integration of RL-based policy improvement — frameworks such as rLLM or ART — with the DIR runtime layer is an open and valuable research direction. The two approaches are complementary, not competing: RL makes agents smarter; DIR makes their deployment safe enough to trust in production.
+The integration of RL-based policy improvement - frameworks such as rLLM or ART - with the DIR runtime layer is an open and valuable research direction. The two approaches are complementary, not competing: RL makes agents smarter; DIR makes their deployment safe enough to trust in production.
 
 ---
 

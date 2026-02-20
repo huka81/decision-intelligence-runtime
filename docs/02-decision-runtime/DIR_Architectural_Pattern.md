@@ -2,8 +2,9 @@
 ### Bridging the gap between probabilistic reasoning and deterministic action
 
 **Author:** Artur Huk  
-**Repository:** https://github.com/huka81/decision-intelligence-runtime  
-**Last updated:** 2026-01-05
+**Repository:** https://github.com/huka81/decision-intelligence-runtime
+**Created:** 2026-01-05
+**Last updated:** 2026-02-20
 
 
 ![Responsibility-Oriented Agents](../../assets/images/roa-dir.jpg)
@@ -13,7 +14,7 @@
 
 Most contemporary AI agent frameworks operate on a simple loop: observe, reason, and act. While effective for conversational tasks, this model fails in high-stakes environments where actions have financial or physical consequences. The core issue is architectural: Large Language Models (LLMs) are probabilistic engines, yet they are often given direct control over deterministic interfaces (APIs, databases).
 
-This paper introduces the **Decision Intelligence Runtime (DIR)**, an architectural pattern derived from two years of prototyping **AIvestor**, an autonomous algorithmic trading system. While born in the financial domain, DIR is not a trading-specific tool. It was designed to create a "Digital Investment Twin"—a system capable of understanding a user's strategy, executing transactions on their behalf, and rigorously documenting every decision. This pattern is equally applicable to any domain requiring auditable autonomy, from cloud infrastructure management to supply chain logistics.
+This paper introduces the **Decision Intelligence Runtime (DIR)**, an architectural pattern derived from two years of prototyping **AIvestor**, an autonomous algorithmic trading system. While born in the financial domain, DIR is not a trading-specific tool. It was designed to create a "Digital Investment Twin"-a system capable of understanding a user's strategy, executing transactions on their behalf, and rigorously documenting every decision. This pattern is equally applicable to any domain requiring auditable autonomy, from cloud infrastructure management to supply chain logistics.
 
 DIR applies principles from distributed systems orchestration (sagas, idempotency) and security (policy enforcement points) to the domain of AI agents. It proposes a strict separation of concerns where agents are responsible for **Reasoning** (proposing strategies) and a deterministic runtime is responsible for **Execution** (validating and applying those strategies).
 
@@ -166,7 +167,7 @@ DIR introduces an **Agent Registry**-a service discovery[^3] mechanism for intel
 >
 > This decomposition is conceptual, not necessarily physical, and exists to prevent semantic overloading of responsibility.*
 
-Beyond capability tracking, the Agent Registry facilitates **Resource Locking and Reservation**. In environments where multiple agents (e.g., concurrent PositionAgents) operate on a shared finite resource—such as a single capital pool or a limited API throughput—the Registry acts as a synchronization point. It allows the Runtime to grant temporary 'Reservation Locks' to a DecisionFlow.
+Beyond capability tracking, the Agent Registry facilitates **Resource Locking and Reservation**. In environments where multiple agents (e.g., concurrent PositionAgents) operate on a shared finite resource-such as a single capital pool or a limited API throughput-the Registry acts as a synchronization point. It allows the Runtime to grant temporary 'Reservation Locks' to a DecisionFlow.
 
 **Operational Resilience (Addressing SPOF):**
 The Registry is a critical component. To prevent it from becoming a Single Point of Failure (SPOF), the Runtime implements **Local Manifest Caching**.
@@ -262,7 +263,7 @@ In AI agents, the complexity lies not just in *where* the request went, but *how
 
 To solve this in AIvestor, I introduced the **DecisionFlow ID (DFID)**. Conceptually, this is a Correlation ID, but it spans a wider scope than a typical HTTP request. A DFID acts as a container for the entire lifecycle of a single intent.
 
-All operations—observations, prompts, reasonings, and execution results—are persisted in a database, tagged with this ID. In an event-driven implementation, this ID propagates through the Event Bus, allowing subscribers (like an Audit Service) to reconstruct the full causality chain.
+All operations-observations, prompts, reasonings, and execution results-are persisted in a database, tagged with this ID. In an event-driven implementation, this ID propagates through the Event Bus, allowing subscribers (like an Audit Service) to reconstruct the full causality chain.
 
 It binds together:
 
@@ -1025,18 +1026,18 @@ The Kernel Space / User Space analogy used throughout DIR is **architectural, no
 What the analogy *does* capture accurately:
 
 * **Privilege separation:** Unprivileged processes (agents) request actions; the privileged kernel validates and executes them.
-* **Failure isolation:** A crashing user process cannot corrupt kernel state — a hallucinating agent cannot corrupt authoritative system state.
-* **Access control:** User processes cannot self-grant permissions — agents cannot self-grant execution authority.
+* **Failure isolation:** A crashing user process cannot corrupt kernel state - a hallucinating agent cannot corrupt authoritative system state.
+* **Access control:** User processes cannot self-grant permissions - agents cannot self-grant execution authority.
 
 What the analogy does *not* imply:
 
-* That DIR reduces the *probability* of agent failure — it does not. Agents will hallucinate regardless of runtime discipline.
-* That the mechanisms of OS protection rings map to LLM internals — they do not.
-* That deterministic validation eliminates probabilistic risk — it contains its *consequences*, not its *occurrence*.
+* That DIR reduces the *probability* of agent failure - it does not. Agents will hallucinate regardless of runtime discipline.
+* That the mechanisms of OS protection rings map to LLM internals - they do not.
+* That deterministic validation eliminates probabilistic risk - it contains its *consequences*, not its *occurrence*.
 
-The goal of DIR is containment, not prevention. An agent can be wrong, loop, or hallucinate in User Space — the Kernel prevents those failures from propagating into irreversible side effects. This is analogous to how an OS kernel protects filesystem integrity from a buggy process, without making the process less buggy.
+The goal of DIR is containment, not prevention. An agent can be wrong, loop, or hallucinate in User Space - the Kernel prevents those failures from propagating into irreversible side effects. This is analogous to how an OS kernel protects filesystem integrity from a buggy process, without making the process less buggy.
 
-A similar separation — arriving independently from delegation theory rather than systems engineering — is documented in Google DeepMind's *Intelligent AI Delegation* (arXiv:2602.11865, 2026), which converges on the same primitive: decoupling reasoning authority from execution authority.
+A similar separation - arriving independently from delegation theory rather than systems engineering - is documented in Google DeepMind's *Intelligent AI Delegation* (arXiv:2602.11865, 2026), which converges on the same primitive: decoupling reasoning authority from execution authority.
 
 ## 13. Conclusion: From Chatbots to Systems
 
@@ -1047,7 +1048,7 @@ This is unsustainable.
 As we move from building chatbots to building autonomous systems, we must stop treating AI as a magic box and start treating it as an untrusted component in a critical system.
 **The Decision Intelligence Runtime (DIR)** is an architectural response to this reality. By separating **Reasoning** (the Agent) from **Execution** (the Runtime), and enforcing strict invariants like **Idempotency**, **Temporal Validity**, and **Auditability**, we can build systems that are not just "smart," but also safe, reliable, and accountable.
 
-AIvestor proved that an LLM can trade stocks without going broke—but only when it is put in a straightjacket of deterministic engineering.
+AIvestor proved that an LLM can trade stocks without going broke-but only when it is put in a straightjacket of deterministic engineering.
 
 ## 14. Glossary
 
