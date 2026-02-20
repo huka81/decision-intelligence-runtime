@@ -14,7 +14,7 @@ Unlike purely theoretical frameworks, DIR provides a concrete, executable implem
 
 ### Origins
 
-DIR emerged from production constraints in the **AIvestor** automated trading system, where the cost of reasoning failures is measured in capital loss. The patterns documented here are not theoretical—they represent battle-tested solutions to "Day Two" failure modes: state drift, non-idempotent operations, TOCTOU vulnerabilities, and the collapse of accountability in multi-agent systems.
+DIR emerged from production constraints in the **AIvestor** automated trading system, where the cost of reasoning failures is measured in capital loss. The patterns documented here are not theoretical-they represent battle-tested solutions to "Day Two" failure modes: state drift, non-idempotent operations, TOCTOU vulnerabilities, and the collapse of accountability in multi-agent systems.
 
 This repository contains the architectural concepts, formal specifications, and reference implementations of the DIR framework.
 
@@ -30,7 +30,7 @@ The independent convergence is notable:
 * **Google's "Auditability"** ≈ **DecisionFlow ID (DFID)**
 * **Google's "Permission Handling"** ≈ **Decision Integrity Module (DIM)**
 
-This alignment reinforces that these patterns are not vendor-specific abstractions—they are architectural necessities for production-grade agentic systems.
+This alignment reinforces that these patterns are not vendor-specific abstractions-they are architectural necessities for production-grade agentic systems.
 
 ### Industry Validation: Google DeepMind vs. DIR Implementation
 
@@ -52,17 +52,17 @@ While Google's *Intelligent AI Delegation* (2026) outlines the *theoretical* req
 
 If you are new to DIR/ROA, begin with the introduction article. It explains the core motivation ("Day Two" failures in production systems), the Kernel Space vs. User Space architectural boundary, and why traditional agentic loops are insufficient for high-stakes environments.
 
-**[Read: Beyond Prompt Engineering — Building a Deterministic Runtime for Responsible AI Agents](./docs/00-introduction/DIR-introduction.md)**
+**[Read: Beyond Prompt Engineering - Building a Deterministic Runtime for Responsible AI Agents](./docs/00-introduction/DIR-introduction.md)**
 
 ## Why use DIR today?
 
-Big Tech providers are beginning to theorize about "Agent Runtimes" as proprietary cloud services. **DIR is the first open-source implementation of the Zero Trust Agents philosophy** — agents propose, the runtime verifies; no implicit trust in LLM output.
+Big Tech providers are beginning to theorize about "Agent Runtimes" as proprietary cloud services. **DIR is the first open-source implementation of the Zero Trust Agents philosophy** - agents propose, the runtime verifies; no implicit trust in LLM output.
 
 * **No Vendor Lock-in:** Run your agents on AWS, Azure, GCP, or on-premise. The runtime logic is yours.
 * **Ready for Production:** Solves "Day Two" problems (loops, drifts, audit) that simple orchestration libraries ignore.
-* **Works with Existing Frameworks:** DIR is not a competitor to LangChain, AutoGen, or LangGraph — it's the execution shell. Wrap task-oriented agents in ROA contracts, inject mission boundaries, and enforce deterministic validation. *(See: [sample 12_langchain_roa_wrapper](samples/12_langchain_roa_wrapper/))*
+* **Works with Existing Frameworks:** DIR is not a competitor to LangChain, AutoGen, or LangGraph - it's the execution shell. Wrap task-oriented agents in ROA contracts, inject mission boundaries, and enforce deterministic validation. *(See: [sample 12_langchain_roa_wrapper](samples/12_langchain_roa_wrapper/))*
 * **Language Agnostic Architecture:** While the reference implementation is Python, the patterns (Kernel/User separation, DFID) are universal.
-* **Context as Code:** Documentation is the new compiler — Markdown files act as system prompts for AI agents. *([Context as Code](./docs/08-conclusion/Context_as_Code.md))*
+* **Context as Code:** Documentation is the new compiler - Markdown files act as system prompts for AI agents. *([Context as Code](./docs/08-conclusion/Context_as_Code.md))*
 
 ## Core Concepts
 
@@ -104,8 +104,8 @@ A pluralistic approach to agent orchestration. No single execution model satisfi
 
 ## Prerequisites
 - **Python 3.12+**
-- **SQLite3** (optional — only for samples that use persistent storage)
-- **Ollama** (optional — for local LLM inference in samples such as `31_finance_trading`; use `USE_MOCK_LLM=1` to run without it)
+- **SQLite3** (optional - only for samples that use persistent storage)
+- **Ollama** (optional - for local LLM inference in samples such as `31_finance_trading`; use `USE_MOCK_LLM=1` to run without it)
 
 ## Installation
 
@@ -115,17 +115,17 @@ A pluralistic approach to agent orchestration. No single execution model satisfi
 ```bash
 pip install -e .
 ```
-*This installs the `dir_runtime` package (source in `src/dir_runtime`), making it available to all sample implementations.*
+*This installs the `dir` package (source in `src/dir`), making it available to all sample implementations.*
 
 ## Repository Structure
 
 ```text
 decision-intelligence-runtime/
 ├── README.md
-├── pyproject.toml            # pip install -e . installs dir_runtime
+├── pyproject.toml            # pip install -e . installs dir
 ├── requirements.txt          # Shared dependencies
 ├── src/
-│   └── dir_runtime/          # Core framework (DFID, DIM, EventBus, Context, etc.)
+│   └── dir/          # Core framework (DFID, DIM, EventBus, Context, etc.)
 ├── samples/                  # Reference implementations (01–11 mechanics, 31+ use cases)
 │   ├── README.md             # Sample catalog and run instructions
 │   ├── 01_roa_agent/ … 12_langchain_roa_wrapper/
@@ -136,7 +136,7 @@ decision-intelligence-runtime/
 │   ├── 01-roa-manifesto/
 │   ├── 02-decision-runtime/
 │   ├── 03-topologies/
-│   └── 08-conclusion/        # Context as Code philosophy
+│   └── 08-conclusion/        # Context as Code concept
 └── assets/                   # Images, diagrams
 ```
 
@@ -162,7 +162,7 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 | 10 | `10_topology_b_sds` | Topology B | Sovereign Decision Stream |
 | 11 | `11_topology_c_dl_pci` | Topology C | Decision Ledger & Proof-Carrying Intents |
 | 12 | `12_langchain_roa_wrapper` | ROA + DIR | **Mission Injection**: LangChain ReAct → ROA; task-oriented → mission-oriented transformation |
-| 88 | `88_meta_context_engineering` | Meta-Sample | **Meta-Context Engineering**: System Prompt Toolkit — Markdown as compiler for AI; generates Flight Delay Refund (Topology C) |
+| 88 | `88_meta_context_engineering` | Meta-Sample | **Meta-Context Engineering**: System Prompt Toolkit - Markdown as compiler for AI; generates Flight Delay Refund (Topology C) |
 
 ### Business Use Cases (31+)
 
@@ -179,13 +179,13 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 - **[ROA Manifesto](./docs/01-roa-manifesto/ROA_Manifesto.md)** - Responsibility-oriented agent design.
 - **[DIR Architecture](./docs/02-decision-runtime/DIR_Architectural_Pattern.md)** - Runtime components and invariants.
 - **[Topologies](./docs/03-topologies/DIR_Topologies.md)** - Operational modes (EOAM, SDS, DL+PCI).
-- **[Context as Code](./docs/08-conclusion/Context_as_Code.md)** - The philosophy of treating documentation as a system prompt.
+- **[Context as Code](./docs/08-conclusion/Context_as_Code.md)** - Treating documentation as a system prompt.
 
 ---
 
 ## Author
 
-**Artur Huk** — [LinkedIn](https://www.linkedin.com/in/arturhuk/)
+**Artur Huk** - [LinkedIn](https://www.linkedin.com/in/arturhuk/)
 
 ---
 *This repository represents an evolving architectural framework derived from production constraints in high-stakes AI decision systems.*
