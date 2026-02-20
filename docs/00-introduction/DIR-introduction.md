@@ -1,18 +1,24 @@
 # Beyond Prompt Engineering: Building a Deterministic Runtime for Responsible AI Agents
+### From experimental scripts to production-grade decision systems
 
-**Author:** Artur Huk
-**Date:** 2026-02-13
+<sub>
 
----
+| | |
+|---|---|
+| Author | Artur Huk |
+| Repository | [decision-intelligence-runtime](https://github.com/huka81/decision-intelligence-runtime) |
+| Created | 2026-02-13 |
+| Last updated | 2026-02-20 |
+
+</sub>
+
+![The Evolution of Agent Architecture](../../assets/images/1_roa_scratch.png)
 
 ## Introduction: The "Day Two" Challenge
 
 The AI revolution is here, but the way we think about AI agents is fundamentally flawed. Too often, we conflate large language models (LLMs) with fully autonomous systems, as if a model's ability to generate coherent text or execute API calls makes it a complete solution. This misconception ignores a critical truth: an LLM is not an agent. It is an engine - powerful, flexible, and capable of remarkable feats of reasoning - but an engine alone cannot drive a car.
 
 Without a chassis, brakes, and a safety cage, an engine is just a drivetrain bolted to a workbench. It can spin its wheels, but it cannot steer, stop, or ensure safety. This is the state of most "AI agent" systems today: impressive prototypes that demonstrate potential but lack the infrastructure to operate reliably in the real world.
-
-![The Hook](../../assets/images/1_roa_scratch.png)
-*Figure 1. The evolution of agent architecture: An engine alone does not make a vehicle. Moving from raw models (Left) to engineered systems (Right).*
 
 On Day One, the demo dazzles. The agent reasons about context, proposes actions, and executes them with apparent intelligence. Stakeholders are impressed. The future seems bright.
 

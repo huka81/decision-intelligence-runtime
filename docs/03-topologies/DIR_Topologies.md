@@ -1,4 +1,12 @@
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-01-15 | Last updated: 2026-02-20 </sup>
+
+---
+
 # Decision Intelligence Topologies: Scaling Auditable Autonomy
+![Decision Intelligence Topologies](../../assets/images/3_topologies_scratch.png)
+
+### Agent orchestration patterns for complex decision systems
+
 
 ## 0. Abstract
 
@@ -8,9 +16,9 @@ The transition from experimental AI scripts to production-grade decision systems
 
 This whitepaper introduces **Decision Intelligence Topologies**, a pluralistic approach to agent orchestration. We define three distinct operational modes:
 
-1.  **Topology A: Event-Oriented Agent Mesh (EOAM)** — A decentralized pattern for "Organizational Choreography," where responsibility-bound agents collaborate through a reactive event substrate to form a "Digital Twin" of professional decision-making.
-2.  **Topology B: Sovereign Decision Stream (SDS)** — A linear, high-velocity pattern for "Atomic Execution," leveraging **Constrained Decoding** to achieve **Syntactically Bound by Design** operations at machine speeds.
-3.  **Topology C: Decision Ledger (DL+PCI)** — The pattern for "Formal Verification & Absolute Audit," focusing on the integrity of the intent artifact rather than the behavior of the agent.
+1.  **Topology A: Event-Oriented Agent Mesh (EOAM)** - A decentralized pattern for "Organizational Choreography," where responsibility-bound agents collaborate through a reactive event substrate to form a "Digital Twin" of professional decision-making.
+2.  **Topology B: Sovereign Decision Stream (SDS)** - A linear, high-velocity pattern for "Atomic Execution," leveraging **Constrained Decoding** to achieve **Syntactically Bound by Design** operations at machine speeds.
+3.  **Topology C: Decision Ledger (DL+PCI)** - The pattern for "Formal Verification & Absolute Audit," focusing on the integrity of the intent artifact rather than the behavior of the agent.
 
 By selecting the appropriate topology for the specific decision class, verified by **DecisionFlow IDs (DFID)** and governed by the **Decision Intelligence Runtime**, organizations can build systems that are scalable, auditable, and resilient to the non-deterministic nature of Large Language Models.
 
@@ -18,7 +26,7 @@ By selecting the appropriate topology for the specific decision class, verified 
 
 ## 1. The Case for Architectural Pluralism
 
-In the early phases of AI adoption, engineers often seek a "Universal Agent Architecture"—a single loop to rule them all. However, in production environments like the **AIvestor** financial system, this monolithic approach fails. The latency required to "think fast" (scalping a price inefficiency) is incompatible with the comprehensive context required to "think slow" (rebalancing a portfolio against geopolitical risk).
+In the early phases of AI adoption, engineers often seek a "Universal Agent Architecture"-a single loop to rule them all. However, in production environments like the **AIvestor** financial system, this monolithic approach fails. The latency required to "think fast" (scalping a price inefficiency) is incompatible with the comprehensive context required to "think slow" (rebalancing a portfolio against geopolitical risk).
 
 To solve this, we decouple the **Identity Layer** from the **Topology Layer**:
 
@@ -96,7 +104,7 @@ EOAM is a decentralized architectural pattern where autonomous agents collaborat
 
 EOAM replaces the central "Manager" with **Scope-Based Choreography**. Agents do not wait for commands; they are reactive entities that monitor the event bus for **Observations** or **Triggers** that fall within their defined **Responsibility Contract**.
 
-*   **Autonomy through Subscription:** Agents subscribe to specific metadata—such as a ticker symbol or risk domain—defined in the **Agent Registry**.
+*   **Autonomy through Subscription:** Agents subscribe to specific metadata-such as a ticker symbol or risk domain-defined in the **Agent Registry**.
 *   **Decentralized Intelligence:** When a new signal (e.g., a news event) enters the mesh, all relevant agents (Risk, Sentiment, Strategy) are activated in parallel.
 *   **Inversion of Control:** The Runtime does not "call" agents; it emits a context-rich event, and agents "claim" the responsibility to reason.
 
@@ -258,7 +266,7 @@ flowchart LR
 
 While the **Event-Oriented Agent Mesh (EOAM)** excels at multi-perspective coordination and organizational "Digital Twins," it introduces significant latency and computational overhead due to its reliance on parallel orchestration and arbitration.
 
-The **Sovereign Decision Stream (SDS)** is an alternative architectural pattern designed for high-frequency, low-latency, and cost-efficient decision-making. SDS treats the decision process as a "straight-line" function rather than a choreographic dialogue. It achieves structural safety not through post-generation validation (the "Audit" model), but through **Constrained Decoding**—embedding the deterministic rules of the **Decision Intelligence Runtime (DIR)** directly into the probabilistic sampling of the Large Language Model.
+The **Sovereign Decision Stream (SDS)** is an alternative architectural pattern designed for high-frequency, low-latency, and cost-efficient decision-making. SDS treats the decision process as a "straight-line" function rather than a choreographic dialogue. It achieves structural safety not through post-generation validation (the "Audit" model), but through **Constrained Decoding**-embedding the deterministic rules of the **Decision Intelligence Runtime (DIR)** directly into the probabilistic sampling of the Large Language Model.
 
 ### 3.1 The SDS Philosophy: "Syntactically Bound by Design"
 
@@ -275,7 +283,7 @@ The cornerstone of SDS is the use of grammars (e.g., via libraries like *Outline
 
 #### 3.1.2 The "Decision Atom": Atomic Context
 
-In SDS, there is no emergent context or asynchronous message passing. The **Context Compiler** assembles an "Atom"—a cryptographically signed package containing:
+In SDS, there is no emergent context or asynchronous message passing. The **Context Compiler** assembles an "Atom"-a cryptographically signed package containing:
 
 1.  **The Mission** (from ROA).
 2.  **The Constraints** (from DIR Hard Gates).

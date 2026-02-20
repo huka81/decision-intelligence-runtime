@@ -1,13 +1,11 @@
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-01-05 | Last updated: 2026-02-20 </sup>
+
+---
+
 # Decision Intelligence Runtime (DIR): An Architectural Pattern for Safe AI Execution
+![DIR](../../assets/images/2_dir_roa_scratch.png)
+
 ### Bridging the gap between probabilistic reasoning and deterministic action
-
-**Author:** Artur Huk  
-**Repository:** https://github.com/huka81/decision-intelligence-runtime
-**Created:** 2026-01-05
-**Last updated:** 2026-02-20
-
-
-![Responsibility-Oriented Agents](../../assets/images/roa-dir.jpg)
 
 
 ## 0. Abstract

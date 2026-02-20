@@ -1,13 +1,11 @@
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2025-12-11 | Last updated: 2026-02-20 </sup>
+
+---
+
 # Responsibility-Oriented Agents (ROA) Manifesto
+![The Evolution of Agent Architecture](../../assets/images/1_roa_scratch.png)
+
 ### An architectural pattern for reliable, accountable AI decision systems
-
-**Author:** Artur Huk  
-**Repository:** https://github.com/huka81/decision-intelligence-runtime  
-**Created:** 2025-12-11
-**Last updated:** 2026-02-20
-
-
-![Responsibility-Oriented Agents](../../assets/images/roa.png)
 
 # **0. Abstract**
 

@@ -1,7 +1,11 @@
-# Context as Code: The Philosophy Behind the Repository
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-02-19 | Last updated: 2026-02-20 </sup>
 
-![The Hook](../../assets/images/4_form_scratch.png)
-*Figure 1. Context shaping Code: A casting mold (Architecture) gives form to fluid mechanical matter (AI Code), illustrating how rigid constraints define the behavior of generative models.*
+---
+
+# Context as Code: The Philosophy Behind the Repository
+![Context as Code](../../assets/images/4_form_scratch.png)
+
+### Why architecture defines behavior in AI systems
 
 ## Introduction
 
