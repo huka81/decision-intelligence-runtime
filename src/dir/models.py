@@ -42,6 +42,11 @@ class ResponsibilityContract(BaseModel):
         default_factory=lambda: ["uncertainty_threshold", "authority_breach", "risk_limit_exceeded"]
     )
     parent_agent_id: Optional[str] = Field(default=None, description="Parent agent for hierarchy")
+    # Wake-up Predicates (DIR Topologies §2.3)
+    wake_up_threshold_pct: float = Field(
+        default=0.5,
+        description="Minimum price change (%) to wake up agent - prevents Token Burn on minor signals"
+    )
 
 
 # =============================================================================

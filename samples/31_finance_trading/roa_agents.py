@@ -377,7 +377,7 @@ class ROAInstrumentAgent(ROAAgentLLMBase):
 
 
 class ROAPositionAgent(ROAAgentLLMBase):
-    """Position-level ROA agent: manages one position, scope = instrument."""
+    """Position-level ROA agent: manages one position with USD exposure tracking."""
 
     def __init__(
         self,
@@ -386,11 +386,19 @@ class ROAPositionAgent(ROAAgentLLMBase):
         position_id: str,
         instrument: str,
         entry_price: float,
+        initial_exposure: float,
+        quantity: float,
     ):
         super().__init__(contract, llm)
         self.position_id = position_id
         self.instrument = instrument
         self.entry_price = entry_price
+        self.initial_exposure = initial_exposure
+        self.current_exposure = initial_exposure  # Reduced by REDUCE policy
+        self.quantity = quantity  # Number of units/coins
+        self._reduce_pct = 0.5  # Default 50% reduction
+        self._max_drawdown_limit = getattr(contract, 'max_drawdown_limit', 0.02) or 0.02  # 2% stop loss
+        self._take_profit_pct = getattr(contract, 'take_profit_pct', 0.015) or 0.015  # 1.5% take profit
 
     @property
     def scope(self) -> Optional[str]:
@@ -404,28 +412,107 @@ class ROAPositionAgent(ROAAgentLLMBase):
     ) -> None:
         price = context.get("price", self.entry_price)
         pnl_pct = (price - self.entry_price) / self.entry_price if self.entry_price else 0.0
+        unrealized_pnl_usd = self.quantity * (price - self.entry_price)
         proposal.params["position_id"] = self.position_id
         proposal.params["instrument"] = self.instrument
         proposal.params["entry_price"] = self.entry_price
+        proposal.params["initial_exposure"] = self.initial_exposure
+        proposal.params["current_exposure"] = self.current_exposure
+        proposal.params["quantity"] = self.quantity
         proposal.params["price"] = price
         proposal.params["pnl_pct"] = pnl_pct
+        proposal.params["unrealized_pnl_usd"] = unrealized_pnl_usd
 
     def on_observation(self, payload: Dict[str, Any]) -> Optional[PolicyProposal]:
         dfid = payload.get("dfid", new_dfid())
         price = payload.get("price", self.entry_price)
         pnl_pct = (price - self.entry_price) / self.entry_price if self.entry_price else 0.0
+        unrealized_pnl_usd = self.quantity * (price - self.entry_price)
+        exposure_pct = self.current_exposure / self.initial_exposure if self.initial_exposure else 0.0
+        
         context = {
             "instrument": payload.get("instrument", self.instrument),
             "price": price,
             "trend": payload.get("trend", "neutral"),
             "volatility": payload.get("volatility"),
             "entry_price": self.entry_price,
+            "initial_exposure": self.initial_exposure,
+            "current_exposure": self.current_exposure,
+            "quantity": self.quantity,
             "pnl_pct": pnl_pct,
+            "unrealized_pnl_usd": unrealized_pnl_usd,
+            "exposure_pct": exposure_pct,
             "position_id": self.position_id,
             "dfid": dfid,
         }
+        
+        # Check auto-close conditions BEFORE running decision cycle
+        auto_close_reason = None
+        auto_close_policy = "CLOSE"
+        
+        # Condition 1: Exposure dropped to near-zero (after multiple REDUCE)
+        if self.current_exposure < 1.0:  # $1 threshold
+            auto_close_reason = "EXPOSURE_ZERO"
+        
+        # Condition 2: Take profit threshold hit
+        elif pnl_pct >= self._take_profit_pct:
+            auto_close_reason = "TAKE_PROFIT"
+            auto_close_policy = "TAKE_PROFIT"
+        
+        # Condition 3: Stop loss / Max drawdown exceeded
+        elif pnl_pct <= -self._max_drawdown_limit:
+            auto_close_reason = "STOP_LOSS"
+        
+        # If auto-close triggered, override decision cycle
+        if auto_close_reason:
+            proposal = PolicyProposal(
+                dfid=dfid,
+                agent_id=self.agent_id,
+                policy_kind=auto_close_policy,
+                justification=f"Auto-{auto_close_reason}: P&L={pnl_pct*100:.2f}% (${unrealized_pnl_usd:.2f}). "
+                             f"Entry=${self.entry_price:.2f}, Current=${price:.2f}. "
+                             f"Thresholds: TP=+{self._take_profit_pct*100:.1f}%, SL=-{self._max_drawdown_limit*100:.1f}%",
+                confidence=1.0,
+                params={
+                    "position_id": self.position_id,
+                    "instrument": self.instrument,
+                    "close_reason": auto_close_reason,
+                    "explain_narrative": f"Position auto-closed: {auto_close_reason}. Final P&L: {pnl_pct*100:.2f}% (${unrealized_pnl_usd:.2f}).",
+                },
+            )
+            self._enrich_proposal_params(proposal, context)
+            log_with_dfid(
+                logger, dfid, logging.WARNING,
+                "[%s] === AUTO-%s === P&L: %.2f%% ($%.2f) | Entry: $%.2f → Exit: $%.2f",
+                self.agent_id, auto_close_reason, pnl_pct*100, unrealized_pnl_usd, self.entry_price, price,
+            )
+            return proposal
+        
+        # Normal decision cycle
         result = self.run_decision_cycle(dfid, context)
         if isinstance(result, PolicyProposal):
+            # If agent decided to REDUCE, update exposure and quantity
+            if result.policy_kind == "REDUCE":
+                reduce_pct = 0.5  # 50% reduction
+                old_exposure = self.current_exposure
+                old_quantity = self.quantity
+                self.current_exposure *= (1 - reduce_pct)
+                self.quantity *= (1 - reduce_pct)
+                result.params["reduce_pct"] = reduce_pct
+                result.params["old_exposure"] = old_exposure
+                result.params["old_quantity"] = old_quantity
+                result.params["new_exposure"] = self.current_exposure
+                result.params["new_quantity"] = self.quantity
+                log_with_dfid(
+                    logger, dfid, logging.INFO,
+                    "[%s] REDUCE executed: exposure $%.2f -> $%.2f (%.0f%%), quantity %.6f -> %.6f",
+                    self.agent_id, old_exposure, self.current_exposure, reduce_pct*100,
+                    old_quantity, self.quantity,
+                )
+            # Store close_reason in params for CLOSE policy
+            elif result.policy_kind == "CLOSE":
+                result.params["close_reason"] = "AGENT_DECISION"
+            
             return result
         return None
 

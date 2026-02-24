@@ -61,6 +61,11 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# Simulation databases (31_finance_trading)
+simulation_data.db
+test_*.db
+*.db-journal
+
 # Flask stuff:
 instance/
 .webassets-cache

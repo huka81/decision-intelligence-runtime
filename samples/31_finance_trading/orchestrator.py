@@ -35,6 +35,8 @@ class EOAMOrchestrator:
     Orchestrates EOAM: register agents, emit observation/news, collect proposals,
     arbitrate by priority_matrix (policy_kind -> priority), spawn position agents.
     DIM validation is done by the caller (run.py).
+    
+    Implements Wake-up Predicates (DIR Topologies §2.3) for Signal Suppression.
     """  # noqa: E501
 
     bus: EventBus
@@ -42,9 +44,13 @@ class EOAMOrchestrator:
     _pending: Dict[str, List[PolicyProposal]] = field(default_factory=dict)
     _position_agents: List[Any] = field(default_factory=list)
     _instrument_agents: Dict[str, Any] = field(default_factory=dict)
+    _agent_handlers: Dict[str, Any] = field(default_factory=dict)  # agent_id -> handler for unsubscribe
     _next_position_id: int = 1
     _llm: Optional[Any] = field(default=None)
     _position_template: Optional[Dict[str, Any]] = field(default=None)
+    # Wake-up Predicates: Track last prices for signal suppression (DIR Topologies §2.3)
+    _last_prices: Dict[str, float] = field(default_factory=dict)  # scope -> last_price
+    _suppressed_signals: int = field(default=0)  # Counter for logging
 
     def __post_init__(self) -> None:
         if not self.priority_matrix:
@@ -66,9 +72,53 @@ class EOAMOrchestrator:
         self._position_template = position_template
 
     def register_agent(self, agent: ObservationAgent) -> None:
-        """Subscribe agent to OBSERVATION (scope-based)."""
+        """Subscribe agent to OBSERVATION (scope-based) with Wake-up Predicates (DIR Topologies §2.3).
+        
+        Implements Signal Suppression: Only invoke agent if price change exceeds
+        wake_up_threshold_pct to prevent "Token Burn" on minor signals.
+        """
 
         def handler(payload: Dict[str, Any]) -> None:
+            # Wake-up Predicate: Check if price delta exceeds threshold (DIR Topologies §2.3)
+            scope = agent.scope
+            current_price = payload.get("price")
+            
+            # Get wake_up_threshold_pct from agent's contract (default 0.5%)
+            wake_up_threshold_pct = 0.5  # Default
+            if hasattr(agent, "contract") and hasattr(agent.contract, "wake_up_threshold_pct"):
+                wake_up_threshold_pct = agent.contract.wake_up_threshold_pct
+            
+            # Check if signal should be suppressed
+            if scope and current_price is not None:
+                last_price = self._last_prices.get(scope)
+                
+                if last_price is not None:
+                    price_change_pct = abs((current_price - last_price) / last_price * 100)
+                    
+                    if price_change_pct < wake_up_threshold_pct:
+                        # Signal suppressed - price change too small
+                        self._suppressed_signals += 1
+                        dfid = payload.get("dfid", "unknown")
+                        if self._suppressed_signals % 10 == 1:  # Log every 10th suppression
+                            log_with_dfid(
+                                logger, dfid, logging.DEBUG,
+                                "Wake-up Predicate: Signal SUPPRESSED for %s (Δ%.3f%% < %.1f%% threshold) [%d total]",
+                                agent.agent_id, price_change_pct, wake_up_threshold_pct, self._suppressed_signals,
+                            )
+                        return  # Suppress signal - don't invoke agent
+                    else:
+                        # Signal passes - log activation
+                        dfid = payload.get("dfid", "unknown")
+                        log_with_dfid(
+                            logger, dfid, logging.DEBUG,
+                            "Wake-up Predicate: Agent %s ACTIVATED (Δ%.3f%% >= %.1f%%)",
+                            agent.agent_id, price_change_pct, wake_up_threshold_pct,
+                        )
+                
+                # Update last price for this scope
+                self._last_prices[scope] = current_price
+            
+            # Invoke agent (signal not suppressed or first observation)
             prop = agent.on_observation(payload)
             if prop:
                 dfid = payload.get("dfid", "unknown")
@@ -77,10 +127,14 @@ class EOAMOrchestrator:
                 self._pending[dfid].append(prop)
 
         self.bus.subscribe(EventType.OBSERVATION, handler, scope=agent.scope)
-        if hasattr(agent, "instrument"):
-            self._instrument_agents[agent.instrument] = agent
-        elif hasattr(agent, "position_id"):
+        # Store handler for later unsubscription
+        self._agent_handlers[agent.agent_id] = handler
+        # Position agents (have position_id) go to _position_agents
+        # Instrument agents (have instrument but NO position_id) go to _instrument_agents
+        if hasattr(agent, "position_id"):
             self._position_agents.append(agent)
+        elif hasattr(agent, "instrument"):
+            self._instrument_agents[agent.instrument] = agent
 
     def register_news_agent(self, agent: ObservationAgent) -> None:
         """Subscribe agent to NEWS."""
@@ -138,14 +192,28 @@ class EOAMOrchestrator:
         self,
         instrument: str,
         entry_price: float,
+        initial_exposure: float,
+        quantity: float,
         parent_dfid: Optional[str] = None,
         parent_agent_id: Optional[str] = None,
         news_headline: Optional[str] = None,
     ) -> Any:
-        """Create and register a new ROA PositionAgent (instrument manager) from config template.
+        """Create and register a new ROA PositionAgent with exposure tracking.
 
         When spawned from NEWS_QUALIFIED, parent_dfid links to the news event DFID for
         hierarchical DFID correlation.
+        
+        Args:
+            instrument: Trading instrument (e.g., "BTC-USD")
+            entry_price: Entry price at spawn time
+            initial_exposure: USD capital allocated to this position
+            quantity: Number of units/coins (initial_exposure / entry_price)
+            parent_dfid: Parent news event DFID
+            parent_agent_id: Parent agent ID (typically "news_scorer")
+            news_headline: News headline that triggered spawn
+        
+        Returns:
+            Spawned ROAPositionAgent instance
         """
         if not self._llm or not self._position_template:
             raise RuntimeError(
@@ -172,6 +240,8 @@ class EOAMOrchestrator:
             position_id=position_id,
             instrument=instrument,
             entry_price=entry_price,
+            initial_exposure=initial_exposure,
+            quantity=quantity,
         )
         if parent_dfid:
             setattr(agent, "_parent_dfid", parent_dfid)
@@ -180,7 +250,50 @@ class EOAMOrchestrator:
         self.register_agent(agent)
         log_with_dfid(
             logger, "", logging.INFO,
-            "Spawned %s for %s at %.2f (parent_dfid=%s)",
-            agent.agent_id, instrument, entry_price, parent_dfid or "—",
+            "Spawned %s for %s @ $%.2f, exposure=$%.2f, quantity=%.6f (parent_dfid=%s)",
+            agent.agent_id, instrument, entry_price, initial_exposure, quantity, parent_dfid or "—",
         )
         return agent
+    
+    def cleanup_position_agent(self, agent_id: str) -> None:
+        """Unsubscribe and remove a position agent (on CLOSE).
+        
+        Args:
+            agent_id: Agent ID to cleanup (e.g., "position_POS_1")
+        """
+        # Find agent in _position_agents
+        agent = None
+        for a in self._position_agents:
+            if a.agent_id == agent_id:
+                agent = a
+                break
+        
+        if not agent:
+            logger.warning("Agent %s not found in position_agents for cleanup", agent_id)
+            return
+        
+        # Unsubscribe from event bus
+        handler = self._agent_handlers.pop(agent_id, None)
+        if handler:
+            self.bus.unsubscribe(EventType.OBSERVATION, handler)
+        
+        # Remove from tracking list
+        self._position_agents = [a for a in self._position_agents if a.agent_id != agent_id]
+        
+        log_with_dfid(
+            logger, "", logging.INFO,
+            "Cleaned up %s: unsubscribed from %s events, removed from registry",
+            agent_id, agent.instrument,
+        )
+    
+    def get_signal_suppression_stats(self) -> Dict[str, Any]:
+        """Get Wake-up Predicates statistics (DIR Topologies §2.3).
+        
+        Returns:
+            Dictionary with signal suppression metrics
+        """
+        return {
+            "suppressed_signals": self._suppressed_signals,
+            "tracked_instruments": list(self._last_prices.keys()),
+            "last_prices": dict(self._last_prices),
+        }

@@ -5,7 +5,7 @@ DIR §6. Validates PolicyProposal; returns ACCEPT/REJECT with reason.
 Ensures that only authorized agents can execute specific policies within safe bounds.
 """
 
-from typing import Any, Dict, List, Literal, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from .models import PolicyProposal
 
@@ -16,7 +16,7 @@ ValidationResult = Tuple[ValidationVerdict, str]
 def validate_proposal(
     proposal: PolicyProposal, 
     context: Dict[str, Any], 
-    allowed_agents: List[str] = None
+    allowed_agents: Optional[List[str]] = None
 ) -> ValidationResult:
     """
     Validate a PolicyProposal against schema, RBAC, and context state.
