@@ -467,8 +467,9 @@ def main() -> None:
     report_date = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M")
     report_path = results_dir / f"simulation_report_{report_date}_{tick_count}ticks.html"
     generate_html_report(
-        recorder,
-        report_path,
+        simulation_id=simulation_id,
+        db_path=str(db_path),
+        output_path=report_path,
         simulation_ticks=tick_count,
         news_count=news_count,
         elapsed_seconds=elapsed_seconds,

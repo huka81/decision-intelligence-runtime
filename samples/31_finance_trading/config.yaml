@@ -7,7 +7,7 @@ simulation:
   simulation_max_seconds: null  # Optional: max wall-clock seconds (null = no limit)
   tick_interval_sec: 0.2  # Faster ticks for quicker testing
   news_every_n_ticks: 5  # News every 5 ticks for more opportunities
-  max_news_events: 12  # More news events for better position generation
+  max_news_events: 8  # More news events for better position generation
   initial_prices:
     BTC-USD: 67500.0
     ETH-USD: 3500.0

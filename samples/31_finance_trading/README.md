@@ -7,7 +7,16 @@
 - **Position managers** enforce strict risk limits and manage exits
 - **Full auditability** via hierarchical DFID tracking (news → position → decisions)
 
-At simulation end, an **HTML report** is generated with price charts, decision points, DFID hierarchy, and complete position lifecycle including P&L. The report automatically opens in your default browser, and a position audit view is automatically displayed in the console.
+At simulation end, an **interactive HTML report** is automatically generated and opened in browser with:
+- **Interactive Plotly charts** showing price movements with hover tooltips revealing:
+  - Tick details (price, trend, volatility, timestamp)
+  - Decision details (LLM justification, explain narrative, DIM validation)
+  - News events (⭐ stars) with impact scores and spawned positions
+  - Position openings (▲ triangles) with entry details and P&L
+- **Position lifecycle cards** with professional styling showing complete audit trail
+- **DFID hierarchy** tracing every decision back to its trigger
+
+Additionally, a **position audit view** is automatically displayed in the console with formatted boxes and emojis showing the complete flow from news → position spawn → all lifecycle decisions.
 
 **DIR alignment:** DIR Topologies §2 (EOAM), §2.1–2.4 (scope-based choreography, DFID correlation, priority-based preemption, **Wake-up Predicates for Signal Suppression**). ROA Manifesto §3 (Responsibility Contract, mission), §4 (Explain → Policy → Self-Check → Proposal).
 
@@ -59,7 +68,14 @@ flowchart TB
 - **UC6:** The orchestrator collects all proposals for that event’s DFID and selects the **winner** by the configured priority (lower number = higher priority).
 - **UC7:** The winner is validated by DIM (schema, RBAC, context); result is ACCEPT or REJECT.
 - **UC8:** If the result is ACCEPT and the winner's `policy_kind` is `NEWS_QUALIFIED`, the orchestrator spawns a new position manager agent (from the config template) for each affected instrument and registers it for future observations. `NEWS_QUALIFIED` creates a hierarchical DFID link (parent_dfid = news event DFID). **This is the exclusive entry point for opening positions.**
-- **UC9:** At simulation end, an HTML report is generated (`simulation_report.html`) with price charts, decision points, DFID hierarchy, and position lifecycle.
+- **UC9:** At simulation end:
+  - **Position audit view** automatically displays in console (formatted with boxes, emojis, complete decision timeline)
+  - **Interactive HTML report** automatically generates from SQLite database:
+    - Plotly charts with rich hover tooltips (tick details, LLM justifications, DIM validation)
+    - Visual markers: ⭐ News (blue stars), ▲ Position Open (green triangles), 🔷 Decisions (colored diamonds)
+    - Professional position lifecycle cards with gradient styling, P&L boxes, timeline events
+    - DFID hierarchy showing parent-child relationships
+  - Report auto-opens in default browser
 
 ---
 
@@ -105,6 +121,8 @@ This sample demonstrates a **news-driven trading strategy** where:
 - ✅ Hierarchical decision tracking (DFID parent-child relationships)
 - ✅ LLM-based reasoning (Ollama, Gemini, or Mock)
 - ✅ **Wake-up Predicates (DIR Topologies §2.3)** - Signal suppression to prevent Token Burn on minor price changes
+- ✅ **Interactive HTML reporting** - Charts with rich tooltips showing LLM reasoning and agent proposals
+- ✅ **Position audit trail** - Console and HTML views with complete lifecycle from news trigger to closure
 
 ---
 
@@ -481,11 +499,14 @@ flowchart TB
         YAML["config.yaml"]
     end
 
-    subgraph Sample["10_eoam_live_simulation"]
+    subgraph Sample["31_finance_trading"]
         Run["run.py"]
-        LLM["llm_client\n(Ollama / MockLLM)"]
+        LLM["llm_client\n(Ollama / Gemini / MockLLM)"]
         ROA["roa_agents\n(Instrument, Position, NewsScorer)"]
         Orch["orchestrator"]
+        Rec["simulation_recorder"]
+        DB["simulation_database\n(SQLite)"]
+        Rep["report_generator\n(HTML + Charts)"]
     end
 
     subgraph Dir["dir"]
@@ -502,6 +523,10 @@ flowchart TB
     Run --> Orch
     Run --> QGen
     Run --> NGen
+    Run --> Rec
+    Run --> Rep
+    Rec --> DB
+    Rep --> DB
     ROA --> LLM
     ROA --> Models
     Orch --> Bus
@@ -510,10 +535,18 @@ flowchart TB
 ```
 
 - **config.yaml:** Simulation parameters (instruments, ticks, news interval, seeds, threshold), priority_matrix, and agent definitions (type, mission, contract, priority).
-- **run.py:** Loads config, builds EventBus, LLM, agents from config, registers them with the orchestrator, runs the tick loop and news loop; calls DIM and spawn. Generates HTML report and opens it automatically; runs position audit view at completion.
+- **run.py:** Loads config, builds EventBus, LLM, agents from config, registers them with the orchestrator, runs the tick loop and news loop; calls DIM and spawn. **At completion:** runs position audit view in console, generates HTML report from database, auto-opens in browser.
 - **llm_client:** `OllamaClient` (sync HTTP to Ollama), `GeminiClient` (Google AI API), or `MockLLM`; interface `generate(prompt, system=None) -> str`.
 - **roa_agents:** ROA base (Explain → Policy → Self-Check → Proposal) and concrete agents (Instrument, Position, NewsScorer) using the LLM and config-driven contracts with `wake_up_threshold_pct`.
 - **orchestrator:** Registers agents with the bus (OBSERVATION by scope, NEWS global), **implements Wake-up Predicates for Signal Suppression (DIR Topologies §2.3)**, emits observations/news with DFID, collects proposals per DFID, arbitrates by priority_matrix, spawns position agents from template. Tracks suppressed signals for reporting.
+- **simulation_recorder:** Collects simulation data in memory and persists to SQLite database (simulation_data.db) in real-time during simulation run.
+- **simulation_database:** SQLite database manager with schema creation, data persistence methods (ticks, decisions, positions, news), and audit views for position lifecycle analysis.
+- **report_generator:** Generates interactive HTML reports **directly from SQLite database** with:
+  - **Plotly charts:** Price lines with hover tooltips, visual markers (⭐ News, ▲ Position Opens, 🔷 Decisions)
+  - **Position lifecycle cards:** Professional styling with gradients, P&L boxes, timeline events
+  - **DFID hierarchy:** Expandable tree showing parent-child relationships
+  - Reports can be regenerated for any completed simulation
+- **query_position_views.py:** Console utility for formatted position audit queries with boxes, emojis, and complete decision timelines.
 - **dir:** EventBus (scope-based dispatch), DIM (validate_proposal), models (ResponsibilityContract, PolicyProposal, etc.), QuoteGenerator, NewsGenerator.
 
 ---
@@ -785,6 +818,35 @@ python samples/31_finance_trading/query_simulations.py decisions <simulation_id>
 python samples/31_finance_trading/query_simulations.py prices <simulation_id>
 ```
 
+### Regenerating HTML Reports
+
+Since reports are generated **directly from the database**, you can regenerate them at any time for any completed simulation:
+
+```python
+# Example: Regenerate report for specific simulation
+from pathlib import Path
+from report_generator import generate_html_report
+
+simulation_id = "sim_2026-02-24T14:35:22.123Z_a3f2c1"
+db_path = Path("samples/31_finance_trading/data/simulation_data.db")
+output_path = Path("samples/31_finance_trading/results/regenerated_report.html")
+
+generate_html_report(
+    simulation_id=simulation_id,
+    db_path=str(db_path),
+    output_path=output_path,
+    simulation_ticks=50,  # From simulation summary
+    news_count=4,
+    elapsed_seconds=15.2,
+)
+```
+
+**Use cases for report regeneration:**
+- Regenerate with updated visualization styles
+- Create multiple report formats from the same data
+- Share reports without sharing in-memory simulation state
+- Archive reports for compliance and auditing
+
 ---
 
 ## Expected output
@@ -845,30 +907,86 @@ Running position audit view...
   POSITION LIFECYCLE REPORT
   Simulation: sim_2026-02-24T14:35:22.123Z_a3f2c1
 ════════════════════════════════════════════════════════════════════════════════════════════════════════
-[Position audit output...]
+[Position audit output - formatted with boxes, emojis, and detailed decision timelines...]
 
-Opening report in browser: D:\...\results\simulation_report_2026-02-24_1435_50ticks.html
+✅ Report generated: D:\...\results\simulation_report_sim_2026-02-24T14-35.html
+Opening report in browser...
 ======================================================================
 ```
 
 **Post-Simulation Actions (Automatic):**
-1. **Position Audit View:** `query_position_views.py <simulation_id>` runs automatically, displaying complete position lifecycle with news triggers
-2. **HTML Report:** Opens automatically in default browser with interactive charts and DFID hierarchy
+1. **Position Audit View:** `query_position_views.py <simulation_id>` runs automatically in console, displaying complete position lifecycle with:
+   - ✅/⏳ Status badges, entry/exit prices
+   - 📰 News trigger with headline and sentiment
+   - 📊 Complete decision timeline with prices and justifications
+   - P&L calculations
+2. **HTML Report:** Automatically generated and opened in default browser with:
+   - Interactive Plotly charts with rich tooltips
+   - Visual markers: ⭐ News, ▲ Position Open, 🔷 Decisions
+   - Professional styled position lifecycle cards
+   - Complete DFID hierarchy
 3. **Database:** All data persisted in `simulation_data.db` for further analysis
 
 ### Database & Reports
 
-- **Database:** `./data/simulation_data.db` - SQLite database with all simulation data. A unique simulation_id is generated for each run.
-- **HTML Report:** `./results/simulation_report_<date>_<ticks>ticks.html` containing:
-  - **Summary:** Ticks, news events, elapsed time, decisions, positions, **signal suppression statistics**.
-  - **Price charts:** One chart per instrument (Plotly), with decision points marked (HOLD, REDUCE, CLOSE, NEWS_QUALIFIED).
-  - **DFID hierarchy tree:** Parent (news) → child (position manager) links.
-  - **Decision details:** Table with DFID, agent, policy_kind, DIM result, justification, explain narrative.
-  - **Position lifecycle:** For each position: entry tick/price, trigger (news headline from NEWS_QUALIFIED), lifecycle events (HOLD/REDUCE/CLOSE).
+- **Database:** `./data/simulation_data.db` - SQLite database with all simulation data. A unique simulation_id is generated for each run. **All data is persisted immediately as simulation runs.**
+- **HTML Report:** `./results/simulation_report_<simulation_id>.html` - **Generated from database, not in-memory data**, containing:
+  - **Summary box:** Gradient-styled card with ticks, news events, elapsed time, decisions, positions, **signal suppression statistics**.
+  - **Interactive price charts (Plotly):** One chart per instrument with:
+    - **Price line** (cyan) with hover tooltips showing: tick index, price, timestamp, trend, volatility, DFID
+    - **Decision markers** (colored diamonds 🔷): HOLD (green), REDUCE (yellow), CLOSE (red) with rich tooltips:
+      - Agent ID, policy kind, DIM result
+      - LLM justification
+      - Explain narrative
+      - DIM reason
+    - **News Qualified markers** (blue stars ⭐): NEWS_QUALIFIED events from news_scorer with tooltips:
+      - News score, sentiment, instruments affected
+      - LLM justification for news evaluation
+      - Spawned position IDs (hierarchical tracking)
+    - **Position Open markers** (green triangles ▲): Entry points for positions with tooltips:
+      - Entry price, exposure, quantity
+      - News trigger headline (if spawned from news)
+      - Parent DFID (hierarchical link)
+      - P&L and close details (if position closed)
+    - **Visual separation:** News markers offset +3% above price, Position markers offset -3% below price to prevent overlap
+  - **DFID hierarchy tree:** Expandable section showing parent (news) → child (position manager) links.
+  - **Decision details:** Expandable table with DFID, agent, policy_kind, DIM result, justification, explain narrative.
+  - **Position lifecycle cards:** Inspired by `query_position_views.py` format, styled with:
+    - **Status badges:** Green "✅ CLOSED" or blue "⏳ OPEN" with colored borders
+    - **Position header:** Position ID, instrument badge
+    - **Structured sections:**
+      - 📈 Position Opened: Grid with tick, price, exposure, quantity
+      - 📰 News Trigger: Highlighted section with headline, parent DFID
+      - 📊 Lifecycle Events: Timeline with color-coded borders (HOLD=green, REDUCE=yellow, CLOSE=red) and justifications
+      - 🏁 Position Closed / ⏳ Still Open: Close details with P&L box (green for profit, red for loss)
+    - **Modern styling:** Gradient backgrounds, box shadows, hover effects (cards lift on hover)
+
+**Report Styling:**
+- **Professional color scheme:** Dark theme with gradient backgrounds (dark blue → midnight black)
+- **Interactive elements:** Hover effects, smooth transitions, expandable details sections
+- **Responsive design:** Grid layouts adapt to screen size
+- **Clear hierarchy:** Icons (📊, 📰, 📈, 🏁) for visual scanning
+- **Accessibility:** High contrast, readable fonts, proper spacing
+
+**Report Generation:**
+- Reports are generated **directly from SQLite database** for any simulation
+- This ensures consistency and allows regenerating reports after simulation completes
+- Data integrity: What's in the database = What's in the report (no in-memory state dependency)
+- **Filename format:** `simulation_report_<simulation_id>.html` (e.g., `simulation_report_sim_2026-02-24T14-35.html`)
 
 **Automatic Post-Simulation Actions:**
-1. **Position Audit View:** Automatically runs `query_position_views.py <simulation_id>` to display complete position lifecycle
-2. **Report Opening:** HTML report automatically opens in your default browser
+1. **Position Audit View:** Automatically runs `query_position_views.py <simulation_id>` to display complete position lifecycle with news triggers in console
+2. **HTML Report:** Automatically generated and opened in your default browser
+3. **Database:** All data persisted in `simulation_data.db` for further analysis
+
+**Manual Report Generation:**
+```bash
+# Generate report for specific simulation
+python samples/31_finance_trading/report_generator.py --simulation-id <simulation_id>
+
+# Or use most recent simulation (auto-detected)
+python samples/31_finance_trading/report_generator.py
+```
 
 **Manual Query:**
 ```bash
