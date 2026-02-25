@@ -37,66 +37,65 @@ def query_aggregated_view(db_path: str, simulation_id: Optional[str] = None) -> 
         conn.close()
         return
     
-    print(f"\n{'═'*100}")
+    print(f"\n{'='*100}")
     print(f"  POSITION LIFECYCLE REPORT")
     if simulation_id:
         print(f"  Simulation: {simulation_id}")
-    print(f"{'═'*100}\n")
+    print(f"{'='*100}\n")
     
     for row in rows:
         # Header
-        status_emoji = "✅" if row['close_tick'] is not None else "⏳"
         status_text = "CLOSED" if row['close_tick'] is not None else "OPEN"
-        print(f"┌{'─'*98}┐")
-        print(f"│ {status_emoji} Position: {row['position_id']:<20} Instrument: {row['instrument']:<15} Status: {status_text:<10} │")
-        print(f"├{'─'*98}┤")
+        print(f"+{'-'*98}+")
+        print(f"| Position: {row['position_id']:<20} Instrument: {row['instrument']:<15} Status: {status_text:<10} {' ' * 27}|")
+        print(f"+{'-'*98}+")
         
         # Opening details
-        print(f"│ 📈 POSITION OPENED                                                                             │")
-        print(f"│    Tick: {row['entry_tick']:<5} Price: ${row['entry_price']:>10.2f}                                                        │")
-        print(f"│    Exposure: ${row['initial_exposure']:>8.2f}   Quantity: {row['quantity']:.6f}                                           │")
+        print(f"| POSITION OPENED{' ' * 84}|")
+        print(f"|    Tick: {row['entry_tick']:<5} Price: ${row['entry_price']:>10.2f}{' ' * 47}|")
+        print(f"|    Exposure: ${row['initial_exposure']:>8.2f}   Quantity: {row['quantity']:.6f}{' ' * 37}|")
         
         # News trigger
         if row['news_full_headline']:
             headline = row['news_full_headline'][:70] + "..." if len(row['news_full_headline']) > 70 else row['news_full_headline']
             news_score = row['news_score'] if row['news_score'] is not None else 0.0
-            print(f"│                                                                                                  │")
-            print(f"│ 📰 NEWS TRIGGER                                                                                  │")
-            print(f"│    \"{headline}\"")
-            print(f"│    Sentiment: {row['news_sentiment'] or 'n/a':<12}   News Score: {news_score:.2f}                                        │")
+            print(f"|{' ' * 98}|")
+            print(f"| NEWS TRIGGER{' ' * 85}|")
+            print(f"|    \"{headline}\"{' ' * (94 - len(headline))}|")
+            print(f"|    Sentiment: {row['news_sentiment'] or 'n/a':<12}   News Score: {news_score:.2f}{' ' * 40}|")
         
         # Lifecycle events
         if row['decisions_timeline']:
-            print(f"│                                                                                                  │")
-            print(f"│ 📊 LIFECYCLE EVENTS                                                                              │")
+            print(f"|{' ' * 98}|")
+            print(f"| LIFECYCLE EVENTS{' ' * 82}|")
             events = row['decisions_timeline'].split('\n')
             for event in events[:10]:  # Limit to 10 events
                 if event.strip():
-                    print(f"│    {event:<94} │")
+                    print(f"|    {event:<94}|")
             if len(events) > 10:
-                print(f"│    ... and {len(events) - 10} more events                                                               │")
+                print(f"|    ... and {len(events) - 10} more events{' ' * 72}|")
         
         # Closing details
         if row['close_tick'] is not None:
-            print(f"│                                                                                                  │")
-            print(f"│ 🏁 POSITION CLOSED                                                                               │")
-            print(f"│    Tick: {row['close_tick']:<5} Price: ${row['close_price']:>10.2f}   Reason: {row['close_reason']:<20}             │")
+            print(f"|{' ' * 98}|")
+            print(f"| POSITION CLOSED{' ' * 83}|")
+            print(f"|    Tick: {row['close_tick']:<5} Price: ${row['close_price']:>10.2f}   Reason: {row['close_reason']:<20}{' ' * 27}|")
             if row['pnl_percent'] is not None:
                 pnl_usd = row['pnl_usd'] if row['pnl_usd'] is not None else 0.0
-                pnl_color = "+" if row['pnl_percent'] >= 0 else ""
-                print(f"│    P&L: {pnl_color}{row['pnl_percent']:.2f}%  (${pnl_usd:+.2f} USD)                                                           │")
+                pnl_color = "" if row['pnl_percent'] >= 0 else "-"
+                print(f"|    P&L: {pnl_color}{row['pnl_percent']:.2f}%  (${pnl_usd:+.2f} USD){' ' * 47}|")
         else:
-            print(f"│                                                                                                  │")
-            print(f"│ ⏳ POSITION STILL OPEN                                                                           │")
-            print(f"│    Decisions so far: {row['total_decisions']}                                                                         │")
+            print(f"|{' ' * 98}|")
+            print(f"| POSITION STILL OPEN{' ' * 78}|")
+            print(f"|    Decisions so far: {row['total_decisions']}{' ' * 66}|")
         
         # Summary
-        print(f"│                                                                                                  │")
-        print(f"│ 📋 SUMMARY: {row['total_decisions']} decisions (HOLD: {row['hold_count']}, REDUCE: {row['reduce_count']}, CLOSE: {row['close_count']})                                        │")
+        print(f"|{' ' * 98}|")
+        print(f"| SUMMARY: {row['total_decisions']} decisions (HOLD: {row['hold_count']}, REDUCE: {row['reduce_count']}, CLOSE: {row['close_count']}){' ' * 30}|")
         if row['min_price'] and row['max_price']:
-            print(f"│    Price range: ${row['min_price']:.2f} - ${row['max_price']:.2f}                                                          │")
+            print(f"|    Price range: ${row['min_price']:.2f} - ${row['max_price']:.2f}{' ' * 47}|")
         
-        print(f"└{'─'*98}┘")
+        print(f"+{'-'*98}+")
         print()
     
     conn.close()

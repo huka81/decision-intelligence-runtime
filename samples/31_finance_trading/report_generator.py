@@ -81,7 +81,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
             f"Timestamp: {t.timestamp}<br>"
             f"Trend: {t.trend}<br>"
             f"Volatility: {t.volatility:.4f}<br>"
-            f"DFID: {t.dfid[:12]}..."
+            f"DFID: {t.dfid}"
             for t in ticks_inst
         ]
 
@@ -140,7 +140,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
                     f"<b>Price:</b> ${price:.2f}<br>"
                     f"<b>Agent:</b> {d.agent_id}<br>"
                     f"<b>DIM:</b> {d.dim_result}<br>"
-                    f"<b>DFID:</b> {d.dfid[:12]}...<br>"
+                    f"<b>DFID:</b> {d.dfid}<br>"
                     f"<br><b>Justification:</b><br>{justification}<br>"
                     f"<br><b>Explain:</b><br>{explain}<br>"
                     f"<br><b>DIM Reason:</b><br>{d.dim_reason[:100]}"
@@ -211,7 +211,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
                     f"<b>Price:</b> ${price:.2f}<br>"
                     f"<b>Agent:</b> {d.agent_id}<br>"
                     f"<b>Instruments:</b> {', '.join(d.instruments_affected or [])}<br>"
-                    f"<b>DFID:</b> {d.dfid[:12]}...{pos_info}<br>"
+                    f"<b>DFID:</b> {d.dfid}<br>{pos_info}<br>"
                     f"<br><b>Justification:</b><br>{justification}"
                 )
                 hover_news.append(hover_text)
@@ -263,7 +263,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
                     hover_text += f"<br><b>News Trigger:</b><br>{headline}<br>"
                 
                 if pos.parent_dfid:
-                    hover_text += f"<br><b>Parent DFID:</b> {pos.parent_dfid[:12]}..."
+                    hover_text += f"<br><b>Parent DFID:</b> {pos.parent_dfid}"
                 
                 if pos.close_tick is not None:
                     pnl_usd = pos.quantity * (pos.close_price - pos.entry_price)
@@ -335,11 +335,11 @@ def _build_dfid_tree_html(recorder: SimulationRecorder) -> str:
     for pos in recorder.positions:
         if pos.parent_dfid and pos.parent_dfid not in seen:
             seen.add(pos.parent_dfid)
-            lines.append(f"<tr><td><code>{_escape(pos.parent_dfid[:12])}...</code></td><td>News (NEWS_QUALIFIED)</td></tr>")
+            lines.append(f"<tr><td><code>{_escape(pos.parent_dfid)}</code></td><td>News (NEWS_QUALIFIED)</td></tr>")
         lines.append(
             f"<tr><td><code>{_escape(pos.position_id)}</code></td>"
             f"<td>Instrument manager for {_escape(pos.instrument)}"
-            f" (parent: {_escape((pos.parent_dfid or '—')[:12])}...)</td></tr>"
+            f" (parent: {_escape(pos.parent_dfid or '—')})</td></tr>"
         )
     if not lines:
         return "<p><em>No hierarchical DFID links (no positions spawned from news).</em></p>"
@@ -362,7 +362,7 @@ def _build_decisions_table_html(recorder: SimulationRecorder) -> str:
             f"""
             <tr>
                 <td>{d.tick_index}</td>
-                <td><code>{_escape(d.dfid[:12])}...</code></td>
+                <td><code>{_escape(d.dfid)}</code></td>
                 <td>{_escape(d.agent_id)}</td>
                 <td><span class="badge policy">{_escape(d.policy_kind)}</span></td>
                 <td><span class="badge {dim_class}">{_escape(d.dim_result)}</span></td>
@@ -429,7 +429,7 @@ def _build_position_lifecycle_html(recorder: SimulationRecorder) -> str:
                 <div class="lifecycle-section news-section">
                     <h5>📰 NEWS TRIGGER</h5>
                     <p class="news-headline">"{_escape(pos.news_headline)}"</p>
-                    <p class="news-meta"><strong>Parent DFID:</strong> <code>{_escape((pos.parent_dfid or "—")[:16])}...</code></p>
+                    <p class="news-meta"><strong>Parent DFID:</strong> <code>{_escape(pos.parent_dfid or "—")}</code></p>
                 </div>
             """
         
@@ -1004,7 +1004,7 @@ def generate_html_report(
 </head>
 <body>
     <h1>📊 Finance Trading — Simulation Report</h1>
-    <p class="meta">Generated: {now} | Hierarchical DFID (EOAM) | Simulation ID: {simulation_id[:16]}...</p>
+    <p class="meta">Generated: {now} | Hierarchical DFID (EOAM) | Simulation ID: {simulation_id}</p>
 
     <div class="summary-box">
         <h2>📋 Summary</h2>
@@ -1090,7 +1090,7 @@ if __name__ == "__main__":
         sample_dir = Path(__file__).resolve().parent
         results_dir = sample_dir / "results"
         results_dir.mkdir(exist_ok=True)
-        output_path = results_dir / f"simulation_report_{simulation_id[:16]}.html"
+        output_path = results_dir / f"simulation_report_{simulation_id}.html"
     
     generate_html_report(
         simulation_id=simulation_id,
