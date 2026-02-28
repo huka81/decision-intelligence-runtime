@@ -1220,7 +1220,46 @@ ROA is simply one step toward making LLM-driven systems more coherent, governed,
 
 ---
 
-# **10. Limitations and Open Questions**
+# **10. ROA as a Governance Wrapper for Generative Frameworks**
+
+The distinction between "Task-Oriented" frameworks (like LangChain, CrewAI, AutoGen) and "Responsibility-Oriented" architecture (ROA) is not a binary choice. In fact, they act as powerful complements when arranged in a specific hierarchy.
+
+We propose a hybrid pattern: **Using generative frameworks as the "Brain" (Reasoning Engine) and ROA as the "Body" (Governance & Execution Runtime).**
+
+## **10.1 The "Boxed Intelligence" Pattern**
+
+In this pattern, an ROA Agent does not necessarily act as a single prompt loop. Instead, the Agent acts as a **Governance Wrapper** around a more complex subsystem-such as a LangGraph workflow or a CrewAI swarm.
+
+The fundamental rule of this pattern is **Input/Output Sanitation**:
+
+1.  **Inbound (Context):** The ROA Wrapper injects the *Context Store* and *Mission* into the generative framework, grounding its reasoning in authoritative state.
+2.  **Processing (Emergence):** The internal swarm (e.g., a "Researcher" and "Writer" agent in CrewAI) collaborates freely, leveraging the emergent creativity these tools excel at.
+3.  **Outbound (Proposal):** Crucially, the internal agents are **stripped of all execution tools**. They cannot call APIs, write to databases, or execute trades. Their *only* available tool is `emit_policy_proposal()`.
+
+This effectively "sandboxes" the swarm. It allows for high-variance, creative reasoning while ensuring zero-variance, safe execution.
+
+## **10.2 From Unconfirmed Tasks to Validated Policies**
+
+Standard agent frameworks operate on a "Trigger → Action" loop.
+The ROA Wrapper transforms this into a "Trigger → Proposal → Validation → Action" pipeline.
+
+*   **Without ROA:** A trading agent analyzes market data, identifies a "strong buy" signal, and immediately executes `exchange.create_order(symbol="BTC-USD", amount=100)`. If the decimal separator was misinterpreted or the model hallucinated the position size, a catastrophic financial loss occurs instantly.
+*   **With ROA:** The same agent produces a `PolicyProposal(action="BUY", instrument="BTC-USD", amount=100)`. The ROA Runtime receives this, checks the **Responsibility Contract**, sees that this agent has a hard limit of `max_order_size=5.0 BTC`, and rejects the proposal *before* it reaches the exchange.
+
+*Implementation Note:* In practice, this is achieved by providing the internal agent with a **single** tool: `submit_policy_proposal`. When the agent calls this tool, the wrapper intercepts the payload, terminates the agent's execution loop, and passes the structured proposal to the DIR Runtime for validation (see `samples/12_langchain_roa_wrapper`).
+
+## **10.3 Strategic Advantage: Compliance by Design**
+
+This architecture offers a bridge for enterprises adopting AI:
+
+*   **For Data Scientists:** You can continue using familiar tools (LangChain, Python eco-system) to build sophisticated reasoning logic.
+*   **For DevOps/Security:** You do not need to audit the probabilistic "Brain". You only need to audit the deterministic "Body" (The Contract and the Runtime).
+
+By treating popular frameworks as **untrusted reasoning modules** inside a **trusted ROA container**, we solve the "Last Mile" problem of AI deployment: how to put stochastic models into deterministic production environments.
+
+---
+
+# **11. Limitations and Open Questions**
 
 No architectural model is complete, and ROA is no exception.
 It is an evolving perspective shaped by real-world experiments, personal exploration, and gaps observed in current agent systems.
@@ -1231,7 +1270,7 @@ An architecture intended for decision-making must not pretend to be finished.
 
 ---
 
-## **10.1 The Boundaries of LLM Reasoning Are Still Unsettled**
+## **11.1 The Boundaries of LLM Reasoning Are Still Unsettled**
 
 ROA leans heavily on LLMs for *Explain* and *Policy* generation.
 This raises open questions:
@@ -1246,7 +1285,7 @@ But understanding the long-term behavior of LLMs remains an open research area.
 
 ---
 
-## **10.2 Designing Responsibility Contracts Is Non-Trivial**
+## **11.2 Designing Responsibility Contracts Is Non-Trivial**
 
 Responsibility sounds simple in theory.
 In practice, defining:
@@ -1265,7 +1304,7 @@ Methodologies for designing and validating good responsibility contracts are sti
 
 ---
 
-## **10.3 Mission Alignment Is Not Fully Solved**
+## **11.3 Mission Alignment Is Not Fully Solved**
 
 Having a mission is essential, but several questions remain:
 
@@ -1278,7 +1317,7 @@ ROA provides a conceptual structure, but mission alignment is an area where rigo
 
 ---
 
-## **10.4 Memory and State Management Need More Research**
+## **11.4 Memory and State Management Need More Research**
 
 Long-lived agents require long-lived memory - but:
 
@@ -1291,7 +1330,7 @@ AIvestor provided early lessons, but systematic approaches are still required.
 
 ---
 
-## **10.5 Validation and Governance Are Difficult to Generalize**
+## **11.5 Validation and Governance Are Difficult to Generalize**
 
 Validation (DIM) and governance logic are highly domain-specific:
 
@@ -1306,7 +1345,7 @@ Building reusable governance modules remains an open challenge.
 
 ---
 
-## **10.6 Runtime Complexity May Grow Rapidly**
+## **11.6 Runtime Complexity May Grow Rapidly**
 
 Dynamic instantiation, hierarchical agents, and persistent state introduce operational overhead:
 
@@ -1319,7 +1358,7 @@ These are engineering questions that deserve dedicated exploration beyond concep
 
 ---
 
-## **10.7 Debugging LLM-Driven Systems Is Still Hard**
+## **11.7 Debugging LLM-Driven Systems Is Still Hard**
 
 Even with responsibility, boundaries, and DecisionFlow correlation, systems that rely on generative reasoning face intrinsic debugging challenges:
 
@@ -1331,7 +1370,7 @@ ROA improves traceability, but robust debugging practices for LLM-based systems 
 
 ---
 
-## **10.8 Formal Guarantees Are Limited**
+## **11.8 Formal Guarantees Are Limited**
 
 ROA brings structure and governance, but:
 
@@ -1343,7 +1382,7 @@ Future work could explore hybrid approaches combining ROA with formal methods, s
 
 ---
 
-## **10.9 ROA Requires a Cultural Shift in How We Think About Agents**
+## **11.9 ROA Requires a Cultural Shift in How We Think About Agents**
 
 Many existing agent frameworks focus on emergent behavior, autonomy, or conversational collaboration.
 ROA shifts the focus to responsibility, structure, and governance.
@@ -1358,7 +1397,7 @@ These questions will only be answered as more implementations emerge.
 
 ---
 
-## **10.10 ROA Is Early - and That Is Its Strength and Its Limitation**
+## **11.10 ROA Is Early - and That Is Its Strength and Its Limitation**
 
 ROA is not a finished blueprint.
 It is a proposal for how LLM-driven systems *might* mature into something more robust, accountable, and operationally trustworthy.
@@ -1373,7 +1412,7 @@ The hope is that ROA offers a conceptual foundation that others can refine, exte
 
 ---
 
-## **10.11 The Absence of Reinforcement Learning and Online Policy Improvement**
+## **11.11 The Absence of Reinforcement Learning and Online Policy Improvement**
 
 ROA provides structure for *deploying* agent reasoning, but it does not improve the *quality* of that reasoning over time. There is no built-in mechanism for:
 
@@ -1412,7 +1451,7 @@ But they are the right questions - the questions any system must confront if we 
 
 ---
 
-# **11. Conclusion - Toward Decision-Making Systems We Can Trust**
+# **12. Conclusion - Toward Decision-Making Systems We Can Trust**
 
 Large Language Models have transformed what software can understand and express.
 They interpret context, generalize across domains, and produce reasoning that often feels surprisingly human. But turning these capabilities into **reliable decision-making systems** requires more than chaining prompts or orchestrating tool calls.
@@ -1453,7 +1492,7 @@ What we can do, however, is take the next step - together - toward architectures
 
 ---
 
-# **12. Glossary**
+# **13. Glossary**
 
 *   **Responsibility-Oriented Agents (ROA)**: An architectural pattern where agents are defined by their specific responsibilities, boundaries, and missions rather than generic capabilities.
 *   **Responsibility Contract**: A formal definition of an agent's scope, authority, inputs, and authorized outputs.
@@ -1466,7 +1505,7 @@ What we can do, however, is take the next step - together - toward architectures
 *   **Decision Integrity Module (DIM)**: The component of the Runtime responsible for deterministic validation of Policy Proposals against safety and business rules.
 *   **Explain Stage**: The initial phase of an agent's reasoning process where it interprets context into a natural language narrative before formulating a structured Policy.
 
-# **13. References**
+# **14. References**
 
 [^1]: **Resource-Oriented Architecture (ROA)** - Richardson, L., & Ruby, S. (2007). *RESTful Web Services*. O'Reilly Media. [oreilly.com/library/view/restful-web-services/9780596529260/ch04.html](https://www.oreilly.com/library/view/restful-web-services/9780596529260/ch04.html).
 
