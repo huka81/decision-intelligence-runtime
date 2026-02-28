@@ -165,7 +165,7 @@ class SimulationDatabase:
         
         # View 1: Aggregated position audit (one row per position)
         cursor.execute("""
-            CREATE VIEW IF NOT EXISTS position_audit_aggregated AS
+            CREATE VIEW IF NOT EXISTS position_audit_agg_v AS
             WITH position_details AS (
                 SELECT 
                     p.simulation_id,
@@ -237,6 +237,7 @@ class SimulationDatabase:
                 END AS pnl_usd
             FROM position_details pd
             LEFT JOIN position_lifecycle_events ple ON pd.position_id = ple.position_id
+             AND pd.simulation_id = ple.simulation_id
             GROUP BY 
                 pd.simulation_id,
                 pd.position_id, 
@@ -258,7 +259,7 @@ class SimulationDatabase:
         
         # View 2: Detailed position audit (one row per decision)
         cursor.execute("""
-            CREATE VIEW IF NOT EXISTS position_audit_detailed AS
+            CREATE VIEW IF NOT EXISTS position_audit_det_v AS
             SELECT 
                 p.simulation_id,
                 p.position_id,
