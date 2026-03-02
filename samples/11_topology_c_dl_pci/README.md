@@ -2,7 +2,7 @@
 
 **Goal:** Demonstrate **high-stakes decision auditability** through an append-only Decision Ledger (Merkle-chain style) and **Proof-Carrying Intents (PCI)** with cryptographic signatures and context binding. Ensures non-repudiation, tamper-evidence, and replay attack prevention for critical operations like fund transfers, production deployments, or compliance-regulated decisions.
 
-**ROA/DIR:** DIR Architectural Pattern §2.4 / Topologies C — suited to high-assurance scenarios (finance, healthcare, infrastructure) where every decision must be cryptographically verifiable and auditable for regulatory compliance or forensic analysis.
+**ROA/DIR:** DIR Architectural Pattern §2.4 / Topologies C: suited to high-assurance scenarios (finance, healthcare, infrastructure) where every decision must be cryptographically verifiable and auditable for regulatory compliance or forensic analysis.
 
 ---
 
@@ -21,20 +21,20 @@ python samples/11_topology_c_dl_pci/run.py
 
 This sample models a **high-security decision system** with:
 
-1. **Decision Ledger** — An append-only, tamper-evident log (similar to blockchain) where each entry is linked to the previous via cryptographic hashes. Genesis block establishes chain origin. Every accepted decision creates a new block.
+1. **Decision Ledger**: An append-only, tamper-evident log (similar to blockchain) where each entry is linked to the previous via cryptographic hashes. Genesis block establishes chain origin. Every accepted decision creates a new block.
 
-2. **Proof-Carrying Intent (PCI)** — Agents package their intents with cryptographic proof:
+2. **Proof-Carrying Intent (PCI)**: Agents package their intents with cryptographic proof:
    - **Payload**: Action, parameters, DFID, timestamp, context binding
    - **Proof**: Digital signature, signer identity, algorithm identifier
 
-3. **Context Binding** — Each PCI includes a hash of the current system context (e.g., account balance, risk score). If context changes between intent creation and submission, verification fails (prevents replay attacks).
+3. **Context Binding**: Each PCI includes a hash of the current system context (e.g., account balance, risk score). If context changes between intent creation and submission, verification fails (prevents replay attacks).
 
-4. **Gatekeeper Verification** — Before appending to the ledger, the gatekeeper performs three checks:
+4. **Gatekeeper Verification**: Before appending to the ledger, the gatekeeper performs three checks:
    - **Identity**: Is the signer registered/authorized?
    - **Context Match**: Does the current context hash match the intent's context binding?
    - **Signature**: Is the cryptographic signature valid?
 
-5. **Ledger Integrity Check** — The chain can be verified at any time by recalculating hashes and checking links. Any tampering breaks the chain.
+5. **Ledger Integrity Check**: The chain can be verified at any time by recalculating hashes and checking links. Any tampering breaks the chain.
 
 The pipeline is: **Agent creates PCI → Gatekeeper verifies (identity, context, signature) → Append to Ledger → Integrity verification**.
 

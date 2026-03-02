@@ -6,7 +6,7 @@ The samples are divided into two categories:
 1. **Mechanics & Topologies (Synthetic)**: Focused technical implementations of specific architectural patterns described in the [Manifesto](../docs/01-roa-manifesto/ROA_Manifesto.md) and [DIR Patterns](../docs/02-decision-runtime/DIR_Architectural_Pattern.md).
 2. **Business Use Cases**: End-to-end scenarios applying these patterns to real-world-like business problems.
 
-*See also: [Context as Code](../docs/08-conclusion/Context_as_Code.md) — the philosophy behind this repository.*
+*See also: [Context as Code](../docs/08-conclusion/Context_as_Code.md): the philosophy behind this repository.*
 
 ---
 
@@ -26,19 +26,20 @@ Proste syntetyczne przykłady ilustrujące implementacje poszczególnych mechani
 | 09 | [09_topology_a_eoam](09_topology_a_eoam/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | Topology A: Event-Oriented Agent Mesh |
 | 10 | [10_topology_b_sds](10_topology_b_sds/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | Topology B: Sovereign Decision Stream |
 | 11 | [11_topology_c_dl_pci](11_topology_c_dl_pci/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | Topology C: Decision Ledger & Proof-Carrying Intents |
-| 12 | [12_langchain_roa_wrapper](12_langchain_roa_wrapper/) | [ROA Manifesto](../docs/01-roa-manifesto/ROA_Manifesto.md), [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | **Mission Injection**: Wraps LangChain ReAct agent in ROA interface. Demonstrates task-oriented → mission-oriented transformation via Submit_Policy_Proposal interception. Shows mission-aware reasoning preventing PROD termination in FinOps use case. |
-| 88 | [88_meta_context_engineering](88_meta_context_engineering/) | [Context as Code](../docs/08-conclusion/Context_as_Code.md), [Topologies](../docs/03-topologies/DIR_Topologies.md) | **Meta-Context Engineering**: System Prompt Toolkit — no executable Python. Markdown as compiler instruction set for AI agents. Paste `3_meta_architect_prompt.md` into Cursor/Claude to generate the Autonomous Flight Delay Refund System (Topology C, DL+PCI). |
+| 88 | [88_meta_context_engineering](88_meta_context_engineering/) | [Context as Code](../docs/08-conclusion/Context_as_Code.md), [Topologies](../docs/03-topologies/DIR_Topologies.md) | **Meta-Context Engineering**: System Prompt Toolkit: no executable Python. Markdown as compiler instruction set for AI agents. Paste `3_meta_architect_prompt.md` into Cursor/Claude to generate the Autonomous Flight Delay Refund System (Topology C, DL+PCI). |
 
 ---
 
 ## 2. Business Use Cases
 Przykłady typu biznesowy use case, łączące mechanizmy w pełne scenariusze.
 
-| # | Sample | Primary Topology | Description |
-|---|---|---|---|
-| 31 | [31_finance_trading](31_finance_trading/) | [Topology A](../docs/03-topologies/DIR_Topologies.md) | **Finance Trading**: Market quotes, news, parallel agents, dynamic position spawning. |
-| 32 | [32_fraud_gate](33_fraud_gate/) | [Topology B](../docs/03-topologies/DIR_Topologies.md) | **Real-Time Fraud Gate**: Constrained decoding, JIT state drift, drift-attack demo. |
-| 33 | [33_insurance_underwriting](32_insurance_underwriting/) | [Topology C](../docs/03-topologies/DIR_Topologies.md) | **Insurance Underwriting**: Risk evaluation with cryptographic Proof-Carrying Intents (PCI). |
+| # | Sample | Primary Topology | Domain | Description |
+|---|---|---|---|---|
+| 31 | [31_finance_trading](31_finance_trading/) | [Topology A](../docs/03-topologies/DIR_Topologies.md) | Finance/trading | Market quotes, news, parallel agents, dynamic position spawning. |
+| 32 | [32_fraud_gate](32_fraud_gate/) | [Topology B](../docs/03-topologies/DIR_Topologies.md) | Fraud detection | Real-time payment fraud gate; constrained decoding, JIT state drift, drift-attack demo. |
+| 33 | [33_insurance_underwriting](33_insurance_underwriting/) | [Topology C](../docs/03-topologies/DIR_Topologies.md) | Insurance underwriting | Risk evaluation with cryptographic Proof-Carrying Intents (PCI). |
+| 34 | [34_langchain_roa_wrapper](34_langchain_roa_wrapper/) | ROA + DIR | **FinOps** | LangChain ReAct → ROA. Cloud cost management. Verifies mission injection blocks PROD termination. |
+| 35 | [35_crewai_roa_wrapper](35_crewai_roa_wrapper/) | ROA + DIR | **Customer claims/refunds** | CrewAI Crew → ROA. E-commerce refunds (EUR). Verifies ACCEPT/ESCALATE/REJECT by category, return window, amount; NL intake. |
 
 ---
 
@@ -54,6 +55,8 @@ From the **repository root**:
 
 ```bash
 python samples/01_roa_agent/run.py
+# or
+python samples/35_crewai_roa_wrapper/run.py
 # or
 python samples/31_finance_trading/run.py
 ```

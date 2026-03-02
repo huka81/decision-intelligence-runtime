@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-32_insurance_underwriting - Digital Underwriter (Decision Ledger & Proof-Carrying Intents).
+33_insurance_underwriting - Digital Underwriter (Decision Ledger & Proof-Carrying Intents).
 
 Full ROA agent with LLM (Explain → Policy → Self-Check). Config-driven via config.yaml.
 Topology C: system commits to Ledger only when agent provides valid Evidence Hash.
 
-Run: python samples/32_insurance_underwriting/run.py
+Run: python samples/33_insurance_underwriting/run.py
 Optional: USE_MOCK_LLM=1 (no Ollama), LOG_LEVEL=DEBUG
 """
 
@@ -155,7 +155,7 @@ def main() -> None:
         ledger_count=len(ledger),
         output_path=report_path,
     )
-    print(f"\n  Raport HTML: {report_path.resolve()}", flush=True)
+    print(f"\n  HTML report: {report_path.resolve()}", flush=True)
     webbrowser.open(report_path.resolve().as_uri())
 
 

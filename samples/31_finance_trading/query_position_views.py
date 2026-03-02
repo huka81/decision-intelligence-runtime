@@ -13,7 +13,7 @@ from typing import Optional
 
 def query_aggregated_view(db_path: str, simulation_id: Optional[str] = None) -> None:
     """
-    Query position_audit_aggregated view - one row per position with summary.
+    Query position_audit_agg_v view - one row per position with summary.
     
     Args:
         db_path: Path to simulation_data.db
@@ -24,10 +24,10 @@ def query_aggregated_view(db_path: str, simulation_id: Optional[str] = None) -> 
     cursor = conn.cursor()
     
     if simulation_id:
-        query = "SELECT * FROM position_audit_aggregated WHERE simulation_id = ? ORDER BY entry_tick, position_id"
+        query = "SELECT * FROM position_audit_agg_v WHERE simulation_id = ? ORDER BY entry_tick, position_id"
         cursor.execute(query, (simulation_id,))
     else:
-        query = "SELECT * FROM position_audit_aggregated ORDER BY simulation_id, entry_tick, position_id"
+        query = "SELECT * FROM position_audit_agg_v ORDER BY simulation_id, entry_tick, position_id"
         cursor.execute(query)
     
     rows = cursor.fetchall()

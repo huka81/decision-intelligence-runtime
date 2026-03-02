@@ -1,6 +1,6 @@
 # 31 – Business Case: Finance Trading (Topology A)
 
-**Goal:** Demonstrate **Topology A (Event-Oriented Agent Mesh, EOAM)** with a **news-driven trading strategy** simulation. The system showcases how ROA (Responsibility-Oriented Architecture) agents with distinct roles—MONITOR (instrument observers), STRATEGIST (news evaluator), and EXECUTOR (position managers)—coordinate via scope-based events, priority arbitration, and the Decision Integrity Module (DIM) to implement a disciplined trading approach where:
+**Goal:** Demonstrate **Topology A (Event-Oriented Agent Mesh, EOAM)** with a **news-driven trading strategy** simulation. The system showcases how ROA (Responsibility-Oriented Architecture) agents with distinct roles: MONITOR (instrument observers), STRATEGIST (news evaluator), and EXECUTOR (position managers) coordinate via scope-based events, priority arbitration, and the Decision Integrity Module (DIM) to implement a disciplined trading approach where:
 
 - **Market monitoring is continuous** but **positions open only on high-impact news** (score ≥ threshold)
 - **News scorer agent** acts as the **exclusive entry point**, evaluating news significance via LLM
@@ -91,7 +91,7 @@ This sample demonstrates a **news-driven trading strategy** where:
 2. **News Evaluation Phase** (Exclusive Entry Point)
    - News scorer agent evaluates every news event for trading impact
    - Role: **STRATEGIST** - makes entry decisions based on news significance
-   - Threshold: Only opens positions when `raw_score >= 0.6` (configurable)
+   - Threshold: Only opens positions when `raw_score >= news_score_threshold` (default 0.50, configurable)
    - Action: Emits **NEWS_QUALIFIED** to signal high-impact opportunity
 
 3. **Position Opening Phase**
@@ -123,6 +123,180 @@ This sample demonstrates a **news-driven trading strategy** where:
 - ✅ **Wake-up Predicates (DIR Topologies §2.3)** - Signal suppression to prevent Token Burn on minor price changes
 - ✅ **Interactive HTML reporting** - Charts with rich tooltips showing LLM reasoning and agent proposals
 - ✅ **Position audit trail** - Console and HTML views with complete lifecycle from news trigger to closure
+
+---
+
+## Architecture
+
+### Diagram 1: System Overview. EOAM simulation with config.yaml, agents, DIM
+
+```mermaid
+---
+config:
+  layout: elk
+---
+flowchart TB
+    subgraph CFG["config.yaml"]
+        SIM["`simulation<br/>instruments, ticks, news_every_n<br/>news_score_threshold`"]
+        PM["`priority_matrix<br/>RISK_ALERT=1, CLOSE=2, NEWS_QUALIFIED=5...`"]
+        LLMCFG["`llm_defaults<br/>gemma3:4b @ localhost`"]
+        AGENTS["`agents<br/>instrument, news_scorer, position_template`"]
+    end
+
+    subgraph US["USER SPACE - Probabilistic - LLM"]
+        subgraph ORCH["Orchestrator"]
+            QG["QuoteGenerator"]
+            NG["NewsGenerator"]
+            BUS["EventBus"]
+        end
+        subgraph ROA["ROA Agents"]
+            INST["`Instrument agents<br/>MONITOR - ADJUST_RISK, HOLD`"]
+            NEWS["`News Scorer<br/>STRATEGIST - NEWS_QUALIFIED`"]
+            POS["`Position agents<br/>EXECUTOR - TAKE_PROFIT, CLOSE`"]
+        end
+    end
+
+    WALL{{"`THE WALL<br/>Proposal to DIM`"}}
+
+    subgraph KS["KERNEL SPACE - Deterministic"]
+        DIM["`validate_proposal()<br/>Schema, RBAC, context`"]
+        SPAWN["Spawn position on NEWS_QUALIFIED"]
+        DIM --> SPAWN
+    end
+
+    SIM -.->|params| ORCH
+    PM -.->|arbitration| ORCH
+    AGENTS -.->|contracts| ROA
+    LLMCFG -.->|model| ROA
+
+    QG -->|OBSERVATION| BUS
+    NG -->|NEWS| BUS
+    BUS -->|scope match| INST & NEWS & POS
+    ROA -->|PolicyProposal| WALL
+    WALL --> DIM
+
+    style US fill:#fffde7,stroke:#f9a825,color:#333
+    style KS fill:#e8f5e9,stroke:#388e3c,color:#333
+    style WALL fill:#37474f,color:#fff
+```
+
+### Diagram 2: Execution Flow. One tick (observation + optional news)
+
+```mermaid
+sequenceDiagram
+    participant Run as run.py
+    participant QG as QuoteGenerator
+    participant Orch as Orchestrator
+    participant Bus as EventBus
+    participant Agent as Instrument/Position/NewsScorer
+    participant LLM as LLM (Ollama/Gemini/Mock)
+    participant DIM as DIM
+
+    Run->>QG: next_tick()
+    QG-->>Run: tick payload
+    Run->>Orch: emit_observation(payload, scope)
+    Orch->>Bus: publish(OBSERVATION, scope)
+
+    Bus->>Agent: dispatch (scope match, Wake-up Predicate)
+    Agent->>LLM: Explain (context + mission)
+    LLM-->>Agent: narrative, signals, risks
+    Agent->>LLM: Policy (allowed actions)
+    LLM-->>Agent: action, justification
+    Agent->>Agent: self_check()
+    Agent->>Orch: callback → pending[dfid]
+
+    alt every news_every_n_ticks
+        Run->>Orch: emit_news()
+        Orch->>Bus: publish(NEWS)
+        Bus->>Agent: news_scorer receives
+        Agent->>LLM: Evaluate news impact
+        Agent->>Orch: NEWS_QUALIFIED or HOLD
+    end
+
+    Run->>Orch: arbitrate(dfid)
+    Orch-->>Run: winner (min priority)
+    Run->>DIM: validate_proposal(winner)
+    DIM-->>Run: ACCEPT | REJECT
+
+    alt ACCEPT and NEWS_QUALIFIED
+        Run->>Orch: spawn_position_agent()
+        Orch->>Bus: register_agent(PositionAgent)
+    end
+```
+
+### Diagram 3: Simulation Scenarios. Event types through the pipeline
+
+```mermaid
+---
+config:
+  layout: elk
+---
+flowchart TD
+    subgraph EVENTS["Event Sources"]
+        OBS["`OBSERVATION<br/>every tick, scope=instrument`"]
+        NWS["`NEWS<br/>every news_every_n_ticks`"]
+    end
+
+    subgraph WAKE["Wake-up Predicate"]
+        WUP{"`Price change<br/>>= threshold?`"}
+    end
+
+    subgraph AGENTS_US["ROA Agents - User Space"]
+        INST["`Instrument (MONITOR)<br/>ADJUST_RISK, RISK_ALERT, HOLD`"]
+        NEWS["`News Scorer (STRATEGIST)<br/>NEWS_QUALIFIED, HOLD`"]
+        POS["`Position (EXECUTOR)<br/>TAKE_PROFIT, CLOSE, REDUCE, ADJUST_STOP`"]
+    end
+
+    subgraph ARB["Arbitration"]
+        PRIO["priority_matrix selects winner"]
+    end
+
+    subgraph DIM_KS["DIM - Kernel Space"]
+        L1["L1 Schema + RBAC"]
+        L2["L2 Context check"]
+    end
+
+    OBS --> WUP
+    WUP -->|yes| INST
+    WUP -->|yes| POS
+    WUP -->|no| SUPPRESS["Signal suppressed"]
+
+    NWS --> NEWS
+
+    INST & POS --> PRIO
+    NEWS --> PRIO
+
+    PRIO --> L1 --> L2
+
+    L2 -->|ACCEPT| EXEC["Mock execution"]
+    L2 -->|ACCEPT + NEWS_QUALIFIED| SPAWN["Spawn position agent"]
+    L2 -->|REJECT| REJ["No execution"]
+
+    style EVENTS fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    style AGENTS_US fill:#fffde7,stroke:#f9a825,color:#333
+    style DIM_KS fill:#e8f5e9,stroke:#388e3c,color:#333
+    style SPAWN fill:#c8e6c9,stroke:#2e7d32,color:#1b5e20
+```
+
+### Simulation Scenarios (behavioral)
+
+| Scenario | Trigger | Agent(s) | Proposal | DIM Verdict | Result |
+|----------|---------|----------|----------|-------------|--------|
+| **Observation** | Tick, price change >= wake_up_threshold | Instrument agent | ADJUST_RISK, RISK_ALERT, HOLD | ACCEPT | Mock execution |
+| **Observation** | Tick, price change >= threshold | Position agent | TAKE_PROFIT, CLOSE, REDUCE, ADJUST_STOP | ACCEPT | Position lifecycle |
+| **News** | raw_score >= news_score_threshold (0.50) | News scorer | NEWS_QUALIFIED | ACCEPT | Spawn position agent |
+| **News** | raw_score < threshold | News scorer | HOLD or silence | - | No position spawn |
+| **Arbitration** | Multiple proposals same dfid | Orchestrator | Winner by priority_matrix | - | Lowest priority number wins |
+| **Signal suppression** | Price change < wake_up_threshold | - | Agent not invoked | - | Token Burn prevented |
+
+### Key Difference from a Naive Trading System
+
+| | Naive Trading Bot | EOAM ROA Simulation |
+|---|---|---|
+| Entry | Any signal, any trigger | Only NEWS_QUALIFIED (news score >= threshold) |
+| Roles | Single agent | MONITOR (instrument) + STRATEGIST (news) + EXECUTOR (position) |
+| Enforcement | None (trust the LLM) | DIM validation, priority arbitration |
+| Auditability | Limited | Hierarchical DFID, full audit trail |
 
 ---
 
@@ -623,9 +797,71 @@ python samples/31_finance_trading/run.py
 
 ## Configuration (config.yaml)
 
+All simulation and agent configuration lives in **`config.yaml`** - no hardcoded values in code.
+Same convention as `samples/35_crewai_roa_wrapper/config.yaml`.
+
+```yaml
+simulation:
+  instruments: ["BTC-USD", "ETH-USD"]
+  simulation_ticks: 64
+  tick_interval_sec: 0.2
+  news_every_n_ticks: 5
+  max_news_events: 8
+  initial_prices:
+    BTC-USD: 67500.0
+    ETH-USD: 3500.0
+  news_score_threshold: 0.50   # Minimum score for NEWS_QUALIFIED to open positions
+  take_profit_pct: 0.03
+  stop_loss_pct: 0.04
+  seeds: { quote: 42, news: 43 }
+
+priority_matrix:
+  RISK_ALERT: 1
+  CLOSE: 2
+  TAKE_PROFIT: 3
+  ADJUST_STOP: 4
+  NEWS_QUALIFIED: 5   # Exclusive entry point - opens positions when news score >= threshold
+  HOLD: 10
+
+llm_defaults:
+  model: "gemma3:4b"
+  base_url: "http://localhost:11435"
+
+agents:
+  - agent_id: "instrument_btc_usd"
+    type: instrument
+    scope: "BTC-USD"
+    mission: "Monitor market signals for BTC-USD..."
+    contract:
+      role: MONITOR
+      authorized_instruments: ["BTC-USD"]
+      allowed_policy_types: ["ADJUST_RISK", "RISK_ALERT", "HOLD"]
+      wake_up_threshold_pct: 0.8
+    priority: 8
+
+  - agent_id: "news_scorer"
+    type: news_scorer
+    scope: null
+    mission: "Evaluate news impact. When score >= 0.50, emit NEWS_QUALIFIED..."
+    contract:
+      role: STRATEGIST
+      allowed_policy_types: ["NEWS_QUALIFIED", "HOLD"]
+    priority: 5
+
+  - agent_id: "position_template"
+    type: position
+    scope: null
+    mission: "Manage this news-triggered position..."
+    contract:
+      role: EXECUTOR
+      allowed_policy_types: ["TAKE_PROFIT", "CLOSE", "REDUCE", "HOLD", "ADJUST_STOP"]
+      wake_up_threshold_pct: 0.5
+    priority: 4
+```
+
 | Section | Purpose |
 |--------|--------|
-| **simulation** | `instruments`, `simulation_ticks` / `simulation_ticks`, `simulation_max_seconds` (optional), `tick_interval_sec`, `news_every_n_ticks`, `max_news_events`, `initial_prices`, `news_score_threshold` (minimum score for NEWS_QUALIFIED to open positions), `seeds` (quote, news). |
+| **simulation** | `instruments`, `simulation_ticks`, `tick_interval_sec`, `news_every_n_ticks`, `max_news_events`, `initial_prices`, `news_score_threshold` (minimum score for NEWS_QUALIFIED to open positions), `seeds` (quote, news). |
 | **priority_matrix** | Maps `policy_kind` to numeric priority (lower = higher). Used by the orchestrator to choose the winning proposal. **Note:** `OPEN_POSITION` removed - positions opened exclusively via `NEWS_QUALIFIED`. |
 | **llm_defaults** | Optional LLM configuration. Supports three providers: <br>• **Ollama** (local): `model`, `base_url` <br>• **Gemini** (cloud): `provider: "gemini"`, `model` (e.g. `"gemini-1.5-flash"`), `api_key` (optional, uses env var if not set) <br>• **Mock** (testing): `provider: "mock"` or env `USE_MOCK_LLM=1` <br>If `provider` is omitted, auto-detects from model name ("gemini-*" → Gemini, else → Ollama). |
 | **agents** | List of agent definitions: `agent_id`, `type` (instrument \| news_scorer \| position), `scope`, `mission`, `contract` (role, authorized_instruments, allowed_policy_types, escalate_on_uncertainty, max_drawdown_limit, **wake_up_threshold_pct**, parent_agent_id), `priority`. <br><br>**Agent types:**<br>• **instrument** (MONITOR role): Observe market signals for one instrument, provide risk alerts. Cannot open positions. Default `wake_up_threshold_pct: 0.5%`.<br>• **news_scorer** (STRATEGIST role): Exclusive entry point. Emits NEWS_QUALIFIED when score ≥ threshold to spawn positions.<br>• **position** (EXECUTOR role): Template for dynamically spawned position managers. Opened only by NEWS_QUALIFIED trigger. Default `wake_up_threshold_pct: 0.3%` (more sensitive). <br><br>**Wake-up Predicates (DIR Topologies §2.3):**<br>• `wake_up_threshold_pct` (default: 0.5): Minimum price change percentage to invoke agent. Prevents "Token Burn" on minor signals. |

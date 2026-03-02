@@ -25,14 +25,15 @@ logger = logging.getLogger(__name__)
 ValidationVerdict = Literal["ACCEPT", "REJECT"]
 ValidationResult = Tuple[ValidationVerdict, str]
 
-# Global hard limit (e.g. from Risk Governor)
-GLOBAL_MAX_LIMIT = 50_000.0
+# Default hard limit (overridden by config.yaml)
+DEFAULT_GLOBAL_MAX_LIMIT = 50_000.0
 
 
 def validate(
     atom: DecisionAtom,
     risk_cache: RiskCache,
     snapshot_user_state: Optional[Dict[str, Dict[str, Any]]] = None,
+    global_max_limit: Optional[float] = None,
 ) -> ValidationResult:
     """
     Fast-Pass JIT validation.
@@ -42,7 +43,10 @@ def validate(
         risk_cache: Current risk state (live).
         snapshot_user_state: State at snapshot time, keyed by user_id.
             e.g. {"user_123": {"status": "clean", "risk_score": 0.1}}
+        global_max_limit: Hard limit for amount (from config). Default: 50_000.
     """
+    limit = global_max_limit if global_max_limit is not None else DEFAULT_GLOBAL_MAX_LIMIT
+
     # 1. Schema sanity (defense-in-depth)
     try:
         # Re-validate as DecisionAtom
@@ -51,8 +55,8 @@ def validate(
         return "REJECT", f"SCHEMA_ERROR: {e}"
 
     # 2. Hard Limits
-    if atom.amount > GLOBAL_MAX_LIMIT:
-        return "REJECT", f"HARD_LIMIT_EXCEEDED: amount {atom.amount} > {GLOBAL_MAX_LIMIT}"
+    if atom.amount > limit:
+        return "REJECT", f"HARD_LIMIT_EXCEEDED: amount {atom.amount} > {limit}"
 
     # 3. State Drift
     current = risk_cache.get(atom.user_id)
@@ -62,10 +66,11 @@ def validate(
         snapshot_status = snapshot.get("status", "unknown")
         current_status = current.get("status", "unknown")
         if current_status != snapshot_status:
-            logger.warning(
-                f"[DFID={atom.dfid}] State drift: user {atom.user_id} "
-                f"was '{snapshot_status}' at snapshot, now '{current_status}'"
+            reason = (
+                f"STATE_DRIFT_ERROR: user {atom.user_id} was '{snapshot_status}' "
+                f"in snapshot, now '{current_status}' (Runtime detected change)"
             )
-            return "REJECT", "STATE_DRIFT_ERROR: user risk status changed since snapshot"
+            return "REJECT", reason
 
-    return "ACCEPT", "JIT validation passed"
+    reasons = ["schema OK", f"amount<=${limit:,.0f}", "no state drift"]
+    return "ACCEPT", ", ".join(reasons)

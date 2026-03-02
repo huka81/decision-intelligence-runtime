@@ -1,1 +1,3 @@
-openai
+openai~=1.83.0
+plotly
+pysqlite3

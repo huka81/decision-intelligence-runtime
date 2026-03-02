@@ -2,7 +2,7 @@
 
 ## What This Folder Is
 
-This folder is **not** a Python sample. It contains no executable code. It is a **Meta-Sample**—a proof of the "Context as Code" philosophy that underpins the Decision Intelligence Runtime (DIR) repository.
+This folder is **not** a Python sample. It contains no executable code. It is a **Meta-Sample**: a proof of the "Context as Code" philosophy that underpins the Decision Intelligence Runtime (DIR) repository.
 
 In the modern AI-driven Software Development Lifecycle (SDLC), **Markdown is the new programming language**. The role of the architect is to define boundaries, rules, and problem specifications in text files. These files act as a **compiler instruction set** for an AI coding agent (Cursor, Claude, or similar) to generate the actual implementation.
 
@@ -12,9 +12,9 @@ Traditional compilers translate source code into machine instructions. Here, the
 
 | Document | Role |
 |----------|------|
-| `1_coding_standards.md` | **Lexical & semantic rules** — What the generated code must and must not do. |
-| `2_problem_specification.md` | **Domain model & requirements** — The business problem to solve. |
-| `3_meta_architect_prompt.md` | **Compiler invocation** — The prompt that instructs the AI to produce the implementation. |
+| `1_coding_standards.md` | **Lexical & semantic rules**: What the generated code must and must not do. |
+| `2_problem_specification.md` | **Domain model & requirements**: The business problem to solve. |
+| `3_meta_architect_prompt.md` | **Compiler invocation**: The prompt that instructs the AI to produce the implementation. |
 
 The AI agent reads these documents and produces Python code that satisfies all constraints. The architect never writes a single line of implementation; they write specifications. The AI compiles specifications into code.
 
@@ -48,7 +48,7 @@ The AI agent reads these documents and produces Python code that satisfies all c
 
 ## Relationship to DIR
 
-This meta-sample demonstrates that the DIR architectural philosophy extends beyond runtime code. The same principles—**User Space vs. Kernel Space**, **Proof-Carrying Intents**, **Deterministic Verification**—apply to the *process* of building systems. Specification documents are the "Policy Proposals" of the development lifecycle; the AI is the "Prover Agent"; the human architect is the "Proof Checker" who validates the output.
+This meta-sample demonstrates that the DIR architectural philosophy extends beyond runtime code. The same principles: **User Space vs. Kernel Space**, **Proof-Carrying Intents**, **Deterministic Verification** apply to the *process* of building systems. Specification documents are the "Policy Proposals" of the development lifecycle; the AI is the "Prover Agent"; the human architect is the "Proof Checker" who validates the output.
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Goal:** Demonstrate high-velocity processing where **“Structure is Safety”**. The sample enforces strict grammar/schema validation, JIT drift monitoring, and batched execution, then gates each decision with the Decision Integrity Module (DIM).
 
-**ROA/DIR:** DIR §2.4 / Topologies B — suited to high-frequency scenarios (e.g. trading, ad bidding) where inputs must conform to a fixed contract and distribution drift must be caught early.
+**ROA/DIR:** DIR §2.4 / Topologies B: suited to high-frequency scenarios (e.g. trading, ad bidding) where inputs must conform to a fixed contract and distribution drift must be caught early.
 
 ---
 
@@ -21,11 +21,11 @@ python samples/10_topology_b_sds/run.py
 
 This sample models a **structural agent** that:
 
-1. **Validates structure first** — Every incoming item is checked against a Pydantic schema (`BidRequest`). Malformed or missing fields are rejected before any business logic runs.
-2. **Applies strategy** — A simple bidding rule: bid 10% above base price, or 50% above for the `"premium"` user segment.
-3. **Monitors drift** — A sliding window tracks recent bid values; if the average exceeds a threshold (e.g. 50), the agent skips the current request (drift detected).
-4. **Formats output** — Responses are built as strict `BidResponse` objects (exchange-compatible).
-5. **Guards with DIM** — Each bid is wrapped in a `PolicyProposal` and validated by the Decision Integrity Module (schema, RBAC, context state). Only accepted proposals are “sent”.
+1. **Validates structure first**: Every incoming item is checked against a Pydantic schema (`BidRequest`). Malformed or missing fields are rejected before any business logic runs.
+2. **Applies strategy**: A simple bidding rule: bid 10% above base price, or 50% above for the `"premium"` user segment.
+3. **Monitors drift**: A sliding window tracks recent bid values; if the average exceeds a threshold (e.g. 50), the agent skips the current request (drift detected).
+4. **Formats output**: Responses are built as strict `BidResponse` objects (exchange-compatible).
+5. **Guards with DIM**: Each bid is wrapped in a `PolicyProposal` and validated by the Decision Integrity Module (schema, RBAC, context state). Only accepted proposals are “sent”.
 
 The pipeline is: **Grammar → Strategy → Drift check → Format → DIM**. No execution happens without passing all stages.
 

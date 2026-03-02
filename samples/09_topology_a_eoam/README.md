@@ -21,13 +21,13 @@ PYTHONPATH=src python samples/09_topology_a_eoam/run.py
 
 ## Logic and flow
 
-1. **Observation** — A single DFID is created; a context snapshot is built; `QuoteGenerator` produces one tick (instrument, price, volatility, trend).
-2. **Reactive agents** — `RiskAgent` and `StrategyAgent` subscribe to `OBSERVATION` with `scope="BTC-USD"`. They react when the bus dispatches the observation.
-3. **Inversion of control** — The runtime publishes `OBSERVATION` with `target_scope="BTC-USD"`; agents receive the payload and publish `POLICY_PROPOSAL` (ALERT/HOLD from Risk, ADJUST/HOLD from Strategy).
-4. **Arbitration** — The runtime selects the winner using a **priority matrix** (ALERT=1 > ADJUST=2 > HOLD=3). Risk can preempt Strategy.
-5. **DIM** — The chosen proposal is validated with context (`risk_score`).
-6. **Mock execution** — A log line indicates execution for the chosen agent and policy kind.
-7. **Summary** — Prints DFID, proposal count, chosen agent ID, and policy kind.
+1. **Observation**: A single DFID is created; a context snapshot is built; `QuoteGenerator` produces one tick (instrument, price, volatility, trend).
+2. **Reactive agents**: `RiskAgent` and `StrategyAgent` subscribe to `OBSERVATION` with `scope="BTC-USD"`. They react when the bus dispatches the observation.
+3. **Inversion of control**: The runtime publishes `OBSERVATION` with `target_scope="BTC-USD"`; agents receive the payload and publish `POLICY_PROPOSAL` (ALERT/HOLD from Risk, ADJUST/HOLD from Strategy).
+4. **Arbitration**: The runtime selects the winner using a **priority matrix** (ALERT=1 > ADJUST=2 > HOLD=3). Risk can preempt Strategy.
+5. **DIM**: The chosen proposal is validated with context (`risk_score`).
+6. **Mock execution**: A log line indicates execution for the chosen agent and policy kind.
+7. **Summary**: Prints DFID, proposal count, chosen agent ID, and policy kind.
 
 ## Inputs and outputs
 
