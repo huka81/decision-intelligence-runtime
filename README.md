@@ -60,7 +60,7 @@ Big Tech providers are beginning to theorize about "Agent Runtimes" as proprieta
 
 * **No Vendor Lock-in:** Run your agents on AWS, Azure, GCP, or on-premise. The runtime logic is yours.
 * **Ready for Production:** Solves "Day Two" problems (loops, drifts, audit) that simple orchestration libraries ignore.
-* **Works with Existing Frameworks:** DIR is not a competitor to LangChain, AutoGen, or LangGraph - it's the execution shell. Wrap task-oriented agents in ROA contracts, inject mission boundaries, and enforce deterministic validation. *(See: [sample 12_langchain_roa_wrapper](samples/12_langchain_roa_wrapper/))*
+* **Works with Existing Frameworks:** DIR is not a competitor to LangChain, AutoGen, or LangGraph - it's the execution shell. Wrap task-oriented agents in ROA contracts, inject mission boundaries, and enforce deterministic validation. *(See: [34_langchain_roa_wrapper](samples/34_langchain_roa_wrapper/), [35_crewai_roa_wrapper](samples/35_crewai_roa_wrapper/))*
 * **Language Agnostic Architecture:** While the reference implementation is Python, the patterns (Kernel/User separation, DFID) are universal.
 * **Context as Code:** Documentation is the new compiler - Markdown files act as system prompts for AI agents. *([Context as Code](./docs/08-conclusion/Context_as_Code.md))*
 
@@ -128,8 +128,8 @@ decision-intelligence-runtime/
 │   └── dir/          # Core framework (DFID, DIM, EventBus, Context, etc.)
 ├── samples/                  # Reference implementations (01–11 mechanics, 31+ use cases)
 │   ├── README.md             # Sample catalog and run instructions
-│   ├── 01_roa_agent/ … 12_langchain_roa_wrapper/
-│   ├── 31_finance_trading/ … 33_insurance_underwriting/
+│   ├── 01_roa_agent/ … 11_topology_c_dl_pci/
+│   ├── 31_finance_trading/ … 35_crewai_roa_wrapper/
 │   └── 88_meta_context_engineering/   # Meta-sample: System Prompt Toolkit
 ├── docs/                     # Architectural documentation
 │   ├── 00-introduction/      # DIR intro, framework mapping
@@ -161,16 +161,17 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 | 09 | `09_topology_a_eoam` | Topology A | Event-Oriented Agent Mesh |
 | 10 | `10_topology_b_sds` | Topology B | Sovereign Decision Stream |
 | 11 | `11_topology_c_dl_pci` | Topology C | Decision Ledger & Proof-Carrying Intents |
-| 12 | `12_langchain_roa_wrapper` | ROA + DIR | **Mission Injection**: LangChain ReAct → ROA; task-oriented → mission-oriented transformation |
-| 88 | `88_meta_context_engineering` | Meta-Sample | **Meta-Context Engineering**: System Prompt Toolkit - Markdown as compiler for AI; generates Flight Delay Refund (Topology C) |
+| 88 | `88_meta_context_engineering` | Meta-Sample | **Travel/insurance**: System Prompt Toolkit. Domain: flight delay refunds. Generates Flight Delay Refund System (Topology C). |
 
 ### Business Use Cases (31+)
 
-| # | Sample | Topology | Description |
-|---|--------|----------|--------------|
-| 31 | `31_finance_trading` | EOAM | Finance Trading: market quotes, news, parallel agents |
-| 32 | `32_fraud_gate` | SDS | Real-Time Fraud Gate: constrained decoding, JIT state drift |
-| 33 | `33_insurance_underwriting` | DL+PCI | Insurance Underwriting: risk evaluation with PCI |
+| # | Sample | Topology | Domain | What it checks |
+|---|--------|----------|--------|----------------|
+| 31 | `31_finance_trading` | EOAM | **Finance/trading** | Market quotes, news, parallel agents; position spawning and execution. |
+| 32 | `32_fraud_gate` | SDS | **Fraud detection** | Real-time payment fraud gate; constrained decoding, JIT state drift, drift-attack demo. |
+| 33 | `33_insurance_underwriting` | DL+PCI | **Insurance underwriting** | Risk evaluation with cryptographic Proof-Carrying Intents (PCI). |
+| 34 | `34_langchain_roa_wrapper` | ROA + DIR | **FinOps** | LangChain ReAct → ROA. Cloud cost management. Verifies mission injection blocks PROD termination. |
+| 35 | `35_crewai_roa_wrapper` | ROA + DIR | **Customer claims/refunds** | CrewAI Crew → ROA. E-commerce refunds (EUR). Verifies ACCEPT/ESCALATE/REJECT by category, return window, amount; NL intake. |
 
 ---
 ## Documentation

@@ -32,9 +32,19 @@ To solve this, we decouple the **Identity Layer** from the **Topology Layer**:
 
 *   **The Identity Layer (ROA):** Who acts? (Defined by Mission, Authority, and Responsibility Contracts).
 *   **The Execution Kernel (DIR):** How is it validated? (Defined by DFIDs, Hard Gates, and Idempotency).
-*   **The Topology (EOAM / SDS / DL):** How do signals flow?
+*   **The Topology (EOAM / SDS / DL):** How do signals flow, and where does trust originate?
 
-This separation allows a single systems architecture to support deliberate mesh networks, hyper-fast singular streams, and formally verified ledgers side-by-side.
+Each topology defines two orthogonal properties:
+
+1.  **Signal Flow** — the communication pattern between agents and the runtime (mesh, stream, or ledger).
+2.  **Trust Locus** — the architectural location where safety is guaranteed:
+    *   **Process** (EOAM): The Runtime validates proposals *after* generation.
+    *   **Generation** (SDS): The Grammar constrains output *during* inference.
+    *   **Artifact** (DL+PCI): The Proof-Carrying Intent carries verifiable evidence *within itself*.
+
+This separation allows a single systems architecture to support deliberate mesh networks, hyper-fast singular streams, and formally verified ledgers side-by-side. The three topologies are not incremental layers of the same pattern; they represent fundamentally different answers to the question: *"Where does safety come from?"*
+
+A key motivation for this pluralistic approach is the limitation of conventional multi-agent frameworks, which typically rely on unstructured LLM-to-LLM dialogue or manager-led hierarchies. While powerful for creative synthesis, these patterns produce non-deterministic outcomes that are difficult to audit in regulated environments. The topologies defined here replace **dialogue with choreography** (typed signals, not chat), **democracy with priority** (deterministic preemption, not negotiation), and **mystery with audit** (DFID-bound causal chains, not opaque chat logs).
 
 ```mermaid
 ---
@@ -53,7 +63,7 @@ flowchart TB
         Registry(["`**Agent Registry**<br/>Mission & Authority`"]):::kernelSpace
     end
 
-    subgraph Topology_Selector ["`**TOPOLOGY LAYER**<br/>How do signals flow?`"]
+    subgraph Topology_Selector ["`**TOPOLOGY LAYER**<br/>Signal Flow & Trust Locus`"]
         direction TB
         Selector{"`**Selector**`"}:::kernelSpace
         
@@ -125,7 +135,7 @@ In a decentralized mesh, mitigating noise and cost is critical.
 
 ### 2.4 The Mesh Decision Lifecycle
 
-1.  **Observation:** A raw signal triggers a new **DecisionFlow**. The Runtime generates an authoritative **Context Snapshot** (cached to prevent "Thundering Herd" on the database).
+1.  **Observation:** A raw signal triggers a new **DecisionFlow**. The Runtime generates an authoritative **Context Snapshot** (cached to prevent **Read Contention** on the database).
 2.  **Distributed Parallel Reasoning:** Agents reason in parallel, producing **PolicyProposals**.
 3.  **Priority-Based Preemption Model:** The Runtime utilizes a priority-driven logic rather than a simple time window. It collects proposals and applies the **Agent Registry Priority Matrix** to select the winner. High-priority agents (e.g., Risk Monitors) can preempt or invalidate earlier strategic proposals, ensuring safety always overrides strategy.
 4.  **JIT Verification:** The Runtime compares the live state against the `ContextSnapshotID`. If the **Drift** exceeds the agent-defined **Drift Envelope** (a contract-level parameter stored in the Registry), the execution is rejected. This prevents actions based on stale data (e.g., execution against a price that has moved beyond the allowable slippage/latency threshold).
@@ -262,11 +272,13 @@ flowchart LR
 ## 3. Topology B: The Sovereign Decision Stream (SDS)
 
 **Primary Attribute:** Atomic Execution Velocity
-**Ideal For:** High-Frequency Trading, Risk Stops, Tactical Reactions
+**Ideal For:** Tactical Automation, Risk Stops, Reactive Decision-Making
+
+> **A note on latency:** SDS minimizes decision latency *relative to multi-agent topologies* (EOAM), but it still involves LLM inference (typically 100ms-2s). It is not designed for microsecond-scale High-Frequency Trading (HFT), which requires deterministic code paths without probabilistic reasoning. SDS targets "fast-for-AI" decisions (sub-second to low-second), not "fast-for-hardware" decisions (sub-millisecond).
 
 While the **Event-Oriented Agent Mesh (EOAM)** excels at multi-perspective coordination and organizational "Digital Twins," it introduces significant latency and computational overhead due to its reliance on parallel orchestration and arbitration.
 
-The **Sovereign Decision Stream (SDS)** is an alternative architectural pattern designed for high-frequency, low-latency, and cost-efficient decision-making. SDS treats the decision process as a "straight-line" function rather than a choreographic dialogue. It achieves structural safety not through post-generation validation (the "Audit" model), but through **Constrained Decoding**-embedding the deterministic rules of the **Decision Intelligence Runtime (DIR)** directly into the probabilistic sampling of the Large Language Model.
+The **Sovereign Decision Stream (SDS)** is an alternative architectural pattern designed for low-latency, cost-efficient, and structurally safe decision-making. SDS treats the decision process as a "straight-line" function rather than a choreographic dialogue. It achieves structural safety not through post-generation validation (the "Audit" model), but through **Constrained Decoding**-embedding the deterministic rules of the **Decision Intelligence Runtime (DIR)** directly into the probabilistic sampling of the Large Language Model.
 
 ### 3.1 The SDS Philosophy: "Syntactically Bound by Design"
 
@@ -281,15 +293,15 @@ The cornerstone of SDS is the use of grammars (e.g., via libraries like *Outline
 *   **Deterministic Sampling:** The LLM is physically unable to generate a token that violates the JSON schema or numerical bounds defined by the DIR.
 *   **Elimination of Syntax Errors:** Because the output is constrained by a state machine, the resulting **PolicyProposal** is guaranteed to be syntactically valid and semantically bounded before it even reaches the Runtime.
 
-#### 3.1.2 The "Decision Atom": Atomic Context
+#### 3.1.2 The "Atomic Context": Input to Inference
 
-In SDS, there is no emergent context or asynchronous message passing. The **Context Compiler** assembles an "Atom"-a cryptographically signed package containing:
+In SDS, there is no emergent context or asynchronous message passing. The **Context Compiler** assembles an **Atomic Context**-a pre-validated package containing:
 
 1.  **The Mission** (from ROA).
 2.  **The Constraints** (from DIR Hard Gates).
 3.  **The Snapshot** (from the Context Store).
 
-**Critical Binding:** The "Decision Atom" **MUST** include the `ContextSnapshotID` hash-binding. The DIR must verify this JIT to prevent execution against a drift-unverified state.
+**Critical Binding:** The Agent's output (The Intent) **MUST** include the `ContextSnapshotID` hash-binding from the input. The DIR verifies this JIT to prevent execution against a drift-unverified state. The combination of the **Atomic Context**, the **Intent**, and the **Signature** forms the final **Decision Atom**.
 
 ### 3.2 The SDS Decision Lifecycle
 
@@ -354,7 +366,7 @@ config:
   layout: dagre
   theme: neutral
   look: classic
-title: Holistic SDS Architecture (High-Frequency Trading)
+title: Holistic SDS Architecture (Tactical Automation)
 ---
 flowchart LR
  subgraph Data_Sources["**Data Sources**"]
@@ -379,7 +391,7 @@ flowchart LR
   end
  subgraph User_Layer["**USER SPACE (SDS)**<br>Constrained Reasoning"]
     direction LR
-        HFT_Agent(["HFT Agent"])
+        HFT_Agent(["Tactical Agent"])
         Inference_Engine[["LLM Inference Engine"]]
   end
     L1_Feed & Tick_Stream ==> Context_Compiler
@@ -416,6 +428,18 @@ flowchart LR
     style User_Layer fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px
 ```
 
+### 3.4 Design Intent: The "Fly-by-Wire" Paradigm
+
+To visualize **Topology B**, consider the control system of a modern **Fighter Jet** (Fly-by-Wire).
+
+In older aircraft (like standard scripts), the pilot's stick was mechanically connected to the wings. If the pilot pulled too hard, the wings could snap off. In a Fly-by-Wire system, there is no mechanical link.
+
+*   **The Pilot (The Agent)** inputs an intent ("Pull up").
+*   **The Flight Computer (The Grammar)** intercepts the signal. It knows the airframe's structural limit is 9G. Any stick input that would exceed that envelope is **rejected at the input layer** — the control surfaces physically will not respond to it. The pilot must issue a command *within* the safe envelope for the system to act.
+*   **The Result:** The pilot retains full authority within the safe flight envelope, but the physics of the system make it impossible to exceed structural limits, regardless of intent.
+
+**Topology B** applies this to decision-making. The Agent has "Sovereign" speed and authority, but it operates through a **Grammar**. It does not matter if the LLM's probability distribution favors trading 1,000,000 lots; the Grammar **masks that token at the sampling layer**, making it impossible to generate. The LLM must select from the remaining valid tokens. This allows the system to operate at high speeds (skipping the slow "Manager Review") because the "Physics of the System" (Syntax/Grammar) guarantees structural integrity.
+
 ---
 
 ## 4. Topology C: The Decision Ledger (DL+PCI)
@@ -439,12 +463,15 @@ The **Decision Ledger** is an append-only, immutable record that serves as the "
 *   **Idempotency:** The Ledger ensures that replaying the same intent results in the same outcome (or a deterministic rejection if state has changed).
 *   **Zero-Trust Auditability:** Auditors do not need to inspect the LLM's "thoughts"; they only need to verify the cryptographic proofs stored in the Ledger.
 
+> The cryptographic protocol for generating and verifying Evidence Hashes and PCIs is formally specified in the **Technical Annex** at the end of this document.
+
 ### 4.3 The Proof Checker
 
 In Topology C, the **Decision Integrity Module (DIM)** acts as a minimalist **Proof Checker**. It does not "think" or "reason." It simply validates the proofs attached to the intent.
 
 *   **Cryptographic Verification:** Verifies the signature of the intent (binding it to an ROA identity).
 *   **Logical Verification:** Checks that the intent includes valid evidence for all required rules (e.g., "RBAC Check Passed," "Limit Check Passed," "State Freshness Verified").
+*   **Temporal Validity (Drift Check):** Explicitly verifies that the `ContextSnapshotID` referenced in the PCI is not "stale" (expired timestamp) and that the live system state has not drifted beyond the allowable envelope since the proof was generated.
 
 ### 4.4 Concept Refinement: PCI vs. Decision Atom
 
@@ -509,21 +536,97 @@ flowchart TB
     style Validation_Gate fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,stroke-dasharray: 5 5
 ```
 
+### 4.5 Addressing the Obvious Question: "Is Topology C Just Topology B With Extra Steps?"
+
+A natural objection arises: if a Proof-Carrying Intent builds on top of SDS's Decision Atom, isn't Topology C merely Topology B with an additional audit layer? The answer is no-and the distinction is architectural, not incremental.
+
+The three topologies differ not only in **Signal Flow** (how messages move) but in **Trust Locus** (where safety is guaranteed):
+
+| Property | Topology A (EOAM) | Topology B (SDS) | Topology C (DL+PCI) |
+| :--- | :--- | :--- | :--- |
+| **Trust Locus** | **Process** — DIM validates *after* agents reason | **Generation** — Grammar constrains *during* inference | **Artifact** — PCI carries proof *within itself* |
+| **Offline Verifiability** | No — requires live DIM and Runtime | No — requires live JIT and Runtime | **Yes** — PCI is self-contained and cryptographically verifiable |
+| **Recovery Model** | Re-arbitrate (select new winner from proposals) | Re-reason (trigger new LLM inference) | **Deterministic Replay** from immutable Ledger |
+| **Inter-Organizational Use** | No — confined to a single trust domain | No — Grammar and JIT are internal | **Yes** — PCI can be verified by an external auditor or counterparty |
+
+#### Why This Matters: The Regulatory Audit Scenario
+
+Consider a concrete scenario that exposes the architectural difference:
+
+> **Six months after execution, a regulator asks: "Why did the system sell 500 shares of XYZ on March 15th at 14:32?"**
+>
+> *   **Topology B (SDS):** The Runtime has logs. The DFID links the trigger to the action. But the JIT check was performed by a Runtime that has since undergone three software updates. The auditor must *trust* that the logs were not altered and that the validation logic at the time of execution matched the current version. The proof is *reconstructed* from system state-it was never an independent object.
+> *   **Topology C (DL+PCI):** The auditor retrieves the PCI from the immutable Decision Ledger. They re-calculate the `evidence_hash` using the archived $H_s$, $H_c$, and $H_r$. They verify the `roa_signature` against the registered public key. **No access to the live Runtime is required.** The proof is a *property of the artifact*, not a property of the system that produced it.
+
+This is not "B plus logging." It is a fundamentally different trust architecture:
+
+*   **SDS guarantees:** "This intent was structurally valid *at the moment of generation*."
+*   **DL+PCI guarantees:** "This intent was formally compliant, and *anyone can verify this at any time*, without trusting the system that produced it."
+
+The distinction mirrors the difference between **runtime type-checking** (safe while the program runs) and **proof-carrying code** (safe regardless of the execution environment). Both are valid; they serve different classes of problems. Topology C exists for scenarios where the proof must *outlive* the system that generated it.
+
+### 4.6 Design Intent: The "Notarized Execution" Paradigm
+
+To better understand Topology C, consider the banking concept of a **Letter of Credit (L/C)** (PL: *Akredytywa*).
+
+In a standard transaction, a buyer might promise to pay. In an L/C, a **Bank** (The Runtime) guarantees payment to a **Beneficiary** (Execution) on behalf of a **Buyer** (The Agent), *provided that* specific documents (Proofs) are presented.
+
+*   **The Agent (Buyer)** does not touch the money directly. It instructs the bank.
+*   **The Runtime (Bank)** does not judge the quality of the goods. It strictly verifies that the *documents* (Bill of Lading, Invoice) match the conditions of the Credit exactly.
+*   **The Execution (Beneficiary)** gets paid (action executes) *if and only if* the documents are perfect.
+
+In **Topology C**, the **Proof-Carrying Intent (PCI)** is that "stack of documents." The Agent (Buyer) constructs a complex transaction, but the Runtime (Bank) will only "release funds" (execute side effects) if the cryptographic proofs (documents) perfectly match the **Decision Ledger's** requirements. If a single signature is missing or a timestamp is stale, the transaction is dishonored-regardless of how "smart" the Agent's reasoning was.
+
+This transforms the system from **"Trust but Verify"** (classic agent monitoring) to **"Verify then Trust"** (cryptographic enforcement).
+
 ---
 
 ## 5. Comparative Analysis: The Decision Matrix
 
-The choice between EOAM, SDS, and DL+PCI is a strategic decision based on the trade-off between **Coordination**, **Velocity**, and **Integrity**.
+The choice between EOAM, SDS, and DL+PCI is a strategic decision based on the trade-off between **Coordination**, **Velocity**, and **Integrity**. These three dimensions form a "pick-two" triangle analogous to the **CAP Theorem** in distributed systems: optimizing for one axis necessarily constrains the others.
+
+```mermaid
+---
+title: "The Decision Triangle: Coordination × Velocity × Integrity"
+config:
+  theme: neutral
+  look: classic
+---
+flowchart LR
+    classDef coordStyle fill:#E8EAF6,stroke:#3F51B5,stroke-width:3px,color:#1A237E,font-weight:bold;
+    classDef velocStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:3px,color:#E65100,font-weight:bold;
+    classDef integStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:3px,color:#1B5E20,font-weight:bold;
+    classDef edgeLabel fill:none,stroke:none,color:#616161,font-style:italic;
+
+    EOAM(["`**Topology A: EOAM**
+    COORDINATION
+    *(breadth & strategy)*`"]):::coordStyle
+
+    SDS(["`**Topology B: SDS**
+    VELOCITY
+    *(speed & tactics)*`"]):::velocStyle
+
+    DL(["`**Topology C: DL+PCI**
+    INTEGRITY
+    *(trust & audit)*`"]):::integStyle
+
+    EOAM ---|"Trade-off: Speed vs Breadth"| SDS
+    SDS ---|"Trade-off: Rigor vs Speed"| DL
+    DL ---|"Trade-off: Breadth vs Rigor"| EOAM
+```
 
 | Feature | Event-Oriented Agent Mesh (EOAM) | Sovereign Decision Stream (SDS) | Decision Ledger (DL+PCI) |
 | :--- | :--- | :--- | :--- |
 | **Primary Goal** | **Coordinated Strategic Reasoning** | Atomic execution velocity | **Formal Verification / Absolute Integrity** |
 | **Topology Type** | Decentralized Choreography (Many-to-Many) | Linear Pipeline (One-to-One) | Append-Only Log (State-to-State) |
-| **Safety Mechanism** | **Post-Generation Validation** (DIM checks proposals) | **Syntactic Safety** (Grammar enforces rules) | **Proof-Carrying Decoupling** (Safety in artifact) |
+| **Trust Locus** | **Process** — Runtime validates after generation | **Generation** — Grammar constrains during inference | **Artifact** — PCI carries self-contained proof |
+| **Offline Verifiability** | No (requires live DIM) | No (requires live JIT) | **Yes** (self-contained cryptographic proof) |
 | **Concurrency** | High (Parallel Reasoning) | Low (Linear Atomic Decision) | Serialized (Ledger Ordering) |
 | **Latency** | Significant (Priority-Based Preemption) | **Minimal** (Single Inference Pass) | Medium (Log persistence & proof verification) |
 | **Cost** | High (Multi-agent activation) | **Low** (Token-optimized single call) | Medium (Proof generation overhead) |
-| **Ideal Case** | Strategic Portfolio Rebalancing | Tactical Scalping / Risk Mitigation | **Compliance-heavy ops, Settlements** |
+| **Recovery Model** | Re-arbitrate (select new proposal winner) | Re-reason (new LLM inference) | **Deterministic Replay** (from immutable Ledger) |
+| **Inter-Org Use** | No (single trust domain) | No (internal Grammar & JIT) | **Yes** (PCI verifiable by external party) |
+| **Ideal Case** | Strategic Portfolio Rebalancing | Tactical Automation / Risk Stops | **Compliance-heavy ops, Settlements** |
 
 ---
 
@@ -622,9 +725,9 @@ class ProofChecker:
         return True
 ```
 
-### 6.4 Kernel-User Space Integrity Constraints
+### 6.4 Kernel-User Space Integrity Constraints (All Topologies)
 
-To maintain absolute alignment between the Reasoning (Agent) and Execution (Kernel) layers:
+The following constraints apply **regardless of topology**. They are properties of the DIR Kernel, not of any specific signal flow pattern. They are included here because they govern the boundary between all Implementation Blueprints above and the Execution Engine.
 
 *   **Deterministic Compensation Menu:** In multi-step decisions, agents MUST NOT generate "reasoning-based compensation" logic. Instead, they must select from a pre-defined, DIR-validated set of actions (e.g., `REVERT`, `CLOSE_ALL`, `ALERT_HUMAN`). This prevents the same reasoning capability that caused the failure from exacerbating it.
 *   **Lock Normalization:** Agents are NOT responsible for sorting Resource IDs to prevent deadlocks. **Alphabetical lock normalization is a Kernel (Runtime) responsibility**, ensuring that the Reasoning layer remains infrastructure-agnostic.
@@ -635,12 +738,12 @@ To maintain absolute alignment between the Reasoning (Agent) and Execution (Kern
 
 The development of **Decision Intelligence Topologies** marks the maturation of agentic engineering. We are moving beyond the era of treating Large Language Models as meaningful entities in themselves, and towards an era where they are components within rigorous system architectures.
 
-The inclusion of **Topology C (DL+PCI)** completes the triad:
-*   **EOAM** for breadth and strategy.
-*   **SDS** for speed and tactics.
-*   **DL+PCI** for truth and audit.
+The inclusion of **Topology C (DL+PCI)** completes the triad-not as an incremental extension of earlier patterns, but as a fundamentally different **Trust Locus**:
+*   **EOAM** for breadth and strategy — safety lives in the **process**.
+*   **SDS** for speed and tactics — safety lives in the **generation**.
+*   **DL+PCI** for truth and audit — safety lives in the **artifact**.
 
-Sophisticated organizations will employ all three topologies in concert. The Mesh (EOAM) thinks deeply about strategy and risk; the Stream (SDS) executes those strategies with precision; and the Ledger (DL) records the irrevocable truth of every action. In all cases, the future belongs to architectures that prioritize **auditability over creativity** and **constraints over capabilities**.
+Sophisticated organizations will employ all three topologies in concert. The Mesh (EOAM) thinks deeply about strategy and risk; the Stream (SDS) executes those strategies with precision; and the Ledger (DL) records the irrevocable truth of every action-a truth that can be verified by any party, at any time, without access to the system that produced it. In all cases, the future belongs to architectures that prioritize **auditability over creativity** and **constraints over capabilities**.
 
 ---
 
@@ -660,6 +763,7 @@ Sophisticated organizations will employ all three topologies in concert. The Mes
 *   **Proof-Carrying Intent (PCI):** An intent artifact containing action, rationale, and deterministic proof of rule compliance.
 *   **Proof Checker:** A minimalist verification module that validates PCI proofs without reasoning.
 *   **Immutable Narrative:** The unchangeable history of decisions and states stored in the Decision Ledger.
+*   **Trust Locus:** The architectural location where safety is guaranteed within a given topology: the **Process** (EOAM — runtime validates after generation), the **Generation** (SDS — grammar constrains during inference), or the **Artifact** (DL+PCI — the PCI carries self-contained, cryptographically verifiable proof).
 
 ---
 

@@ -1246,7 +1246,7 @@ The ROA Wrapper transforms this into a "Trigger → Proposal → Validation → 
 *   **Without ROA:** A trading agent analyzes market data, identifies a "strong buy" signal, and immediately executes `exchange.create_order(symbol="BTC-USD", amount=100)`. If the decimal separator was misinterpreted or the model hallucinated the position size, a catastrophic financial loss occurs instantly.
 *   **With ROA:** The same agent produces a `PolicyProposal(action="BUY", instrument="BTC-USD", amount=100)`. The ROA Runtime receives this, checks the **Responsibility Contract**, sees that this agent has a hard limit of `max_order_size=5.0 BTC`, and rejects the proposal *before* it reaches the exchange.
 
-*Implementation Note:* In practice, this is achieved by providing the internal agent with a **single** tool: `submit_policy_proposal`. When the agent calls this tool, the wrapper intercepts the payload, terminates the agent's execution loop, and passes the structured proposal to the DIR Runtime for validation (see `samples/12_langchain_roa_wrapper`).
+*Implementation Note:* In practice, this is achieved by providing the internal agent with a **single** tool: `submit_policy_proposal`. When the agent calls this tool, the wrapper intercepts the payload, terminates the agent's execution loop, and passes the structured proposal to the DIR Runtime for validation (see `samples/34_langchain_roa_wrapper`).
 
 ## **10.3 Strategic Advantage: Compliance by Design**
 
