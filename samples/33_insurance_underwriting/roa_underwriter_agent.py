@@ -14,14 +14,12 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-try:
-    from dir import new_dfid
-except ImportError:
-    import uuid
-    def new_dfid() -> str:
-        return str(uuid.uuid4())
+from dir import new_dfid
+from dir.models import ProofCarryingIntent
+from dir.pci import compute_evidence_hash, hash_content, proposal_params_for_hash
 
-from models import ClientApplication, PolicyProposal, ProofCarryingIntent
+from kernel import AgentRegistry
+from models import ClientApplication, PolicyProposal
 
 
 @dataclass
@@ -35,12 +33,6 @@ class DecisionCycleReport:
     self_check_reason: Optional[str]
     evidence_hash: str
     forge_evidence_hash: bool
-from kernel import (
-    AgentRegistry,
-    compute_evidence_hash,
-    hash_content,
-    proposal_params_for_hash,
-)
 
 try:
     from .llm_client import LLMClient
@@ -226,7 +218,7 @@ class ROAUnderwriterAgent:
 
         context_hash = hash_content(context.model_dump())
         contract_hash = self.registry.get_contract_hash()
-        proposal_params = proposal_params_for_hash(proposal)
+        proposal_params = proposal_params_for_hash(proposal.model_dump())
 
         if forge_evidence_hash:
             evidence_hash = "0" * 64
@@ -241,7 +233,8 @@ class ROAUnderwriterAgent:
 
         pci = ProofCarryingIntent(
             dfid=dfid,
-            policy_proposal=proposal,
+            intent_payload=proposal.model_dump(),
+            context_ref=context_hash,
             evidence_hash=evidence_hash,
             signature=signature,
         )

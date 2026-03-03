@@ -106,7 +106,7 @@ Same convention as `samples/35_crewai_roa_wrapper/config.yaml`.
 ```yaml
 llm_defaults:
   model: "gemma3:4b"
-  base_url: "http://localhost:11435"
+  base_url: "http://localhost:11434"
   temperature: 0.2
 
 agent:

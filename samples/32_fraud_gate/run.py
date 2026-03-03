@@ -17,13 +17,14 @@ import logging
 import os
 
 from dir import new_dfid
+from utils.ollama_client import OllamaClient, check_ollama
 
 try:
     from .agent import FraudGuardAgent
     from .config_loader import load_config
     from .execution_engine import execute
     from .jit_validator import validate
-    from .llm_client import MockLLM, OllamaClient
+    from .llm_client import MockLLM
     from .risk_cache import RiskCache
     from .schemas import TransactionContext
 except ImportError:
@@ -31,7 +32,7 @@ except ImportError:
     from config_loader import load_config
     from execution_engine import execute
     from jit_validator import validate
-    from llm_client import MockLLM, OllamaClient
+    from llm_client import MockLLM
     from risk_cache import RiskCache
     from schemas import TransactionContext
 
@@ -80,26 +81,12 @@ def _check_ollama(cfg) -> bool:
         return True
     if os.getenv("USE_MOCK_LLM", "").strip() in ("1", "true", "yes"):
         return True
-    import urllib.request
     base_url = cfg.llm.effective_base_url()
     model = cfg.llm.effective_model()
-    tags_url = base_url.rstrip("/") + "/api/tags"
-    try:
-        with urllib.request.urlopen(tags_url, timeout=5) as resp:
-            import json
-            data = json.loads(resp.read().decode("utf-8"))
-    except Exception:
+    if not check_ollama(base_url, model):
         logger.warning(
-            "Ollama not reachable at %s. Use MockLLM. (ollama serve && ollama pull %s)",
-            base_url, model,
-        )
-        return False
-    available = [m.get("name", "") for m in data.get("models", [])]
-    model_base = model.split(":")[0]
-    if not any(model_base in name for name in available):
-        logger.warning(
-            "Model '%s' not found. Available: %s. Use MockLLM. (ollama pull %s)",
-            model, ", ".join(available) or "none", model,
+            "Ollama not reachable at %s or model '%s' not found. Use MockLLM. (ollama serve && ollama pull %s)",
+            base_url, model, model,
         )
         return False
     return True

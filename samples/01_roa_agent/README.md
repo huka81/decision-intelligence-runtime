@@ -62,7 +62,7 @@ From repo root:
 
 ```bash
 pip install -e .
-python samples/01_roa/run.py
+python samples/01_roa_agent/run.py
 ```
 
 ## Scenarios Demonstrated
@@ -176,13 +176,13 @@ PositionAgent (position_POS_001) - RETIRED:
 
 [SCENARIO E] State Persistence - Save and Load Agent
 
-INFO [instrument_btc_usd] State saved to samples/01_roa/data/btc_agent_state.json
-  Saved agent state to: samples/01_roa/data/btc_agent_state.json
+INFO [instrument_btc_usd] State saved to samples/01_roa_agent/data/btc_agent_state.json
+  Saved agent state to: samples/01_roa_agent/data/btc_agent_state.json
   Trajectory before save: 2 decisions
 
   --- Simulating restart: loading agent from file ---
 
-INFO [instrument_btc_usd] State loaded from samples/01_roa/data/btc_agent_state.json (trajectory: 2 decisions)
+INFO [instrument_btc_usd] State loaded from samples/01_roa_agent/data/btc_agent_state.json (trajectory: 2 decisions)
   Restored agent: instrument_btc_usd
   Trajectory restored: 2 decisions
 

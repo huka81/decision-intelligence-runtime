@@ -3,7 +3,7 @@
 
 simulation:
   instruments: ["BTC-USD", "ETH-USD"]
-  simulation_ticks: 64  # Extended for full position lifecycle visibility
+  simulation_ticks: 4  # Extended for full position lifecycle visibility
   simulation_max_seconds: null  # Optional: max wall-clock seconds (null = no limit)
   tick_interval_sec: 0.2  # Faster ticks for quicker testing
   news_every_n_ticks: 5  # News every 5 ticks for more opportunities
@@ -39,7 +39,7 @@ priority_matrix:
 # For Ollama (local):
 llm_defaults:
   model: "gemma3:4b"
-  base_url: "http://localhost:11435"
+  base_url: "http://localhost:11434"
   # provider: "ollama"  # Optional - auto-detected for non-gemini models
 #
 # For Gemini (cloud):

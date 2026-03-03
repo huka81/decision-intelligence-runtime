@@ -122,10 +122,13 @@ pip install -e .
 ```text
 decision-intelligence-runtime/
 ├── README.md
-├── pyproject.toml            # pip install -e . installs dir
+├── pyproject.toml            # pip install -e . installs dir + utils
 ├── requirements.txt          # Shared dependencies
 ├── src/
-│   └── dir/          # Core framework (DFID, DIM, EventBus, Context, etc.)
+│   ├── dir/                  # Core DIR/ROA components (per docs spec)
+│   │   # DFID, EventBus, DIM, Context Store, models, arbitration, PCI, etc.
+│   └── utils/                # Supporting utilities for samples
+│       # QuoteGenerator, NewsGenerator, market_events, logging_utils
 ├── samples/                  # Reference implementations (01–11 mechanics, 31+ use cases)
 │   ├── README.md             # Sample catalog and run instructions
 │   ├── 01_roa_agent/ … 11_topology_c_dl_pci/

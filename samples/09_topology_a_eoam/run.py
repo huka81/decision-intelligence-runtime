@@ -20,7 +20,7 @@ from dir import (
     new_dfid,
 )
 from dir.dim import validate_proposal
-from dir.logging_utils import log_with_dfid
+from utils.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -130,13 +130,25 @@ def main() -> None:
     observation_payload["dfid"] = dfid
     observation_payload["context_ref"] = context_ref
 
-    # 4. Publish OBSERVATION (inversion of control: runtime emits, agents react)
-    metadata = EventMetadata(dfid=dfid, target_scope=scope, context_snapshot_id=context_ref)
-    bus.publish(
-        EventType.OBSERVATION,
-        observation_payload,
-        metadata=metadata,
-    )
+    # 4. Wake-up predicate (DIR Topologies §2.3): suppress noise before expensive LLM
+    # If price_delta < threshold, skip publishing to avoid Token Burn on minor signals.
+    apply_wakeup_predicate = False  # Set True to demonstrate suppression; False preserves demo
+    wakeup_threshold_pct = 0.5
+    price_delta_pct = abs(tick.mid_price - quote_gen.initial_price) / quote_gen.initial_price * 100
+    if apply_wakeup_predicate and price_delta_pct < wakeup_threshold_pct:
+        log_with_dfid(
+            logger, dfid, logging.INFO,
+            "Wake-up predicate: price_delta=%.2f%% < %.1f%% - suppressed (no agents invoked)",
+            price_delta_pct, wakeup_threshold_pct,
+        )
+    else:
+        # Publish OBSERVATION (inversion of control: runtime emits, agents react)
+        metadata = EventMetadata(dfid=dfid, target_scope=scope, context_snapshot_id=context_ref)
+        bus.publish(
+            EventType.OBSERVATION,
+            observation_payload,
+            metadata=metadata,
+        )
 
     # 5. Unsubscribe and arbitrate
     bus.unsubscribe(EventType.POLICY_PROPOSAL, collect_proposal)

@@ -29,6 +29,10 @@ PYTHONPATH=src python samples/09_topology_a_eoam/run.py
 6. **Mock execution**: A log line indicates execution for the chosen agent and policy kind.
 7. **Summary**: Prints DFID, proposal count, chosen agent ID, and policy kind.
 
+### Wake-up Predicates (DIR Topologies §2.3)
+
+The sample includes an optional **wake-up predicate**: before publishing OBSERVATION, the runtime can check if `abs(price_delta) > 0.5%`. If the delta is below the threshold, the event is suppressed (no agents invoked), reducing Token Burn on minor signals. Set `apply_wakeup_predicate = True` in `run.py` to demonstrate suppression. Default is `False` so the demo always publishes.
+
 ## Inputs and outputs
 
 **Input:** None (the sample is self-contained; it uses `QuoteGenerator` for one tick and simulates the EOAM flow).

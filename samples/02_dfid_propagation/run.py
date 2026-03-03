@@ -33,7 +33,7 @@ from dir import (
     new_dfid,
     new_dfid_with_parent,
 )
-from dir.logging_utils import log_with_dfid
+from utils.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

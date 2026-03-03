@@ -62,6 +62,12 @@
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+## Implementation Note
+
+The Memory and Artifacts layers are stubs (return `{}`) in the current implementation.
+Full implementation requires integration with vector DB / archival storage for Memory,
+and RAG / static docs for Artifacts. See DIR §8.1, ROA §7.2 for layer definitions.
+
 ## How to run
 
 From repo root:

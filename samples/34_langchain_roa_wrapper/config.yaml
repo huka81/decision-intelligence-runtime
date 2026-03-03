@@ -16,12 +16,12 @@
 # Model must support tool/function calling (e.g. llama3.1, qwen2.5, gemma3)
 llm_defaults:
   model: "gemma3:4b"
-  base_url: "http://localhost:11435"
+  base_url: "http://localhost:11434"
   temperature: 0.2
 #
 # Override via env vars:
 #   OLLAMA_MODEL=gemma3:4b
-#   OLLAMA_BASE_URL=http://localhost:11435
+#   OLLAMA_BASE_URL=http://localhost:11434
 
 # ============================================================================
 # FinOps Agent Specification

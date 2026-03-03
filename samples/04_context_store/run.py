@@ -5,9 +5,12 @@
 Layers:
 - Session: Ephemeral data linked to the current DecisionFlow (dfid).
 - State: Long-lived authoritative data linked to the Agent (agent_id).
+- Memory: Long-term (stub in MVP).
+- Artifacts: Reference (stub in MVP).
 
-Shows how `compile_working_context` merges these into a single view for 
-the decision-making process.
+Shows how `compile_working_context` merges these into a single view for
+the decision-making process. This sample demonstrates Session and State
+layers; Memory and Artifacts are stubs per MVP.
 """
 
 import json

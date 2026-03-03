@@ -114,7 +114,7 @@ config:
 ---
 flowchart TB
     subgraph CFG["config.yaml"]
-        LLMCFG["`llm_defaults<br/>gemma3:4b @ localhost:11435`"]
+        LLMCFG["`llm_defaults<br/>gemma3:4b @ localhost:11434`"]
         CONTRACT["`agent.contract - FinOpsContract<br/>allowed_environments: [DEV, STG]<br/>allowed_policy_types`"]
         CTXSTORE["`context_store.instances<br/>i-prod-api-01: PROD, 72h<br/>i-dev-worker-03: DEV, 48h`"]
     end
@@ -400,7 +400,7 @@ All agent configuration lives in **`config.yaml`**. Same convention as `samples/
 ```yaml
 llm_defaults:
   model: "gemma3:4b"
-  base_url: "http://localhost:11435"
+  base_url: "http://localhost:11434"
   temperature: 0.2
 
 agent:

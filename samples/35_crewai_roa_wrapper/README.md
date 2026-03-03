@@ -33,7 +33,7 @@ config:
 ---
 flowchart TB
     subgraph CFG["config.yaml"]
-        LLMCFG["`llm_defaults<br/>gemma3:4b @ localhost:11435`"]
+        LLMCFG["`llm_defaults<br/>gemma3:4b @ localhost:11434`"]
         CONTRACT["`agent.contract - ClaimsContract<br/>allowed_categories - max_refund - return_window`"]
         CTXSTORE["`context_store - Orders<br/>purchase_date - category - amount`"]
     end
@@ -249,7 +249,7 @@ Same convention as `samples/31_finance_trading/config.yaml`.
 ```yaml
 llm_defaults:
   model: "gemma3:4b"
-  base_url: "http://localhost:11435"
+  base_url: "http://localhost:11434"
   temperature: 0.2
 
 agent:
@@ -318,7 +318,7 @@ CrewAI's LLM class routes `provider="openai"` to the native OpenAI Python SDK.
 Ollama exposes an OpenAI-compatible API at `/v1`, so no LiteLLM or extra dependencies needed:
 ```python
 LLM(model="gemma3:4b", provider="openai",
-    base_url="http://localhost:11435/v1", api_key="ollama")
+    base_url="http://localhost:11434/v1", api_key="ollama")
 ```
 
 ---
@@ -377,7 +377,7 @@ proposal = PolicyProposal(..., params=data)
 35_crewai_roa_wrapper  -  CrewAI + Ollama + DIR Kernel
 ======================================================================
   Config : config.yaml
-  LLM    : gemma3:4b @ http://localhost:11435
+  LLM    : gemma3:4b @ http://localhost:11434
   Agent  : claims_agent_v1
   Crew   : Claims Analyst → Decision Maker (sequential, output_json)
   DIM    : 5-layer validation (RBAC, order, window, category, amount)

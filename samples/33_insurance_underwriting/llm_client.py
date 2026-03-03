@@ -1,5 +1,5 @@
 """
-LLM client for Digital Underwriter ROA agent: Ollama (sync) and MockLLM.
+LLM client for Digital Underwriter ROA agent: Ollama (from utils) and MockLLM.
 
 Usage:
   client = OllamaClient(model="gemma3:12b", base_url="http://localhost:11434")
@@ -10,72 +10,15 @@ MockLLM: USE_MOCK_LLM=1 for tests without Ollama. Returns structured underwritin
 
 from __future__ import annotations
 
-import json
 import logging
-import urllib.error
-import urllib.request
-from abc import ABC, abstractmethod
-from typing import Any, Optional
+import re
+from typing import Optional
+
+from utils.ollama_client import LLMClient, OllamaClient
 
 logger = logging.getLogger(__name__)
 
-
-class LLMClient(ABC):
-    """Abstract LLM client: generate(prompt, system=None) -> str."""
-
-    @abstractmethod
-    def generate(self, prompt: str, system: Optional[str] = None) -> str:
-        """Return generated text. May raise on network/API errors."""
-        pass
-
-
-class OllamaClient(LLMClient):
-    """Sync client for local Ollama API (POST /api/generate)."""
-
-    def __init__(
-        self,
-        model: str = "gemma3:12b",
-        base_url: str = "http://localhost:11434",
-        timeout: int = 60,
-    ):
-        self.model = model
-        self.base_url = base_url.rstrip("/")
-        self.timeout = timeout
-
-    def generate(self, prompt: str, system: Optional[str] = None) -> str:
-        logger.debug(
-            "Ollama request: model=%s, prompt_len=%d, system_len=%d",
-            self.model, len(prompt), len(system or ""),
-        )
-        url = f"{self.base_url}/api/generate"
-        body = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": False,
-        }
-        if system:
-            body["system"] = system
-        data = json.dumps(body).encode("utf-8")
-        req = urllib.request.Request(
-            url, data=data, method="POST", headers={"Content-Type": "application/json"}
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                out = json.loads(resp.read().decode("utf-8"))
-            response = out.get("response", "").strip()
-            preview = response[:200] + "..." if len(response) > 200 else response
-            logger.info(
-                "LLM response (len=%d): %s",
-                len(response),
-                preview.replace("\n", " "),
-            )
-            return response
-        except urllib.error.URLError as e:
-            logger.warning("Ollama request failed: %s", e)
-            raise
-        except (KeyError, json.JSONDecodeError) as e:
-            logger.warning("Ollama response parse error: %s", e)
-            raise
+__all__ = ["LLMClient", "OllamaClient", "MockLLM"]
 
 
 class MockLLM(LLMClient):
@@ -102,7 +45,6 @@ class MockLLM(LLMClient):
         self.industry_override = industry_override
 
     def generate(self, prompt: str, system: Optional[str] = None) -> str:
-        import re
         prompt_lower = prompt.lower()
         # Policy-style: COVERAGE_LIMIT, PREMIUM, INDUSTRY
         if (

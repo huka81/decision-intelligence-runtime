@@ -2,12 +2,21 @@
 Domain models for the Digital Underwriter use case (Topology C / DL+PCI).
 
 Pydantic models for insurance underwriting: Responsibility Contract, Client Application,
-Policy Proposal, and Proof-Carrying Intent (PCI).
+Policy Proposal. ProofCarryingIntent imported from dir.models (framework).
 """
 
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
+
+from dir.models import ProofCarryingIntent
+
+__all__ = [
+    "UnderwritingContract",
+    "ClientApplication",
+    "PolicyProposal",
+    "ProofCarryingIntent",
+]
 
 
 # =============================================================================
@@ -88,34 +97,3 @@ class PolicyProposal(BaseModel):
     coverage_limit: float = Field(description="Proposed coverage limit in USD")
     premium: float = Field(description="Proposed annual premium in USD")
     industry: str = Field(description="Industry of the proposed policy")
-
-
-# =============================================================================
-# Proof-Carrying Intent (PCI)
-# =============================================================================
-
-
-class ProofCarryingIntent(BaseModel):
-    """
-    Proof-Carrying Intent (PCI) for Topology C.
-
-    The agent submits this to the DIM. The evidence_hash is a CLAIM; the DIM
-    independently recalculates it using authoritative Context and Contract.
-    Mismatch = reject (Zero Trust).
-
-    Why Evidence Hash: Prevents the agent from claiming compliance without
-    proving it. The hash binds the proposal to the exact context and contract.
-    Any tampering (forged hash, stale context) is detected.
-    """
-
-    dfid: str = Field(description="DecisionFlow ID for traceability")
-    policy_proposal: PolicyProposal = Field(
-        description="The structured decision (coverage, premium, industry)"
-    )
-    evidence_hash: str = Field(
-        description="SHA256(DFID || Context_Hash || Contract_Hash || Proposal_Params)"
-    )
-    signature: str = Field(
-        default="",
-        description="Mocked signature (HMAC or placeholder)",
-    )

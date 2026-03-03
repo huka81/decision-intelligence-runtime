@@ -1,67 +1,37 @@
 """
 Kernel Space components for the Digital Underwriter (Topology C / DL+PCI).
 
-AgentRegistry, ContextStore, DecisionLedger, and DecisionIntegrityModule (DIM).
-The DIM is the Proof Checker: it recalculates the Evidence Hash using authoritative
-sources and rejects any PCI whose hash does not match (Zero Trust).
+AgentRegistry, ContextStore (domain-specific). DecisionLedger, ProofChecker,
+compute_evidence_hash, hash_content, proposal_params_for_hash from dir (framework).
 """
 
-import hashlib
-import json
 import logging
 from typing import Any, Dict, List, Optional
 
-from models import (
-    ClientApplication,
-    PolicyProposal,
-    ProofCarryingIntent,
-    UnderwritingContract,
+from dir.ledger import DecisionLedger
+from dir.models import ProofCarryingIntent
+from dir.pci import (
+    ProofChecker,
+    compute_evidence_hash,
+    hash_content,
+    proposal_params_for_hash,
 )
+
+from models import ClientApplication, PolicyProposal, UnderwritingContract
 
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
-# Hash Utilities (shared by Agent and DIM)
-# =============================================================================
-
-
-def _canonical_json(obj: Any) -> str:
-    """Canonical JSON for deterministic hashing."""
-    return json.dumps(obj, sort_keys=True, default=str)
-
-
-def hash_content(obj: Any) -> str:
-    """SHA256 of canonical JSON."""
-    return hashlib.sha256(_canonical_json(obj).encode()).hexdigest()
-
-
-def compute_evidence_hash(
-    dfid: str,
-    context_hash: str,
-    contract_hash: str,
-    proposal_params: str,
-) -> str:
-    """
-    Evidence Hash formula per Topology C spec.
-
-    Evidence_Hash = SHA256(DFID || Context_Hash || Contract_Hash || Proposal_Params)
-
-    The DIM recalculates this using authoritative Registry and ContextStore data.
-    It never trusts the agent's claimed hash.
-    """
-    payload = f"{dfid}{context_hash}{contract_hash}{proposal_params}"
-    return hashlib.sha256(payload.encode()).hexdigest()
-
-
-def proposal_params_for_hash(proposal: PolicyProposal) -> str:
-    """Canonical string of proposal fields used for compliance verification."""
-    params = {
-        "coverage_limit": proposal.coverage_limit,
-        "premium": proposal.premium,
-        "industry": proposal.industry,
-    }
-    return _canonical_json(params)
+# Re-export for backward compatibility (agent imports from kernel)
+__all__ = [
+    "AgentRegistry",
+    "ContextStore",
+    "DecisionIntegrityModule",
+    "DecisionLedger",
+    "compute_evidence_hash",
+    "hash_content",
+    "proposal_params_for_hash",
+]
 
 
 # =============================================================================
@@ -130,47 +100,7 @@ class ContextStore:
 
 
 # =============================================================================
-# DecisionLedger (append-only, verified decisions only)
-# =============================================================================
-
-
-class DecisionLedger:
-    """
-    Append-only list storing only verified decisions.
-
-    Why Ledger stores only verified: Unverified decisions must never become
-    binding. The Ledger is the source of truth; only DIM-approved entries
-    are appended. This prevents "Day Two" failures where hallucinated or
-    forged agent outputs become operational contracts.
-    """
-
-    def __init__(self):
-        self._entries: List[Dict[str, Any]] = []
-
-    def append(self, pci: ProofCarryingIntent) -> None:
-        """Append a verified PCI. Called only by DIM after successful verification."""
-        entry = {
-            "dfid": pci.dfid,
-            "policy_proposal": pci.policy_proposal.model_dump(),
-            "evidence_hash": pci.evidence_hash,
-        }
-        self._entries.append(entry)
-        logger.info(
-            "[DFID=%s] Ledger appended entry #%d. Policy Bound.",
-            pci.dfid[:8],
-            len(self._entries),
-        )
-
-    def entries(self) -> List[Dict[str, Any]]:
-        """Return all ledger entries (read-only)."""
-        return list(self._entries)
-
-    def __len__(self) -> int:
-        return len(self._entries)
-
-
-# =============================================================================
-# DecisionIntegrityModule (DIM) - Proof Checker
+# DecisionIntegrityModule (DIM) - Proof Checker + Business Rules
 # =============================================================================
 
 
@@ -200,33 +130,33 @@ class DecisionIntegrityModule:
         Verify the PCI and commit to Ledger if valid.
 
         Steps:
-        1. Set context in store (for this verification) and get authoritative hashes.
-        2. Recompute expected_evidence_hash from DFID + Context_Hash + Contract_Hash + Proposal_Params.
-        3. Compare with pci.evidence_hash. Mismatch -> "Evidence Invalid".
-        4. If match: run business-rule checks (prohibited industry, max limit).
-        5. If all pass: append to Ledger, return "Policy Bound".
-        6. Otherwise: return rejection reason.
+        1. Set context in store (for this verification).
+        2. Use ProofChecker to verify evidence_hash (Zero Trust).
+        3. If match: run business-rule checks (prohibited industry, max limit).
+        4. If all pass: append to Ledger, return "Policy Bound".
+        5. Otherwise: return rejection reason.
         """
-        # Ensure we verify against the context provided (authoritative for this flow)
         self.context_store.set_context(context)
 
-        context_hash = self.context_store.get_context_hash()
-        contract_hash = self.registry.get_contract_hash()
-        proposal_params = proposal_params_for_hash(pci.policy_proposal)
+        def get_proposal_params(intent_payload: Dict[str, Any]) -> str:
+            subset = {
+                k: intent_payload[k]
+                for k in ["coverage_limit", "premium", "industry"]
+                if k in intent_payload
+            }
+            return proposal_params_for_hash(subset)
 
-        expected_hash = compute_evidence_hash(
-            pci.dfid, context_hash, contract_hash, proposal_params
+        ok, reason = ProofChecker().verify(
+            pci,
+            get_context_hash=self.context_store.get_context_hash,
+            get_contract_hash=self.registry.get_contract_hash,
+            get_proposal_params=get_proposal_params,
         )
-
-        if expected_hash != pci.evidence_hash:
-            logger.warning(
-                "[DFID=%s] REJECT: Evidence Invalid (hash mismatch). Zero Trust.",
-                pci.dfid[:8],
-            )
-            return "Evidence Invalid"
+        if not ok:
+            return reason
 
         # Business rule checks (prohibited industry, max limit)
-        proposal = pci.policy_proposal
+        proposal = PolicyProposal.model_validate(pci.intent_payload)
         if proposal.industry in self.registry.prohibited_industries:
             logger.warning(
                 "[DFID=%s] REJECT: Prohibited Industry (%s).",

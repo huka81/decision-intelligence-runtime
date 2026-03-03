@@ -1,8 +1,8 @@
 """
-LLM client for Fraud Guard agent: Ollama (Gemma) and MockLLM.
+LLM client for Fraud Guard agent: Ollama (from utils) and MockLLM.
 
 Usage:
-  client = OllamaClient(model="gemma3:4b", base_url="http://localhost:11435")
+  client = OllamaClient(model="gemma3:4b", base_url="http://localhost:11434")
   text = client.generate("Evaluate this transaction...", system="You are a fraud analyst.")
 
 MockLLM: USE_MOCK_LLM=1 for tests without Ollama. Returns structured fraud decision JSON.
@@ -12,67 +12,12 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import urllib.error
-import urllib.request
-from abc import ABC, abstractmethod
+import re
 from typing import Optional
 
+from utils.ollama_client import LLMClient, OllamaClient
+
 logger = logging.getLogger(__name__)
-
-
-class LLMClient(ABC):
-    """Abstract LLM client: generate(prompt, system=None) -> str."""
-
-    @abstractmethod
-    def generate(self, prompt: str, system: Optional[str] = None) -> str:
-        """Return generated text. May raise on network/API errors."""
-        pass
-
-
-class OllamaClient(LLMClient):
-    """Sync client for local Ollama API (POST /api/generate)."""
-
-    def __init__(
-        self,
-        model: str = "gemma3:4b",
-        base_url: str = "http://localhost:11435",
-        timeout: int = 60,
-    ):
-        self.model = model
-        self.base_url = base_url.rstrip("/")
-        self.timeout = timeout
-
-    def generate(self, prompt: str, system: Optional[str] = None) -> str:
-        logger.debug(
-            "Ollama request: model=%s, prompt_len=%d, system_len=%d",
-            self.model, len(prompt), len(system or ""),
-        )
-        url = f"{self.base_url}/api/generate"
-        body = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": False,
-        }
-        if system:
-            body["system"] = system
-        data = json.dumps(body).encode("utf-8")
-        req = urllib.request.Request(
-            url, data=data, method="POST", headers={"Content-Type": "application/json"}
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                out = json.loads(resp.read().decode("utf-8"))
-            response = out.get("response", "").strip()
-            preview = response[:200] + "..." if len(response) > 200 else response
-            logger.debug("[LLM] Response (len=%d): %s", len(response), preview.replace("\n", " "))
-            return response
-        except urllib.error.URLError as e:
-            logger.warning("Ollama request failed: %s", e)
-            raise
-        except (KeyError, json.JSONDecodeError) as e:
-            logger.warning("Ollama response parse error: %s", e)
-            raise
 
 
 class MockLLM(LLMClient):
@@ -90,7 +35,6 @@ class MockLLM(LLMClient):
         self._rules = fallback_rules
 
     def generate(self, prompt: str, system: Optional[str] = None) -> str:
-        import re
         # Extract context from prompt (matches _build_prompt format)
         amount = 0.0
         geo = ""

@@ -825,7 +825,7 @@ priority_matrix:
 
 llm_defaults:
   model: "gemma3:4b"
-  base_url: "http://localhost:11435"
+  base_url: "http://localhost:11434"
 
 agents:
   - agent_id: "instrument_btc_usd"

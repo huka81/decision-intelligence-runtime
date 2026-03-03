@@ -8,6 +8,10 @@ Layers:
 4. Artifacts (Reference): Static docs/rules (Stub).
 
 Provides `compile_working_context` to assemble a frozen view for decision making.
+
+Implementation note: Memory and Artifacts layers are stubs (return {}).
+Full implementation requires: Memory (vector DB / archival), Artifacts (RAG / static docs).
+See DIR §8.1, ROA §7.2 for layer definitions.
 """
 
 import json

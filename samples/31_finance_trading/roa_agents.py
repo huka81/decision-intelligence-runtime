@@ -23,7 +23,7 @@ from dir import (
     SelfCheckResult,
     new_dfid,
 )
-from dir.logging_utils import log_with_dfid
+from utils.logging_utils import log_with_dfid
 from dir.models import DecisionRecord
 
 try:

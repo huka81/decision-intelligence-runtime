@@ -25,30 +25,26 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
-# Load .env file if running as script (not as package import)
-if __name__ == "__main__":
-    try:
-        from dotenv import load_dotenv
-        env_path = Path(__file__).parent / ".env"
-        if env_path.exists():
-            load_dotenv(env_path)
-    except ImportError:
-        pass  # python-dotenv not installed, use system env vars
+import __init__  # noqa: F401 - loads .env via package __init__.py
 
 from dir import PolicyProposal, ResponsibilityContract, create_event_bus
 from dir.dim import validate_proposal
-from dir.logging_utils import log_with_dfid
-from dir.news_generator import NewsGenerator
-from dir.quote_generator import QuoteGenerator
+from utils.logging_utils import log_with_dfid
+from utils.news_generator import NewsGenerator
+from utils.quote_generator import QuoteGenerator
 
 try:
-    from .llm_client import GeminiClient, MockLLM, OllamaClient
+    from utils.gemini_client import GeminiClient
+    from utils.ollama_client import OllamaClient
+    from .llm_client import MockLLM
     from .orchestrator import EOAMOrchestrator
     from .roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
     from .simulation_recorder import SimulationRecorder
     from .report_generator import generate_html_report
 except ImportError:
-    from llm_client import GeminiClient, MockLLM, OllamaClient
+    from utils.gemini_client import GeminiClient
+    from utils.ollama_client import OllamaClient
+    from llm_client import MockLLM
     from orchestrator import EOAMOrchestrator
     from roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
     from simulation_recorder import SimulationRecorder

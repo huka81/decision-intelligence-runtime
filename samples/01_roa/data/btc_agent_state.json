@@ -20,16 +20,17 @@
       "authority_breach",
       "risk_limit_exceeded"
     ],
-    "parent_agent_id": null
+    "parent_agent_id": null,
+    "wake_up_threshold_pct": 0.5
   },
   "state": {
     "agent_id": "instrument_btc_usd",
-    "created_at": "2026-02-18T17:20:46.759054Z",
-    "last_active": "2026-02-18T17:20:46.770785Z",
+    "created_at": "2026-03-03T20:27:28.389660Z",
+    "last_active": "2026-03-03T20:27:28.398381Z",
     "decision_trajectory": [
       {
-        "dfid": "84e5aa7a-24b8-49a6-958a-8f00943fc296",
-        "timestamp": "2026-02-18T17:20:46.760055Z",
+        "dfid": "191fa9c2-7823-48cc-b9d6-5c52e75ce864",
+        "timestamp": "2026-03-03T20:27:28.389660Z",
         "explain_summary": "[Mission: Interpret market signals and manage posi...] With balanced assessment: BTC-USD at 62000, v",
         "policy_action": "OPEN_POSITION",
         "policy_confidence": 0.82,
@@ -37,8 +38,8 @@
         "outcome_reason": null
       },
       {
-        "dfid": "61c73e2d-f5f8-4805-934f-4311af936538",
-        "timestamp": "2026-02-18T17:20:46.762512Z",
+        "dfid": "039c7269-cb4e-44c2-a2d8-f92c38e80e70",
+        "timestamp": "2026-03-03T20:27:28.395017Z",
         "explain_summary": "[Mission: Interpret market signals and manage posi...] With balanced assessment: BTC-USD at 55000, v",
         "policy_action": "HOLD",
         "policy_confidence": 0.55,
@@ -46,8 +47,8 @@
         "outcome_reason": "Confidence 0.55 below threshold 0.65"
       },
       {
-        "dfid": "537f230f-feef-4d23-b7b2-ea1ec3791e09",
-        "timestamp": "2026-02-18T17:20:46.770785Z",
+        "dfid": "73b0877c-bbb7-4547-a480-d9c44932de49",
+        "timestamp": "2026-03-03T20:27:28.398381Z",
         "explain_summary": "[Mission: Interpret market signals and manage posi...] With balanced assessment: BTC-USD at 65000, v",
         "policy_action": "OPEN_POSITION",
         "policy_confidence": 0.82,

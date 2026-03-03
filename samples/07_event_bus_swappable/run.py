@@ -18,9 +18,8 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from dir import (
     Event,
@@ -29,51 +28,16 @@ from dir import (
     EventType,
     LoggingEventBus,
     PolicyProposal,
+    WakeupPredicate,
     create_event_bus,
     new_dfid,
+    select_winner,
+    should_wake,
 )
-from dir.logging_utils import log_with_dfid
+from utils.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# Wake-up Predicates (DIR Topologies §2.3)
-# =============================================================================
-
-
-@dataclass
-class WakeupPredicate:
-    """Low-cost heuristic to prevent Token Burn.
-    
-    Evaluated BEFORE activating expensive LLM agent.
-    If predicate returns False, agent is not woken up.
-    """
-    name: str
-    condition: Callable[[Dict[str, Any]], bool]
-    
-    def evaluate(self, payload: Dict[str, Any]) -> bool:
-        result = self.condition(payload)
-        logger.debug("  Predicate '%s': %s", self.name, "PASS" if result else "SKIP")
-        return result
-
-
-# Common predicates
-def price_change_significant(payload: Dict[str, Any], threshold: float = 0.005) -> bool:
-    """Wake up only if price change > threshold (0.5% default)."""
-    delta = abs(payload.get("price_delta_pct", 0))
-    return delta > threshold
-
-
-def volatility_elevated(payload: Dict[str, Any], threshold: float = 0.03) -> bool:
-    """Wake up only if volatility is elevated."""
-    return payload.get("volatility", 0) > threshold
-
-
-def is_relevant_instrument(payload: Dict[str, Any], instruments: List[str]) -> bool:
-    """Wake up only for specific instruments."""
-    return payload.get("instrument") in instruments
 
 
 # =============================================================================
@@ -103,10 +67,7 @@ class ReactiveAgent:
     
     def should_wake(self, payload: Dict[str, Any]) -> bool:
         """Evaluate all wake-up predicates. All must pass."""
-        for predicate in self.wakeup_predicates:
-            if not predicate.evaluate(payload):
-                return False
-        return True
+        return should_wake(payload, self.wakeup_predicates)
     
     def on_observation(self, payload: Dict[str, Any]) -> Optional[PolicyProposal]:
         """Handle OBSERVATION event - the main reactive entry point."""
@@ -285,20 +246,13 @@ class EOAMOrchestrator:
     def arbitrate(self, dfid: str) -> Optional[PolicyProposal]:
         """Select winning proposal using Priority Matrix (Topologies §2.4)."""
         proposals = self._pending_proposals.get(dfid, [])
-        if not proposals:
-            return None
-        
-        # Sort by priority (lower = higher priority)
-        def get_priority(p: PolicyProposal) -> int:
-            return self.PRIORITY_MATRIX.get(p.policy_kind, 10)
-        
-        sorted_proposals = sorted(proposals, key=get_priority)
-        winner = sorted_proposals[0]
-        
-        log_with_dfid(logger, dfid, logging.INFO, 
-                     f"Arbitration: {len(proposals)} proposals → winner: {winner.policy_kind} "
-                     f"from {winner.agent_id} (priority={get_priority(winner)})")
-        
+        winner = select_winner(proposals, self.PRIORITY_MATRIX)
+        if winner:
+            log_with_dfid(
+                logger, dfid, logging.INFO,
+                f"Arbitration: {len(proposals)} proposals → winner: {winner.policy_kind} "
+                f"from {winner.agent_id}",
+            )
         return winner
     
     def run_cycle(
@@ -462,7 +416,7 @@ def main() -> None:
     print(f"\n  Large move (2.5%):")
     print(f"    Proposals: {result_large['proposals_count']}")
     print(f"    Expensive agent stats: {expensive_agent.get_stats()}")
-    print(f"    → Token Burn prevented: {expensive_agent.get_stats()['suppressed']} activations skipped")
+    print(f"    -> Token Burn prevented: {expensive_agent.get_stats()['suppressed']} activations skipped")
     
     # -------------------------------------------------------------------------
     # Scenario D: Scope-Based Routing

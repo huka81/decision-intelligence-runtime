@@ -42,7 +42,7 @@ class LlmConfig:
     def from_dict(cls, cfg: Dict[str, Any]) -> "LlmConfig":
         return cls(
             model=str(cfg.get("model", "gemma3:4b")),
-            base_url=str(cfg.get("base_url", "http://localhost:11435")),
+            base_url=str(cfg.get("base_url", "http://localhost:11434")),
             temperature=float(cfg.get("temperature", 0.2)),
         )
 

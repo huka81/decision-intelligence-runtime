@@ -7,7 +7,7 @@
 - Dynamic Agents: InstrumentAgent (class-level) → PositionAgent (instance-level) (§6)
 - Escalation paths when authority limits are reached (§5.3)
 
-Run from repo root: python samples/01_roa/run.py
+Run from repo root: python samples/01_roa_agent/run.py
 Requires PYTHONPATH including workspace src/ (see .vscode/settings.json).
 
 ROA Manifesto alignment: §3-4, §6
@@ -33,7 +33,7 @@ from dir import (
     SelfCheckResult,
     new_dfid,
 )
-from dir.logging_utils import log_with_dfid
+from utils.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -869,7 +869,7 @@ def main() -> None:
     print("\n[SCENARIO E] State Persistence - Save and Load Agent\n")
     
     # Save the InstrumentAgent state (with its decision trajectory)
-    state_file = Path("samples/01_roa/data/btc_agent_state.json")
+    state_file = Path(__file__).resolve().parent / "data" / "btc_agent_state.json"
     btc_agent.save_state(state_file)
     print(f"  Saved agent state to: {state_file}")
     print(f"  Trajectory before save: {len(btc_agent.state.decision_trajectory)} decisions")

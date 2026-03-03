@@ -10,6 +10,10 @@ Key features:
 3. Batched execution for throughput.
 
 Scenario: A high-frequency trading or ad-bidding agent that must adhere to strict formats.
+
+Implementation note: This sample illustrates "structural safety" via Pydantic validation
+(post-generation). Full Constrained Decoding (Outlines/Guidance) constrains output
+*during* LLM inference—see DIR Topologies §3.1.
 """
 
 import json

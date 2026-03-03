@@ -39,8 +39,6 @@ import json
 import logging
 import re
 import sys
-import urllib.error
-import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -49,7 +47,8 @@ from pydantic import BaseModel, Field
 from crewai import Agent, Crew, LLM, Process, Task
 
 from dir import PolicyProposal, new_dfid
-from dir.logging_utils import log_with_dfid
+from utils.logging_utils import log_with_dfid
+from utils.ollama_client import check_ollama
 
 from contracts import ClaimsContract
 from config_loader import AppConfig, LlmConfig, ScenarioConfig, load_config
@@ -68,29 +67,15 @@ def _check_ollama(llm_cfg: LlmConfig) -> None:
     """Verify Ollama is reachable and the requested model is available."""
     base_url = llm_cfg.effective_base_url()
     model = llm_cfg.effective_model()
-    tags_url = base_url.rstrip("/") + "/api/tags"
-    try:
-        with urllib.request.urlopen(tags_url, timeout=5) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.URLError:
+    if not check_ollama(base_url, model):
         print()
-        print(f"[ERROR] Ollama not reachable at {base_url}")
+        print(f"[ERROR] Ollama not reachable at {base_url} or model '{model}' not found.")
         print()
         print("  Start Ollama:    ollama serve")
         print(f"  Pull the model:  ollama pull {model}")
         print()
         print("  Or set env:  OLLAMA_BASE_URL=http://localhost:11434")
         print(f"               OLLAMA_MODEL={model}")
-        print()
-        sys.exit(1)
-
-    available = [m.get("name", "") for m in data.get("models", [])]
-    model_base = model.split(":")[0]
-    if not any(model_base in name for name in available):
-        print()
-        print(f"[ERROR] Model '{model}' not found in Ollama.")
-        print(f"  Available: {', '.join(available) or 'none'}")
-        print(f"  Run: ollama pull {model}")
         print()
         sys.exit(1)
 

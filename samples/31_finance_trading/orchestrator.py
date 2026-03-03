@@ -11,8 +11,15 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Protocol
 
-from dir import EventBus, EventMetadata, EventType, PolicyProposal, new_dfid
-from dir.logging_utils import log_with_dfid
+from dir import (
+    EventBus,
+    EventMetadata,
+    EventType,
+    PolicyProposal,
+    new_dfid,
+    select_winner,
+)
+from utils.logging_utils import log_with_dfid
 
 logger = logging.getLogger(__name__)
 
@@ -171,18 +178,13 @@ class EOAMOrchestrator:
 
     def arbitrate(self, dfid: str) -> Optional[PolicyProposal]:
         proposals = self._pending.get(dfid, [])
-        if not proposals:
-            return None
-
-        def prio(p: PolicyProposal) -> int:
-            return self.priority_matrix.get(p.policy_kind, 10)
-
-        winner = min(proposals, key=prio)
-        log_with_dfid(
-            logger, dfid, logging.INFO,
-            "Arbitration: %d proposals → winner %s from %s",
-            len(proposals), winner.policy_kind, winner.agent_id,
-        )  # noqa: E501
+        winner = select_winner(proposals, self.priority_matrix)
+        if winner:
+            log_with_dfid(
+                logger, dfid, logging.INFO,
+                "Arbitration: %d proposals → winner %s from %s",
+                len(proposals), winner.policy_kind, winner.agent_id,
+            )
         return winner
 
     def clear_pending(self, dfid: str) -> None:

@@ -183,6 +183,50 @@ class ExecutionIntent(BaseModel):
     params: Dict[str, Any] = Field(default_factory=dict)
 
 
+class DecisionAtom(BaseModel):
+    """Decision Atom for Topology B (SDS) — snapshot-bound decision.
+
+    DIR Topologies §3.1.2: The DecisionAtom MUST include snapshot_id hash-binding
+    so the JIT Validator can verify state has not drifted since the snapshot.
+    """
+
+    dfid: str = Field(description="DecisionFlow ID for correlation")
+    snapshot_id: str = Field(
+        description="Context snapshot hash for JIT drift check"
+    )
+    params: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Decision payload (action, amount, user_id, etc.)",
+    )
+
+
+class ProofCarryingIntent(BaseModel):
+    """Proof-Carrying Intent (PCI) for Topology C (DL+PCI).
+
+    The agent submits this to the DIM. The evidence_hash is a CLAIM; the DIM
+    independently recalculates it using authoritative Context and Contract.
+    Mismatch = reject (Zero Trust).
+
+    intent_payload: Domain-specific proposal as dict for flexibility.
+    Sample 33 uses policy_proposal.model_dump(); DIM uses PolicyProposal.model_validate().
+    """
+
+    dfid: str = Field(description="DecisionFlow ID for traceability")
+    intent_payload: Dict[str, Any] = Field(
+        description="Structured decision (e.g. coverage, premium); domain-specific"
+    )
+    context_ref: str = Field(
+        description="ContextSnapshotID / hash for Evidence Hash binding"
+    )
+    evidence_hash: str = Field(
+        description="SHA256(DFID || Context_Hash || Contract_Hash || Proposal_Params)"
+    )
+    signature: str = Field(
+        default="",
+        description="Cryptographic signature (HMAC or placeholder)",
+    )
+
+
 # =============================================================================
 # DecisionFlow: Full Lifecycle Correlation (DIR §5.4)
 # =============================================================================

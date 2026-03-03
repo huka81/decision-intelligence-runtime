@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def idempotency_key(dfid: str, step_id: str, params: Dict[str, Any]) -> str:
     """Compute deterministic key: SHA256(dfid|step_id|canonical_params)."""
     canonical = json.dumps(params, sort_keys=True)
-    raw = f"{dfid}|{step_id}|{canonical}"
+    raw = f"{dfid}:{step_id}:{canonical}"
     return hashlib.sha256(raw.encode()).hexdigest()
 
 

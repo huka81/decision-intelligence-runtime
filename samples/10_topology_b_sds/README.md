@@ -29,6 +29,15 @@ This sample models a **structural agent** that:
 
 The pipeline is: **Grammar → Strategy → Drift check → Format → DIM**. No execution happens without passing all stages.
 
+### Implementation Note
+
+This sample demonstrates **structural validation** (Pydantic) as the first line of defense.
+Full **Constrained Decoding** (Outlines/Guidance) as described in DIR Topologies §3.1 requires
+grammar-based sampling *during* LLM inference—the model physically cannot generate
+non-compliant tokens. Here, Pydantic validates *after* data generation—a simplified SDS
+variant. Trust Locus in the docs: "Generation — Grammar constrains during inference";
+this sample approximates that with post-generation schema validation.
+
 ---
 
 ## Inputs and outputs
