@@ -48,6 +48,19 @@ While Google's *Intelligent AI Delegation* (2026) outlines the *theoretical* req
 
 ---
 
+## Quick Start
+
+The fastest way to see the DIR architecture in action:
+
+```bash
+pip install -e .
+python samples/00_quick_start/run.py
+```
+
+This sample demonstrates protection against catastrophic actions (e.g. parsing error turning 15.5 ETH into 15,500 ETH) and prompt injection in external data. High-level overview of the full architecture. See [samples/00_quick_start](samples/00_quick_start/README.md).
+
+---
+
 ## Start Here
 
 If you are new to DIR/ROA, begin with the introduction article. It explains the core motivation ("Day Two" failures in production systems), the Kernel Space vs. User Space architectural boundary, and why traditional agentic loops are insufficient for high-stakes environments.
@@ -184,6 +197,12 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 - **[DIR Architecture](./docs/02-decision-runtime/DIR_Architectural_Pattern.md)** - Runtime components and invariants.
 - **[Topologies](./docs/03-topologies/DIR_Topologies.md)** - Operational modes (EOAM, SDS, DL+PCI).
 - **[Context as Code](./docs/08-conclusion/Context_as_Code.md)** - Treating documentation as a system prompt.
+
+---
+
+## License
+
+This project is licensed under the Apache License, Version 2.0 – see the [LICENSE](LICENSE) file for details.
 
 ---
 

@@ -9,7 +9,7 @@ Re-exported here for backward compatibility.
 """
 
 from .agent_registry import AgentRegistry, HandshakeResult
-from .bootstrap_sqlite import ensure_db
+from utils import ensure_db
 from .arbitration import DEFAULT_PRIORITY_MATRIX, select_winner
 from .dim import validate_proposal
 from .context_store import ContextStore

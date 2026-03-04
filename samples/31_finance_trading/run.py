@@ -29,6 +29,7 @@ import __init__  # noqa: F401 - loads .env via package __init__.py
 
 from dir import PolicyProposal, ResponsibilityContract, create_event_bus
 from dir.dim import validate_proposal
+from utils.config_loader import load_yaml_config
 from utils.logging_utils import log_with_dfid
 from utils.news_generator import NewsGenerator
 from utils.quote_generator import QuoteGenerator
@@ -52,16 +53,6 @@ except ImportError:
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
-
-
-def load_config(config_path: Path) -> Dict[str, Any]:
-    """Load YAML config. Requires PyYAML."""
-    try:
-        import yaml
-    except ImportError:
-        raise ImportError("This sample requires PyYAML. Install with: pip install pyyaml")
-    with open(config_path, encoding="utf-8") as f:
-        return yaml.safe_load(f)
 
 
 def build_llm(config: Dict[str, Any], use_mock: bool = False) -> Any:
@@ -143,7 +134,7 @@ def build_agents(config: Dict[str, Any], llm: Any) -> tuple[List[Any], List[Any]
 def main() -> None:
     sample_dir = Path(__file__).resolve().parent
     config_path = sample_dir / "config.yaml"
-    config = load_config(config_path)
+    config = load_yaml_config(config_path)
 
     use_mock_llm = os.environ.get("USE_MOCK_LLM", "").strip().lower() in ("1", "true", "yes")
     llm = build_llm(config, use_mock=use_mock_llm)

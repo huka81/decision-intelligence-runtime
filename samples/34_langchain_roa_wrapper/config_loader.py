@@ -20,9 +20,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import yaml
-
 from contracts import FinOpsContract
+from utils.config_loader import load_yaml_config
 
 _DEFAULT_CONFIG = Path(__file__).parent / "config.yaml"
 
@@ -104,14 +103,7 @@ def load_config(path: Optional[Path] = None) -> AppConfig:
         ValueError: If required fields have invalid values.
     """
     config_path = Path(path) if path else _DEFAULT_CONFIG
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
-
-    with config_path.open(encoding="utf-8") as fh:
-        raw = yaml.safe_load(fh)
-
-    if not isinstance(raw, dict):
-        raise ValueError(f"Config file must be a YAML mapping: {config_path}")
+    raw = load_yaml_config(config_path)
 
     # LLM defaults
     llm_cfg = raw.get("llm_defaults")

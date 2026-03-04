@@ -2,6 +2,18 @@
 
 Demonstration projects for the **Decision Intelligence Runtime (DIR)** and **Responsibility-Oriented Agents (ROA)** architecture.
 
+## Quick Start
+
+The fastest way to see the DIR architecture in action:
+
+```bash
+python samples/00_quick_start/run.py
+```
+
+This sample demonstrates protection against catastrophic actions (e.g. parsing error 15.500 -> 15,500 ETH) and prompt injection in external data. See [00_quick_start](00_quick_start/README.md).
+
+---
+
 The samples are divided into two categories:
 1. **Mechanics & Topologies (Synthetic)**: Focused technical implementations of specific architectural patterns described in the [Manifesto](../docs/01-roa-manifesto/ROA_Manifesto.md) and [DIR Patterns](../docs/02-decision-runtime/DIR_Architectural_Pattern.md).
 2. **Business Use Cases**: End-to-end scenarios applying these patterns to real-world-like business problems.
@@ -15,6 +27,7 @@ Proste syntetyczne przykłady ilustrujące implementacje poszczególnych mechani
 
 | # | Sample | Focus | Description |
 |---|---|---|---|
+| 00 | [00_quick_start](00_quick_start/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | **Quick Start / High-Level Overview**: Full architecture, comma catastrophe, prompt injection |
 | 01 | [01_roa_agent](01_roa_agent/) | [ROA Manifesto](../docs/01-roa-manifesto/ROA_Manifesto.md) | Contract, Explain → Policy → Proposal |
 | 02 | [02_dfid_propagation](02_dfid_propagation/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | DecisionFlow ID: generation, propagation, logging |
 | 03 | [03_idempotency_guard](03_idempotency_guard/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | Idempotency: preventing duplicate side effects |
@@ -54,9 +67,9 @@ Przykłady typu biznesowy use case, łączące mechanizmy w pełne scenariusze.
 From the **repository root**:
 
 ```bash
-python samples/01_roa_agent/run.py
+python samples/00_quick_start/run.py   # Quick Start (recommended)
 # or
-python samples/35_crewai_roa_wrapper/run.py
+python samples/01_roa_agent/run.py
 # or
 python samples/31_finance_trading/run.py
 ```

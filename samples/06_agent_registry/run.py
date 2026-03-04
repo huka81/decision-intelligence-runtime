@@ -13,7 +13,7 @@ from pathlib import Path
 from pprint import pprint
 
 from dir.agent_registry import AgentRegistry
-from dir.bootstrap_sqlite import ensure_db
+from utils import ensure_db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")

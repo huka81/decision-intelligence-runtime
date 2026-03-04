@@ -19,7 +19,7 @@ from pathlib import Path
 from pprint import pprint
 
 from dir import new_dfid
-from dir.bootstrap_sqlite import ensure_db
+from utils import ensure_db
 from dir.context_store import ContextStore
 
 # Configure logging

@@ -25,12 +25,12 @@
   },
   "state": {
     "agent_id": "instrument_btc_usd",
-    "created_at": "2026-03-04T08:09:09.117631Z",
-    "last_active": "2026-03-04T08:09:09.133596Z",
+    "created_at": "2026-03-04T08:48:32.834187Z",
+    "last_active": "2026-03-04T08:48:32.843543Z",
     "decision_trajectory": [
       {
-        "dfid": "0c750106-425b-41aa-916b-c57021b81af9",
-        "timestamp": "2026-03-04T08:09:09.117631Z",
+        "dfid": "fccba94b-56f2-4054-861b-55c6b9e5e83c",
+        "timestamp": "2026-03-04T08:48:32.834187Z",
         "explain_summary": "[Mission: Interpret market signals and manage posi...] With balanced assessment: BTC-USD at 62000, v",
         "policy_action": "OPEN_POSITION",
         "policy_confidence": 0.82,
@@ -38,8 +38,8 @@
         "outcome_reason": null
       },
       {
-        "dfid": "bcdd64c6-ef57-41e4-a406-770383df6285",
-        "timestamp": "2026-03-04T08:09:09.128407Z",
+        "dfid": "17301898-441c-47b1-b903-ccfe0cb86b51",
+        "timestamp": "2026-03-04T08:48:32.834187Z",
         "explain_summary": "[Mission: Interpret market signals and manage posi...] With balanced assessment: BTC-USD at 55000, v",
         "policy_action": "HOLD",
         "policy_confidence": 0.55,
@@ -47,8 +47,8 @@
         "outcome_reason": "Confidence 0.55 below threshold 0.65"
       },
       {
-        "dfid": "6f70329c-789d-475a-b6ca-580710936894",
-        "timestamp": "2026-03-04T08:09:09.133596Z",
+        "dfid": "db1428c9-4a5c-4465-98fe-3fac1de43664",
+        "timestamp": "2026-03-04T08:48:32.843543Z",
         "explain_summary": "[Mission: Interpret market signals and manage posi...] With balanced assessment: BTC-USD at 65000, v",
         "policy_action": "OPEN_POSITION",
         "policy_confidence": 0.82,

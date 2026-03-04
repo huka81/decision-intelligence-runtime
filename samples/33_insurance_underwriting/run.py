@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from models import ClientApplication, UnderwritingContract
+from utils.config_loader import load_yaml_config
 from report_generator import generate_html_report
 from kernel import (
     AgentRegistry,
@@ -37,16 +38,6 @@ logging.basicConfig(
     format="%(levelname)s %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-
-def load_config(config_path: Path) -> Dict[str, Any]:
-    """Load YAML config. Requires PyYAML."""
-    try:
-        import yaml
-    except ImportError:
-        raise ImportError("This sample requires PyYAML. Install: pip install pyyaml")
-    with open(config_path, encoding="utf-8") as f:
-        return yaml.safe_load(f)
 
 
 def build_llm(config: Dict[str, Any], use_mock: bool = False) -> Any:
@@ -87,7 +78,7 @@ def build_scenarios(config: Dict[str, Any]) -> List[Dict[str, Any]]:
 def main() -> None:
     sample_dir = Path(__file__).resolve().parent
     config_path = sample_dir / "config.yaml"
-    config = load_config(config_path)
+    config = load_yaml_config(config_path)
 
     use_mock_llm = os.environ.get("USE_MOCK_LLM", "").strip().lower() in ("1", "true", "yes")
     llm = build_llm(config, use_mock=use_mock_llm)
