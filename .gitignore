@@ -66,6 +66,9 @@ simulation_data.db
 test_*.db
 *.db-journal
 
+# Sample data directories (SQLite DBs generated at runtime)
+samples/*/data/*.db
+
 # Flask stuff:
 instance/
 .webassets-cache
