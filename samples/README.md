@@ -27,7 +27,7 @@ Proste syntetyczne przykłady ilustrujące implementacje poszczególnych mechani
 
 | # | Sample | Focus | Description |
 |---|---|---|---|
-| 00 | [00_quick_start](00_quick_start/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | **Quick Start / High-Level Overview**: Full architecture, comma catastrophe, prompt injection |
+| 00 | [00_quick_start](00_quick_start/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | **Quick Start**: High-level overview; comma catastrophe, prompt injection |
 | 01 | [01_roa_agent](01_roa_agent/) | [ROA Manifesto](../docs/01-roa-manifesto/ROA_Manifesto.md) | Contract, Explain → Policy → Proposal |
 | 02 | [02_dfid_propagation](02_dfid_propagation/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | DecisionFlow ID: generation, propagation, logging |
 | 03 | [03_idempotency_guard](03_idempotency_guard/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | Idempotency: preventing duplicate side effects |

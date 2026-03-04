@@ -144,7 +144,7 @@ decision-intelligence-runtime/
 │       # QuoteGenerator, NewsGenerator, market_events, logging_utils
 ├── samples/                  # Reference implementations (01–11 mechanics, 31+ use cases)
 │   ├── README.md             # Sample catalog and run instructions
-│   ├── 01_roa_agent/ … 11_topology_c_dl_pci/
+│   ├── 00_quick_start/ … 11_topology_c_dl_pci/
 │   ├── 31_finance_trading/ … 35_crewai_roa_wrapper/
 │   └── 88_meta_context_engineering/   # Meta-sample: System Prompt Toolkit
 ├── docs/                     # Architectural documentation
@@ -162,10 +162,11 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 
 *Full list and details: [samples/README.md](samples/README.md)*
 
-### Mechanics & Topologies (01–11)
+### Mechanics & Topologies (00–11)
 
 | # | Sample | Focus | Description |
 |---|--------|-------|--------------|
+| 00 | `00_quick_start` | Quick Start | High-level overview: comma catastrophe, prompt injection |
 | 01 | `01_roa_agent` | ROA Manifesto | Contract, Explain → Policy → Proposal |
 | 02 | `02_dfid_propagation` | DIR Pattern | DecisionFlow ID: generation, propagation, logging |
 | 03 | `03_idempotency_guard` | DIR Pattern | Idempotency: preventing duplicate side effects |
