@@ -8,7 +8,11 @@ Supporting utilities (market simulation, logging) are in utils package.
 Re-exported here for backward compatibility.
 """
 
+from .agent_registry import AgentRegistry, HandshakeResult
+from .bootstrap_sqlite import ensure_db
 from .arbitration import DEFAULT_PRIORITY_MATRIX, select_winner
+from .dim import validate_proposal
+from .context_store import ContextStore
 from .dfid import new_dfid, new_dfid_with_parent
 from .event_bus import (
     Event,
@@ -18,6 +22,20 @@ from .event_bus import (
     LoggingEventBus,
     create_event_bus,
 )
+from .escalation import (
+    EscalationManager,
+    EscalationOutcome,
+    ImpactCategory,
+)
+from .idempotency import (
+    IdempotencyGuard,
+    MemoryBackend,
+    SQLiteBackend,
+    idempotency_key,
+)
+from .intent_retry import REASONING_EXHAUSTION, IntentRetryGovernor
+from .lifecycle import FlowStatus, transition
+from .resource_lock import LockResult, ResourceLockManager
 from .jit import JITStateVerifier, verify_drift
 from .ledger import DecisionLedger
 from .models import (
@@ -33,9 +51,11 @@ from .models import (
     Policy,
     PolicyProposal,
     ProofCarryingIntent,
+    CompensationAction,
     ResponsibilityContract,
     SelfCheckResult,
 )
+from .saga import SagaCompensation
 from .pci import (
     ProofChecker,
     compute_evidence_hash,
@@ -61,6 +81,8 @@ from utils import (
 
 __all__ = [
     "DEFAULT_PRIORITY_MATRIX",
+    # DIM (DIR §6)
+    "validate_proposal",
     "new_dfid",
     "new_dfid_with_parent",
     "select_winner",
@@ -84,6 +106,34 @@ __all__ = [
     "hash_content",
     "proposal_params_for_hash",
     "ProofChecker",
+    # Intent Retry Governor (DIR §6.2)
+    "IntentRetryGovernor",
+    "REASONING_EXHAUSTION",
+    # Lifecycle (DIR §4.3)
+    "FlowStatus",
+    "transition",
+    # Escalation Manager (DIR §9)
+    "EscalationManager",
+    "EscalationOutcome",
+    "ImpactCategory",
+    # Resource Locking (DIR §6.2)
+    "ResourceLockManager",
+    "LockResult",
+    # Agent Registry (DIR §2.3)
+    "AgentRegistry",
+    "HandshakeResult",
+    # Context Store (DIR §8)
+    "ContextStore",
+    # Idempotency (DIR §7)
+    "IdempotencyGuard",
+    "idempotency_key",
+    "SQLiteBackend",
+    "MemoryBackend",
+    # Bootstrap
+    "ensure_db",
+    # Saga Compensation (DIR §7)
+    "SagaCompensation",
+    "CompensationAction",
     # SDS (Topology B)
     "DecisionAtom",
     "JITStateVerifier",

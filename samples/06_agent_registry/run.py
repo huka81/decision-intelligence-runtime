@@ -3,7 +3,7 @@
 06_agent_registry - Demonstrates Agent Discovery & Metadata (DIR §2.3).
 
 Shows:
-- Registration of agents with Manifests (Capability Contracts).
+- Registration of agents with Capability Contracts.
 - Lookup of agent metadata (priority, supported policies).
 - runtime inspection of active agents.
 """
@@ -38,7 +38,7 @@ def main() -> None:
     # Agent A: High priority Monitor
     registry.register_agent(
         agent_id="agent_supervisor",
-        manifest={
+        contract={
             "role": "MONITOR",
             "capabilities": ["halt_system", "audit_log"],
             "version": "1.0.0"
@@ -49,7 +49,7 @@ def main() -> None:
     # Agent B: Standard Trader
     registry.register_agent(
         agent_id="agent_trader_btc",
-        manifest={
+        contract={
             "role": "EXECUTOR",
             "capabilities": ["place_order", "cancel_order"],
             "supported_instruments": ["BTC-USD"],
@@ -69,15 +69,15 @@ def main() -> None:
 
     # 4. Inspect Metadata
     print("\n[Inspection] Checking 'agent_trader_btc'...")
-    manifest = registry.get_agent_manifest("agent_trader_btc")
+    contract = registry.get_agent_contract("agent_trader_btc")
     priority = registry.get_agent_priority("agent_trader_btc")
-    
+
     print(f"   Priority: {priority}")
-    print("   Manifest:")
-    pprint(manifest)
+    print("   Contract:")
+    pprint(contract)
 
     # Verification
-    if priority == 10 and manifest["role"] == "EXECUTOR":
+    if priority == 10 and contract["role"] == "EXECUTOR":
         print("\nSUCCESS: Agent registry persisted and retrieved data correctly.")
     else:
         print("\nFAILURE: Data mismatch.")

@@ -18,8 +18,10 @@ from dir import (
     PolicyProposal,
     QuoteGenerator,
     new_dfid,
+    validate_proposal,
 )
-from dir.dim import validate_proposal
+from dir.intent_retry import IntentRetryGovernor
+from dir.lifecycle import FlowStatus, transition
 from utils.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -157,11 +159,17 @@ def main() -> None:
 
     chosen = arbitrate_by_priority(proposals)
 
+    retry_governor = IntentRetryGovernor(max_retries=3, db_path=None)
     if chosen:
         context = {"state": {"risk_score": context_snapshot.get("risk_score", 0.1)}}
-        result, reason = validate_proposal(chosen, context)
+        result, reason = validate_proposal(chosen, context, retry_governor=retry_governor)
         log_with_dfid(logger, dfid, logging.INFO, "DIM result=%s reason=%s", result, reason)
-        log_with_dfid(logger, dfid, logging.INFO, "Mock execution for %s (policy=%s)", chosen.agent_id, chosen.policy_kind)
+        # Lifecycle transition: reset IntentRetryGovernor on terminal state (DIR §4.3)
+        if result == "ACCEPT":
+            transition(dfid, FlowStatus.VALIDATING, FlowStatus.CLOSED, retry_governor=retry_governor)
+            log_with_dfid(logger, dfid, logging.INFO, "Mock execution for %s (policy=%s)", chosen.agent_id, chosen.policy_kind)
+        else:
+            transition(dfid, FlowStatus.VALIDATING, FlowStatus.ABORTED, retry_governor=retry_governor)
 
     print(f"[SUMMARY] DFID={dfid} proposals={len(proposals)} chosen={chosen.agent_id if chosen else None} policy={chosen.policy_kind if chosen else None}")
 

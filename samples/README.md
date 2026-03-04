@@ -20,7 +20,7 @@ Proste syntetyczne przykłady ilustrujące implementacje poszczególnych mechani
 | 03 | [03_idempotency_guard](03_idempotency_guard/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | Idempotency: preventing duplicate side effects |
 | 04 | [04_context_store](04_context_store/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | 4 Layers of Context: Session, State, Memory, Artifacts |
 | 05 | [05_dim_validation](05_dim_validation/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | Decision Integrity Module: deterministic validation gate |
-| 06 | [06_agent_registry](06_agent_registry/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | Agent Registry: manifests and capability handshake |
+| 06 | [06_agent_registry](06_agent_registry/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | Agent Registry: contracts and capability handshake |
 | 07 | [07_event_bus_swappable](07_event_bus_swappable/) | Infrastructure | In-memory Event Bus; note on swapping for Kafka/PubSub |
 | 08 | [08_bootstrap_sqlite](08_bootstrap_sqlite/) | Infrastructure | Bootstrap: ensure DB and tables exist before run |
 | 09 | [09_topology_a_eoam](09_topology_a_eoam/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | Topology A: Event-Oriented Agent Mesh |

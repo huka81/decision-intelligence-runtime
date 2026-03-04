@@ -1,6 +1,6 @@
 # 06 - Agent Registry
 
-**Goal:** Demonstrate **Agent Discovery & Metadata Management** - maintaining a centralized registry of active agents with their capability contracts (manifests), priorities, and runtime metadata for multi-agent coordination and orchestration.
+**Goal:** Demonstrate **Agent Discovery & Metadata Management** - maintaining a centralized registry of active agents with their capability contracts, priorities, and runtime metadata for multi-agent coordination and orchestration.
 
 **DIR Alignment:** DIR Architectural Pattern §2.3 (Agent Discovery & Registry), ROA Manifesto §3.1 (Responsibility Contracts)
 
@@ -9,12 +9,11 @@
 | Concept | DIR Section | Implementation |
 |---------|-------------|----------------|
 | **Agent Registry** | §2.3 | Central catalog of all active agents in the system |
-| **Agent Manifest** | ROA §3.1 | Capability contract: role, capabilities, supported operations |
+| **Capability Contract** | ROA §3.1 | Role, capabilities, supported operations |
 | **Priority Management** | §2.3 | Numerical priority for conflict resolution and scheduling |
 | **Agent Discovery** | §2.3 | `list_agents()` returns all active agent IDs |
-| **Metadata Retrieval** | §2.3 | `get_agent_manifest()` fetches full capability contract |
-| **Capability Contract** | ROA §3.1 | Declaration of what an agent can do (not implementation) |
-| **Version Tracking** | Implementation | Each agent manifest includes version for evolution tracking |
+| **Metadata Retrieval** | §2.3 | `get_agent_contract()` fetches full capability contract |
+| **Version Tracking** | Implementation | Each agent contract includes version for evolution tracking |
 | **Status Management** | Implementation | Agents marked ACTIVE/INACTIVE for lifecycle management |
 
 ## Architecture
@@ -26,14 +25,14 @@
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │  register_agent(agent_id, manifest, priority)               │    │
-│  │  • Stores agent capabilities (manifest)                     │    │
+│  │  register_agent(agent_id, contract, priority)               │    │
+│  │  • Stores agent capability contract                         │    │
 │  │  • Assigns priority for orchestration                       │    │
 │  │  • Marks agent as ACTIVE                                    │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │  Agent Manifest (Capability Contract)                       │    │
+│  │  Capability Contract                                        │    │
 │  │  {                                                          │    │
 │  │    "role": "MONITOR|EXECUTOR|STRATEGIST",                   │    │
 │  │    "capabilities": ["action1", "action2", ...],             │    │
@@ -48,7 +47,7 @@
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │  get_agent_manifest(agent_id) → manifest                    │    │
+│  │  get_agent_contract(agent_id) → contract                    │    │
 │  │  Inspection: Retrieve full capability contract              │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                     │
@@ -58,7 +57,7 @@
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                     │
 │  SQLite Backend:                                                    │
-│  • agent_id (PK), manifest (JSON), priority, status, updated_at     │
+│  • agent_id (PK), contract (JSON), priority, status                 │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -90,7 +89,7 @@ python samples/06_agent_registry/run.py
    - `priority`: 10 (standard priority)
    - `version`: "2.1.0"
 4. **Discovery**: List all active agents
-5. **Inspection**: Retrieve manifest and priority for specific agent
+5. **Inspection**: Retrieve contract and priority for specific agent
 6. **Verification**: Confirm data persistence and retrieval
 
 ## Key Classes and Methods
@@ -101,10 +100,10 @@ from dir.agent_registry import AgentRegistry
 # Initialize
 registry = AgentRegistry(db_path)
 
-# Register Agent with Manifest
+# Register Agent with Capability Contract
 registry.register_agent(
     agent_id="agent_trader_btc",
-    manifest={
+    contract={
         "role": "EXECUTOR",
         "capabilities": ["place_order", "cancel_order"],
         "supported_instruments": ["BTC-USD"],
@@ -117,8 +116,8 @@ registry.register_agent(
 agents = registry.list_agents()
 # Returns: ["agent_supervisor", "agent_trader_btc", ...]
 
-# Inspection: Get agent manifest
-manifest = registry.get_agent_manifest("agent_trader_btc")
+# Inspection: Get agent capability contract
+contract = registry.get_agent_contract("agent_trader_btc")
 # Returns: {"role": "EXECUTOR", "capabilities": [...], ...}
 
 # Coordination: Get agent priority
@@ -131,7 +130,7 @@ priority = registry.get_agent_priority("agent_trader_btc")
 ```sql
 CREATE TABLE agent_registry (
     agent_id TEXT PRIMARY KEY,
-    manifest JSON,
+    contract JSON,
     priority INTEGER DEFAULT 0,
     status TEXT DEFAULT 'ACTIVE',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -155,7 +154,7 @@ INFO Registered agent: agent_trader_btc (priority=10)
 
 [Inspection] Checking 'agent_trader_btc'...
    Priority: 10
-   Manifest:
+   Contract:
    {
      'role': 'EXECUTOR',
      'capabilities': ['place_order', 'cancel_order'],
@@ -170,11 +169,11 @@ SUCCESS: Agent registry persisted and retrieved data correctly.
 
 From DIR Architectural Pattern §2.3 and ROA Manifesto §3.1:
 
-> *"In a multi-agent system, agents must discover each other's capabilities without tight coupling. The Agent Registry provides a central catalog where agents declare their Capability Contracts (manifests) during initialization. This enables dynamic orchestration, capability-based routing, and runtime introspection without hardcoded dependencies."*
+> *"In a multi-agent system, agents must discover each other's capabilities without tight coupling. The Agent Registry provides a central catalog where agents declare their Capability Contracts during initialization. This enables dynamic orchestration, capability-based routing, and runtime introspection without hardcoded dependencies."*
 
 ### Key Insights:
 
-1. **Capability Contracts (Manifests)**:
+1. **Capability Contracts**:
    - Declaration of what an agent **can do**, not how it does it
    - Includes role (MONITOR, EXECUTOR, STRATEGIST), capabilities, supported operations
    - Version tracking for safe evolution and compatibility checking
@@ -195,7 +194,7 @@ From DIR Architectural Pattern §2.3 and ROA Manifesto §3.1:
 4. **Status Management**:
    - Agents marked ACTIVE or INACTIVE
    - Lifecycle tracking: when agent registered, last update
-   - Graceful shutdown: deactivate agent without deleting manifest
+   - Graceful shutdown: deactivate agent without deleting contract
    - Debugging: inspect inactive agents to understand past system states
 
 5. **Centralized vs. Distributed**:
@@ -224,8 +223,8 @@ registry.register_agent("agent_btc_trader", {
 if market_volatility > 0.8:
     # Find all executors and pause them
     for agent_id in registry.list_agents():
-        manifest = registry.get_agent_manifest(agent_id)
-        if manifest.get("role") == "EXECUTOR":
+        contract = registry.get_agent_contract(agent_id)
+        if contract.get("role") == "EXECUTOR":
             send_command(agent_id, "PAUSE")
 ```
 
@@ -266,8 +265,8 @@ registry.register_agent("agent_auto_approver", {
    ```python
    # Find agent that can handle specific instrument
    for agent_id in registry.list_agents():
-       manifest = registry.get_agent_manifest(agent_id)
-       instruments = manifest.get("supported_instruments", [])
+       contract = registry.get_agent_contract(agent_id)
+       instruments = contract.get("supported_instruments", [])
        if "BTC-USD" in instruments:
            route_decision_to(agent_id)
    ```
@@ -285,15 +284,15 @@ registry.register_agent("agent_auto_approver", {
    # Only consult MONITORs for escalation decisions
    monitors = [
        agent_id for agent_id in registry.list_agents()
-       if registry.get_agent_manifest(agent_id).get("role") == "MONITOR"
+       if registry.get_agent_contract(agent_id).get("role") == "MONITOR"
    ]
    ```
 
 4. **Version-Based Routing** (A/B Testing):
    ```python
    # Route 10% of traffic to new agent version
-   manifest = registry.get_agent_manifest("agent_trader_btc_v2")
-   if manifest.get("version") == "2.1.0" and random.random() < 0.1:
+   contract = registry.get_agent_contract("agent_trader_btc_v2")
+   if contract.get("version") == "2.1.0" and random.random() < 0.1:
        use_agent("agent_trader_btc_v2")
    else:
        use_agent("agent_trader_btc")
@@ -304,8 +303,8 @@ registry.register_agent("agent_auto_approver", {
 ```
 System Startup:
   → Agents initialize
-  → Each agent calls registry.register_agent() with manifest
-  → Registry persists manifests in SQLite
+  → Each agent calls registry.register_agent() with contract
+  → Registry persists contracts in SQLite
 
 Runtime Decision Flow:
   → Context arrives requiring decision

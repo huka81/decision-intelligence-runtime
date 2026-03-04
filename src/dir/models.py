@@ -12,9 +12,19 @@ Extended with:
 """
 
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
+
+
+class CompensationAction(str, Enum):
+    """Deterministic Compensation Menu (DIR Topologies §6.4)."""
+
+    REVERT = "REVERT"
+    CLOSE_ALL = "CLOSE_ALL"
+    ALERT_HUMAN = "ALERT_HUMAN"
+    NOOP = "NOOP"
 
 
 def _utcnow() -> datetime:
@@ -168,6 +178,12 @@ class PolicyProposal(BaseModel):
     params: Dict[str, Any] = Field(default_factory=dict)
     context_ref: Optional[str] = None
     execution_constraints: Dict[str, Any] = Field(default_factory=dict)
+    # TTL / Decision Validity Window (DIR §6.4)
+    valid_until: Optional[datetime] = Field(
+        default=None,
+        description="If set, proposal is rejected when current_time > valid_until",
+    )
+    created_at: datetime = Field(default_factory=_utcnow, description="Proposal creation time for validity_window_sec")
     # Extended fields linking to ROA lifecycle
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     justification: Optional[str] = Field(default=None, description="From Policy stage")
