@@ -12,7 +12,9 @@ You are an AI Developer implementing a production-grade system according to the 
 
 ## Context: Required Reading
 
-Before writing any code, you MUST read and internalize the following documents from the `docs/` directory of this repository:
+Before writing any code, you MUST read and internalize the following documents from the `docs/` directory of this repository.
+
+**Alternative (single-file context):** Instead of loading multiple docs below, you MAY use the consolidated specification **`docs/07-dir-minified/DIR-minified.md`** (DIR-minified). It contains the full ROA, DIR, and topology content in one machine-optimized file intended as context for AI agents. If the tool has limited context window or you prefer one attachment, use DIR-minified; otherwise the per-topic documents are equivalent.
 
 1. **`docs/01-roa-manifesto/ROA_Manifesto.md`** — Understand:
    - ROA agents are epistemic: they interpret, explain, propose. They provide NO safety or correctness guarantees.

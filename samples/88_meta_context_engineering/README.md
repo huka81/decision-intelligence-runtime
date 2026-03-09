@@ -22,7 +22,8 @@ The AI agent reads these documents and produces Python code that satisfies all c
 
 1. **Open your AI coding tool** (Cursor, Claude Code, or equivalent) and point it to:
    - This folder (`samples/88_meta_context_engineering/`)
-   - The main DIR documentation: [`ROA_Manifesto.md`](../../docs/01-roa-manifesto/ROA_Manifesto.md), [`DIR_Architectural_Pattern.md`](../../docs/02-decision-runtime/DIR_Architectural_Pattern.md), [`DIR_Topologies.md`](../../docs/03-topologies/DIR_Topologies.md)
+   - The main DIR documentation: [`ROA_Manifesto.md`](../../docs/01-roa-manifesto/ROA_Manifesto.md), [`DIR_Architectural_Pattern.md`](../../docs/02-decision-runtime/DIR_Architectural_Pattern.md), [`DIR_Topologies.md`](../../docs/03-topologies/DIR_Topologies.md).  
+     **Alternatively**, use the single-file spec **[DIR-minified.md](../../docs/07-dir-minified/DIR-minified.md)** — same content, machine-optimized for use as LLM context.
 
 2. **Copy the contents of `3_meta_architect_prompt.md`** and paste it into a new chat or task.
 
