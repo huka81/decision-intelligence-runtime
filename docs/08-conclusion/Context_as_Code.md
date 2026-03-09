@@ -43,7 +43,7 @@ The developer moves towards the role of a "Context Coordinator," responsible for
 
 In this paradigm, Markdown files are not just passive documentation; they are active inputs that guide the generation of code. They define the "physics" of the system that the AI must adhere to.
 
-In practice, this means pointing an AI agent (like Cursor or Claude) to the `docs/` folder of this repository and instructing it: *"Implement a Topology B Sovereign Decision Stream for my specific API, adhering strictly to the constraints defined in these documents."* The repository does the heavy lifting of architectural safety, while the AI handles the syntax.
+In practice, this means pointing an AI agent (like Cursor or Claude) to the `docs/` folder of this repository and instructing it: *"Implement a Topology B Sovereign Decision Stream for my specific API, adhering strictly to the constraints defined in these documents."* If loading the entire `docs/` tree feels like overkill - or you prefer a single blob of context - you can instead point the agent at [DIR-minified.md](../07-dir-minified/DIR-minified.md) and get the same architectural "physics" in one file.\* The repository does the heavy lifting of architectural safety, while the AI handles the syntax.
 
 ---
 
@@ -71,3 +71,6 @@ The Decision Intelligence Runtime is more than a set of Python files; it is a pr
 
 As you explore this repository, remember that its true value lies not in the lines of code but in the ideas, patterns, and principles it embodies. DIR is a tool for thinking, a guide for designing, and a foundation for building reliable AI systems. It is a repository of context - and in the AI era, context act as a code.
 
+---
+
+\* *DIR-minified.md is a machine-optimized, single-file specification: intentionally dense and redundant, meant as context for LLMs rather than as human-first reading. One file to rule them all, so to speak.*

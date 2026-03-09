@@ -152,6 +152,7 @@ decision-intelligence-runtime/
 │   ├── 01-roa-manifesto/
 │   ├── 02-decision-runtime/
 │   ├── 03-topologies/
+│   ├── 07-dir-minified/      # Machine-optimized single-file spec (DIR-minified.md)
 │   └── 08-conclusion/        # Context as Code concept
 └── assets/                   # Images, diagrams
 ```
@@ -198,6 +199,12 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 - **[DIR Architecture](./docs/02-decision-runtime/DIR_Architectural_Pattern.md)** - Runtime components and invariants.
 - **[Topologies](./docs/03-topologies/DIR_Topologies.md)** - Operational modes (EOAM, SDS, DL+PCI).
 - **[Context as Code](./docs/08-conclusion/Context_as_Code.md)** - Treating documentation as a system prompt.
+
+### Machine-optimized specification: DIR-minified.md
+
+**[DIR-minified](./docs/07-dir-minified/DIR-minified.md)** is a **single-file, machine-optimized** version of the framework specification. It is intended **for use as context** by LLMs and code-generation agents (e.g. Cursor, Claude, Devin), not as primary reading for humans.
+
+The document is intentionally **radical** (dense, exhaustive) and **redundant** (repeats key constraints and examples in multiple places) so that a model loading it as context has a complete, self-contained picture of ROA, DIR, and the three topologies without chasing links. If you are feeding this repo to an AI to implement or extend DIR, attach **DIR-minified.md** as the main spec; the human-oriented docs in `docs/` remain the narrative and tutorial layer.
 
 ---
 
