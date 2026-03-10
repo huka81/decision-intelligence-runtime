@@ -1,6 +1,26 @@
 # Quick Start — Responsibility Contract and scenario parameters
 # All values loaded from config; no hardcoding in run.py
 
+# ============================================================================
+# LLM Configuration (same convention as samples/32_fraud_gate)
+# ============================================================================
+# Uses real Ollama (local) by default. Switch to mock in two ways:
+#   a) Set env var:        USE_MOCK_LLM=1
+#   b) Set in config:      provider: "mock"
+#
+# Override model / URL via env:
+#   OLLAMA_MODEL=gemma3:4b
+#   OLLAMA_BASE_URL=http://localhost:11434
+#
+# If Ollama is not reachable, the run falls back to MockLLM automatically.
+llm_defaults:
+  model: "gemma3:4b"
+  base_url: "http://localhost:11434"
+  temperature: 0.2
+# To force mock without env var, uncomment:
+# llm_defaults:
+#   provider: "mock"
+
 contract:
   agent_id: "crypto_position_manager_01"
   version: "1.2.0"

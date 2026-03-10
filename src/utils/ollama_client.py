@@ -32,7 +32,7 @@ class OllamaClient(LLMClient):
 
     def __init__(
         self,
-        model: str = "gemma3:12b",
+        model: str = "gemma3:4b",
         base_url: str = "http://localhost:11434",
         timeout: int = 60,
     ):
@@ -91,3 +91,13 @@ def check_ollama(base_url: str, model: str, timeout: int = 5) -> bool:
     available = [m.get("name", "") for m in data.get("models", [])]
     model_base = model.split(":")[0]
     return any(model_base in name for name in available)
+
+
+if __name__ == "__main__":
+    # Quick test: check if Ollama is reachable and responds to a simple prompt.
+    client = OllamaClient()
+    try:
+        response = client.generate("What is 2 + 2?", system="You are a helpful assistant.")
+        print("Ollama response:", response)
+    except Exception as e:
+        print("Ollama test failed:", e)
