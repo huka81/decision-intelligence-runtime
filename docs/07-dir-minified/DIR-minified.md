@@ -1699,7 +1699,7 @@ flowchart TB
         Executor["`**Execution Engine**<br>Deterministic Side-Effect`"]:::infraSpace
     end
 
-    Prover -->|Submit PCI<br>(Intent + Proof + Sig)| DIM
+    Prover -->|Submit PCI<br>Intent + Proof + Sig| DIM
     Registry -.->|H_c| DIM
     Context -.->|H_s| DIM
     DIM -->|Valid| Ledger
@@ -2141,7 +2141,7 @@ except Exception:
 | **NM-4** | DFID variables: always named `dfid` (not `flow_id`, `trace_id`, `correlation_id`) | `dfid: str` |
 | **NM-5** | Policy field naming: `action`, `instrument`, `quantity` (not `cmd`, `ticker`, `amount`) — standardized across all agents for interoperability | `policy.action = "BUY"` |
 
-### 6.14 Kernel Component Interfaces — `kernel/interfaces.py`
+### 6.13 Kernel Component Interfaces — `kernel/interfaces.py`
 
 These `typing.Protocol` definitions are the **authoritative API contracts** for all Kernel Space components. Every implementation (SQLite, PostgreSQL, Redis, Kafka, in-memory) MUST satisfy the corresponding protocol. Using protocols — not abstract base classes — allows structural subtyping and keeps implementations decoupled from the `kernel/` package.
 

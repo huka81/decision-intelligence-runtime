@@ -4,6 +4,8 @@
 contract:
   agent_id: "crypto_position_manager_01"
   version: "1.2.0"
+  owner: "jane.doe@example.com"
+  effective_from: "2026-02-01"
   role: "EXECUTOR"
   mission: "Manage crypto positions. Protect capital while seeking alpha."
   permissions:

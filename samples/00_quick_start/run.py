@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import textwrap
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
@@ -124,6 +125,33 @@ def validate_order_against_contract(
     return True, "OK"
 
 
+def contract_audit_meta(contract: Dict[str, Any]) -> Dict[str, str]:
+    """Extract audit-relevant contract identity for decision logs."""
+    return {
+        "agent_id": str(contract.get("agent_id", "unknown_agent")),
+        "version": str(contract.get("version", "unknown_version")),
+        "owner": str(contract.get("owner", "unknown_owner")),
+        "effective_from": str(contract.get("effective_from", "unknown_effective_from")),
+    }
+
+
+def log_audit_event(level: int, event: str, fields: Dict[str, Any]) -> None:
+    """Log audit events in a stable, multi-line format for terminal readability."""
+    lines = [f"[AUDIT][{event}]"]
+    for key, value in fields.items():
+        prefix = f"  - {key}: "
+        wrapped = textwrap.fill(
+            str(value),
+            width=100,
+            initial_indent=prefix,
+            subsequent_indent=" " * len(prefix),
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+        lines.append(wrapped)
+    logger.log(level, "\n".join(lines))
+
+
 # ---------------------------------------------------------------------------
 # Mock External API
 # ---------------------------------------------------------------------------
@@ -198,6 +226,18 @@ def main() -> None:
     contract = config.get("contract", {})
     agent_id = contract.get("agent_id", "crypto_position_manager_01")
     agent_version = contract.get("version", "1.2.0")
+    contract_meta = contract_audit_meta(contract)
+
+    log_audit_event(
+        logging.INFO,
+        "CONTRACT_LOAD",
+        {
+            "contract_agent_id": contract_meta["agent_id"],
+            "contract_version": contract_meta["version"],
+            "contract_owner": contract_meta["owner"],
+            "contract_effective_from": contract_meta["effective_from"],
+        },
+    )
 
     data_dir = sample_dir / "data"
     db_path = ensure_db(data_dir / "quick_start.db")
@@ -252,9 +292,35 @@ def main() -> None:
             reason = contract_reason
 
     if verdict == "REJECT":
+        log_audit_event(
+            logging.WARNING,
+            "PROPOSAL_REJECT",
+            {
+                "dfid": proposal.dfid,
+                "policy_kind": proposal.policy_kind,
+                "reason": reason,
+                "contract_agent_id": contract_meta["agent_id"],
+                "contract_version": contract_meta["version"],
+                "contract_owner": contract_meta["owner"],
+                "contract_effective_from": contract_meta["effective_from"],
+            },
+        )
         print(f"    REJECT: {reason}")
         print(f"\n[5] DIR blocked catastrophic action. No API call. Escalation: Human notified.")
     else:
+        log_audit_event(
+            logging.INFO,
+            "PROPOSAL_ACCEPT",
+            {
+                "dfid": proposal.dfid,
+                "policy_kind": proposal.policy_kind,
+                "reason": reason,
+                "contract_agent_id": contract_meta["agent_id"],
+                "contract_version": contract_meta["version"],
+                "contract_owner": contract_meta["owner"],
+                "contract_effective_from": contract_meta["effective_from"],
+            },
+        )
         print(f"    ACCEPT: {reason}")
         receipt = execute_and_audit(proposal, store, dfid)
         print(f"\n[5] Execution Orchestrator: Mock API called. Receipt: {receipt}")
@@ -273,9 +339,35 @@ def main() -> None:
     verdict2, reason2 = validate_proposal(proposal2, base_ctx, allowed_agents=[agent_id])
     ok2, _ = validate_order_against_contract(proposal2, contract, config)
     if ok2 and verdict2 == "ACCEPT":
+        log_audit_event(
+            logging.INFO,
+            "PROPOSAL_ACCEPT",
+            {
+                "dfid": proposal2.dfid,
+                "policy_kind": proposal2.policy_kind,
+                "reason": reason2,
+                "contract_agent_id": contract_meta["agent_id"],
+                "contract_version": contract_meta["version"],
+                "contract_owner": contract_meta["owner"],
+                "contract_effective_from": contract_meta["effective_from"],
+            },
+        )
         execute_and_audit(proposal2, store, dfid2)
         print(f"    Verdict: ACCEPT - Mock executed (correct interpretation).")
     else:
+        log_audit_event(
+            logging.WARNING,
+            "PROPOSAL_REJECT",
+            {
+                "dfid": proposal2.dfid,
+                "policy_kind": proposal2.policy_kind,
+                "reason": reason2,
+                "contract_agent_id": contract_meta["agent_id"],
+                "contract_version": contract_meta["version"],
+                "contract_owner": contract_meta["owner"],
+                "contract_effective_from": contract_meta["effective_from"],
+            },
+        )
         print(f"    Verdict: {verdict2} - {reason2}")
     print("=" * 80)
 
