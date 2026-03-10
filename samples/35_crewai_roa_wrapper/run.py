@@ -77,7 +77,6 @@ def _check_ollama(llm_cfg: LlmConfig) -> None:
         print("  Or set env:  OLLAMA_BASE_URL=http://localhost:11434")
         print(f"               OLLAMA_MODEL={model}")
         print()
-        sys.exit(1)
 
 
 # ---------------------------------------------------------------------------

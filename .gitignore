@@ -67,7 +67,7 @@ test_*.db
 *.db-journal
 
 # Sample data directories (SQLite DBs generated at runtime)
-samples/*/data/*.db
+samples/**/*.db
 
 # Flask stuff:
 instance/
