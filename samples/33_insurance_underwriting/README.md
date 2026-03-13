@@ -27,7 +27,7 @@ USE_MOCK_LLM=1 python samples/33_insurance_underwriting/run.py
 
 ```bash
 ollama serve
-ollama pull gemma3:12b
+ollama pull gemma3:4b
 python samples/33_insurance_underwriting/run.py
 ```
 
@@ -45,7 +45,7 @@ underwriting:
   prohibited_industries: ["Fireworks", "CryptoMining"]
 
 llm_defaults:
-  model: "gemma3:12b"
+  model: "gemma3:4b"
   base_url: "http://localhost:11434"
 
 agents:

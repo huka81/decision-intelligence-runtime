@@ -748,14 +748,14 @@ cp samples/31_finance_trading/.env.example samples/31_finance_trading/.env
 # Edit .env and set your values (e.g., GOOGLE_API_KEY)
 ```
 
-The `.env` file is automatically loaded if `python-dotenv` is installed. See [.env.example](d:\Praca\Artur Huk IT\repo\decision-intelligence-runtime\samples\31_finance_trading\.env.example) for all available options.
+The `.env` file is automatically loaded if `python-dotenv` is installed. See [.env.example](.env.example) for all available options.
 
 ### Option 1: Ollama (local LLM)
 
 ```bash
 # Start Ollama and pull a model:
 ollama serve
-ollama pull gemma3:12b  # or llama3.2, etc.
+ollama pull gemma3:4b  # or llama3.2, etc.
 
 # Run simulation:
 python samples/31_finance_trading/run.py

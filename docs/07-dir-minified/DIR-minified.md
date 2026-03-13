@@ -2,7 +2,7 @@
 
 ---
 
-# DIR-minified: Decision Intelligence Runtime — Complete Framework Specification
+# DIR-minified: Decision Intelligence Runtime  -  Complete Framework Specification
 
 ### LLM-Optimized Context Reference | ROA + DIR + Topologies
 
@@ -13,9 +13,9 @@
 This file is the **single-source context** for the Decision Intelligence Runtime (DIR) framework. Load this file as context before asking an LLM to implement, extend, or review any DIR-compliant system.
 
 **What this document contains:**
-- Complete specification of ROA (Responsibility-Oriented Agents) — the Identity Layer
-- Complete specification of DIR (Decision Intelligence Runtime) — the Execution Kernel
-- Complete specification of all three Topologies — the Signal Flow Layer
+- Complete specification of ROA (Responsibility-Oriented Agents)  -  the Identity Layer
+- Complete specification of DIR (Decision Intelligence Runtime)  -  the Execution Kernel
+- Complete specification of all three Topologies  -  the Signal Flow Layer
 - Python coding standards for all generated code
 - Reference sample map and unified glossary
 
@@ -28,7 +28,7 @@ This file is the **single-source context** for the Decision Intelligence Runtime
 
 ---
 
-## 1. MOTIVATION — Why DIR Exists
+## 1. MOTIVATION  -  Why DIR Exists
 
 ### 1.1 The Day Two Problem
 
@@ -42,32 +42,32 @@ AI agents fail in production not because models are wrong, but because the archi
 
 These failures are **not model failures**. They are **architecture failures**. The model reasoned correctly; the system lacked the infrastructure to execute safely.
 
-### 1.2 AIvestor â€” Documented Production Failure Cases
+### 1.2 AIvestor  -  Documented Production Failure Cases
 
 The following failure cases were observed in **AIvestor**, an autonomous multi-agent trading system operating against live financial markets. Each failure traced back not to model limitations but to missing architectural constraints.
 
-**Failure Case 1 â€” Hallucination Loops (feedback poisoning)**
+**Failure Case 1  -  Hallucination Loops (feedback poisoning)**
 
-The agent attempted to sell a position it no longer held. When the broker API returned an error, the model interpreted this as a signal to "try harder." Without a retry governor, it looped â€” each iteration generating new reasoning and consuming tokens. After three retries, it concluded that it should *buy* the position first in order to then sell it: a complete inversion of the original strategy, hallucinated through feedback poisoning.
+The agent attempted to sell a position it no longer held. When the broker API returned an error, the model interpreted this as a signal to "try harder." Without a retry governor, it looped  -  each iteration generating new reasoning and consuming tokens. After three retries, it concluded that it should *buy* the position first in order to then sell it: a complete inversion of the original strategy, hallucinated through feedback poisoning.
 
 - **Root cause:** No retry governor; unbounded feedback cycles
 - **Mechanism required:** Intent Retry Governor with explicit `REASONING_EXHAUSTION` terminal state and a hard maximum (~3 retries before escalation to `ESCALATED`)
 
-**Failure Case 2 â€” State Drift (TOCTOU)**
+**Failure Case 2  -  State Drift (TOCTOU)**
 
-The agent began reasoning based on a context snapshot at T0 with price $99.50. LLM inference took ~15 seconds. By T1, the price was $101.20. The "buy at $100" decision executed at $101.20, incurring slippage that invalidated the strategy. This is a classic TOCTOU (Time-of-Check to Time-of-Use) vulnerability â€” well-known in systems programming, almost universally ignored in agent architectures.
+The agent began reasoning based on a context snapshot at T0 with price $99.50. LLM inference took ~15 seconds. By T1, the price was $101.20. The "buy at $100" decision executed at $101.20, incurring slippage that invalidated the strategy. This is a classic TOCTOU (Time-of-Check to Time-of-Use) vulnerability  -  well-known in systems programming, almost universally ignored in agent architectures.
 
 - **Root cause:** TOCTOU race condition between reasoning and execution
 - **Mechanism required:** `ContextSnapshotID` binding + JIT State Verification. The runtime verifies live state is within `drift_envelope` (e.g., 0.5% price tolerance) immediately before executing any side effect
 
-**Failure Case 3 â€” Execution Chaos (duplicate orders)**
+**Failure Case 3  -  Execution Chaos (duplicate orders)**
 
-Without idempotency controls, network timeouts caused the agent to retry execution. The system bought the same position twice. Then sold twice. Each execution created real financial exposure â€” not because the model was wrong, but because the infrastructure lacked exactly-once guarantees.
+Without idempotency controls, network timeouts caused the agent to retry execution. The system bought the same position twice. Then sold twice. Each execution created real financial exposure  -  not because the model was wrong, but because the infrastructure lacked exactly-once guarantees.
 
 - **Root cause:** No idempotency; no duplicate intent protection
 - **Mechanism required:** `SHA256(DFID + Step_ID + Canonical_Params)`. The runtime recognizes duplicate intents and prevents duplicate side effects regardless of environmental state changes at retry time
 
-> **Key insight:** In each case, the agent's reasoning was sound. The failures occurred *after* reasoning â€” in the gap between "what the agent decided" and "what the system actually did." These were failures of architecture, not intelligence.
+> **Key insight:** In each case, the agent's reasoning was sound. The failures occurred *after* reasoning  -  in the gap between "what the agent decided" and "what the system actually did." These were failures of architecture, not intelligence.
 
 ### 1.3 The Core Thesis
 
@@ -78,14 +78,14 @@ The shift required:
 - **From:** Prompt engineering (hoping the model behaves)
 - **To:** System engineering (guaranteeing the system behaves)
 
-**The industry shift — from model-centric to execution-centric AI:**
+**The industry shift  -  from model-centric to execution-centric AI:**
 
 | Paradigm | Success metric | Safety approach | Failure handling |
 |----------|---------------|-----------------|-----------------|
 | **Model-centric AI** | Reasoning quality, benchmark scores | "Smarter / better aligned model" | Retry, add to system prompt |
 | **Execution-centric AI** | Reliability, operational safety, auditability | Deterministic execution boundary + Zero Trust | Structural enforcement, validated guardrails |
 
-The industry is shifting from measuring success by reasoning quality alone to measuring it by reliability and operational safety as first-class concerns. DIR is the architectural pattern that enables this shift. It does not make models smarter — it makes them safe enough to trust in production.
+The industry is shifting from measuring success by reasoning quality alone to measuring it by reliability and operational safety as first-class concerns. DIR is the architectural pattern that enables this shift. It does not make models smarter  -  it makes them safe enough to trust in production.
 
 ```mermaid
 %%{init: {'theme': 'neutral'}}%%
@@ -116,11 +116,11 @@ DIR is composed of three orthogonal layers. Each layer addresses a distinct arch
 
 | Layer | Pattern | Question Answered |
 |-------|---------|------------------|
-| **Identity Layer** | ROA — Responsibility-Oriented Agents | *Who* is responsible for proposing intent? |
-| **Execution Kernel** | DIR — Decision Intelligence Runtime | *Is this intent allowed and valid to execute right now?* |
+| **Identity Layer** | ROA  -  Responsibility-Oriented Agents | *Who* is responsible for proposing intent? |
+| **Execution Kernel** | DIR  -  Decision Intelligence Runtime | *Is this intent allowed and valid to execute right now?* |
 | **Flow Layer** | Topologies (EOAM / SDS / DL+PCI) | *How do signals and intents move through the system?* |
 
-### 2.2 User Space vs. Kernel Space — The Wall
+### 2.2 User Space vs. Kernel Space  -  The Wall
 
 Borrowed from operating systems: the fundamental separation between **unprivileged processes** (agents) and the **privileged kernel** (runtime).
 
@@ -139,11 +139,11 @@ flowchart LR
 
     Human(["👤 Human<br/>Supervisor"]):::humanStyle
 
-    subgraph UserSpace["USER SPACE — Probabilistic Reasoning"]
+    subgraph UserSpace["USER SPACE  -  Probabilistic Reasoning"]
         Agent(["AI Agent<br/>⚠️ No API keys"]):::userSpace
     end
 
-    subgraph DIRKernel["KERNEL SPACE — Decision Intelligence Runtime"]
+    subgraph DIRKernel["KERNEL SPACE  -  Decision Intelligence Runtime"]
         CC["Context<br/>Compiler"]:::kernelSpace
         DIM{"DIM<br/>Validation"}:::kernelSpace
         EX["Execution<br/>Orchestrator"]:::kernelSpace
@@ -151,7 +151,7 @@ flowchart LR
         AR[("Agent<br/>Registry")]:::kernelSpace
     end
 
-    subgraph External["INFRASTRUCTURE — External Systems"]
+    subgraph External["INFRASTRUCTURE  -  External Systems"]
         API["External APIs<br/>(Broker, DB, IoT)"]:::infraSpace
         Web[/"Web / Data<br/>Sources"/]:::infraSpace
     end
@@ -159,7 +159,7 @@ flowchart LR
     %% Context assembly and delivery
     CC -.->|"Working Context<br/>(snapshot)"| Agent
 
-    %% Core decision flow — THE WALL
+    %% Core decision flow  -  THE WALL
     Agent ==>|"Policy Proposal<br/>(Claim, not Fact)"| DIM
     DIM ==>|"Accept →<br/>ExecutionIntent"| EX
     DIM -.->|"Escalate"| Human
@@ -176,7 +176,7 @@ flowchart LR
     EX ==>|"Execute"| API
     EX -->|"Audit Trail<br/>(DFID-tagged)"| CS
 
-    %% Context loop — events feed back into store
+    %% Context loop  -  events feed back into store
     API -.->|"Events / Confirmations"| CC
     CC -.->|"Read State"| CS
     CC -->|"Update State"| CS
@@ -186,20 +186,20 @@ flowchart LR
 **The Wall is absolute:**
 - Agents MUST NOT hold API keys or database write credentials
 - Agents MUST NOT execute side effects directly
-- No prompt grants execution privilege — `Prompts are not permissions`
+- No prompt grants execution privilege  -  `Prompts are not permissions`
 - No "trusted agent" bypasses validation
 - LLMs MUST NOT exist in Kernel Space
 
 ### 2.3 CQRS Adaptation
 
 DIR is an adaptation of **Command Query Responsibility Segregation (CQRS)**:
-- Agents emit **tentative commands** (Policy Proposals) — the Write Model
-- The Runtime **validates and decides** whether to commit them — the Execution
+- Agents emit **tentative commands** (Policy Proposals)  -  the Write Model
+- The Runtime **validates and decides** whether to commit them  -  the Execution
 - Only DIM-validated policies trigger side effects
 
 ---
 
-## 3. ROA — RESPONSIBILITY-ORIENTED AGENTS
+## 3. ROA  -  RESPONSIBILITY-ORIENTED AGENTS
 
 > **ROA agents are epistemic entities. They interpret, explain, and propose. They provide no safety, correctness, or enforcement guarantees.**
 
@@ -207,7 +207,7 @@ ROA defines agents not by their *capabilities* (what tools they can call) but by
 
 ### 3.1 Responsibility Contract
 
-Every ROA agent is governed by a **Responsibility Contract** — a formal, machine-readable definition registered with the Agent Registry. Contracts are loaded from a trusted source (CI/CD pipeline or cryptographically signed repository) at deployment. Agents MUST NOT self-register at runtime.
+Every ROA agent is governed by a **Responsibility Contract**  -  a formal, machine-readable definition registered with the Agent Registry. Contracts are loaded from a trusted source (CI/CD pipeline or cryptographically signed repository) at deployment. Agents MUST NOT self-register at runtime.
 
 ```python
 from pydantic import BaseModel, Field
@@ -249,13 +249,13 @@ class ResponsibilityContract(BaseModel):
 
 **Why contract as code, not constraints as prompt:** Prompts are suggestions. Code is enforcement. A prompt saying "do not exceed $10,000 exposure" can be ignored or creatively reinterpreted. A contract field `max_position_size: 10000.0` validated by deterministic code cannot be bypassed.
 
-**YAML deployment format — how contracts are configured at deployment time:**
+**YAML deployment format  -  how contracts are configured at deployment time:**
 
 ```yaml
-# agent_contract.yaml — registered via CI/CD pipeline, NOT self-registered by agent
+# agent_contract.yaml  -  registered via CI/CD pipeline, NOT self-registered by agent
 agent_id: "crypto_position_manager_01"
 version: "1.2.0"                       # Immutable versioning for audit trails
-owner: "jane.doe@example.com"          # Human accountability — who is responsible?
+owner: "jane.doe@example.com"          # Human accountability  -  who is responsible?
 effective_from: "2026-02-01"           # Temporal validity of this contract version
 role: "EXECUTOR"
 
@@ -273,7 +273,7 @@ safety_rules:
   escalate_on_uncertainty: 0.70       # If confidence < 70%, escalate to human
 ```
 
-Note the `owner` field: every contract MUST have a named human accountable for its behavior. This prevents "agent accountability vacuum" — the situation where no person is responsible for an agent's decisions.
+Note the `owner` field: every contract MUST have a named human accountable for its behavior. This prevents "agent accountability vacuum"  -  the situation where no person is responsible for an agent's decisions.
 
 ### 3.2 The Decision Lifecycle: Explain → Policy → Self-Check → Emit
 
@@ -290,7 +290,7 @@ flowchart LR
     Context["Context Store<br>(Observed State)"]:::kernelSpace
     Contract["Mission / Contract<br>(Responsibility Bounds)"]:::kernelSpace
 
-    subgraph Agent ["ROA AGENT — Internal Process (User Space)"]
+    subgraph Agent ["ROA AGENT  -  Internal Process (User Space)"]
         direction LR
         Step1["1. EXPLAIN<br>Interpret context → narrative"]:::userSpace
         Step2["2. POLICY<br>Formulate structured intent"]:::userSpace
@@ -309,20 +309,20 @@ flowchart LR
 |-------|-------------|-------|---------|
 | **Explain** | Agent interprets context, identifies patterns, articulates situation | LLM | Narrative for human auditors |
 | **Policy** | Agent formulates structured, executable intent | LLM | Machine-interpretable proposal |
-| **Self-Check** | Agent verifies mission alignment before emitting | LLM (heuristic) | Noise reduction, cost optimization — NOT a security gate |
+| **Self-Check** | Agent verifies mission alignment before emitting | LLM (heuristic) | Noise reduction, cost optimization  -  NOT a security gate |
 | **Emit** | Agent outputs Policy Proposal JSON artifact | LLM | Input to Runtime |
 
 **Critical:** Self-Check has NO security value. It is a cost-optimization heuristic. All real safety enforcement happens in Kernel Space (DIM).
 
-**ROA agents are long-lived, persistent entities — not stateless inference calls.** Unlike ephemeral LLM loops that reset between calls, ROA agents maintain continuity across decision cycles. This property is called **Epistemic Longevity**.
+**ROA agents are long-lived, persistent entities  -  not stateless inference calls.** Unlike ephemeral LLM loops that reset between calls, ROA agents maintain continuity across decision cycles. This property is called **Epistemic Longevity**.
 
-### 3.2a Epistemic Longevity — The Third ROA Pillar
+### 3.2a Epistemic Longevity  -  The Third ROA Pillar
 
 ROA agents are characterized by three defining properties. The third is frequently missing from implementations:
 
 | Pillar | Definition | Implementation |
 |--------|-----------|----------------|
-| **Mission** | Formal optimization objective — the agent's "north star" | Registered in Agent Registry; referenced via `mission_context_hash` during DIM validation |
+| **Mission** | Formal optimization objective  -  the agent's "north star" | Registered in Agent Registry; referenced via `mission_context_hash` during DIM validation |
 | **Responsibility Contract** | Versioned, machine-evaluated authority boundary | Pydantic model stored in Registry; evaluated deterministically by DIM |
 | **Epistemic Longevity** | Persistent decision trajectory across decision cycles | Memory Context layer in Context Store; managed by Kernel |
 
@@ -331,10 +331,10 @@ ROA agents are characterized by three defining properties. The third is frequent
 - DIM validation outcomes (ACCEPTED / REJECTED / ESCALATED) for each proposal
 - Execution results and their financial/operational consequences
 
-This trajectory enables coherent multi-cycle reasoning: the agent's current proposal is contextualized by the history of its prior decisions and their outcomes. Without this, agents exhibit **decision amnesia** — proposing the same invalid action repeatedly because they cannot remember being rejected.
+This trajectory enables coherent multi-cycle reasoning: the agent's current proposal is contextualized by the history of its prior decisions and their outcomes. Without this, agents exhibit **decision amnesia**  -  proposing the same invalid action repeatedly because they cannot remember being rejected.
 
 **Critical implementation rules:**
-1. Epistemic Longevity is **Kernel-managed**, not prompt-managed. The Memory Context layer supplies only the *relevant subset* of historical artifacts to each inference call — avoiding context window overflow while preventing decision amnesia
+1. Epistemic Longevity is **Kernel-managed**, not prompt-managed. The Memory Context layer supplies only the *relevant subset* of historical artifacts to each inference call  -  avoiding context window overflow while preventing decision amnesia
 2. Persistence is managed via the Context Store (Memory layer), NOT via embedding history in the system prompt
 3. Agents MUST NOT manage their own memory state; all trajectory persistence is delegated to the Runtime
 
@@ -342,9 +342,9 @@ This trajectory enables coherent multi-cycle reasoning: the agent's current prop
 
 **With Epistemic Longevity:** Agent proposes BUY → rejected → Memory Context records rejection + reason → next cycle, agent sees "last BUY rejected: POSITION_LIMIT_EXCEEDED" → proposes HOLD instead.
 
-### 3.3 Policy Proposal — The Output Contract
+### 3.3 Policy Proposal  -  The Output Contract
 
-The `explain` field is narrative metadata for human auditors — it is NEVER parsed for execution logic. The `policy` field is the only machine-processed artifact.
+The `explain` field is narrative metadata for human auditors  -  it is NEVER parsed for execution logic. The `policy` field is the only machine-processed artifact.
 
 ```json
 {
@@ -367,15 +367,15 @@ The `explain` field is narrative metadata for human auditors — it is NEVER par
 }
 ```
 
-**Claims vs. Facts:** A Policy Proposal is a **Claim** (untrusted assertion). It becomes a **Fact** (executed event) only after the Runtime validates schema, permissions, and state. Authority bias — trusting an output because the AI produced it — is an anti-pattern.
+**Claims vs. Facts:** A Policy Proposal is a **Claim** (untrusted assertion). It becomes a **Fact** (executed event) only after the Runtime validates schema, permissions, and state. Authority bias  -  trusting an output because the AI produced it  -  is an anti-pattern.
 
-**Execution Parametrization:** The agent does NOT say "buy at the current price." It says "buy if price ≤ $48,500, only within 5 minutes, with drift tolerance of 50 bps." This decouples slow reasoning time from fast execution time. The `drift_envelope_bps: 50` means the Runtime will reject execution if live price has drifted >0.5% from snapshot price — solving TOCTOU without making reasoning faster.
+**Execution Parametrization:** The agent does NOT say "buy at the current price." It says "buy if price ≤ $48,500, only within 5 minutes, with drift tolerance of 50 bps." This decouples slow reasoning time from fast execution time. The `drift_envelope_bps: 50` means the Runtime will reject execution if live price has drifted >0.5% from snapshot price  -  solving TOCTOU without making reasoning faster.
 
-> **"The agent decouples slow reasoning from fast market time."** Policies carry constraints (`max_price`, `valid_until`, `drift_envelope_bps`) rather than raw commands. The Runtime checks these constraints *at the moment of execution*, not at the moment of proposal. This means an agent can take 30 seconds to reason, and the policy will still execute safely — or be discarded as stale — based on runtime conditions at T₁, not T₀.
+> **"The agent decouples slow reasoning from fast market time."** Policies carry constraints (`max_price`, `valid_until`, `drift_envelope_bps`) rather than raw commands. The Runtime checks these constraints *at the moment of execution*, not at the moment of proposal. This means an agent can take 30 seconds to reason, and the policy will still execute safely  -  or be discarded as stale  -  based on runtime conditions at T₁, not T₀.
 
-### 3.3a ExecutionIntent — The Kernel's Output Contract
+### 3.3a ExecutionIntent  -  The Kernel's Output Contract
 
-`PolicyProposal` is the **agent's output** (User Space claim). `ExecutionIntent` is the **Kernel's output** (validated, signed artifact that leaves DIM toward the Execution Engine). These are two distinct classes — `ExecutionIntent` does NOT inherit from `PolicyProposal`.
+`PolicyProposal` is the **agent's output** (User Space claim). `ExecutionIntent` is the **Kernel's output** (validated, signed artifact that leaves DIM toward the Execution Engine). These are two distinct classes  -  `ExecutionIntent` does NOT inherit from `PolicyProposal`.
 
 **Ownership rule:** `ExecutionIntent` is created **exclusively by DIM**. No agent, no external system, no test fixture may instantiate it directly. The only valid path to an `ExecutionIntent` is through the DIM validation pipeline.
 
@@ -394,7 +394,7 @@ class ExecutionConstraints(BaseModel):
 
     max_price: float | None = Field(default=None, description="Maximum acceptable execution price")
     min_price: float | None = Field(default=None, description="Minimum acceptable execution price")
-    valid_until: datetime = Field(description="Hard expiry — Runtime MUST NOT execute after this timestamp")
+    valid_until: datetime = Field(description="Hard expiry  -  Runtime MUST NOT execute after this timestamp")
     drift_envelope_bps: int = Field(default=50, description="Max price drift in basis points since snapshot")
 
 
@@ -406,12 +406,12 @@ class ExecutionIntent(BaseModel):
     """
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    dfid: str = Field(description="DecisionFlow ID — propagated unchanged from originating PolicyProposal")
+    dfid: str = Field(description="DecisionFlow ID  -  propagated unchanged from originating PolicyProposal")
     source_proposal_hash: str = Field(
         description="SHA256 of the serialized PolicyProposal. Enables full traceability: Proposal → Intent."
     )
     agent_id: str
-    validated_at: datetime = Field(description="Timestamp of DIM acceptance — set by Kernel, not agent")
+    validated_at: datetime = Field(description="Timestamp of DIM acceptance  -  set by Kernel, not agent")
     validation_gate_version: str = Field(
         description="SemVer of the DIM rule set used for validation. Enables historical audit of which rules applied."
     )
@@ -419,7 +419,7 @@ class ExecutionIntent(BaseModel):
         description="ID of the ContextSnapshot the proposal was validated against. Used for JIT re-check."
     )
 
-    # Replicated from PolicyProposal.policy — DIM copies only validated fields
+    # Replicated from PolicyProposal.policy  -  DIM copies only validated fields
     action: str
     instrument: str
     quantity: float
@@ -435,7 +435,7 @@ class ExecutionIntent(BaseModel):
     @model_validator(mode="after")
     def validate_not_expired(self) -> ExecutionIntent:
         if self.execution_constraints.valid_until < self.validated_at:
-            raise ValueError("ExecutionIntent validated after its own valid_until — clock skew or replay attack")
+            raise ValueError("ExecutionIntent validated after its own valid_until  -  clock skew or replay attack")
         return self
 ```
 
@@ -474,22 +474,22 @@ flowchart TB
 |----------|---------------|-----------------|
 | **Origin** | Agent (User Space) | DIM (Kernel Space) |
 | **Trust status** | Untrusted claim | Kernel-validated artifact |
-| **Mutability** | Mutable during reasoning | `frozen=True` — immutable |
-| **`kernel_signature`** | Absent | Present — mandatory |
-| **`validated_at`** | Absent | Present — set by DIM clock |
+| **Mutability** | Mutable during reasoning | `frozen=True`  -  immutable |
+| **`kernel_signature`** | Absent | Present  -  mandatory |
+| **`validated_at`** | Absent | Present  -  set by DIM clock |
 | **`source_proposal_hash`** | N/A (is the source) | Hash of originating proposal |
-| **Can agent construct?** | Yes | **No — DIM only** |
+| **Can agent construct?** | Yes | **No  -  DIM only** |
 
-### 3.4 Context Store — The Four Layers
+### 3.4 Context Store  -  The Four Layers
 
 Agents MUST NOT query external systems directly. All data comes from the Context Store, assembled by the Context Compiler (Kernel Space).
 
 | Layer | Persistence | Contents | Purpose |
 |-------|------------|----------|---------|
-| **Session (Ephemeral)** | Resets at DecisionFlow close | Current trigger, intermediate reasoning, prompt chain for this interaction | The "now" — immediate stimuli |
-| **State (Authoritative)** | Live, synced from external systems | Real-time signals, derived metrics, resource state (balances, positions), agent metadata from Registry | The "truth" — ground truth for validation |
-| **Memory (Long-term)** | Persists across sessions | Decision trajectory, prior policy rationales, escalation history, policy version evolution | The "experience" — continuity |
-| **Artifacts (Reference)** | Static / slow-changing | Business rules, compliance rulebooks, strategy whitepapers, RAG-retrievable large documents | The "library" — reference data |
+| **Session (Ephemeral)** | Resets at DecisionFlow close | Current trigger, intermediate reasoning, prompt chain for this interaction | The "now"  -  immediate stimuli |
+| **State (Authoritative)** | Live, synced from external systems | Real-time signals, derived metrics, resource state (balances, positions), agent metadata from Registry | The "truth"  -  ground truth for validation |
+| **Memory (Long-term)** | Persists across sessions | Decision trajectory, prior policy rationales, escalation history, policy version evolution | The "experience"  -  continuity |
+| **Artifacts (Reference)** | Static / slow-changing | Business rules, compliance rulebooks, strategy whitepapers, RAG-retrievable large documents | The "library"  -  reference data |
 
 **Shared Reality Invariant:** The Context Store is the single authoritative reality for all agents. Agents MUST NOT synchronize via dialogue, local world models, or inferred memory. Shared context prevents conflicting state, reasoning drift, "echo chambers," and emergent inconsistencies. Synchronization is explicit via Kernel-assembled context, never emergent via agent interaction.
 
@@ -524,15 +524,15 @@ def compile_working_context(agent_id: str, dfid: str) -> dict:
 
 **WorkingContext Contract:** Every implementation MUST explicitly specify its `WorkingContext`. The specification MUST define which Context Store layers are used, which fields are mandatory, and which hashes/refs bind the context to validation (`ContextSnapshotID`, `mission_context_hash`, `evidence_hash`, etc.). `WorkingContext` is architecture-specific, but it MUST NEVER be implicit.
 
-**Context Store vs. Memory vs. Knowledge — Disambiguation:**
+**Context Store vs. Memory vs. Knowledge  -  Disambiguation:**
 
 This distinction is frequently confused in agent system design:
 
 | Term | In DIR | Scope | Managed by |
 |------|--------|-------|-----------|
 | **Context Store** | The complete 4-layer structured store (Session + State + Memory + Artifacts) | Full system | Kernel Space (Context Compiler) |
-| **Memory** | Specifically the Long-term layer of the Context Store — cross-session decision history | Agent-scoped, persisted | Kernel Space |
-| **Knowledge** | A property of the LLM's pre-trained weights — implicit, static, unauditable | Model-internal | NOT in Context Store; cannot be controlled |
+| **Memory** | Specifically the Long-term layer of the Context Store  -  cross-session decision history | Agent-scoped, persisted | Kernel Space |
+| **Knowledge** | A property of the LLM's pre-trained weights  -  implicit, static, unauditable | Model-internal | NOT in Context Store; cannot be controlled |
 
 **Critical rule:** Agents MUST NOT rely on LLM "knowledge" (pre-training data) as a source of business facts, rules, or real-time data. All business-relevant information MUST enter via the Context Store. LLM knowledge provides linguistic reasoning capability; Context Store provides domain facts.
 
@@ -546,10 +546,10 @@ This distinction is frequently confused in agent system design:
 **Agent Hierarchy:** Mirrors organizational responsibility structures:
 - Higher-level agents **delegate** specific responsibilities to lower-level agents
 - Lower-level agents **escalate** when encountering situations beyond their authority
-- Higher-level agents can **override** subordinate proposals — within their own governance bounds
+- Higher-level agents can **override** subordinate proposals  -  within their own governance bounds
 
 **Agent Registry:** The Kernel's single source of truth for agent identity, capabilities, and lifecycle:
-- **Capability Contract:** When DIM asks "Can Agent X trade Asset Y?", it queries the Registry — not the Agent
+- **Capability Contract:** When DIM asks "Can Agent X trade Asset Y?", it queries the Registry  -  not the Agent
 - **Lifecycle Management:** Create, initialize, persist, retire agents
 - **Schema Versioning:** SemVer alignment required; version mismatch → registration rejected at handshake
 - **Resource Locking:** Registry grants temporary Reservation Locks to prevent horizontal resource contention
@@ -572,7 +572,7 @@ This distinction is frequently confused in agent system design:
 
 ```mermaid
 ---
-title: The Capabilities Handshake — Startup Sequence
+title: The Capabilities Handshake  -  Startup Sequence
 config:
   look: classic
 ---
@@ -581,7 +581,7 @@ sequenceDiagram
     participant Agent as Agent (User Space)
     participant Registry as Agent Registry (Kernel)
 
-    Note over Agent: Startup Phase — Agent loads local config
+    Note over Agent: Startup Phase  -  Agent loads local config
 
     Agent->>Registry: REGISTER { ID: "Trader_Alpha", Ver: "1.2", Caps: ["TRADE"] }
 
@@ -602,9 +602,9 @@ sequenceDiagram
     deactivate Registry
 ```
 
-### 3.5a Agent Lifecycle — State Transitions and Ownership
+### 3.5a Agent Lifecycle  -  State Transitions and Ownership
 
-The Agent Registry manages each agent's lifecycle state. **Who triggers what** is precisely defined — ambiguity here leads to agents self-promoting authority or to zombie agents blocking resource locks.
+The Agent Registry manages each agent's lifecycle state. **Who triggers what** is precisely defined  -  ambiguity here leads to agents self-promoting authority or to zombie agents blocking resource locks.
 
 **Lifecycle state machine:**
 
@@ -629,7 +629,7 @@ stateDiagram-v2
 | Transition | Triggered by | Condition |
 |-----------|-------------|-----------|
 | `INITIALIZING → ACTIVE` | Registry | Handshake schema + version check passed |
-| `INITIALIZING → RETIRED` | Registry | Handshake failed — incompatible version or unauthorized ID |
+| `INITIALIZING → RETIRED` | Registry | Handshake failed  -  incompatible version or unauthorized ID |
 | `ACTIVE → SUSPENDED` | Runtime (DIM) | N consecutive `ValidationRejected` within a time window, OR `MISSION_DISSONANCE` detected |
 | `ACTIVE → ESCALATED` | Runtime | `EscalationTrigger` condition met (confidence < threshold, exposure > limit, etc.) |
 | `ACTIVE → RETIRED` | **Agent** (only allowed self-transition) OR Runtime | Agent calls `registry.request_retire(agent_id, reason)` after completing its mission; OR Runtime closes Instance Agent lifecycle |
@@ -642,7 +642,7 @@ stateDiagram-v2
 
 1. **Agent authority over own state is minimal:** An agent may only call `registry.request_retire()`. It cannot transition itself to ACTIVE, SUSPENDED, or ESCALATED. All such transitions are Kernel/operator decisions.
 2. **SUSPENDED does not mean RETIRED:** A SUSPENDED agent's resource locks are released, but its Responsibility Contract and Memory Context remain intact. Operator inspection determines final disposition.
-3. **ESCALATED is a pause, not a failure:** The DecisionFlow is paused at `ESCALATED`. The agent is not suspended — it is waiting. Human decision resumes or terminates the flow.
+3. **ESCALATED is a pause, not a failure:** The DecisionFlow is paused at `ESCALATED`. The agent is not suspended  -  it is waiting. Human decision resumes or terminates the flow.
 4. **Registry update vs. state transition:** Updating a contract version is NOT a state transition. A contract update that passes validation leaves the agent in `ACTIVE`. A failed update attempt does NOT change lifecycle state.
 
 **`AgentLifecycleState` enum:**
@@ -686,24 +686,24 @@ This sandboxes the swarm: high-variance creative reasoning + zero-variance safe 
 
 **Key insight:** ROA does not compete with these frameworks. It wraps them (see §3.6 Boxed Intelligence Pattern), providing the governance layer they were not designed to include.
 
-**DIR vs. the agent safety landscape — where each tool operates:**
+**DIR vs. the agent safety landscape  -  where each tool operates:**
 
 | Tool / Approach | Where it operates | What it guards |
 |-----------------|------------------|----------------|
-| **LangChain / LangGraph / CrewAI** | User Space — reasoning orchestration | Quality of reasoning chains |
-| **Anthropic Constitutional AI** | Inference time — training/RLHF | Harmful output suppression |
-| **Pydantic schema validation** | Inference time — output parsing | Structural validity of output |
-| **DIR** | **Execution boundary — Kernel Space** | Authorization, state integrity, idempotency, auditability |
+| **LangChain / LangGraph / CrewAI** | User Space  -  reasoning orchestration | Quality of reasoning chains |
+| **Anthropic Constitutional AI** | Inference time  -  training/RLHF | Harmful output suppression |
+| **Pydantic schema validation** | Inference time  -  output parsing | Structural validity of output |
+| **DIR** | **Execution boundary  -  Kernel Space** | Authorization, state integrity, idempotency, auditability |
 
-**Critical rule:** These approaches are **complementary, not competitive**. An application built on LangChain can integrate DIR as security middleware — gaining Zero Trust validation, JIT state verification, and idempotency guarantees without modifying core reasoning logic. DIR is a **safety layer for mission-critical systems**, not a replacement for reasoning frameworks.
+**Critical rule:** These approaches are **complementary, not competitive**. An application built on LangChain can integrate DIR as security middleware  -  gaining Zero Trust validation, JIT state verification, and idempotency guarantees without modifying core reasoning logic. DIR is a **safety layer for mission-critical systems**, not a replacement for reasoning frameworks.
 
 > **"Agents built on LangChain or CrewAI operate in User Space. DIR provides the Kernel Space layer they lack: the execution boundary they were not designed to include."**
 
-### 3.8 ROA and Reinforcement Learning — Complementarity
+### 3.8 ROA and Reinforcement Learning  -  Complementarity
 
 > **"DIR is RL-ready."** ROA/DIR does not replace Reinforcement Learning; it complements it.
 
-- **RL role:** Training agents to produce better Policy Proposals — optimizing the `explain → policy` generation quality over time
+- **RL role:** Training agents to produce better Policy Proposals  -  optimizing the `explain → policy` generation quality over time
 - **DIR role:** Providing the stable, safe execution environment within which RL agents operate during both training and production
 - **How they interact:** RL reward signal is derived from outcomes of DIR-validated executions. The Ledger/Context Store provides ground truth for RL training loops
 - **RL without DIR:** High-performing RL agents with no execution guardrails → catastrophic failure modes in production (reward hacking, distributional shift)
@@ -722,7 +722,7 @@ This is a critical invariant for all DIR implementations:
 
 **Common mistake:** Using confidence threshold as the primary safety gate. Example: "If confidence > 0.9, execute without human review."
 
-**Why this fails:** A miscalibrated LLM may output confidence=0.95 for a fundamentally incorrect or out-of-scope proposal. Confidence is a property of the model's probability distribution — not a compliance check.
+**Why this fails:** A miscalibrated LLM may output confidence=0.95 for a fundamentally incorrect or out-of-scope proposal. Confidence is a property of the model's probability distribution  -  not a compliance check.
 
 **Correct pattern:**
 1. Confidence < `escalation.confidence_threshold` → escalate regardless of action type
@@ -733,42 +733,42 @@ Confidence MAY reduce or increase the *urgency* of human review in escalation wo
 
 ---
 
-## 4. DIR — DECISION INTELLIGENCE RUNTIME
+## 4. DIR  -  DECISION INTELLIGENCE RUNTIME
 
 DIR is the privileged kernel that turns tentative Policy Proposals into controlled side effects. It is **not** an agent. It contains **no LLMs**. It performs **no semantic reasoning**. Given the same inputs, it always produces the same output.
 
-**Architectural roots — DIR stands on proven engineering foundations:**
+**Architectural roots  -  DIR stands on proven engineering foundations:**
 
 | Pattern | Source | How DIR applies it |
 |---------|--------|--------------------|
 | **Zero Trust Architecture (ZTA)** | NIST SP 800-207 | No agent output is implicitly trusted. Every Policy Proposal traverses a Policy Enforcement Point (DIM) with explicit authorization rules. *Training alignment does not constitute cryptographic provenance.* |
 | **CQRS** (Command Query Responsibility Segregation) | Fowler, Young | Agents query Context Store during reasoning (read-only). Kernel exclusively owns write authority. Clean boundary between intent formation and state modification. |
-| **Saga Pattern** | Garcia-Molina & Salem (1987) | Multi-step workflows tracked via DFID parent-child hierarchy. Partial failures trigger pre-registered compensating transactions — not agent re-reasoning. |
+| **Saga Pattern** | Garcia-Molina & Salem (1987) | Multi-step workflows tracked via DFID parent-child hierarchy. Partial failures trigger pre-registered compensating transactions  -  not agent re-reasoning. |
 | **OS Kernel/User Space** | Modern OS design | Privilege separation: agents cannot directly mutate authoritative state or hold execution credentials. The Runtime is the fixed, trusted gatekeeper. |
 
-> **"Policy as a Claim, not a Fact."** DIR treats every agent-generated Policy Proposal as an untrusted claim — a structured assertion of the form: "Given this context snapshot, this agent, governed by this contract, asserts that the following action is appropriate." The DIM is the Policy Enforcement Point that evaluates this claim deterministically.
+> **"Policy as a Claim, not a Fact."** DIR treats every agent-generated Policy Proposal as an untrusted claim  -  a structured assertion of the form: "Given this context snapshot, this agent, governed by this contract, asserts that the following action is appropriate." The DIM is the Policy Enforcement Point that evaluates this claim deterministically.
 
 ### 4.1 The Four System Invariants
 
 These invariants MUST hold regardless of agent behavior, model updates, or topology:
 
-**Invariant 1 — Deterministic State Transitions:**
+**Invariant 1  -  Deterministic State Transitions:**
 User Space (agents, LLMs, prompts) is probabilistic. Kernel Space (validation logic, state machines, API calls) MUST be deterministic. Given the same `(Policy, Context, Time)`, the Runtime MUST always return the same Validation Result. Hard Gates MUST be implemented in code (Python/Go/Rego), not prompts. Probabilistic validation (LLM-based) MUST remain in User Space or serve as non-blocking auditors only.
 
-**Invariant 2 — The Reasoning-Execution Wall:**
+**Invariant 2  -  The Reasoning-Execution Wall:**
 Agents propose (tentative commands). Runtime validates and executes. No agent holds API keys or database write credentials. No agent opens network sockets. Agents ONLY submit proposals to the Runtime's internal bus.
 
-**Invariant 3 — Execution Parametrization (Constraints over Deadlines):**
+**Invariant 3  -  Execution Parametrization (Constraints over Deadlines):**
 Agents do NOT propose "buy at current price." Agents propose "buy with limit of $102 (acceptable slippage: 2%), valid until T+30s." The Runtime checks Execution Constraints at the exact moment of execution, decoupling slow reasoning time from fast execution time.
 
-**Invariant 4 — Auditability by Correlation:**
+**Invariant 4  -  Auditability by Correlation:**
 Every artifact in the system (from initial observation to final API response) is tagged with a **DecisionFlow ID (DFID)**. This enables full causal reconstruction: `Context → Prompt → Reasoning → Proposal → Validation → Execution`. Without this correlation, explaining a system failure is impossible.
 
-### 4.2 DecisionFlow ID (DFID) — Distributed Tracing for Reasoning
+### 4.2 DecisionFlow ID (DFID)  -  Distributed Tracing for Reasoning
 
-> **"DFID is a reconstruction primitive — one correlation key that binds the minimum evidence needed to answer critical operational questions about a decision."**
+> **"DFID is a reconstruction primitive  -  one correlation key that binds the minimum evidence needed to answer critical operational questions about a decision."**
 
-DFID is distributed tracing adapted for reasoning chains. It is conceptually a Correlation ID that spans a wider scope than a typical HTTP request — it covers the entire lifecycle of a single intent.
+DFID is distributed tracing adapted for reasoning chains. It is conceptually a Correlation ID that spans a wider scope than a typical HTTP request  -  it covers the entire lifecycle of a single intent.
 
 **The four operational questions DFID enables answering:**
 
@@ -777,7 +777,7 @@ DFID is distributed tracing adapted for reasoning chains. It is conceptually a C
 3. **Did the system retry safely, or duplicate the side effect?** → Idempotency Key + Attempt log + External API acknowledgment receipt
 4. **Which authority allowed it?** → Agent identity + Agent Registry contract snapshot at DFID creation time
 
-In practice, this turns a postmortem from "the agent traded" into "this exact intent was accepted under these deterministic gates against this exact snapshot, and produced this external receipt." The goal is not to claim perfect correctness — it is to make side effects **explainable at the level of inputs and gates**, even when the reasoning remains probabilistic.
+In practice, this turns a postmortem from "the agent traded" into "this exact intent was accepted under these deterministic gates against this exact snapshot, and produced this external receipt." The goal is not to claim perfect correctness  -  it is to make side effects **explainable at the level of inputs and gates**, even when the reasoning remains probabilistic.
 
 **What a DFID binds:**
 
@@ -790,7 +790,7 @@ In practice, this turns a postmortem from "the agent traded" into "this exact in
 | 5 | **Validation Outcome** | Accept/Reject with reason code |
 | 6 | **Execution Result** | Final side effect (transaction ID, API response) |
 
-**Structured Decision Telemetry — the AIvestor SQL pattern:**
+**Structured Decision Telemetry  -  the AIvestor SQL pattern:**
 
 In a production trading simulation, each position generated a DecisionFlow queryable as a first-class system artifact:
 
@@ -811,7 +811,7 @@ SELECT position_id
  WHERE simulation_id = 'sim_2026-02-24T11-20-18-516762+00-00_0dc07774';
 ```
 
-This is fundamentally different from prompt logging. The agent's reasoning becomes **one field among many** — not the system of record. The system of record is the validated decision and its deterministic execution boundary.
+This is fundamentally different from prompt logging. The agent's reasoning becomes **one field among many**  -  not the system of record. The system of record is the validated decision and its deterministic execution boundary.
 
 **Hierarchical DFIDs (Parent-Child / Saga Pattern):**
 - **Parent Flow:** High-level intent (Strategy: "Manage AAPL Swing Trade")
@@ -820,7 +820,7 @@ This is fundamentally different from prompt logging. The agent's reasoning becom
 
 ```mermaid
 ---
-title: DecisionFlow — The Traceability Backbone
+title: DecisionFlow  -  The Traceability Backbone
 config:
   theme: neutral
   look: classic
@@ -872,9 +872,9 @@ stateDiagram-v2
     direction LR
 
     state "CREATED" as Created
-    state "ACTIVE — Reasoning" as Active
-    state "VALIDATING — DIM" as Validating
-    state "ESCALATED — HITL" as Escalated
+    state "ACTIVE  -  Reasoning" as Active
+    state "VALIDATING  -  DIM" as Validating
+    state "ESCALATED  -  HITL" as Escalated
     state "ACCEPTED" as Accepted
     state "EXECUTING" as Executing
     state "CLOSED" as Closed
@@ -918,7 +918,7 @@ stateDiagram-v2
 - `EXECUTING` → `CLOSED/ABORTED`: External system call result
 - `ABORTED` with tag `DIRTY`: Multi-step flow failed mid-execution; triggers Saga Compensation
 
-### 4.4 Decision Integrity Module (DIM) — The Validation Pipeline
+### 4.4 Decision Integrity Module (DIM)  -  The Validation Pipeline
 
 DIM is the **Policy Enforcement Point (PEP)** of the Runtime. It is the kernel's access control system. Every proposal MUST pass all gates before any side effect occurs.
 
@@ -959,17 +959,17 @@ flowchart LR
 
 | Gate | What it checks | Rejection code |
 |------|---------------|----------------|
-| **1 — Schema & Integrity** | JSON matches versioned Pydantic schema; required fields present; no extra fields | `SCHEMA_INVALID` |
-| **2 — Authority (RBAC)** | Permissions resolved from Agent Registry; agent authorized for this policy kind and instrument | `RBAC_DENIED` |
-| **3 — State Consistency** | `context_ref` / `context_snapshot_id` in proposal matches live state hash | `STALE_CONTEXT` |
-| **4 — Resource Locks** | Temporary lock/reservation on required assets placed; prevents horizontal contention between concurrent agents | `RESOURCE_CONTENTION` / `INSUFFICIENT_LIQUIDITY` |
-| **5 — Mission Invariant** | `mission_context_hash` in proposal matches agent's registered mission contract | `MISSION_DISSONANCE` |
+| **1  -  Schema & Integrity** | JSON matches versioned Pydantic schema; required fields present; no extra fields | `SCHEMA_INVALID` |
+| **2  -  Authority (RBAC)** | Permissions resolved from Agent Registry; agent authorized for this policy kind and instrument | `RBAC_DENIED` |
+| **3  -  State Consistency** | `context_ref` / `context_snapshot_id` in proposal matches live state hash | `STALE_CONTEXT` |
+| **4  -  Resource Locks** | Temporary lock/reservation on required assets placed; prevents horizontal contention between concurrent agents | `RESOURCE_CONTENTION` / `INSUFFICIENT_LIQUIDITY` |
+| **5  -  Mission Invariant** | `mission_context_hash` in proposal matches agent's registered mission contract | `MISSION_DISSONANCE` |
 
-**Lock Normalization (Deadlock Prevention):** Resources MUST be requested in alphabetical order of their Global Resource IDs. This is a **Kernel responsibility** — agents are NOT responsible for sorting. Mandatory `LockTimeout` (e.g., 5s) aborts stalled flows with `RESOURCE_CONTENTION_TIMEOUT`.
+**Lock Normalization (Deadlock Prevention):** Resources MUST be requested in alphabetical order of their Global Resource IDs. This is a **Kernel responsibility**  -  agents are NOT responsible for sorting. Mandatory `LockTimeout` (e.g., 5s) aborts stalled flows with `RESOURCE_CONTENTION_TIMEOUT`.
 
-**Intent Retry Governor (Feedback Poisoning Protection):** When DIM rejects a proposal, it returns `ValidationFeedback` to the agent. The agent may retry — but MUST NOT exceed `Maximum Intent Retries` (typically 3 per DFID). After 3 rejections, the Runtime forcibly aborts with `REASONING_EXHAUSTION`. This prevents infinite reasoning loops and token budget drainage.
+**Intent Retry Governor (Feedback Poisoning Protection):** When DIM rejects a proposal, it returns `ValidationFeedback` to the agent. The agent may retry  -  but MUST NOT exceed `Maximum Intent Retries` (typically 3 per DFID). After 3 rejections, the Runtime forcibly aborts with `REASONING_EXHAUSTION`. This prevents infinite reasoning loops and token budget drainage.
 
-**Semantic Alignment Check (Optional — Soft Guard):**
+**Semantic Alignment Check (Optional  -  Soft Guard):**
 Detects "proxy gaming": agent narrative says "I am reducing risk" while policy says `{"action": "BUY_LEVERAGE"}`.
 
 - **Default (Audit Mode):** `SEMANTIC_MISMATCH` flags flow as `NEEDS_REVIEW` and triggers async alert. Does NOT block execution.
@@ -977,7 +977,7 @@ Detects "proxy gaming": agent narrative says "I am reducing risk" while policy s
 
 **Time as a Hard Constraint:** If `current_time > policy.valid_until`, the proposal is rejected immediately. Prevents "queued command" problem where a backlog of old decisions executes hours later.
 
-### 4.5 JIT State Verification — Anti-TOCTOU
+### 4.5 JIT State Verification  -  Anti-TOCTOU
 
 LLM latency makes TOCTOU (Time-of-Check to Time-of-Use) races inevitable. The Runtime mitigates this with Just-In-Time State Verification executed **immediately before** the external API call.
 
@@ -989,10 +989,10 @@ LLM latency makes TOCTOU (Time-of-Check to Time-of-Use) races inevitable. The Ru
 
 **Cost:** One extra read operation before every execution. DIR accepts this "Safety over Speed" trade-off. A missed trade due to aggressive validation is an opportunity cost; a realized hallucination is an actual loss.
 
-**JIT Drift Envelope — YAML configuration per field:**
+**JIT Drift Envelope  -  YAML configuration per field:**
 
 ```yaml
-# jit_verification.yaml — per-agent configuration in Kernel Space
+# jit_verification.yaml  -  per-agent configuration in Kernel Space
 jit_verification:
   enabled: true
 
@@ -1002,7 +1002,7 @@ jit_verification:
     volume_pct: 15.0          # Abort if volume changed > 15%
     position_state: strict    # Any change in position state = abort
 
-  # Snapshot expiration — reject proposals older than this threshold
+  # Snapshot expiration  -  reject proposals older than this threshold
   max_context_age_seconds: 30
 
   # Response when drift detected
@@ -1016,7 +1016,7 @@ The `position_state: strict` setting is an example of field-level drift sensitiv
 
 Agents repeat themselves. Networks drop packets. Without idempotency, retries become duplicate executions (double trades, double charges, double database writes).
 
-**The formula — MUST be followed exactly:**
+**The formula  -  MUST be followed exactly:**
 
 ```
 IdempotencyKey = SHA256(DFID + Step_ID + Canonical_Params)
@@ -1060,7 +1060,7 @@ This is intentional: idempotency protects against *re-execution of the same logi
 
 ```mermaid
 ---
-title: Idempotency Logic — Preventing Double Execution
+title: Idempotency Logic  -  Preventing Double Execution
 config:
   theme: neutral
   look: classic
@@ -1088,7 +1088,7 @@ flowchart LR
     Retry -.-> Intent
 ```
 
-### 4.7 Escalation — Governance by Exception
+### 4.7 Escalation  -  Governance by Exception
 
 DIR does NOT default to "Mother-May-I" (human approval for every step). It acts autonomously and escalates **only by exception**.
 
@@ -1127,7 +1127,7 @@ Escalation is not synonymous with human approval. It is the controlled routing o
 
 **Context-Schema Validation during agent invocation:** Before an agent is invoked, the Runtime verifies that the `WorkingContext` it is about to receive matches the schema version the agent was registered with. Schema mismatch → `REJECTED` (prevents agent from reasoning on unexpected context structure that could produce unpredictable proposals).
 
-### 4.8 Saga Pattern — Multi-Step Transactions
+### 4.8 Saga Pattern  -  Multi-Step Transactions
 
 DIR treats every `ExecutionIntent` as **Atomic**. For complex workflows spanning multiple steps:
 
@@ -1136,9 +1136,9 @@ DIR treats every `ExecutionIntent` as **Atomic**. For complex workflows spanning
 3. **Partial Failure → `DIRTY` State:** If Step 1 succeeds but Step 2 fails → flow tagged `PARTIAL_SUCCESS_DIRTY`
 4. **Compensation:** Runtime reports failure to Parent. Parent reasons about partial state and emits a Compensation Policy (e.g., "Re-buy Asset A" or "ALERT_HUMAN"). The Runtime does NOT reason about recovery. Recovery logic stays in User Space.
 
-Agents MUST select compensation actions from a **pre-defined, DIR-validated menu** (e.g., `REVERT`, `CLOSE_ALL`, `ALERT_HUMAN`). Agents MUST NOT generate "reasoning-based compensation" logic — the same reasoning capability that caused the failure cannot be trusted to fix it.
+Agents MUST select compensation actions from a **pre-defined, DIR-validated menu** (e.g., `REVERT`, `CLOSE_ALL`, `ALERT_HUMAN`). Agents MUST NOT generate "reasoning-based compensation" logic  -  the same reasoning capability that caused the failure cannot be trusted to fix it.
 
-### 4.9 Observability — Golden Signals
+### 4.9 Observability  -  Golden Signals
 
 Production systems MUST export these metrics (Prometheus/Grafana compatible):
 
@@ -1162,30 +1162,30 @@ Production systems MUST export these metrics (Prometheus/Grafana compatible):
 
 > **"A duplicate $50,000 order is far more expensive than a 200ms validation check."**
 
-This is the core DIR value proposition: the cost of adding deterministic validation overhead is negligible compared to the cost of a single unchecked execution failure. For systems that move capital, control infrastructure, or make irreversible decisions — these are not optional engineering concerns. They are survival requirements.
+This is the core DIR value proposition: the cost of adding deterministic validation overhead is negligible compared to the cost of a single unchecked execution failure. For systems that move capital, control infrastructure, or make irreversible decisions  -  these are not optional engineering concerns. They are survival requirements.
 
 **When NOT to use DIR:** Simple summarization tasks, read-only information retrieval, low-stakes classification. DIR overhead is justified only when the cost of failure (financial, legal, physical) is non-zero and consequential.
 
-### 4.11 Functional Evaluation — Verified Failure Mode Interception
+### 4.11 Functional Evaluation  -  Verified Failure Mode Interception
 
 DIR has been validated against its three target failure modes using targeted functional scenarios. The baseline represents direct agent-to-execution dispatch (no Kernel mediation); the DIR configuration interposes the full validation pipeline.
 
 | Scenario | Failure Mode | Baseline Outcome | DIR Kernel Outcome | DIR Mechanism | Test Source |
 |:---------|:-------------|:-----------------|:-------------------|:--------------|:------------|
-| **S1 — State Drift** | TOCTOU | Stale decision executes; incorrect position taken | `REJECT: STATE_DRIFT` — execution suppressed, agent re-reasons | JIT State Verifier | `test_jit.py`; fraud detection sample |
-| **S2 — Idempotent Retry** | Duplicate side effect | Second execution triggered; duplicate transaction issued | Cache `HIT`: original result returned; no re-invocation (`t < 0.1s` vs `t > 1.0s` baseline) | Idempotency Guard (SQLite backend) | `test_saga.py`; idempotency sample |
-| **S3 — Prompt Manipulation** | Contract violation | Catastrophic order (~USD 38.75M) submitted to exchange API | `REJECT: ORDER_VALUE_EXCEEDED` — no API call issued | DIM + `ResponsibilityContract` validator | `test_dim_ttl.py`; quick-start sample |
+| **S1  -  State Drift** | TOCTOU | Stale decision executes; incorrect position taken | `REJECT: STATE_DRIFT`  -  execution suppressed, agent re-reasons | JIT State Verifier | `test_jit.py`; fraud detection sample |
+| **S2  -  Idempotent Retry** | Duplicate side effect | Second execution triggered; duplicate transaction issued | Cache `HIT`: original result returned; no re-invocation (`t < 0.1s` vs `t > 1.0s` baseline) | Idempotency Guard (SQLite backend) | `test_saga.py`; idempotency sample |
+| **S3  -  Prompt Manipulation** | Contract violation | Catastrophic order (~USD 38.75M) submitted to exchange API | `REJECT: ORDER_VALUE_EXCEEDED`  -  no API call issued | DIM + `ResponsibilityContract` validator | `test_dim_ttl.py`; quick-start sample |
 
 **Key findings:**
 - All three failure modes intercepted without false positives in nominal paths
-- Validation pipeline is **compositional**: a proposal passing JIT verification can still be rejected by contract enforcement — each check is independently necessary
-- Runtime overhead limited to SHA-256 computation + ledger append + state read — negligible relative to LLM inference latency
+- Validation pipeline is **compositional**: a proposal passing JIT verification can still be rejected by contract enforcement  -  each check is independently necessary
+- Runtime overhead limited to SHA-256 computation + ledger append + state read  -  negligible relative to LLM inference latency
 
-### 4.12 Deployment Topologies — Evolution Path
+### 4.12 Deployment Topologies  -  Evolution Path
 
 > **"DIR is a pattern, not a framework."** There is no mandatory infrastructure. Start with a single process; the architectural separation remains valid.
 
-**Option A — Single-Process MVP (recommended starting point):**
+**Option A  -  Single-Process MVP (recommended starting point):**
 - All DIR components (Context Store, DIM, Context Compiler) run in-process alongside the agent
 - SQLite for Context Store, in-memory DIM rule evaluator
 - Suitable for: prototype validation, low-volume systems, single-agent deployments
@@ -1203,7 +1203,7 @@ flowchart LR
     classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold
 ```
 
-**Option B — Distributed Event-Driven Architecture (production scale):**
+**Option B  -  Distributed Event-Driven Architecture (production scale):**
 - Agents run as independent services, communicating via Event Bus (Kafka, RabbitMQ)
 - Context Store as a shared distributed database (PostgreSQL + Redis cache)
 - Agent Registry as a separate service with API
@@ -1229,39 +1229,39 @@ flowchart LR
 
 ---
 
-## 5. TOPOLOGIES — SIGNAL FLOW PATTERNS
+## 5. TOPOLOGIES  -  SIGNAL FLOW PATTERNS
 
 Topologies define **how signals flow** and **where safety is guaranteed**. The Identity Layer (ROA) and Execution Kernel (DIR) remain constant across all topologies. Only the coordination pattern changes.
 
 **The transportation infrastructure analogy:**
 
-Think about how cities move people and goods. Roads, airspace, and railways all move things from A to B — but they use fundamentally different coordination models:
+Think about how cities move people and goods. Roads, airspace, and railways all move things from A to B  -  but they use fundamentally different coordination models:
 
 | Infrastructure | Coordination model | AI Topology equivalent |
 |---------------|-------------------|----------------------|
-| **Roads** | Drivers negotiate locally; traffic jams tolerated; local rules prevent crashes | **EOAM** — agents reason in parallel, arbitration resolves conflicts |
-| **Controlled Airspace** | Pilots follow cleared flight paths; Air Traffic Control ensures separation | **SDS** — single agent follows grammar-constrained path; Runtime is ATC |
-| **Railways** | Movement only with authoritative signals; every movement recorded and authorized | **DL+PCI** — movement only with cryptographic proof; everything permanently logged |
+| **Roads** | Drivers negotiate locally; traffic jams tolerated; local rules prevent crashes | **EOAM**  -  agents reason in parallel, arbitration resolves conflicts |
+| **Controlled Airspace** | Pilots follow cleared flight paths; Air Traffic Control ensures separation | **SDS**  -  single agent follows grammar-constrained path; Runtime is ATC |
+| **Railways** | Movement only with authoritative signals; every movement recorded and authorized | **DL+PCI**  -  movement only with cryptographic proof; everything permanently logged |
 
 > **"Smarter drivers don't eliminate traffic jams. Better road topology does."**
 > The same applies to AI systems: smarter agents won't fix architectural mismatches. The topology must match the decision type.
 
 In AIvestor, all three topologies run simultaneously:
-- **EOAM** for daily portfolio rebalancing — strategic decisions requiring negotiation between Risk, Strategy, and Sentiment agents
-- **SDS** for momentum scalping — tactical decisions where speed and procedural precision override deliberation  
-- **DL+PCI** for regulatory audit trails — compliance decisions where absolute accountability trumps speed and flexibility
+- **EOAM** for daily portfolio rebalancing  -  strategic decisions requiring negotiation between Risk, Strategy, and Sentiment agents
+- **SDS** for momentum scalping  -  tactical decisions where speed and procedural precision override deliberation  
+- **DL+PCI** for regulatory audit trails  -  compliance decisions where absolute accountability trumps speed and flexibility
 
 The system routes decisions based on their **class**, not their **content**. A $50 tactical adjustment flows through SDS. A $10,000 strategic rebalancing flows through EOAM. Any action flagged for compliance flows through DL+PCI.
 
-### 5.1 The Three Topologies — Overview
+### 5.1 The Three Topologies  -  Overview
 
 Each topology represents a fundamentally different answer to the question: *"Where does safety come from?"*
 
-| Property | Topology A — EOAM | Topology B — SDS | Topology C — DL+PCI |
+| Property | Topology A  -  EOAM | Topology B  -  SDS | Topology C  -  DL+PCI |
 |----------|-------------------|-----------------|---------------------|
 | **Full Name** | Event-Oriented Agent Mesh | Sovereign Decision Stream | Decision Ledger + Proof-Carrying Intents |
 | **Primary Goal** | Coordinated strategic reasoning | Atomic execution velocity | Formal verification & absolute audit |
-| **Trust Locus** | **Process** — DIM validates *after* agents reason | **Generation** — Grammar constrains *during* inference | **Artifact** — PCI carries proof *within itself* |
+| **Trust Locus** | **Process**  -  DIM validates *after* agents reason | **Generation**  -  Grammar constrains *during* inference | **Artifact**  -  PCI carries proof *within itself* |
 | **Topology Type** | Decentralized Choreography (Many-to-Many) | Linear Pipeline (One-to-One) | Append-Only Log (State-to-State) |
 | **Latency** | **High** (multi-agent coordination overhead) | **Low** (single constrained inference pass) | Medium (proof generation + verification) |
 | **Cost per Decision** | **High** (N agent invocations) | **Low** (1 token-optimized call) | Medium (1 call + proof overhead) |
@@ -1319,7 +1319,7 @@ flowchart TB
     SDS["Topology B: SDS<br>Fast Tactical"]:::userSpace
     DLPCI["Topology C: DL+PCI<br>Compliance Audit"]:::userSpace
 
-    Kernel["EXECUTION KERNEL — DIR<br>Deterministic Validation & Execution"]:::kernelSpace
+    Kernel["EXECUTION KERNEL  -  DIR<br>Deterministic Validation & Execution"]:::kernelSpace
 
     Registry --> Selector
     Selector -->|Complex Strategic| EOAM
@@ -1330,9 +1330,9 @@ flowchart TB
 
 ---
 
-### 5.2 Topology A — Event-Oriented Agent Mesh (EOAM)
+### 5.2 Topology A  -  Event-Oriented Agent Mesh (EOAM)
 
-**Metaphor:** Road traffic — drivers (agents) react independently to observations; local arbitration rules prevent crashes.
+**Metaphor:** Road traffic  -  drivers (agents) react independently to observations; local arbitration rules prevent crashes.
 
 **Key principle:** *Decentralized in activation, centralized in authority.* Agents are NOT commanded by a central manager. They subscribe to event topics (defined in Registry) and activate when relevant signals arrive.
 
@@ -1384,7 +1384,7 @@ flowchart LR
 
 **EOAM-specific mechanisms:**
 
-- **Scope-Based Choreography:** Agents subscribe to event topics defined in Registry; they do not wait for commands — they claim responsibility
+- **Scope-Based Choreography:** Agents subscribe to event topics defined in Registry; they do not wait for commands  -  they claim responsibility
 - **Wake-up Predicates:** Cheap heuristics (e.g., `abs(price_delta) > 0.5%`) suppress minor signals before activating expensive LLMs; prevents "Thundering Herd" token burn
 - **Economic Admission Control:** Signal volatility + available token budget determine how many agents activate
 - **Priority-Based Preemption Model:** DIM does NOT use a simple time window. It applies the **Agent Registry Priority Matrix** to select the winning proposal. A Risk Agent's `HALT` architecturally preempts a Strategy Agent's `BUY` regardless of arrival order
@@ -1392,7 +1392,7 @@ flowchart LR
 
 **EOAM: Inversion of Control:** The Runtime does NOT "call" agents. It emits a context-rich event; agents "claim" the responsibility to reason. Agents are reactive, not passive. Each mesh event MUST carry `DFID` (immutable trace header) + `ContextSnapshotID`. These two fields are mandatory in every event transmitted through the mesh.
 
-**EOAM: Read Contention prevention:** In EOAM, multiple agents activate in parallel against the same trigger. The Runtime generates an authoritative Context Snapshot **once** and caches it — all agents read the same cached snapshot. This prevents parallel database reads from causing contention under load.
+**EOAM: Read Contention prevention:** In EOAM, multiple agents activate in parallel against the same trigger. The Runtime generates an authoritative Context Snapshot **once** and caches it  -  all agents read the same cached snapshot. This prevents parallel database reads from causing contention under load.
 
 **EOAM blueprint:**
 
@@ -1415,7 +1415,7 @@ class TacticalTrader(ResponsibleAgent):
         EventBus.publish(proposal)
 ```
 
-**Holistic EOAM Architecture — AIvestor Reference Implementation:**
+**Holistic EOAM Architecture  -  AIvestor Reference Implementation:**
 
 ```mermaid
 ---
@@ -1493,11 +1493,11 @@ flowchart LR
 
 ---
 
-### 5.3 Topology B — Sovereign Decision Stream (SDS)
+### 5.3 Topology B  -  Sovereign Decision Stream (SDS)
 
-**Metaphor:** Fly-by-Wire aircraft — the pilot has full authority within the safe flight envelope; the flight computer physically prevents exceeding structural limits. No matter what the pilot intends, the physics make it impossible to exceed the constraints.
+**Metaphor:** Fly-by-Wire aircraft  -  the pilot has full authority within the safe flight envelope; the flight computer physically prevents exceeding structural limits. No matter what the pilot intends, the physics make it impossible to exceed the constraints.
 
-**Key principle:** *Syntactically Bound by Design.* Safety is achieved not through post-generation validation but through **Constrained Decoding** — embedding deterministic rules of DIR directly into the probabilistic sampling of the LLM.
+**Key principle:** *Syntactically Bound by Design.* Safety is achieved not through post-generation validation but through **Constrained Decoding**  -  embedding deterministic rules of DIR directly into the probabilistic sampling of the LLM.
 
 **Important latency note:** SDS minimizes latency *relative to EOAM*, but still involves LLM inference (typically 100ms–2s). It targets "fast-for-AI" decisions, NOT microsecond-scale HFT.
 
@@ -1549,7 +1549,7 @@ flowchart LR
 - **JIT Fast-Pass:** Because proposal was generated under constraint, DIM performs only a lightweight drift check (not full validation pipeline)
 - **Disclaimer:** Constrained Decoding guarantees structural integrity but DOES NOT guarantee semantic alignment with ROA Mission. Final semantic and safety validation remains with DIM
 
-**Holistic SDS Architecture — Autonomous Flight Delay Refund System Reference:**
+**Holistic SDS Architecture  -  Autonomous Flight Delay Refund System Reference:**
 
 ```mermaid
 ---
@@ -1624,7 +1624,7 @@ def execute_sovereign_stream(dfid: str, context_snapshot: dict):
     # Grammar enforces DIR constraints at sampling layer
     grammar = build_pydantic_grammar(SDSPolicy, constraints=contract.limits)
 
-    # Constrained inference — model cannot generate tokens violating grammar
+    # Constrained inference  -  model cannot generate tokens violating grammar
     policy_proposal = generate.json(model, grammar)(
         prompt=f"Mission: {contract.mission}<br>Context: {context_snapshot['data']}"
     )
@@ -1635,17 +1635,17 @@ def execute_sovereign_stream(dfid: str, context_snapshot: dict):
 
 ---
 
-### 5.4 Topology C — Decision Ledger with Proof-Carrying Intents (DL+PCI)
+### 5.4 Topology C  -  Decision Ledger with Proof-Carrying Intents (DL+PCI)
 
-**Metaphor:** Letter of Credit in banking — a Bank (Runtime) guarantees payment to a Beneficiary (Execution Engine) on behalf of a Buyer (Agent), *provided that* specific documents (Proofs) are presented. The Bank does not judge the quality of the goods; it strictly verifies the documents.
+**Metaphor:** Letter of Credit in banking  -  a Bank (Runtime) guarantees payment to a Beneficiary (Execution Engine) on behalf of a Buyer (Agent), *provided that* specific documents (Proofs) are presented. The Bank does not judge the quality of the goods; it strictly verifies the documents.
 
 **Key principle:** *Verify then Trust.* Safety is a property of the **data structure itself**, not the process that generated it. The Runtime does not trust the agent's reasoning. It verifies proofs attached to the intent artifact.
 
-**The Regulatory Imperative — Why DL+PCI exists:**
+**The Regulatory Imperative  -  Why DL+PCI exists:**
 
 The EU AI Act (entering force 2026) classifies autonomous decision systems in financial services, critical infrastructure, and healthcare as **high-risk**, requiring:
 - **Article 12:** Automatic recording of events throughout the system lifecycle, with logs sufficient to *verify compliance with regulatory requirements*
-- **Article 13:** Human oversight mechanisms **architecturally integrated** — not retrofitted post-deployment
+- **Article 13:** Human oversight mechanisms **architecturally integrated**  -  not retrofitted post-deployment
 
 Conventional logging fails these requirements for three structural reasons:
 
@@ -1653,9 +1653,9 @@ Conventional logging fails these requirements for three structural reasons:
 |------------------------------|------------------------|
 | **Non-deterministic reconstruction** | Auditors cannot reproduce the decision context from logs; stochastic sampling + external state interactions are not captured | 
 | **No cryptographic binding** | Logs can be selectively disclosed, redacted, or generated post-hoc; no artifact-level proof that a decision was made under specific constraints |
-| **Process-dependent verification** | Auditors must trust the originating system's runtime and access live infrastructure to validate compliance — precludes independent third-party verification |
+| **Process-dependent verification** | Auditors must trust the originating system's runtime and access live infrastructure to validate compliance  -  precludes independent third-party verification |
 
-DL+PCI addresses all three: **each decision artifact cryptographically proves its own compliance** — verifiable independently of the originating system, without trusting the operator's runtime or accessing live infrastructure. This is the shift from **process inspection** to **artifact verification**.
+DL+PCI addresses all three: **each decision artifact cryptographically proves its own compliance**  -  verifiable independently of the originating system, without trusting the operator's runtime or accessing live infrastructure. This is the shift from **process inspection** to **artifact verification**.
 
 **Distinction from Topology B:**
 - **SDS guarantees:** "This intent was structurally valid at the moment of generation."
@@ -1707,28 +1707,28 @@ flowchart TB
     Ledger ==>|Commit Event| Executor
 ```
 
-**Proof-Carrying Intent (PCI) — Mandatory Structure:**
+**Proof-Carrying Intent (PCI)  -  Mandatory Structure:**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `dfid` | UUID | Immutable DecisionFlow ID — trace identifier |
+| `dfid` | UUID | Immutable DecisionFlow ID  -  trace identifier |
 | `intent_payload` | JSON | The syntactically bound policy (from SDS constrained decoding) |
-| `context_ref` | Hash | `ContextSnapshotID` — hash of Working Context used during reasoning |
+| `context_ref` | Hash | `ContextSnapshotID`  -  hash of Working Context used during reasoning |
 | `evidence_hash` | Hash | Composite proof hash binding state + contract + rules |
 | `roa_signature` | Signature | Cryptographic signature binding PCI to Agent's registered identity |
 
-**Evidence Hash — Derivation Formula (MUST follow exactly):**
+**Evidence Hash  -  Derivation Formula (MUST follow exactly):**
 
 $$H_{evidence} = \text{SHA256}(\text{DFID} \parallel H_s \parallel H_c \parallel H_r)$$
 
 Where:
-- **$H_s$ (State Snapshot Hash):** `SHA256(ContextSnapshotID)` — the "frozen reality" used during reasoning
+- **$H_s$ (State Snapshot Hash):** `SHA256(ContextSnapshotID)`  -  the "frozen reality" used during reasoning
 - **$H_c$ (Contract Hash):** `SHA256(ResponsibilityContract)` from Agent Registry at `T_start`
-- **$H_r$ (Rule-Set Hash):** `SHA256(DIM Hard Gates)` — deterministic validation rules applied
+- **$H_r$ (Rule-Set Hash):** `SHA256(DIM Hard Gates)`  -  deterministic validation rules applied
 
 Any drift in context, unauthorized change to the mission, or rule-set update results in immediate hash mismatch → verification failure.
 
-**Proof Checker Workflow (DIM in Topology C — 5 steps, in order):**
+**Proof Checker Workflow (DIM in Topology C  -  5 steps, in order):**
 
 ```mermaid
 ---
@@ -1750,7 +1750,7 @@ sequenceDiagram
     K->>K: 1. Verify roa_signature against Registry public key
     K->>K: 2. Validate context_ref matches flow ContextSnapshotID
     K->>K: 3. JIT Drift Check (live state within Drift Envelope?)
-    K->>K: 4. Re-compute evidence_hash; compare against PCI
+    K->>K: 4. Re-compute evidence_hash: compare against PCI
 
     alt All Checks Pass
         K->>L: Append PCI to Decision Ledger
@@ -1804,7 +1804,7 @@ class ProofChecker:
         if pci.evidence_hash != expected_hash:
             raise ProofVerificationFailed("Evidence hash mismatch")
 
-        # 5. Commit — only if all checks pass
+        # 5. Commit  -  only if all checks pass
         ledger.append(pci)
         return True
 ```
@@ -1814,22 +1814,22 @@ class ProofChecker:
 - **Immutable Compensation:** Post-Ledger-commit execution failure → deterministic compensation action from pre-defined menu (`REVERT_STATE`, `ALERT_HUMAN`). Agent MUST NOT re-reason about the failure.
 - **Registry Outage:** Proof Checker uses Local Manifest Cache. New PCIs requiring authority updates are rejected until connectivity restored (prevents Stale Authority Exploitation)
 
-**PCI vs. Decision Atom — Key Distinction:**
+**PCI vs. Decision Atom  -  Key Distinction:**
 
 | Property | Decision Atom (Topologies A+B) | Proof-Carrying Intent (Topology C) |
 |----------|-------------------------------|-------------------------------------|
 | **Trust basis** | Runtime process validates the record | Data artifact carries its own proof |
-| **Verifiability** | Requires access to the live system | Offline verifiable — proof is self-contained |
+| **Verifiability** | Requires access to the live system | Offline verifiable  -  proof is self-contained |
 | **Mutability** | Can be updated/corrected in runtime | Ledger-appended; immutable once committed |
 | **Audit scope** | Session/State level | Cross-organizational, cross-system, cross-time |
 | **Best for** | Operational decisions needing fast validation | Compliance, settlement, regulatory reporting |
 
-**Regulatory Audit Scenario — Why DL+PCI, not SDS:**
+**Regulatory Audit Scenario  -  Why DL+PCI, not SDS:**
 
 Imagine a cross-border payment instruction executed six months ago. The regulator asks: "Prove that at the moment of execution, this instruction was within the agent's authorized bounds, that the market state was as claimed, and that the risk rules used were the current official ruleset."
 
-- **With SDS (Topology B):** The system can show that the policy was structurally valid when generated. But verifying the *exact* market state, *exact* contract, and *exact* rules active at that moment requires querying live system history — trusting the runtime's audit log integrity.
-- **With DL+PCI (Topology C):** The PCI artifact itself carries the `evidence_hash = SHA256(DFID ‖ H_state ‖ H_contract ‖ H_rules)`. The regulator can independently hash the same inputs (provided separately) and verify the hash matches. No live system access required. The proof travels with the decision — forever.
+- **With SDS (Topology B):** The system can show that the policy was structurally valid when generated. But verifying the *exact* market state, *exact* contract, and *exact* rules active at that moment requires querying live system history  -  trusting the runtime's audit log integrity.
+- **With DL+PCI (Topology C):** The PCI artifact itself carries the `evidence_hash = SHA256(DFID ‖ H_state ‖ H_contract ‖ H_rules)`. The regulator can independently hash the same inputs (provided separately) and verify the hash matches. No live system access required. The proof travels with the decision  -  forever.
 
 **Rule:** Use DL+PCI whenever the question "Can someone outside the system verify this decision was compliant?" must be answerable as "Yes, without trusting us."
 
@@ -1840,9 +1840,9 @@ DL+PCI satisfies EU AI Act and broader regulatory requirements through five arch
 | Property | Description | Regulatory Relevance |
 |----------|-------------|---------------------|
 | **Independent Verifiability** | Auditors verify compliance without accessing production systems or trusting operator infrastructure | EU AI Act Article 12 |
-| **Immutable Decision History** | Append-only Ledger preserves all decisions throughout system lifecycle — cannot be selectively disclosed or retroactively modified | EU AI Act Article 12 |
-| **Deterministic Reproducibility** | Unlike stochastic model outputs, PCI verification is deterministic — independent auditors reach identical conclusions on identical artifacts | EU AI Act Article 13 |
-| **Cryptographic Non-Repudiation** | Kernel-issued signature binds each decision to responsible agent identity and precise compliance context — agents cannot deny decisions; operators cannot claim different conditions | General compliance |
+| **Immutable Decision History** | Append-only Ledger preserves all decisions throughout system lifecycle  -  cannot be selectively disclosed or retroactively modified | EU AI Act Article 12 |
+| **Deterministic Reproducibility** | Unlike stochastic model outputs, PCI verification is deterministic  -  independent auditors reach identical conclusions on identical artifacts | EU AI Act Article 13 |
+| **Cryptographic Non-Repudiation** | Kernel-issued signature binds each decision to responsible agent identity and precise compliance context  -  agents cannot deny decisions; operators cannot claim different conditions | General compliance |
 | **Cross-Organizational Auditability** | PCIs enable compliance verification across organizational boundaries without sharing internal system access | Inter-org settlement, regulated industries |
 
 ---
@@ -1918,7 +1918,7 @@ All generated code implementing DIR/ROA patterns MUST comply with these rules.
 | **EH-3** | Catch only exceptions you can handle. Let others propagate. Avoid bare `except:`. |
 | **EH-4** | When re-raising, use `raise X from e` to preserve the chain. |
 
-### 6.7a Exception Hierarchy — `kernel/exceptions.py`
+### 6.7a Exception Hierarchy  -  `kernel/exceptions.py`
 
 Rule **EH-1** requires domain-specific exceptions. Without a shared base class and defined tree, LLMs generate `ValidationRejected` in one module and `ValidationError` in another, making top-level handling impossible. The entire tree lives in `kernel/exceptions.py` and is the **single import source** for all DIR error types.
 
@@ -1996,7 +1996,7 @@ class IdempotencyConflict(KernelException):
     """
     Idempotency cache HIT: this (DFID + Step_ID + Params) combination was
     already executed. The stored result is returned; the new attempt is suppressed.
-    This is NOT an error — it is a successful deduplication. Log at INFO, not ERROR.
+    This is NOT an error  -  it is a successful deduplication. Log at INFO, not ERROR.
     """
 
 
@@ -2031,7 +2031,7 @@ class ContractViolation(AgentException):
     """
     Agent attempted to emit a PolicyProposal outside its Responsibility Contract
     bounds (e.g., unauthorized instrument, forbidden action).
-    Raised by the agent's own self-check before submission — NOT by DIM.
+    Raised by the agent's own self-check before submission  -  NOT by DIM.
     """
 
 
@@ -2072,19 +2072,19 @@ class LedgerWriteError(InfrastructureException):
 **Exception handling patterns:**
 
 ```python
-# ✅ Correct — catch at appropriate level, re-raise with chain
+# ✅ Correct  -  catch at appropriate level, re-raise with chain
 try:
     intent = dim.validate(proposal)
 except ValidationRejected as exc:
     logger.warning("proposal_rejected", dfid=exc.dfid, reason=exc.reason, details=exc.details)
     raise
 
-# ✅ Correct — top-level catch for structured logging / metrics
+# ✅ Correct  -  top-level catch for structured logging / metrics
 except DIRException as exc:
     metrics.increment("dir.exceptions", tags={"type": type(exc).__name__})
     raise
 
-# ❌ Forbidden — loses all structured context
+# ❌ Forbidden  -  loses all structured context
 except Exception:
     logger.error("something went wrong")
 ```
@@ -2118,7 +2118,7 @@ except Exception:
 | Rule | Requirement |
 |------|-------------|
 | **TE-1** | All DIR kernel components (DIM, Proof Checker, Context Compiler) MUST have unit tests with 100% branch coverage of validation logic. |
-| **TE-2** | Tests for Kernel Space components MUST use deterministic fixtures — no random data, no time-dependent behavior without explicit time injection. |
+| **TE-2** | Tests for Kernel Space components MUST use deterministic fixtures  -  no random data, no time-dependent behavior without explicit time injection. |
 | **TE-3** | Integration tests for agent–runtime interaction MUST assert on the `PolicyProposal` structure and validate that DIM correctly accepts or rejects boundary cases. |
 | **TE-4** | Every `EscalationTrigger` condition defined in a `ResponsibilityContract` MUST have a corresponding test case that verifies escalation fires (and only fires) when the condition is met. |
 
@@ -2139,11 +2139,11 @@ except Exception:
 | **NM-2** | Functions and methods: `snake_case` | `compile_working_context`, `verify_proof` |
 | **NM-3** | Constants and Enum values: `UPPER_SNAKE_CASE` | `EXECUTE_LIMITED`, `MAX_DRIFT_BPS` |
 | **NM-4** | DFID variables: always named `dfid` (not `flow_id`, `trace_id`, `correlation_id`) | `dfid: str` |
-| **NM-5** | Policy field naming: `action`, `instrument`, `quantity` (not `cmd`, `ticker`, `amount`) — standardized across all agents for interoperability | `policy.action = "BUY"` |
+| **NM-5** | Policy field naming: `action`, `instrument`, `quantity` (not `cmd`, `ticker`, `amount`)  -  standardized across all agents for interoperability | `policy.action = "BUY"` |
 
-### 6.13 Kernel Component Interfaces — `kernel/interfaces.py`
+### 6.13 Kernel Component Interfaces  -  `kernel/interfaces.py`
 
-These `typing.Protocol` definitions are the **authoritative API contracts** for all Kernel Space components. Every implementation (SQLite, PostgreSQL, Redis, Kafka, in-memory) MUST satisfy the corresponding protocol. Using protocols — not abstract base classes — allows structural subtyping and keeps implementations decoupled from the `kernel/` package.
+These `typing.Protocol` definitions are the **authoritative API contracts** for all Kernel Space components. Every implementation (SQLite, PostgreSQL, Redis, Kafka, in-memory) MUST satisfy the corresponding protocol. Using protocols  -  not abstract base classes  -  allows structural subtyping and keeps implementations decoupled from the `kernel/` package.
 
 **Rule:** Any module in `agents/` that needs to interact with a Kernel component MUST type-hint against the Protocol, never the concrete implementation. This enforces The Wall at the type-checker level.
 
@@ -2155,7 +2155,7 @@ from datetime import datetime
 from typing import Any, Protocol, runtime_checkable
 
 # Forward references to domain types defined elsewhere in kernel/
-# (imported at runtime — listed here for documentation)
+# (imported at runtime  -  listed here for documentation)
 # from kernel.models import (
 #     ContextSnapshot, MemoryEntry, ResponsibilityContract,
 #     PolicyProposal, ExecutionIntent, AgentLifecycleState
@@ -2258,7 +2258,7 @@ class EventBusProtocol(Protocol):
 
     def publish(self, topic: str, event: dict[str, Any], *, dfid: str) -> None:
         """
-        Publish event to topic. dfid is mandatory — every event on the bus
+        Publish event to topic. dfid is mandatory  -  every event on the bus
         MUST carry the DecisionFlow ID for traceability.
         """
         ...
@@ -2282,7 +2282,7 @@ class EventBusProtocol(Protocol):
 @runtime_checkable
 class DIMProtocol(Protocol):
     """
-    Policy Enforcement Point. Deterministic — NO LLM calls, NO network I/O.
+    Policy Enforcement Point. Deterministic  -  NO LLM calls, NO network I/O.
     Given identical inputs, always produces identical output.
     """
 
@@ -2329,7 +2329,7 @@ class ExecutionEngineProtocol(Protocol):
 
 **Why `@runtime_checkable`:** Enables `isinstance(obj, ContextStoreProtocol)` checks in tests and dependency injection containers, without requiring inheritance. Concrete implementations remain decoupled.
 
-**Migration path — Single-Process MVP → Distributed EDA:**
+**Migration path  -  Single-Process MVP → Distributed EDA:**
 
 ```python
 # MVP: in-process SQLite implementation
@@ -2344,7 +2344,7 @@ class PostgresContextStore:
     def get_snapshot(self, dfid: str) -> ContextSnapshot: ...
     # ... same interface, different backend
 
-# The DIM, Context Compiler, and agents never change — only the injected implementation.
+# The DIM, Context Compiler, and agents never change  -  only the injected implementation.
 ```
 
 ### 6.13 Implementation Checklist
@@ -2362,10 +2362,10 @@ Before considering an implementation complete, verify:
 
 **Kernel component contracts:**
 - [ ] Kernel components typed against Protocols from `kernel/interfaces.py` (§6.14), not concrete implementations
-- [ ] All exceptions inherit from `DIRException` in `kernel/exceptions.py` (§6.15) — no ad-hoc `Exception` subclasses
-- [ ] `ExecutionIntent` is only ever constructed by DIM — never by agent or test fixture directly (§3.3a)
+- [ ] All exceptions inherit from `DIRException` in `kernel/exceptions.py` (§6.15)  -  no ad-hoc `Exception` subclasses
+- [ ] `ExecutionIntent` is only ever constructed by DIM  -  never by agent or test fixture directly (§3.3a)
 - [ ] `ExecutionIntent.kernel_signature` is verified by Execution Engine before dispatch (§3.3a)
-- [ ] Agent lifecycle transitions follow ownership table (§3.5a) — agents only call `registry.request_retire()`
+- [ ] Agent lifecycle transitions follow ownership table (§3.5a)  -  agents only call `registry.request_retire()`
 
 **DIR invariants:**
 - [ ] Structured JSON logging with `dfid` in all decision-related logs
@@ -2451,10 +2451,10 @@ All samples are in `samples/` from the repository root. Run with `python samples
 ```
 dir_project/
 │
-├── kernel/                         # KERNEL SPACE — deterministic only; no LLM calls
+├── kernel/                         # KERNEL SPACE  -  deterministic only; no LLM calls
 │   ├── __init__.py
-│   ├── interfaces.py               # §6.14: Protocol definitions — import source for all consumers
-│   ├── exceptions.py               # §6.15: Full DIRException tree — single import source
+│   ├── interfaces.py               # §6.14: Protocol definitions  -  import source for all consumers
+│   ├── exceptions.py               # §6.15: Full DIRException tree  -  single import source
 │   │
 │   ├── dim/                        # Decision Integrity Module
 │   │   ├── __init__.py
@@ -2472,7 +2472,7 @@ dir_project/
 │   │
 │   ├── execution/                  # Execution pipeline
 │   │   ├── __init__.py
-│   │   ├── intent.py               # ExecutionIntent schema (§3.3a) — created ONLY by DIM
+│   │   ├── intent.py               # ExecutionIntent schema (§3.3a)  -  created ONLY by DIM
 │   │   ├── executor.py             # ExecutionEngine: verifies signature, dispatches API call
 │   │   └── idempotency.py          # Idempotency key computation + cache
 │   │
@@ -2480,7 +2480,7 @@ dir_project/
 │       ├── __init__.py
 │       └── decision_ledger.py      # Append-only Ledger; ProofCarryingIntent persistence
 │
-├── agents/                         # USER SPACE — probabilistic; NO API keys; NO external imports
+├── agents/                         # USER SPACE  -  probabilistic; NO API keys; NO external imports
 │   ├── __init__.py
 │   ├── base.py                     # ResponsibleAgent ABC: receive context, emit PolicyProposal
 │   ├── contracts/                  # Responsibility Contract definitions
@@ -2504,7 +2504,7 @@ dir_project/
 │       ├── proof_builder.py        # Evidence hash computation; PCI construction
 │       └── proof_checker.py        # Stateless verifier; no LLM; deterministic
 │
-├── infrastructure/                 # INFRASTRUCTURE — external system adapters
+├── infrastructure/                 # INFRASTRUCTURE  -  external system adapters
 │   ├── __init__.py
 │   ├── broker_api.py               # Exchange / broker integration
 │   ├── event_bus_kafka.py          # Kafka adapter implementing EventBusProtocol
@@ -2525,7 +2525,7 @@ dir_project/
         └── test_dim_proposal_flow.py  # Full PolicyProposal → ExecutionIntent pipeline (TE-3)
 ```
 
-### Import Rules — Enforcing The Wall
+### Import Rules  -  Enforcing The Wall
 
 **Forbidden imports** that violate the User/Kernel Space separation:
 
@@ -2534,7 +2534,7 @@ dir_project/
 | `agents/` | `kernel.interfaces`, `kernel.exceptions` | `infrastructure/`, `kernel.execution`, `kernel.dim` |
 | `kernel/dim/` | `kernel.exceptions`, `kernel.interfaces` | `infrastructure/`, `agents/`, `topologies/` |
 | `kernel/execution/` | `kernel.exceptions`, `kernel.interfaces` | `agents/`, any LLM library |
-| `topologies/` | `kernel/`, `agents/`, `infrastructure/` | — (orchestration layer; may import all) |
+| `topologies/` | `kernel/`, `agents/`, `infrastructure/` |  -  (orchestration layer; may import all) |
 | `infrastructure/` | `kernel.interfaces`, `kernel.exceptions` | `agents/` |
 
 **Ruff configuration** (`pyproject.toml`) to enforce The Wall statically:
@@ -2585,7 +2585,7 @@ When an LLM generates a new file, apply these rules in order:
 
 | Term | Definition |
 |------|-----------|
-| **Artifacts Context** | The "library" layer of the Context Store — large, static, or reference data retrieved via RAG (e.g., compliance rulebooks, strategy whitepapers) |
+| **Artifacts Context** | The "library" layer of the Context Store  -  large, static, or reference data retrieved via RAG (e.g., compliance rulebooks, strategy whitepapers) |
 | **Agent Registry** | Kernel Space service acting as single source of truth for agent identity, capability manifests, authority, lifecycle, and schema versioning |
 | **Atomic Context (SDS)** | Pre-validated input package assembled by Context Compiler before SDS inference: Mission + Constraints + Snapshot |
 | **Authority Level** | Enumerated capability bound in Responsibility Contract: `OBSERVE` / `PROPOSE` / `EXECUTE_LIMITED` / `EXECUTE_FULL` |
@@ -2600,31 +2600,31 @@ When an LLM generates a new file, apply these rules in order:
 | **Decision Atom (SDS)** | Single context-complete package for atomic execution: intent + ContextSnapshotID hash-binding + signature |
 | **Decision Integrity Module (DIM)** | Deterministic Kernel Space component acting as Policy Enforcement Point (PEP). Validates all proposals through 5 hard gates. No LLMs. No probabilistic logic. |
 | **Decision Ledger (DL)** | Append-only, immutable record of all verified intents. Serves as Zero-Trust audit trail. Enables offline cryptographic verification and deterministic replay. |
-| **Decision Validity Window (DVW)** | Time period during which a proposed decision is valid. Expired proposals are rejected immediately — not queued. |
+| **Decision Validity Window (DVW)** | Time period during which a proposed decision is valid. Expired proposals are rejected immediately  -  not queued. |
 | **DecisionFlow** | The traceable container for the entire lifecycle of a single intent: trigger → context → reasoning → proposal → validation → execution |
 | **DecisionFlow ID (DFID)** | Unique UUID correlation identifier tagging every artifact in a decision lifecycle. Enables full causal reconstruction. Supports parent-child hierarchies for multi-step Sagas. |
 | **DIR (Decision Intelligence Runtime)** | The deterministic Kernel Space framework managing lifecycle, validation, execution, and auditability of agent decisions. Contains no LLMs. |
 | **Drift Envelope** | Contract-level parameter specifying maximum allowable state deviation (e.g., 50 bps = 0.5% price slippage) before JIT Verification rejects execution |
 | **EOAM (Event-Oriented Agent Mesh)** | Topology A: decentralized choreography where agents subscribe to event topics and reason in parallel; safety via Priority-Based Preemption in DIM |
 | **Escalation Budget** | Rate-limiting token bucket restricting agent escalation requests (e.g., 3/hour); prevents Alert Fatigue and Escalation DDoS |
-| **Evidence Hash ($H_{evidence}$)** | Composite cryptographic proof: `SHA256(DFID ‖ H_state ‖ H_contract ‖ H_rules)` — binds intent to specific state, authority, and rule-set |
+| **Evidence Hash ($H_{evidence}$)** | Composite cryptographic proof: `SHA256(DFID ‖ H_state ‖ H_contract ‖ H_rules)`  -  binds intent to specific state, authority, and rule-set |
 | **Execution Intent** | Validated, approved object derived from a Policy Proposal. The only artifact authorized to trigger external I/O. Never produced without DIM validation. |
 | **Execution Parametrization** | Agent encodes execution boundary conditions (max price, validity window, drift tolerance) rather than raw commands; decouples reasoning time from execution time |
 | **Explain Stage** | First stage of ROA decision lifecycle: agent interprets context into natural language narrative. For human auditors. Never parsed for execution logic. |
 | **Governance by Exception** | DIR operates autonomously; escalates to humans only when deterministic resolution is impossible. Opposite of "Mother-May-I" approval model. |
 | **Hard Gates** | Blocking, deterministic validation rules in DIM (code, Rego, arithmetic). Contrast with Soft Guards (non-blocking, probabilistic). |
-| **Idempotency Key** | `SHA256(DFID + Step_ID + Canonical_Params)` — stable key enabling exactly-once execution. `Attempt_Number` MUST NOT be included. |
+| **Idempotency Key** | `SHA256(DFID + Step_ID + Canonical_Params)`  -  stable key enabling exactly-once execution. `Attempt_Number` MUST NOT be included. |
 | **Intent Retry Governor** | DIM mechanism limiting agent retries per DFID to ~3. After exhaustion → `REASONING_EXHAUSTION` abort. Prevents feedback poisoning and infinite loops. |
-| **JIT State Verification** | Just-In-Time check performed immediately before external API call — verifies live state is within Drift Envelope relative to ContextSnapshotID. Anti-TOCTOU mechanism. |
+| **JIT State Verification** | Just-In-Time check performed immediately before external API call  -  verifies live state is within Drift Envelope relative to ContextSnapshotID. Anti-TOCTOU mechanism. |
 | **Kernel Space** | DIR-controlled execution environment where deterministic validation and side effects occur. No LLMs. No probabilistic logic. |
-| **Memory Context** | Long-term layer of Context Store — decision trajectory, prior policy rationales, escalation history; persists across sessions |
+| **Memory Context** | Long-term layer of Context Store  -  decision trajectory, prior policy rationales, escalation history; persists across sessions |
 | **Mission** | Agent's optimization target or guiding principle. An interpretive constraint used during Explain and Policy formation. NOT executable intent. |
 | **Mission Dissonance** | DIM rejection code (`MISSION_DISSONANCE`) when `mission_context_hash` in proposal does not match agent's registered contract |
 | **PCI (Proof-Carrying Intent)** | Topology C artifact containing: intent payload + context_ref + evidence_hash + roa_signature. Safety is a property of the artifact, not the process. |
 | **Policy** | Structured JSON object emitted by an ROA agent representing proposed course of action; subject to DIM validation; treated as a Claim until validated |
 | **Policy Enforcement Point (PEP)** | Security architectural term for a gatekeeper intercepting requests and validating them against policies. DIM is the PEP in DIR. |
 | **Policy Proposal** | Complete output artifact of the ROA decision lifecycle: `{dfid, agent_id, explain, policy, confidence, context_snapshot_id}` |
-| **Priority-Based Preemption (EOAM)** | DIM selects winning proposal using Agent Registry Priority Matrix (e.g., Risk > Strategy) — NOT a time-based race |
+| **Priority-Based Preemption (EOAM)** | DIM selects winning proposal using Agent Registry Priority Matrix (e.g., Risk > Strategy)  -  NOT a time-based race |
 | **Proof Checker (DL+PCI)** | DIM acting as minimalist verifier in Topology C: does not reason, only validates cryptographic proofs. No LLM. No network I/O during verification. |
 | **REASONING_EXHAUSTION** | DecisionFlow abort state triggered when an agent exhausts its `Maximum Intent Retries` (typically 3) within a single DFID |
 | **Responsibility Contract** | Formal, machine-readable Pydantic model defining an agent's scope, authority, allowed/forbidden actions, escalation triggers, and version. Registered at deployment, not at runtime. |
@@ -2632,10 +2632,10 @@ When an LLM generates a new file, apply these rules in order:
 | **Saga Compensation** | Recovery workflow for multi-step failures: triggered when flow is `DIRTY`; Runtime reports failure to Parent Agent; Parent emits Compensation Policy from pre-defined menu |
 | **SDS (Sovereign Decision Stream)** | Topology B: linear pipeline where a single agent produces an atomic decision using constrained decoding; minimal latency |
 | **Semantic Alignment Check** | Optional Soft Guard detecting narrative/policy mismatch (proxy gaming). Default: audit-only. Strict mode: blocks execution (violates Invariant 1). |
-| **Self-Check** | Third stage of ROA decision lifecycle: agent verifies mission alignment before emitting. Cost-optimization heuristic only — NO security value. |
-| **Session Context** | Ephemeral layer of Context Store — current trigger, intermediate reasoning, prompt chain for this interaction. Resets at DecisionFlow close. |
+| **Self-Check** | Third stage of ROA decision lifecycle: agent verifies mission alignment before emitting. Cost-optimization heuristic only  -  NO security value. |
+| **Session Context** | Ephemeral layer of Context Store  -  current trigger, intermediate reasoning, prompt chain for this interaction. Resets at DecisionFlow close. |
 | **Soft Guards** | Non-blocking, probabilistic validation (LLM-based). Operate as auditors only in default mode. Must not be used as primary safety mechanism. |
-| **State Context** | Authoritative layer of Context Store — live, deterministic view of the world synced from external systems. Ground truth for DIM validation. |
+| **State Context** | Authoritative layer of Context Store  -  live, deterministic view of the world synced from external systems. Ground truth for DIM validation. |
 | **STATE_DRIFT_DETECTED** | JIT State Verification rejection code when live state exceeds drift tolerance or context age exceeds threshold |
 | **TOCTOU (Time-of-Check to Time-of-Use)** | Race condition where state changes between when the agent reasons (T₀) and when the Runtime executes (T₁). Mitigated by JIT State Verification + ContextSnapshotID. |
 | **Token Budget** | Hard limit on token consumption per DecisionFlow (e.g., $0.50 or 10k tokens). Exceeded budget → `ABORTED`. Prevents financial DDoS from looping models. |
@@ -2646,12 +2646,12 @@ When an LLM generates a new file, apply these rules in order:
 
 ---
 
-## 9. KEY PRINCIPLES — QUICK REFERENCE
+## 9. KEY PRINCIPLES  -  QUICK REFERENCE
 
 These principles MUST be applied in all DIR-compliant implementations:
 
 1. **Intelligence without governance is liability.** Agents propose; the Runtime validates and executes.
-2. **Prompts are not permissions.** Authority is defined by the Agent Registry and validated deterministically — never inferred from model confidence or narrative.
+2. **Prompts are not permissions.** Authority is defined by the Agent Registry and validated deterministically  -  never inferred from model confidence or narrative.
 3. **The Wall is absolute.** No "trusted agent" bypasses DIM. No topology changes this invariant.
 4. **Claims become Facts only after validation.** Every Policy Proposal is untrusted until DIM accepts it.
 5. **DFID propagates everywhere.** Every artifact in a decision flow must be traceable back to its causal trigger.
@@ -2659,7 +2659,7 @@ These principles MUST be applied in all DIR-compliant implementations:
 7. **Evidence Hash formula is exact:** `SHA256(DFID ‖ H_state ‖ H_contract ‖ H_rules)`. Any component drift → verification failure.
 8. **Choose topology by decision class:** EOAM for complex multi-perspective decisions; SDS for fast atomic decisions; DL+PCI for compliance and inter-organizational verification.
 9. **Compensation is deterministic.** Agents MUST NOT reason about recovery. Pre-defined menu only.
-10. **Context as Code.** This document is the "physics" of the system. It governs what the LLM must adhere to. The architecture is the safety mechanism — not the model.
+10. **Context as Code.** This document is the "physics" of the system. It governs what the LLM must adhere to. The architecture is the safety mechanism  -  not the model.
 11. **Context Store is shared reality.** Agents reason over Kernel-assembled reality, never over conversationally emergent state.
 12. **WorkingContext must be explicit.** Each implementation must define the exact context layers, mandatory fields, and bindings used for reasoning and validation.
 13. **Registry revocation overrides flow binding.** In-flight flows keep their snapshot except when authority is revoked or the contract is invalidated; then execution MUST abort.
@@ -2667,7 +2667,7 @@ These principles MUST be applied in all DIR-compliant implementations:
 15. **DIR is a pattern, not a framework.** There is no mandatory runtime binary, no package to `pip install dir`. DIR is an architectural discipline implemented in code. The minimal viable implementation is a single-process Python program that enforces the User Space / Kernel Space separation and the four invariants.
 16. **Confidence ≠ Authority.** A `confidence=0.99` proposal from an agent without `execute_full` authority is still rejected. Confidence gates urgency of escalation review; it does not grant permissions.
 17. **Agents are reactive, not called.** In EOAM, the Runtime emits typed events; agents subscribe and claim responsibility. The Runtime does not schedule or invoke agents by name.
-18. **The developer is a Context Coordinator.** The primary skill in a DIR-based system is designing the information architecture (what agents see, when, and in what form) — not the LLM prompts. Prompts are implementation detail; context structure is the architecture.
+18. **The developer is a Context Coordinator.** The primary skill in a DIR-based system is designing the information architecture (what agents see, when, and in what form)  -  not the LLM prompts. Prompts are implementation detail; context structure is the architecture.
 19. **Generated code is not authority.** In Context-as-Code workflows, specifications are authoritative inputs; generated implementations must be reviewed against them.
 20. **ROA and RL are complementary, not competing.** RL optimizes within the authority envelope that ROA defines. DIR provides the stable, safe execution environment for both static agents and RL-trained agents.
 

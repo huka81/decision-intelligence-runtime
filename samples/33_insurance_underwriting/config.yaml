@@ -8,7 +8,7 @@ underwriting:
 
 # Optional LLM defaults (Ollama)
 llm_defaults:
-  model: "gemma3:12b"
+  model: "gemma3:4b"
   base_url: "http://localhost:11434"
 
 agents:

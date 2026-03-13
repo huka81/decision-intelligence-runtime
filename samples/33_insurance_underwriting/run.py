@@ -45,7 +45,7 @@ def build_llm(config: Dict[str, Any], use_mock: bool = False) -> Any:
     if use_mock:
         return MockLLM()
     defaults = config.get("llm_defaults", {})
-    model = defaults.get("model", "gemma3:12b")
+    model = defaults.get("model", "gemma3:4b")
     base_url = defaults.get("base_url", "http://localhost:11434")
     return OllamaClient(model=model, base_url=base_url)
 

@@ -2,7 +2,7 @@
 LLM client for Digital Underwriter ROA agent: Ollama (from utils) and MockLLM.
 
 Usage:
-  client = OllamaClient(model="gemma3:12b", base_url="http://localhost:11434")
+  client = OllamaClient(model="gemma3:4b", base_url="http://localhost:11434")
   text = client.generate("Analyze this application...", system="You are an underwriter.")
 
 MockLLM: USE_MOCK_LLM=1 for tests without Ollama. Returns structured underwriting output.
