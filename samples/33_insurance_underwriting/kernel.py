@@ -21,6 +21,20 @@ from models import ClientApplication, PolicyProposal, UnderwritingContract
 
 logger = logging.getLogger(__name__)
 
+# Binding fields for Evidence_Hash (Topology C). Textual / observability fields
+# stay in PCI JSON but are excluded from the canonical proposal string.
+EXECUTION_RELEVANT_INTENT_KEYS = ("total_insured_value", "premium", "industry")
+
+
+def intent_subset_for_evidence_hash(intent_payload: Dict[str, Any]) -> str:
+    """Canonical JSON of execution-relevant proposal fields for PCI Evidence_Hash."""
+    subset = {
+        k: intent_payload[k]
+        for k in EXECUTION_RELEVANT_INTENT_KEYS
+        if k in intent_payload
+    }
+    return proposal_params_for_hash(subset)
+
 
 # Re-export for backward compatibility (agent imports from kernel)
 __all__ = [
@@ -28,8 +42,10 @@ __all__ = [
     "ContextStore",
     "DecisionIntegrityModule",
     "DecisionLedger",
+    "EXECUTION_RELEVANT_INTENT_KEYS",
     "compute_evidence_hash",
     "hash_content",
+    "intent_subset_for_evidence_hash",
     "proposal_params_for_hash",
 ]
 
@@ -51,8 +67,8 @@ class AgentRegistry:
         self.contract = contract
 
     @property
-    def max_limit(self) -> float:
-        return self.contract.max_limit
+    def max_tiv(self) -> float:
+        return self.contract.max_tiv
 
     @property
     def prohibited_industries(self) -> List[str]:
@@ -132,19 +148,14 @@ class DecisionIntegrityModule:
         Steps:
         1. Set context in store (for this verification).
         2. Use ProofChecker to verify evidence_hash (Zero Trust).
-        3. If match: run business-rule checks (prohibited industry, max limit).
+        3. If match: run business-rule checks (prohibited industry, max TiV).
         4. If all pass: append to Ledger, return "Policy Bound".
         5. Otherwise: return rejection reason.
         """
         self.context_store.set_context(context)
 
         def get_proposal_params(intent_payload: Dict[str, Any]) -> str:
-            subset = {
-                k: intent_payload[k]
-                for k in ["coverage_limit", "premium", "industry"]
-                if k in intent_payload
-            }
-            return proposal_params_for_hash(subset)
+            return intent_subset_for_evidence_hash(intent_payload)
 
         ok, reason = ProofChecker().verify(
             pci,
@@ -155,9 +166,10 @@ class DecisionIntegrityModule:
         if not ok:
             return reason
 
-        # Business rule checks (prohibited industry, max limit)
+        # Business rule checks (prohibited industry, max TiV)
         proposal = PolicyProposal.model_validate(pci.intent_payload)
-        if proposal.industry in self.registry.prohibited_industries:
+        prohibited_lower = {x.strip().lower() for x in self.registry.prohibited_industries}
+        if proposal.industry.strip().lower() in prohibited_lower:
             logger.warning(
                 "[DFID=%s] REJECT: Prohibited Industry (%s).",
                 pci.dfid[:8],
@@ -165,14 +177,14 @@ class DecisionIntegrityModule:
             )
             return "Prohibited Industry"
 
-        if proposal.coverage_limit > self.registry.max_limit:
+        if proposal.total_insured_value > self.registry.max_tiv:
             logger.warning(
-                "[DFID=%s] REJECT: Coverage limit %.0f exceeds max %.0f.",
+                "[DFID=%s] REJECT: TiV %.0f exceeds contract max_tiv %.0f.",
                 pci.dfid[:8],
-                proposal.coverage_limit,
-                self.registry.max_limit,
+                proposal.total_insured_value,
+                self.registry.max_tiv,
             )
-            return "Coverage Limit Exceeded"
+            return "TIV Exceeds Contract Max"
 
         # All checks passed: commit to Ledger
         self.ledger.append(pci)

@@ -6,7 +6,39 @@
 
 **ROA/DIR:** DIR Topologies §3 C (DL+PCI) - suited to compliance-heavy operations, high-value transfers, and formal verification where every decision must be cryptographically provable.
 
-**Configuration:** All underwriting rules, LLM, agent, and scenarios live in `config.yaml`. Same convention as `samples/31_finance_trading` and `samples/32_fraud_gate`.
+**Configuration:** Underwriting rules, LLM, agent contract, and **`email_processing`** (gates, paths, FX stub) live in **`config.yaml`**, same convention as `samples/31_finance_trading` and `samples/32_fraud_gate`.
+
+**What `run.py` does:** loads every matching `*.md` under `emails/`, runs the pipeline (audit SQLite + HTML report under `results/`), and opens the new report in the browser.
+
+---
+
+## Email pipeline: flow and what is tested
+
+Each markdown fixture is one **DecisionFlow** with its own **DFID**, from ingest through optional **mock policy bind**.
+
+**Order of steps**
+
+1. **Ingest** — `email_fixture_ingest` loads the markdown and builds a coarse `ClientApplication` (subject, body, industry hints, revenue proxy from table TiV × FX). Broker **TiV for authority** is **not** taken from these table regexes; the kernel waits for LLM extraction (`requested_tiv_usd` is filled after extraction).
+2. **Pre-agent gates** — Only configurable **`injection_patterns`** on the raw email body (default config: empty).
+3. **Submission extraction (LLM)** — `BROKER_REQUESTED_TIV_USD` + `STATED_TERRITORIES`. With **MockLLM**, TiV is derived from the pipe-table row whose first cell is **Total Insurable Values** (`**Total: GBP …**` or a bold `**USD …**` amount in that row). Failure here ends as **`REJECTED` / `EXTRACTION_FAILED`**.
+4. **Post-extraction gates (deterministic)** — On **agent-extracted** territory text vs `prohibited_territories`, then **TiV vs `contract.max_tiv`**:
+   - **Both** territory and authority fail → **`CONTRACT_VIOLATION`** (`REJECTED`).
+   - **Only** prohibited geography → **`PROHIBITED_TERRITORY`** (`REJECTED`).
+   - **Only** TiV above `max_tiv` → **`AUTHORITY_CEILING`** (**`ESCALATED`**, not bound).
+5. If gates pass → **Explain → Policy → Self-Check → PCI** → **DIM** → **ledger** → **mock bind** → **`BOUND` / `POLICY_BOUND`**.
+
+Structured JSON log lines use `dfid`, `event`, `timestamp` (DIR-minified LG-2). Audit DB default: `data/underwriting_audit.sqlite`.
+
+### London Market fixtures (included)
+
+| File (under `emails/`) | What it exercises | Typical final status | `reason_code` |
+|------------------------|-------------------|----------------------|---------------|
+| `(EXT) Thames Vale Services Ltd - Standard Renewal.md` | TiV under `max_tiv`, UK-only wording | **BOUND** | `POLICY_BOUND` |
+| `(EXT) Meridian Cold Chain Ltd - High Limit Facility.md` | TiV far above `max_tiv`, allowed geographies | **ESCALATED** | `AUTHORITY_CEILING` |
+| `(EXT) Orbis Trading FZE - MENA Property Enquiry.md` | Syria/Damascus in extraction + TiV above `max_tiv` | **REJECTED** | `CONTRACT_VIOLATION` (combined message) |
+| `(EXT) Northbridge Retail Co - Renewal Broker Notes.md` | Misleading “UK-only” note but Syria in extraction + TiV above `max_tiv` | **REJECTED** | `CONTRACT_VIOLATION` |
+
+*Exact LLM wording can vary with a real model; with **MockLLM** the outcomes above are stable.*
 
 ---
 
@@ -15,13 +47,14 @@
 From the repository root:
 
 ```bash
-# 1. Install dependencies
-pip install -e .
-pip install pyyaml
+# 1. Install dependencies (includes PyYAML + markdown for formatted HTML report)
+pip install -e ".[samples]"
 
-# 2. Run (MockLLM - no Ollama required)
+# 2. Email pipeline (default) — MockLLM, no Ollama
 USE_MOCK_LLM=1 python samples/33_insurance_underwriting/run.py
 ```
+
+If you install without extras, add `pip install markdown` so the report renders broker tables and body as HTML instead of a plain `<pre>` fallback.
 
 **With Ollama (real LLM):**
 
@@ -31,17 +64,24 @@ ollama pull gemma3:4b
 python samples/33_insurance_underwriting/run.py
 ```
 
-Running `run.py` loads `config.yaml`, processes all scenarios, and generates `report.html` (opened in browser).
+**Audit database path** (optional):
+
+```bash
+set UNDERWRITING_AUDIT_DB=D:\tmp\uw_audit.sqlite
+python samples/33_insurance_underwriting/run.py
+```
+
+Each run appends DFID-tagged rows to SQLite, prints a per-email timeline to the console, and writes a **new** report under **`results/simulation_report_YYYY-MM-DD_HHMM.html`** (UTC).
 
 ---
 
 ## Configuration (config.yaml)
 
-All underwriting rules, LLM, agent, and scenario data lives in **`config.yaml`**. No hardcoded values in code.
+All underwriting rules, LLM, agent, and **`email_processing`** live in **`config.yaml`**. The YAML block below is abbreviated; the committed file includes the full **`email_processing`** section documented next.
 
 ```yaml
 underwriting:
-  max_limit: 2000000
+  max_tiv: 2000000
   prohibited_industries: ["Fireworks", "CryptoMining"]
 
 llm_defaults:
@@ -57,41 +97,44 @@ agents:
       You are an insurance underwriter. Analyze the client application...
     contract:
       role: EXECUTOR
-      max_limit: 2000000
+      max_tiv: 2000000
       prohibited_industries: ["Fireworks", "CryptoMining"]
       escalate_on_uncertainty: 0.65
 
-scenarios:
-  - name: "Retail"
-    business_type: "Retail"
-    revenue: 500000
-    industry: "Retail"
-    expect: "Policy Bound"
-  - name: "Fireworks"
-    business_type: "Fireworks Factory"
-    revenue: 1000000
-    industry: "Fireworks"
-    expect: "Prohibited Industry"
-  - name: "Forged hash"
-    business_type: "Fireworks Factory"
-    revenue: 1000000
-    industry: "Fireworks"
-    forge_evidence_hash: true
-    expect: "Evidence Invalid"
+# email_processing: (see repo config.yaml — emails_dir, gates, audit_db, …)
 ```
 
 | Section | Purpose |
 |---------|---------|
-| **underwriting** | `max_limit`, `prohibited_industries` - defaults for contract |
+| **underwriting** | `max_tiv`, `prohibited_industries` - defaults for contract |
 | **llm_defaults** | `model`, `base_url` - Ollama (same as 31, 32). Set `USE_MOCK_LLM=1` for tests without Ollama. |
 | **agents** | `agent_id`, `mission`, `contract`, **audit fields** (`version`, `created_by`, `created_at`) |
-| **scenarios** | Test cases: `name`, `business_type`, `revenue`, `industry`, `expect`, `forge_evidence_hash` (optional) |
+| **email_processing** | `emails_dir`, `audit_db`, `exclude_filename_substrings`, `currency_fx_to_usd`, `prohibited_territories`, `injection_patterns` |
+
+### email_processing (default path)
+
+| Key | Purpose |
+|-----|---------|
+| `emails_dir` | Subfolder of the sample with markdown email fixtures |
+| `audit_db` | Path to SQLite file (relative to this sample folder), e.g. `data/underwriting_audit.sqlite`; append-only `decision_events` + idempotency keys for bind |
+| `exclude_filename_substrings` | Skip fixtures (e.g. dummy `HAILO` renewal) |
+| `currency_fx_to_usd` | Rates for **MockLLM** / helpers when turning table TiV into USD (demo uses `1.0` for GBP fixtures) |
+| `prohibited_territories` | Case-insensitive substrings vs **agent-extracted** territories **after** extraction. If both territory and `max_tiv` fail, the kernel returns **`CONTRACT_VIOLATION`**; territory-only → **`PROHIBITED_TERRITORY`**. |
+| `injection_patterns` | Optional substrings for **ABORTED** (`PROMPT_INJECTION`) before any LLM call; default config leaves this empty so injection is handled by extraction contract + kernel |
+
+### When Explain / Policy / PCI appear (DIR)
+
+1. **Submission-facts extraction** (broker TiV + stated territories) is a User Space LLM step; the kernel then applies **deterministic** post-extraction gates (`prohibited_territories`, `max_tiv`). **`injection_patterns`** run earlier, before the first LLM call.
+2. **Explain → Policy → Self-Check → PCI** runs only if those gates pass. If the flow stops at a gate, there is no `PolicyProposal` / PCI yet—only extracted facts. The HTML report shows **Agent: submission facts extraction only** in that case.
+3. **`PolicyProposal`** is the agent’s structured output, serialized as JSON in the PCI **`intent_payload`**. It includes **binding** fields (`total_insured_value`, `premium`, `industry`) and **observability** fields (`justification`, `confidence` per DIR-minified §3.9). In this sample, **Evidence_Hash** is computed from the binding subset only; justification and confidence are still stored in the PCI for audit and reporting.
 
 ---
 
 ## Architecture
 
-### Diagram 1: System Overview
+### Diagram 1: System overview
+
+**`emails/*.md`** is ingested by **`pipeline.py`** (contract and gates from **`config.yaml`**).
 
 ```mermaid
 ---
@@ -99,78 +142,64 @@ config:
   layout: elk
 ---
 flowchart TB
-    subgraph CFG["config.yaml"]
-        direction TB
-        UW["underwriting"]
-        LLM["llm_defaults"]
-        AG["agents"]
-        SC["scenarios"]
+    CFG["config.yaml"]
+
+    subgraph DEF["Email pipeline"]
+        MD["emails/*.md"]
+        PL["pipeline.py — ingest, gates, extract, ROA, DIM, bind"]
+        MD --> PL
     end
 
-    subgraph US["USER SPACE - Probabilistic"]
+    subgraph US["USER SPACE"]
         ROA["ROAUnderwriterAgent"]
     end
 
     WALL{{"THE WALL"}}
 
-    subgraph KS["KERNEL SPACE - Deterministic"]
+    subgraph KS["KERNEL SPACE"]
         REG["AgentRegistry"]
         CS["ContextStore"]
         DIM["DIM"]
         LEDGER["DecisionLedger"]
     end
 
-    CFG -->|contract| REG
-    CFG -->|scenarios| ROA
-    CFG -->|model| ROA
+    CFG --> REG
+    CFG --> PL
+    PL --> ROA
 
     ROA -->|"PCI + evidence_hash"| WALL
     WALL --> DIM
     REG -->|contract_hash| DIM
     CS -->|context_hash| DIM
-    DIM -->|valid only| LEDGER
+    DIM -->|verified| LEDGER
 
     style US fill:#fffde7,stroke:#f9a825,color:#333
     style KS fill:#e8f5e9,stroke:#388e3c,color:#333
     style WALL fill:#37474f,color:#fff
-    style CFG fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    style DEF fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
 ```
 
-### Diagram 2: Execution Flow (one scenario)
+### Diagram 2: One email DecisionFlow (happy path)
+
+If a post-extraction gate fails, the flow stops **before** Explain / Policy / PCI.
 
 ```mermaid
 sequenceDiagram
-    participant Run as run.py
-    participant Agent as ROA Agent
-    participant DIM as DIM
-    participant Ledger as Ledger
+    participant P as pipeline
+    participant A as ROAUnderwriterAgent
+    participant D as DIM
+    participant L as DecisionLedger
 
-    Run->>Run: load config.yaml
-    Run->>Agent: run_decision_cycle(context)
-
-    rect rgb(255, 253, 231)
-        Note over Agent: USER SPACE
-        Agent->>Agent: 1. Explain (LLM)
-        Agent->>Agent: 2. Policy (LLM)
-        Agent->>Agent: 3. Self-Check
-    end
-
-    Agent-->>Run: PCI + evidence_hash
-
-    Run->>CFG: load_config()
-    Run->>Agent: run_decision_cycle(context, forge_evidence_hash?)
-    Agent->>Agent: Explain (LLM)
-    Agent->>Agent: Policy (LLM)
-    Agent->>Agent: Self-Check
-    Agent-->>Run: PCI (ProofCarryingIntent)
-    Run->>DIM: verify_and_commit(pci, context)
-    DIM->>DIM: Recalculate Evidence Hash (Zero Trust)
-    DIM->>DIM: Business rules (prohibited, max_limit)
-    alt Valid
-        DIM->>Ledger: append
-        DIM-->>Run: Policy Bound
-    else Invalid
-        DIM-->>Run: Prohibited Industry / Evidence Invalid / etc.
+    P->>P: parse markdown → ClientApplication
+    P->>P: pre-agent gates (injection_patterns)
+    P->>A: extract_submission_facts (TiV + territories)
+    P->>P: post-extraction gates (territory, max_tiv)
+    alt gates OK
+        P->>A: run_decision_cycle → Explain, Policy, Self-Check, PCI
+        A->>D: PCI
+        D->>D: hash + business rules (industry, TiV vs max_tiv)
+        D->>L: append if Policy Bound
+        P->>P: mock bind API
     end
 ```
 
@@ -182,7 +211,7 @@ sequenceDiagram
 
 | Component | Purpose |
 |-----------|---------|
-| **AgentRegistry** | Stores the Underwriting Policy (Responsibility Contract): max limit $2M, prohibited industries: Fireworks, CryptoMining |
+| **AgentRegistry** | Stores the Underwriting Policy (Responsibility Contract): delegated max TiV $2M (`max_tiv`), prohibited industries: Fireworks, CryptoMining |
 | **ContextStore** | Holds the Client Application state (business_type, revenue, industry) |
 | **DecisionLedger** | Append-only list storing only verified decisions |
 | **DecisionIntegrityModule (DIM)** | Proof Checker: recalculates Evidence Hash, rejects on mismatch (Zero Trust) |
@@ -198,8 +227,8 @@ sequenceDiagram
 ## ROA Lifecycle (Explain → Policy → Self-Check)
 
 1. **Explain:** LLM interprets client application (narrative, signals, risks, opportunities)
-2. **Policy:** LLM proposes COVERAGE_LIMIT, PREMIUM, INDUSTRY (structured output)
-3. **Self-Check:** Deterministic check (prohibited industry, max limit): agent may still emit; DIM enforces
+2. **Policy:** LLM proposes TOTAL_INSURED_VALUE (TiV), PREMIUM, INDUSTRY (structured output)
+3. **Self-Check:** Deterministic check (prohibited industry, TiV vs `max_tiv`): agent may still emit; DIM enforces
 4. **PCI:** Build ProofCarryingIntent with evidence_hash, submit to DIM
 
 ---
@@ -212,32 +241,17 @@ Evidence_Hash = SHA256(DFID || Context_Hash || Contract_Hash || Proposal_Params)
 
 - **Context_Hash** = SHA256(canonical JSON of ClientApplication)
 - **Contract_Hash** = SHA256(canonical JSON of UnderwritingContract)
-- **Proposal_Params** = canonical JSON of policy_proposal (coverage_limit, premium, industry)
+- **Proposal_Params** = canonical JSON of policy_proposal (total_insured_value, premium, industry)
 
 The DIM **recalculates** this using authoritative Registry and ContextStore data. It never trusts the agent's claimed hash.
 
 ---
 
-## Scenarios (from config.yaml)
+## HTML report
 
-| Scenario | Input | Expected outcome |
-|----------|-------|------------------|
-| **Retail** | business_type=Retail, revenue=500k, industry=Retail | Policy Bound |
-| **Fireworks** | business_type=Fireworks Factory, industry=Fireworks | Prohibited Industry (LLM may still propose; DIM rejects) |
-| **Forged hash** | Same as Fireworks + forge_evidence_hash=true | Evidence Invalid |
+Each run writes **`results/simulation_report_YYYY-MM-DD_HHMM.html`** (UTC): per-email rendered markdown body, processing timeline (ingest → gates → extraction → ROA if any → DIM → bind), outcome and `reason_code`.
 
----
-
-## HTML Report
-
-After processing, `report.html` is generated in the sample directory and opened in the browser. The report contains:
-
-1. **Input data** – what the agent received (business_type, revenue, industry)
-2. **Processing (Explain)** – narrative, signals, risks, opportunities
-3. **Applied policy (Policy)** – proposal (coverage_limit, premium, industry) and **audit metadata** (version, created_by, created_at)
-4. **Agent Self-Check** – result and reason
-5. **DIR (DIM) verification** – Evidence Hash and business rules check
-6. **Final outcome** – policy BOUND or REJECTED with reason
+Install **`markdown`** (or `pip install -e ".[samples]"`) so pipe tables and bold render cleanly instead of a plain `<pre>` fallback.
 
 ---
 
@@ -246,10 +260,19 @@ After processing, `report.html` is generated in the sample directory and opened 
 ```
 samples/33_insurance_underwriting/
 ├── README.md               # This file
-├── config.yaml             # Underwriting rules, LLM, agents, scenarios
-├── run.py                  # Main simulation (config-driven)
-├── report_generator.py     # HTML report generator
-├── report.html             # Generated audit report (after run)
+├── config.yaml             # Underwriting rules, LLM, agents, email_processing
+├── run.py                  # Entry: email pipeline, console + HTML report
+├── pipeline.py             # Orchestrator: DFID, gates, ROA, DIM, mock bind, audit
+├── email_fixture_ingest.py # Load `.md` fixtures → coarse ClientApplication
+├── gates.py                # Kernel hard gates (injection, territory, authority ceiling)
+├── audit_store.py          # SQLite append-only decision_events + bind idempotency
+├── policy_binding.py       # Mock bind API (post-ledger)
+├── emails/                 # `*.md` fixtures (EXT … broker submissions)
+├── data/                   # Runtime data (created on first run)
+│   └── underwriting_audit.sqlite  # Generated audit DB (path overridable via env / config)
+├── results/                # Generated HTML reports (one file per run)
+│   └── simulation_report_*.html
+├── report_generator.py     # HTML email audit report (`generate_email_report`)
 ├── models.py               # Pydantic: UnderwritingContract, ClientApplication, PolicyProposal, ProofCarryingIntent
 ├── kernel.py               # AgentRegistry, ContextStore, DecisionLedger, DecisionIntegrityModule
 ├── llm_client.py           # OllamaClient, MockLLM
@@ -258,52 +281,47 @@ samples/33_insurance_underwriting/
 
 ---
 
-## Expected Output
+## Expected console output
 
-- `Using MockLLM (no Ollama required)` (when USE_MOCK_LLM=1)
-- `Contract loaded: version=... created_by=... created_at=...`
-- `[Scenario] Retail` / `[Scenario] Fireworks` / `[Scenario] Forged hash`
-- `Outcome: Policy Bound (OK)` or `Outcome: Prohibited Industry (OK)` or `Outcome: Evidence Invalid (OK)`
-- `Summary` with ledger count and per-scenario results
-- `HTML report: ...` (path to report.html)
-- Browser opens report.html automatically
+- `Digital Underwriter - Email pipeline (Topology C + mock bind)`
+- For each processed file: a **`[Email] …`** section with `DFID`, step timeline, then **`Final: BOUND (POLICY_BOUND)`** / **`ESCALATED (AUTHORITY_CEILING)`** / **`REJECTED (...)`**
+- `Summary`: ledger count (verified binds only), audit DB path, path to **`results/simulation_report_*.html`**
+- With `USE_MOCK_LLM=1`: `Using MockLLM (no Ollama required)` and `Contract loaded: ...`
+
+The browser opens the generated HTML report automatically.
 
 ---
 
-## Example Run
+## Example runs
+
+**Default (excerpt):**
 
 ```
 ======================================================================
-Digital Underwriter - Topology C (ROA + LLM, config-driven)
+Digital Underwriter - Email pipeline (Topology C + mock bind)
 ======================================================================
 
-[Scenario] Retail
-  Outcome: Policy Bound (OK)
-
-[Scenario] Fireworks
-  Outcome: Prohibited Industry (OK)
-
-[Scenario] Forged hash
-  Outcome: Evidence Invalid (OK)
+[Email] (EXT) Thames Vale Services Ltd - Standard Renewal.md
+  DFID: ...
+    -> ... -> BIND_SUCCEEDED: CLOSED - ...
+  Final: BOUND (POLICY_BOUND)
+  Policy ref: POL-...
 
 ======================================================================
 Summary
 ======================================================================
   Ledger entries (verified only): 1
-  Retail: Policy Bound
-  Fireworks: Prohibited Industry
-  Forged hash: Evidence Invalid
-
-  Day Two prevention: Only verified decisions are bound.
+  ...
+  HTML report: .../results/simulation_report_2026-03-20_2017.html
 ```
 
 ---
 
-## Technical Notes
+## Technical notes
 
-- **Real LLM (default):** Ollama + Gemma. Set `USE_MOCK_LLM=1` for tests without Ollama.
-- **Zero API keys:** Uses local Ollama; no cloud API keys required.
-- **report.html:** Generated after each run; contains full audit trail (Explain, Policy, Self-Check, DIM verification).
+- **Real LLM:** Ollama + model from `llm_defaults` (e.g. Gemma). Set `USE_MOCK_LLM=1` for deterministic runs without Ollama.
+- **Zero API keys** when using local Ollama only.
+- **Reports:** Each run creates a **new** timestamped file under **`results/`**.
 
 ---
 
@@ -312,10 +330,10 @@ Summary
 | Aspect | Description |
 |--------|-------------|
 | **Topology** | C (Decision Ledger & Proof-Carrying Intents) |
-| **Use case** | Digital Underwriter: insurance policy proposals with cryptographic proof of compliance |
+| **Use case** | Digital Underwriter: TiV-aware proposals with cryptographic proof of compliance |
 | **Agent** | Full ROA: Explain(LLM) → Policy(LLM) → Self-Check → PCI |
-| **Config** | config.yaml (underwriting, llm_defaults, agents, scenarios). Same convention as 31, 32, 35. |
-| **Input** | ClientApplication (business_type, revenue, industry) |
-| **Output** | Policy Bound, or rejection: Evidence Invalid / Prohibited Industry / Coverage Limit Exceeded |
-| **Logic** | Agent proposes PCI → DIM recalculates Evidence Hash (Zero Trust) → Business rules → Ledger append if valid |
-| **Goal** | Prevent Day Two failures: unverified agent decisions never become binding contracts |
+| **Config** | `config.yaml`: `underwriting`, `llm_defaults`, `agents`, `email_processing` |
+| **Input** | Markdown emails under `emails/` + contract / gates from config |
+| **Output** | **BOUND** / **ESCALATED** / **REJECTED** with codes such as `POLICY_BOUND`, `AUTHORITY_CEILING`, `CONTRACT_VIOLATION`, `PROHIBITED_TERRITORY`, `EXTRACTION_FAILED`, or DIM strings (e.g. **TIV Exceeds Contract Max**, **Prohibited Industry**, **Evidence Invalid**) if the flow reaches DIM |
+| **Logic** | Ingest → optional injection gate → LLM extraction → territory / `max_tiv` gates → optional full ROA → DIM → ledger → mock bind |
+| **Goal** | Day Two prevention: unverified decisions do not reach the ledger or bind API |

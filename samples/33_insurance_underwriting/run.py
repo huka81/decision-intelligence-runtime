@@ -2,36 +2,34 @@
 """
 33_insurance_underwriting - Digital Underwriter (Decision Ledger & Proof-Carrying Intents).
 
-Full ROA agent with LLM (Explain → Policy → Self-Check). Config-driven via config.yaml.
-Topology C: system commits to Ledger only when agent provides valid Evidence Hash.
+Default: ingest London Market email fixtures → kernel gates → ROA (Explain → Policy → Self-Check)
+→ DIM → Decision Ledger → mock bind API. DFID-tagged SQLite audit + HTML report under results/.
 
 Run: python samples/33_insurance_underwriting/run.py
-Optional: USE_MOCK_LLM=1 (no Ollama), LOG_LEVEL=DEBUG
+Env: USE_MOCK_LLM=1, UNDERWRITING_AUDIT_DB=path, LOG_LEVEL=DEBUG
 """
 
 from __future__ import annotations
 
 import logging
 import os
+import sys
 import webbrowser
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-from models import ClientApplication, UnderwritingContract
+# Allow `python samples/33_insurance_underwriting/run.py` without editable install
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from models import UnderwritingContract
 from utils.config_loader import load_yaml_config
-from report_generator import generate_html_report
-from kernel import (
-    AgentRegistry,
-    ContextStore,
-    DecisionIntegrityModule,
-    DecisionLedger,
-)
-from roa_underwriter_agent import ROAUnderwriterAgent, DecisionCycleReport
+from report_generator import generate_email_report
 
-try:
-    from .llm_client import MockLLM, OllamaClient
-except ImportError:
-    from llm_client import MockLLM, OllamaClient
+from pipeline import build_llm, run_email_pipeline
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -40,18 +38,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def build_llm(config: Dict[str, Any], use_mock: bool = False) -> Any:
-    """Build LLM client from config (Ollama or MockLLM)."""
-    if use_mock:
-        return MockLLM()
-    defaults = config.get("llm_defaults", {})
-    model = defaults.get("model", "gemma3:4b")
-    base_url = defaults.get("base_url", "http://localhost:11434")
-    return OllamaClient(model=model, base_url=base_url)
+def _new_simulation_report_path(sample_dir: Path) -> Path:
+    """
+    results/simulation_report_YYYY-MM-DD_HHMM.html (UTC, 24h clock; new file each run).
+    """
+    results_dir = sample_dir / "results"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M")
+    return results_dir / f"simulation_report_{stamp}.html"
 
 
 def build_contract(config: Dict[str, Any]) -> UnderwritingContract:
-    """Build UnderwritingContract from config."""
     uw = config.get("underwriting", {})
     agents = config.get("agents", [])
     agent_cfg = agents[0] if agents else {}
@@ -62,17 +59,12 @@ def build_contract(config: Dict[str, Any]) -> UnderwritingContract:
         created_by=agent_cfg.get("created_by"),
         created_at=agent_cfg.get("created_at"),
         mission=agent_cfg.get("mission", "Underwrite insurance policies."),
-        max_limit=contract_cfg.get("max_limit", uw.get("max_limit", 2_000_000)),
+        max_tiv=contract_cfg.get("max_tiv", uw.get("max_tiv", 2_000_000)),
         prohibited_industries=contract_cfg.get(
             "prohibited_industries",
             uw.get("prohibited_industries", ["Fireworks", "CryptoMining"]),
         ),
     )
-
-
-def build_scenarios(config: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Build scenario list from config."""
-    return config.get("scenarios", [])
 
 
 def main() -> None:
@@ -88,65 +80,57 @@ def main() -> None:
     contract = build_contract(config)
     logger.info(
         "Contract loaded: version=%s, created_by=%s, created_at=%s",
-        contract.version, contract.created_by or "—", contract.created_at or "—",
+        contract.version,
+        contract.created_by or "—",
+        contract.created_at or "—",
     )
-    registry = AgentRegistry(contract)
-    context_store = ContextStore()
-    ledger = DecisionLedger()
-    dim = DecisionIntegrityModule(registry, context_store, ledger)
 
-    agent = ROAUnderwriterAgent(registry, llm)
-
-    scenarios = build_scenarios(config)
-    if not scenarios:
-        scenarios = [
-            {"name": "Retail", "business_type": "Retail", "revenue": 500000, "industry": "Retail", "expect": "Policy Bound"},
-            {"name": "Fireworks", "business_type": "Fireworks Factory", "revenue": 1000000, "industry": "Fireworks", "expect": "Prohibited Industry"},
-            {"name": "Forged hash", "business_type": "Fireworks Factory", "revenue": 1000000, "industry": "Fireworks", "forge_evidence_hash": True, "expect": "Evidence Invalid"},
-        ]
-
-    print("=" * 70, flush=True)
-    print("Digital Underwriter - Topology C (ROA + LLM, config-driven)", flush=True)
-    print("=" * 70, flush=True)
-
-    results: List[str] = []
-    reports: List[DecisionCycleReport] = []
-    for sc in scenarios:
-        name = sc.get("name", "Scenario")
-        print(f"\n[Scenario] {name}", flush=True)
-        context = ClientApplication(
-            business_type=sc.get("business_type", "Retail"),
-            revenue=float(sc.get("revenue", 500000)),
-            industry=sc.get("industry", "Retail"),
+    email_results, ledger, audit = run_email_pipeline(sample_dir, config, llm)
+    db_path = Path(
+        os.environ.get(
+            "UNDERWRITING_AUDIT_DB",
+            str(sample_dir / config.get("email_processing", {}).get("audit_db", "data/underwriting_audit.sqlite")),
         )
-        forge = sc.get("forge_evidence_hash", False)
-        pci, report = agent.run_decision_cycle(context, forge_evidence_hash=forge)
-        result = dim.verify_and_commit(pci, context)
-        results.append(result)
-        reports.append(report)
-        expect = sc.get("expect")
-        status = "OK" if (expect is None or result == expect) else f"EXPECTED {expect}"
-        print(f"  Outcome: {result} ({status})", flush=True)
+    )
+
+    print("=" * 70, flush=True)
+    print("Digital Underwriter - Email pipeline (Topology C + mock bind)", flush=True)
+    print("=" * 70, flush=True)
+
+    for case in email_results:
+        print(f"\n[Email] {case.source_file}", flush=True)
+        print(f"  DFID: {case.dfid}", flush=True)
+        for step in case.timeline:
+            detail = (step.get("detail") or "")[:120]
+            print(
+                f"    -> {step['step']}: {step['state']} - {detail}",
+                flush=True,
+            )
+        print(
+            f"  Final: {case.final_status} ({case.reason_code})",
+            flush=True,
+        )
+        if case.policy_ref:
+            print(f"  Policy ref: {case.policy_ref}", flush=True)
 
     print("\n" + "=" * 70, flush=True)
     print("Summary", flush=True)
     print("=" * 70, flush=True)
     print(f"  Ledger entries (verified only): {len(ledger)}", flush=True)
-    for i, (sc, res) in enumerate(zip(scenarios, results)):
-        print(f"  {sc.get('name', i)}: {res}", flush=True)
-    print("\n  Day Two prevention: Only verified decisions are bound.", flush=True)
+    print(f"  Audit DB: {db_path.resolve()}", flush=True)
+    print("\n  Day Two prevention: Only verified decisions reach the ledger and bind API.", flush=True)
 
-    # Generate HTML report
-    report_path = sample_dir / "report.html"
-    generate_html_report(
-        scenarios=scenarios,
-        reports=reports,
-        results=results,
+    report_path = _new_simulation_report_path(sample_dir)
+    generate_email_report(
+        email_results=email_results,
         contract=contract.model_dump(),
         ledger_count=len(ledger),
+        audit_db_path=str(db_path.resolve()),
         output_path=report_path,
+        email_processing=config.get("email_processing", {}),
     )
     print(f"\n  HTML report: {report_path.resolve()}", flush=True)
+    audit.close()
     webbrowser.open(report_path.resolve().as_uri())
 
 
