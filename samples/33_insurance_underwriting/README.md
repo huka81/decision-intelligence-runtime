@@ -93,7 +93,6 @@ llm_defaults:
 email_processing:
   emails_dir: "emails"
   audit_db: "data/underwriting_audit.sqlite"
-  exclude_filename_substrings: ["HAILO"]
   currency_fx_to_usd: { GBP: 1.0, USD: 1.0, EUR: 1.0 }
   prohibited_territories: ["syrian arab republic", "syria", "damascus"]
   injection_patterns: []   # optional pre-LLM substring scan; default empty
@@ -117,7 +116,7 @@ agents:
 | **underwriting** | `max_tiv`, `prohibited_industries` - defaults for contract |
 | **llm_defaults** | `model`, `base_url` - Ollama (same as 31, 32). Set `USE_MOCK_LLM=1` for tests without Ollama. |
 | **agents** | `agent_id`, `mission`, `contract`, **audit fields** (`version`, `created_by`, `created_at`) |
-| **email_processing** | `emails_dir`, `audit_db`, `exclude_filename_substrings`, `currency_fx_to_usd`, `prohibited_territories`, `injection_patterns` |
+| **email_processing** | `emails_dir`, `audit_db`, `currency_fx_to_usd`, `prohibited_territories`, `injection_patterns` |
 
 ### email_processing (default path)
 
@@ -125,7 +124,6 @@ agents:
 |-----|---------|
 | `emails_dir` | Subfolder of the sample with markdown email fixtures |
 | `audit_db` | Path to SQLite file (relative to this sample folder), e.g. `data/underwriting_audit.sqlite`; append-only `decision_events` + idempotency keys for bind |
-| `exclude_filename_substrings` | Skip fixtures (e.g. dummy `HAILO` renewal) |
 | `currency_fx_to_usd` | Rates for **MockLLM** / helpers when turning table TiV into USD (demo uses `1.0` for GBP fixtures) |
 | `prohibited_territories` | Case-insensitive substrings vs **agent-extracted** territories **after** extraction. If both territory and `max_tiv` fail, the kernel returns **`CONTRACT_VIOLATION`**; territory-only → **`PROHIBITED_TERRITORY`**. |
 | `injection_patterns` | Optional substrings for **ABORTED** (`PROMPT_INJECTION`) before any LLM call; default config leaves this empty so injection is handled by extraction contract + kernel |

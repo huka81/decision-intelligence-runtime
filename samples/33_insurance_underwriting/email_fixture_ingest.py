@@ -133,15 +133,6 @@ def client_application_from_fixture(
     )
 
 
-def list_markdown_fixtures(
-    emails_dir: Path,
-    exclude_substrings: list[str],
-) -> list[Path]:
-    paths = sorted(emails_dir.glob("*.md"))
-    out: list[Path] = []
-    for p in paths:
-        name = p.name.lower()
-        if any(ex.lower() in name for ex in exclude_substrings):
-            continue
-        out.append(p)
-    return out
+def list_markdown_fixtures(emails_dir: Path) -> list[Path]:
+    """All `*.md` files in the directory, sorted by name."""
+    return sorted(emails_dir.glob("*.md"))

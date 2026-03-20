@@ -357,8 +357,7 @@ def run_email_pipeline(
 
     ep = config.get("email_processing", {})
     emails_dir = sample_dir / ep.get("emails_dir", "emails")
-    exclude = list(ep.get("exclude_filename_substrings", ["HAILO"]))
-    paths = list_markdown_fixtures(emails_dir, exclude)
+    paths = list_markdown_fixtures(emails_dir)
 
     results: List[EmailCaseResult] = []
     for path in paths:

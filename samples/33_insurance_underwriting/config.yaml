@@ -14,7 +14,6 @@ llm_defaults:
 email_processing:
   emails_dir: "emails"
   audit_db: "data/underwriting_audit.sqlite"
-  exclude_filename_substrings: ["HAILO"]
   # Demo FX: TiV amounts in GBP fixtures are compared to max_tiv as-if USD (1:1 stub).
   currency_fx_to_usd:
     GBP: 1.0
