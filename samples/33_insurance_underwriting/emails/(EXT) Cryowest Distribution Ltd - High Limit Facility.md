@@ -1,18 +1,6 @@
-
-| Field | Detail |
-| --- | --- |
-| Subject | (EXT) Meridian Cold Chain Ltd — New Limit / Layered Facility |
-| From | Sarah Chen <Sarah.Chen@willistowerswatson.com> |
-| To | Digital Underwriting Inbox <uw.inbox@example-mga.co.uk> |
-| Date | Wed, 22 Jan 2025 11:47:02 +0000 |
-| Original file | /inbound/2025/01/22/meridian_cold_chain.msg |
-| Attachment list | ['Meridian_Cold_Chain_SoV_2025.pdf', 'Meridian_Loss_Summary.xlsx', 'Slip_Draft_v3.docx'] |
-
-------------------
-
 Colleagues,
 
-We are instructed to place **Meridian Cold Chain Ltd** (temperature-controlled logistics, UK & EU hubs). The account has grown materially following a new pharmaceutical distribution contract.
+We are instructed to place **Cryowest Distribution Ltd** (temperature-controlled logistics, UK & EU hubs). The account has grown materially following a new pharmaceutical distribution contract.
 
 **Important:** The insured requires a **single primary layer** of **GBP 3,500,000 any one occurrence and in the annual aggregate** on Property and BI combined — we are **not** seeking a split primary/excess structure for this enquiry. Please confirm whether you can support **100% of our order** on these terms or whether the submission must be **referred** given internal delegated authority.
 
@@ -20,7 +8,7 @@ Supporting schedules and loss history are attached. We remain available for a qu
 
 | Field | PROPOSED TERMS | EXPIRING |
 | --- | --- | --- |
-| Original Insured | Meridian Cold Chain Ltd | Meridian Cold Chain Ltd |
+| Original Insured | Cryowest Distribution Ltd | Cryowest Distribution Ltd |
 | Cover / Type | Property All Risks and BI — follow form to market wording (attached) | " |
 | Wording / Conditions | UK & EU (scheduled locations only); refrigeration breakdown extension as per slip draft | " |
 | Law & Jurisdiction | England and Wales | " |
@@ -36,9 +24,13 @@ Supporting schedules and loss history are attached. We remain available for a qu
 | Industry | Warehousing and support activities for transportation (logistics) | " |
 | Subjectivities | Cold-store maintenance contract in place; annual refrigeration inspection |  |
 
+
 Best regards,
 
-**Sarah Chen**  
+
+**Nina Corvell**  
+
 Associate Director, Property  
-Willis Towers Watson  
-www.wtwco.com
+Veridian Risk Partners Ltd  
+https://www.veridian-risk.example
+

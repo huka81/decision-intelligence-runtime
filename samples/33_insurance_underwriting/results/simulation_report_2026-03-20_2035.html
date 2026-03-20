@@ -271,7 +271,7 @@
 </head>
 <body>
     <h1>Digital Underwriter — Email pipeline audit</h1>
-    <p class="meta">Generated: 2026-03-20 20:49:12 UTC | Topology C (DL+PCI) + mock bind API | SQLite: D:\Praca\Artur Huk IT\repo\decision-intelligence-runtime\samples\33_insurance_underwriting\data\underwriting_audit.sqlite</p>
+    <p class="meta">Generated: 2026-03-20 20:35:34 UTC | Topology C (DL+PCI) + mock bind API | SQLite: D:\Praca\Artur Huk IT\repo\decision-intelligence-runtime\samples\33_insurance_underwriting\data\underwriting_audit.sqlite</p>
 
     <div class="summary-box">
         <h2>Summary</h2>
@@ -285,7 +285,7 @@
     
     <div class="scenario-block">
         <h2>(EXT) Meridian Cold Chain Ltd — New Limit / Layered Facility</h2>
-        <p class="meta">Source: <code>(EXT) Meridian Cold Chain Ltd - High Limit Facility.md</code> · DFID: <code>6454057f-36a0-43ca-a1aa-9b4f5384a8eb</code></p>
+        <p class="meta">Source: <code>(EXT) Meridian Cold Chain Ltd - High Limit Facility.md</code> · DFID: <code>622bc505-7780-43ea-8d04-72f36d1a304e</code></p>
         <p><span class="badge escalated">ESCALATED (human review)</span></p>
         <p class="reason-line"><strong>Reason code:</strong> AUTHORITY_CEILING · <strong>Lifecycle:</strong> ESCALATED</p>
         
@@ -460,7 +460,7 @@ www.wtwco.com</p></div></div>
         <div class="section-content">
     <table class="data-table timeline">
         <tr><th>Time (UTC)</th><th>Step</th><th>State</th><th>Detail</th></tr>
-        <tr><td><code>2026-03-20T20:46:18.277854Z</code></td><td><strong>MAIL_INGESTED</strong></td><td>CREATED</td><td>Read (EXT) Meridian Cold Chain Ltd - High Limit Facility.md</td></tr><tr><td><code>2026-03-20T20:46:18.284865Z</code></td><td><strong>CONTEXT_COMPILED</strong></td><td>ACTIVE</td><td>ClientApplication built from email</td></tr><tr><td><code>2026-03-20T20:46:18.291120Z</code></td><td><strong>KERNEL_GATES_PASSED</strong></td><td>ACTIVE</td><td>No optional keyword injection match (territory + authority after agent extraction)</td></tr><tr><td><code>2026-03-20T20:46:45.977906Z</code></td><td><strong>AGENT_SUBMISSION_EXTRACTION</strong></td><td>ACTIVE</td><td>tiv_usd=50,500,000; stated_territories: United Kingdom, Republic of Ireland, Netherlands</td></tr><tr><td><code>2026-03-20T20:46:45.983367Z</code></td><td><strong>GATE_AUTHORITY_ESCALATED</strong></td><td>ESCALATED</td><td>Broker-requested TiV 50,500,000 exceeds delegated max_tiv 2,000,000 - escalated to human.</td></tr>
+        <tr><td><code>2026-03-20T20:32:44.464081Z</code></td><td><strong>MAIL_INGESTED</strong></td><td>CREATED</td><td>Read (EXT) Meridian Cold Chain Ltd - High Limit Facility.md</td></tr><tr><td><code>2026-03-20T20:32:44.474351Z</code></td><td><strong>CONTEXT_COMPILED</strong></td><td>ACTIVE</td><td>ClientApplication built from email</td></tr><tr><td><code>2026-03-20T20:32:44.481454Z</code></td><td><strong>KERNEL_GATES_PASSED</strong></td><td>ACTIVE</td><td>No optional keyword injection match (territory + authority after agent extraction)</td></tr><tr><td><code>2026-03-20T20:33:12.138047Z</code></td><td><strong>AGENT_SUBMISSION_EXTRACTION</strong></td><td>ACTIVE</td><td>tiv_usd=50,500,000; stated_territories: United Kingdom, Republic of Ireland, Netherlands</td></tr><tr><td><code>2026-03-20T20:33:12.159992Z</code></td><td><strong>GATE_AUTHORITY_ESCALATED</strong></td><td>ESCALATED</td><td>Broker-requested TiV 50,500,000 exceeds delegated max_tiv 2,000,000 - escalated to human.</td></tr>
     </table></div>
     </details>
         
@@ -471,7 +471,7 @@ www.wtwco.com</p></div></div>
     </div>
     <div class="scenario-block">
         <h2>(EXT) Northbridge Retail Co Ltd — Shop Package Renewal</h2>
-        <p class="meta">Source: <code>(EXT) Northbridge Retail Co - Renewal Broker Notes.md</code> · DFID: <code>7788c1b2-90f6-4c38-af55-27b7fc4c86d8</code></p>
+        <p class="meta">Source: <code>(EXT) Northbridge Retail Co - Renewal Broker Notes.md</code> · DFID: <code>2351d6e3-3657-453f-8833-75996b0e7831</code></p>
         <p><span class="badge reject">REJECTED</span></p>
         <p class="reason-line"><strong>Reason code:</strong> CONTRACT_VIOLATION · <strong>Lifecycle:</strong> ABORTED</p>
         
@@ -647,7 +647,7 @@ www.howdengroup.com</p></div></div>
         <div class="section-content">
     <table class="data-table timeline">
         <tr><th>Time (UTC)</th><th>Step</th><th>State</th><th>Detail</th></tr>
-        <tr><td><code>2026-03-20T20:46:45.993560Z</code></td><td><strong>MAIL_INGESTED</strong></td><td>CREATED</td><td>Read (EXT) Northbridge Retail Co - Renewal Broker Notes.md</td></tr><tr><td><code>2026-03-20T20:46:45.993560Z</code></td><td><strong>CONTEXT_COMPILED</strong></td><td>ACTIVE</td><td>ClientApplication built from email</td></tr><tr><td><code>2026-03-20T20:46:46.000857Z</code></td><td><strong>KERNEL_GATES_PASSED</strong></td><td>ACTIVE</td><td>No optional keyword injection match (territory + authority after agent extraction)</td></tr><tr><td><code>2026-03-20T20:47:10.116459Z</code></td><td><strong>AGENT_SUBMISSION_EXTRACTION</strong></td><td>ACTIVE</td><td>tiv_usd=3,200,000; stated_territories: UK, Wales, Damascus, Syria</td></tr><tr><td><code>2026-03-20T20:47:10.150284Z</code></td><td><strong>GATE_REJECTED</strong></td><td>ABORTED</td><td>Agent extraction recovered factual TiV and territories; binding blocked by contract - Prohibited jurisdiction in agent-extracted territories (syria). Responsibility contract applies; broker instructions cannot override. | Broker-requested TiV 3,200,000 exceeds delegated max_tiv 2,000,000 - escalated to human.</td></tr>
+        <tr><td><code>2026-03-20T20:33:12.181793Z</code></td><td><strong>MAIL_INGESTED</strong></td><td>CREATED</td><td>Read (EXT) Northbridge Retail Co - Renewal Broker Notes.md</td></tr><tr><td><code>2026-03-20T20:33:12.185435Z</code></td><td><strong>CONTEXT_COMPILED</strong></td><td>ACTIVE</td><td>ClientApplication built from email</td></tr><tr><td><code>2026-03-20T20:33:12.188505Z</code></td><td><strong>KERNEL_GATES_PASSED</strong></td><td>ACTIVE</td><td>No optional keyword injection match (territory + authority after agent extraction)</td></tr><tr><td><code>2026-03-20T20:33:36.394692Z</code></td><td><strong>AGENT_SUBMISSION_EXTRACTION</strong></td><td>ACTIVE</td><td>tiv_usd=3,200,000; stated_territories: UK, Wales, Damascus, Syria</td></tr><tr><td><code>2026-03-20T20:33:36.426020Z</code></td><td><strong>GATE_REJECTED</strong></td><td>ABORTED</td><td>Agent extraction recovered factual TiV and territories; binding blocked by contract - Prohibited jurisdiction in agent-extracted territories (syria). Responsibility contract applies; broker instructions cannot override. | Broker-requested TiV 3,200,000 exceeds delegated max_tiv 2,000,000 - escalated to human.</td></tr>
     </table></div>
     </details>
         
@@ -658,7 +658,7 @@ www.howdengroup.com</p></div></div>
     </div>
     <div class="scenario-block">
         <h2>(EXT) Orbis Trading FZE — Property / Stock Throughput (MENA)</h2>
-        <p class="meta">Source: <code>(EXT) Orbis Trading FZE - MENA Property Enquiry.md</code> · DFID: <code>99583db1-00e3-4b3f-8e81-cf39b39a9da6</code></p>
+        <p class="meta">Source: <code>(EXT) Orbis Trading FZE - MENA Property Enquiry.md</code> · DFID: <code>b97fb9bd-9090-4b9d-828a-164e3f2d1ee9</code></p>
         <p><span class="badge reject">REJECTED</span></p>
         <p class="reason-line"><strong>Reason code:</strong> CONTRACT_VIOLATION · <strong>Lifecycle:</strong> ABORTED</p>
         
@@ -833,7 +833,7 @@ www.miller-insurance.com</p></div></div>
         <div class="section-content">
     <table class="data-table timeline">
         <tr><th>Time (UTC)</th><th>Step</th><th>State</th><th>Detail</th></tr>
-        <tr><td><code>2026-03-20T20:47:10.186049Z</code></td><td><strong>MAIL_INGESTED</strong></td><td>CREATED</td><td>Read (EXT) Orbis Trading FZE - MENA Property Enquiry.md</td></tr><tr><td><code>2026-03-20T20:47:10.186049Z</code></td><td><strong>CONTEXT_COMPILED</strong></td><td>ACTIVE</td><td>ClientApplication built from email</td></tr><tr><td><code>2026-03-20T20:47:10.202844Z</code></td><td><strong>KERNEL_GATES_PASSED</strong></td><td>ACTIVE</td><td>No optional keyword injection match (territory + authority after agent extraction)</td></tr><tr><td><code>2026-03-20T20:47:34.352697Z</code></td><td><strong>AGENT_SUBMISSION_EXTRACTION</strong></td><td>ACTIVE</td><td>tiv_usd=4,200,000; stated_territories: Syrian Arab Republic, Damascus, Dubai, UAE, Syria</td></tr><tr><td><code>2026-03-20T20:47:34.354453Z</code></td><td><strong>GATE_REJECTED</strong></td><td>ABORTED</td><td>Agent extraction recovered factual TiV and territories; binding blocked by contract - Prohibited jurisdiction in agent-extracted territories (syrian arab republic). Responsibility contract applies; broker instructions cannot override. | Broker-requested TiV 4,200,000 exceeds delegated max_tiv 2,000,000 - escalated to human.</td></tr>
+        <tr><td><code>2026-03-20T20:33:36.458503Z</code></td><td><strong>MAIL_INGESTED</strong></td><td>CREATED</td><td>Read (EXT) Orbis Trading FZE - MENA Property Enquiry.md</td></tr><tr><td><code>2026-03-20T20:33:36.466531Z</code></td><td><strong>CONTEXT_COMPILED</strong></td><td>ACTIVE</td><td>ClientApplication built from email</td></tr><tr><td><code>2026-03-20T20:33:36.474523Z</code></td><td><strong>KERNEL_GATES_PASSED</strong></td><td>ACTIVE</td><td>No optional keyword injection match (territory + authority after agent extraction)</td></tr><tr><td><code>2026-03-20T20:34:00.579474Z</code></td><td><strong>AGENT_SUBMISSION_EXTRACTION</strong></td><td>ACTIVE</td><td>tiv_usd=4,200,000; stated_territories: Syrian Arab Republic, Damascus, Dubai, UAE, Syria</td></tr><tr><td><code>2026-03-20T20:34:00.608226Z</code></td><td><strong>GATE_REJECTED</strong></td><td>ABORTED</td><td>Agent extraction recovered factual TiV and territories; binding blocked by contract - Prohibited jurisdiction in agent-extracted territories (syrian arab republic). Responsibility contract applies; broker instructions cannot override. | Broker-requested TiV 4,200,000 exceeds delegated max_tiv 2,000,000 - escalated to human.</td></tr>
     </table></div>
     </details>
         
@@ -844,7 +844,7 @@ www.miller-insurance.com</p></div></div>
     </div>
     <div class="scenario-block">
         <h2>(EXT) Thames Vale Services Ltd — Property &amp; BI Renewal 2025</h2>
-        <p class="meta">Source: <code>(EXT) Thames Vale Services Ltd - Standard Renewal.md</code> · DFID: <code>38114bcd-24be-4597-892b-5efd77b614f9</code></p>
+        <p class="meta">Source: <code>(EXT) Thames Vale Services Ltd - Standard Renewal.md</code> · DFID: <code>45ac788b-8b41-465d-9617-882efed0b1eb</code></p>
         <p><span class="badge ok">POLICY BOUND</span></p>
         <p class="reason-line"><strong>Reason code:</strong> POLICY_BOUND · <strong>Lifecycle:</strong> CLOSED</p>
         
@@ -878,7 +878,7 @@ www.miller-insurance.com</p></div></div>
         </div>
     </div>
         <p><strong>DIM result:</strong> Policy Bound</p>
-        <p><strong>Mock policy reference:</strong> <code>POL-63EFC98BCBAF</code></p>
+        <p><strong>Mock policy reference:</strong> <code>POL-BBA79813656C</code></p>
         
     <details>
         <summary><strong>Source email (rendered from markdown)</strong></summary>
@@ -1019,7 +1019,7 @@ www.aon.com</p></div></div>
         <div class="section-content">
     <table class="data-table timeline">
         <tr><th>Time (UTC)</th><th>Step</th><th>State</th><th>Detail</th></tr>
-        <tr><td><code>2026-03-20T20:47:34.373790Z</code></td><td><strong>MAIL_INGESTED</strong></td><td>CREATED</td><td>Read (EXT) Thames Vale Services Ltd - Standard Renewal.md</td></tr><tr><td><code>2026-03-20T20:47:34.380307Z</code></td><td><strong>CONTEXT_COMPILED</strong></td><td>ACTIVE</td><td>ClientApplication built from email</td></tr><tr><td><code>2026-03-20T20:47:34.385313Z</code></td><td><strong>KERNEL_GATES_PASSED</strong></td><td>ACTIVE</td><td>No optional keyword injection match (territory + authority after agent extraction)</td></tr><tr><td><code>2026-03-20T20:47:58.710998Z</code></td><td><strong>AGENT_SUBMISSION_EXTRACTION</strong></td><td>ACTIVE</td><td>tiv_usd=2,000,000; stated_territories: United Kingdom (England, Scotland, Wales)</td></tr><tr><td><code>2026-03-20T20:47:58.712503Z</code></td><td><strong>AGENT_DECISION_CYCLE</strong></td><td>ACTIVE</td><td>Explain -&gt; Policy -&gt; Self-Check -&gt; PCI</td></tr><tr><td><code>2026-03-20T20:49:12.807299Z</code></td><td><strong>DIM_VERIFY_AND_COMMIT</strong></td><td>VALIDATING</td><td>Proof check + business rules</td></tr><tr><td><code>2026-03-20T20:49:12.821215Z</code></td><td><strong>LEDGER_COMMITTED</strong></td><td>ACCEPTED</td><td>PCI appended to Decision Ledger</td></tr><tr><td><code>2026-03-20T20:49:12.831852Z</code></td><td><strong>BIND_API</strong></td><td>EXECUTING</td><td>Mock policy bind</td></tr><tr><td><code>2026-03-20T20:49:12.848360Z</code></td><td><strong>BIND_SUCCEEDED</strong></td><td>CLOSED</td><td>Policy bound via mock underwriting API.</td></tr>
+        <tr><td><code>2026-03-20T20:34:00.643080Z</code></td><td><strong>MAIL_INGESTED</strong></td><td>CREATED</td><td>Read (EXT) Thames Vale Services Ltd - Standard Renewal.md</td></tr><tr><td><code>2026-03-20T20:34:00.651085Z</code></td><td><strong>CONTEXT_COMPILED</strong></td><td>ACTIVE</td><td>ClientApplication built from email</td></tr><tr><td><code>2026-03-20T20:34:00.659597Z</code></td><td><strong>KERNEL_GATES_PASSED</strong></td><td>ACTIVE</td><td>No optional keyword injection match (territory + authority after agent extraction)</td></tr><tr><td><code>2026-03-20T20:34:24.997600Z</code></td><td><strong>AGENT_SUBMISSION_EXTRACTION</strong></td><td>ACTIVE</td><td>tiv_usd=2,000,000; stated_territories: United Kingdom (England, Scotland, Wales)</td></tr><tr><td><code>2026-03-20T20:34:25.010141Z</code></td><td><strong>AGENT_DECISION_CYCLE</strong></td><td>ACTIVE</td><td>Explain -&gt; Policy -&gt; Self-Check -&gt; PCI</td></tr><tr><td><code>2026-03-20T20:35:34.280085Z</code></td><td><strong>DIM_VERIFY_AND_COMMIT</strong></td><td>VALIDATING</td><td>Proof check + business rules</td></tr><tr><td><code>2026-03-20T20:35:34.296426Z</code></td><td><strong>LEDGER_COMMITTED</strong></td><td>ACCEPTED</td><td>PCI appended to Decision Ledger</td></tr><tr><td><code>2026-03-20T20:35:34.298240Z</code></td><td><strong>BIND_API</strong></td><td>EXECUTING</td><td>Mock policy bind</td></tr><tr><td><code>2026-03-20T20:35:34.331586Z</code></td><td><strong>BIND_SUCCEEDED</strong></td><td>CLOSED</td><td>Policy bound via mock underwriting API.</td></tr>
     </table></div>
     </details>
         
@@ -1037,14 +1037,13 @@ www.aon.com</p></div></div>
     <details>
         <summary><strong>Agent: Explain</strong></summary>
         <div class="section-content">
-        <p><em>Narrative:</em> ** Thames Vale Services Ltd, a professional services firm with a revenue of $1.85 million, presents a relatively straightforward renewal opportunity. The requested Total Insured Value (TiV) of $2,000,000 is within a reasonable range for a business of this size and industry.  Given the SIC code (62xx - Professional, scientific and technical services), we will proceed with a standard property and business interruption (BI) policy. The premium is calculated at 2% of the TiV, capped at a maximum of $40,000 to align with typical industry rates for similar sized businesses.
+        <p><em>Narrative:</em> ** Thames Vale Services Ltd, a professional services firm with $1.85 million in revenue, is seeking a property and business interruption (BI) renewal with a requested Total Insured Value (TIV) of $2 million. Based on the provided information, a policy with a premium of approximately $40,000 (2% of $2,000,000) is recommended. The company's SIC code (62xx) indicates a typical office-based operation, presenting moderate risks requiring careful coverage selection.
 
 **</p>
         <p><strong>Signals:</strong> **
-*   Stable Revenue ($1.85M): Indicates a reasonably consistent business operation.
-*   Established Business (SIC 62xx): This industry segment is generally well-understood and predictable.
-*   Renewal Application: Suggests a prior relationship with the insurer, indicating potentially favorable terms.
-*   Requested TiV of $2M: Provides a solid starting point for risk assessment.
+*   Established Revenue Stream: $1.85M annual revenue indicates a stable business.
+*   Renewal Request:  The application is a standard renewal, suggesting a history with the insurer and potentially favorable terms.
+*   Broker Involvement: The broker’s request for $2M TIV suggests a reasonable valuation from their perspective.
 
 **</p></div>
     </details>
@@ -1056,14 +1055,14 @@ www.aon.com</p></div></div>
             <tr><th>premium</th><td>$40,000</td></tr>
             <tr><th>industry</th><td>Professional, scientific and technical services (SIC 62xx)</td></tr>
             <tr><th>confidence</th><td>0.95</td></tr>
-            <tr><th>justification</th><td>Standard policy for a professional services firm with a revenue of $1.85 million, using a 2% premium based on the requested TiV and capped at $40,000.</td></tr>
+            <tr><th>justification</th><td>Renewal of a stable professional services firm with $1.85M revenue, aligning with broker's requested TIV and utilizing a standard 2% premium based on the TIV.</td></tr>
         </table>
-        <p><em>Evidence hash (prefix):</em> <code>f6665a0d11b7faf9…</code></p>
+        <p><em>Evidence hash (prefix):</em> <code>cd11d77c184f3888…</code></p>
         <h4 style="margin-top:1rem;color:#94a3b8;font-size:0.95rem;">PolicyProposal JSON (PCI intent_payload)</h4>
         <p class="meta dir-proposal-note"><strong>DIR / PCI:</strong> <code>PolicyProposal</code> is the agent output serialized into the PCI <code>intent_payload</code> (JSON). Fields <code>total_insured_value</code>, <code>premium</code>, and <code>industry</code> are the binding subset used to compute <code>Evidence_Hash</code>; <code>justification</code> and <code>confidence</code> carry textual reasoning and self-assessed certainty for audit and UI (DIR-minified &sect;3.9: confidence is not authority) and are omitted from the hash input in this sample.</p><pre class="policy-proposal-json"><code>{
   &quot;confidence&quot;: 0.95,
   &quot;industry&quot;: &quot;Professional, scientific and technical services (SIC 62xx)&quot;,
-  &quot;justification&quot;: &quot;Standard policy for a professional services firm with a revenue of $1.85 million, using a 2% premium based on the requested TiV and capped at $40,000.&quot;,
+  &quot;justification&quot;: &quot;Renewal of a stable professional services firm with $1.85M revenue, aligning with broker's requested TIV and utilizing a standard 2% premium based on the TIV.&quot;,
   &quot;premium&quot;: 40000.0,
   &quot;total_insured_value&quot;: 2000000.0
 }</code></pre></div>

@@ -29,16 +29,16 @@ Each markdown fixture is one **DecisionFlow** with its own **DFID**, from ingest
 
 Structured JSON log lines use `dfid`, `event`, `timestamp` (DIR-minified LG-2). Audit DB default: `data/underwriting_audit.sqlite`.
 
-### London Market fixtures (included)
+### London Market–style fixtures (included, **fictional** names & URLs)
 
 | File (under `emails/`) | What it exercises | Typical final status | `reason_code` |
 |------------------------|-------------------|----------------------|---------------|
-| `(EXT) Thames Vale Services Ltd - Standard Renewal.md` | TiV under `max_tiv`, UK-only wording | **BOUND** | `POLICY_BOUND` |
-| `(EXT) Meridian Cold Chain Ltd - High Limit Facility.md` | TiV far above `max_tiv`, allowed geographies | **ESCALATED** | `AUTHORITY_CEILING` |
-| `(EXT) Orbis Trading FZE - MENA Property Enquiry.md` | Syria/Damascus in extraction + TiV above `max_tiv` | **REJECTED** | `CONTRACT_VIOLATION` (combined message) |
-| `(EXT) Northbridge Retail Co - Renewal Broker Notes.md` | Misleading “UK-only” note but Syria in extraction + TiV above `max_tiv` | **REJECTED** | `CONTRACT_VIOLATION` |
+| `(EXT) Beaconmere Advisory Ltd - Standard Renewal.md` | TiV under `max_tiv`, UK-only wording | **BOUND** | `POLICY_BOUND` |
+| `(EXT) Cryowest Distribution Ltd - High Limit Facility.md` | TiV far above `max_tiv`, allowed geographies | **ESCALATED** | `AUTHORITY_CEILING` |
+| `(EXT) Nexora Commodities FZE - MENA Property Enquiry.md` | Syria/Damascus in extraction + TiV above `max_tiv` | **REJECTED** | `CONTRACT_VIOLATION` (combined message) |
+| `(EXT) Crimson Lane Retail Ltd - Renewal Broker Notes.md` | Misleading “UK-only” note but Syria in extraction + TiV above `max_tiv` | **REJECTED** | `CONTRACT_VIOLATION` |
 
-*Exact LLM wording can vary with a real model; with **MockLLM** the outcomes above are stable.*
+*Exact LLM wording can vary with a real model; with **MockLLM** the outcomes above are stable. Fixtures are processed in **alphabetical** order by filename.*
 
 ---
 
@@ -301,7 +301,7 @@ The browser opens the generated HTML report automatically.
 Digital Underwriter - Email pipeline (Topology C + mock bind)
 ======================================================================
 
-[Email] (EXT) Thames Vale Services Ltd - Standard Renewal.md
+[Email] (EXT) Beaconmere Advisory Ltd - Standard Renewal.md
   DFID: ...
     -> ... -> BIND_SUCCEEDED: CLOSED - ...
   Final: BOUND (POLICY_BOUND)

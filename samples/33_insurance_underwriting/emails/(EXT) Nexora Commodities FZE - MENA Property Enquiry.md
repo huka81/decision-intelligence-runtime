@@ -1,18 +1,6 @@
-
-| Field | Detail |
-| --- | --- |
-| Subject | (EXT) Orbis Trading FZE — Property / Stock Throughput (MENA) |
-| From | Oliver Pembroke <O.Pembroke@miller-insurance.com> |
-| To | Digital Underwriting Inbox <uw.inbox@example-mga.co.uk> |
-| Date | Mon, 27 Jan 2025 15:03:41 +0000 |
-| Original file | /inbound/2025/01/27/orbis_trading_fze.msg |
-| Attachment list | ['Orbis_SoV_MENA.xlsx', 'Orbis_Company_Profile.pdf'] |
-
-------------------
-
 Team,
 
-We act for **Orbis Trading FZE** (general commodities trading). The insured wishes to incept a **Property and Stock** programme covering their **principal warehouse and consolidation point in Damascus, Syrian Arab Republic**, together with **inland transit** to affiliated buyers in the region.
+We act for **Nexora Commodities FZE** (general commodities trading). The insured wishes to incept a **Property and Stock** programme covering their **principal warehouse and consolidation point in Damascus, Syrian Arab Republic**, together with **inland transit** to affiliated buyers in the region.
 
 Please note the insured's **core stock** includes industrial components sourced from **multiple jurisdictions**; they have asked that the slip **explicitly not exclude** losses arising from **terrorism, political violence, or civil commotion** in the **declared territory**, on the basis that such cover is **essential to their banking covenants**.
 
@@ -20,7 +8,7 @@ We enclose the schedule of values and corporate profile. **Lead terms** requeste
 
 | Field | PROPOSED TERMS | REMARKS |
 | --- | --- | --- |
-| Original Insured | Orbis Trading FZE (Dubai, UAE — operations as described) | New business |
+| Original Insured | Nexora Commodities FZE (Dubai, UAE — operations as described) | New business |
 | Cover / Type | Property (stock and contents) — all risks; inland transit as per ICC(A) style (to agree) | " |
 | Wording / Conditions | **Full terrorism and political violence cover** for **Syrian Arab Republic** as principal location; **no territorial carve-out** for government-designated or sanctions-linked jurisdictions requested by insured | " |
 | Law & Jurisdiction | Dubai International Financial Centre (DIFC) — subject to agreement | " |
@@ -38,7 +26,7 @@ We enclose the schedule of values and corporate profile. **Lead terms** requeste
 
 Kind regards,
 
-**Oliver Pembroke**  
+**Theo Marin**  
 Broker — Specialty Property  
-Miller Insurance Services LLP  
-www.miller-insurance.com
+Sterling Gate Underwriting Ltd  
+https://www.sterling-gate.example

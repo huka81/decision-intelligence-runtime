@@ -1,18 +1,6 @@
-
-| Field | Detail |
-| --- | --- |
-| Subject | (EXT) Thames Vale Services Ltd — Property & BI Renewal 2025 |
-| From | James Whitmore <James.Whitmore@aon.co.uk> |
-| To | Digital Underwriting Inbox <uw.inbox@example-mga.co.uk> |
-| Date | Tue, 14 Jan 2025 09:12:33 +0000 |
-| Original file | /inbound/2025/01/14/thames_vale_renewal.msg |
-| Attachment list | ['Thames_Vale_SoV_2025.xlsx', 'Thames_Vale_Loss_Run.pdf', 'LMA5400_Property_Wording.pdf'] |
-
-------------------
-
 Dear Underwriting,
 
-Please find our renewal submission for **Thames Vale Services Ltd**, a UK-domiciled professional services firm (management consultancy and corporate training). All material is attached; we are seeking **lead terms** on a follow-form basis to expiry.
+Please find our renewal submission for **Beaconmere Advisory Ltd**, a UK-domiciled professional services firm (management consultancy and corporate training). All material is attached; we are seeking **lead terms** on a follow-form basis to expiry.
 
 We confirm the risk is **UK-only** (England & Wales operations), with no scheduled overseas locations. Loss experience remains **clean** — one weather-related BI claim in 2019, fully closed.
 
@@ -20,7 +8,7 @@ Kindly confirm **bindable line** at your earliest so we may complete the slip ah
 
 | Field | RENEWAL TERMS | EXPIRING |
 | --- | --- | --- |
-| Original Insured | Thames Vale Services Ltd | Thames Vale Services Ltd |
+| Original Insured | Beaconmere Advisory Ltd | Beaconmere Advisory Ltd |
 | Cover / Type | Property All Risks and Business Interruption — follow form to LMA5400 (as attached) | " |
 | Wording / Conditions | Standard London Market exclusions; no terrorism extension requested; UK territorial limit as per Schedule of Values | " |
 | Law & Jurisdiction | England and Wales | " |
@@ -38,7 +26,7 @@ Kindly confirm **bindable line** at your earliest so we may complete the slip ah
 
 Regards,
 
-**James Whitmore**  
+**Lucas Brenner**  
 Executive Director — Commercial Risk  
-Aon UK Limited  
-www.aon.com
+Coastal Prism Brokers LLP  
+https://www.coastalprism.example

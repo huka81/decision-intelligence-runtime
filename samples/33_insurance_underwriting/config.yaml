@@ -40,6 +40,6 @@ agents:
       Output structured format.
     contract:
       role: EXECUTOR
-      max_tiv: 2000000
+      max_tiv: 3000000
       prohibited_industries: ["Fireworks", "CryptoMining"]
       escalate_on_uncertainty: 0.65
