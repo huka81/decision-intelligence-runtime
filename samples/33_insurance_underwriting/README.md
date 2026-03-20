@@ -8,6 +8,8 @@
 
 **Configuration:** Underwriting rules, LLM, agent contract, and **`email_processing`** (gates, paths, FX stub) live in **`config.yaml`**, same convention as `samples/31_finance_trading` and `samples/32_fraud_gate`.
 
+**Bindable TiV ceiling (`max_tiv`):** `run.py` and `pipeline.py` build `UnderwritingContract` with `max_tiv` from **`agents[0].contract.max_tiv`**, then **`underwriting.max_tiv`**, then code default **`2_000_000`**. The committed sample uses **3,000,000** on the agent contract (see `config.yaml`).
+
 **What `run.py` does:** loads every matching `*.md` under `emails/`, runs the pipeline (audit SQLite + HTML report under `results/`), and opens the new report in the browser.
 
 ---
@@ -19,7 +21,7 @@ Each markdown fixture is one **DecisionFlow** with its own **DFID**, from ingest
 **Order of steps**
 
 1. **Ingest** — `email_fixture_ingest` loads the markdown and builds a coarse `ClientApplication` (subject, body, industry hints, revenue proxy from table TiV × FX). Broker **TiV for authority** is **not** taken from these table regexes; the kernel waits for LLM extraction (`requested_tiv_usd` is filled after extraction).
-2. **Pre-agent gates** — Only configurable **`injection_patterns`** on the raw email body (default config: empty).
+2. **Pre-agent gates** — Only configurable **`injection_patterns`** on the raw email body (default config: empty). The audit/timeline event **`KERNEL_GATES_PASSED`** means this step only; territory and `max_tiv` are **not** evaluated until after extraction (step 4).
 3. **Submission extraction (LLM)** — `BROKER_REQUESTED_TIV_USD` + `STATED_TERRITORIES`. With **MockLLM**, TiV is derived from the pipe-table row whose first cell is **Total Insurable Values** (`**Total: GBP …**` or a bold `**USD …**` amount in that row). Failure here ends as **`REJECTED` / `EXTRACTION_FAILED`**.
 4. **Post-extraction gates (deterministic)** — On **agent-extracted** territory text vs `prohibited_territories`, then **TiV vs `contract.max_tiv`**:
    - **Both** territory and authority fail → **`CONTRACT_VIOLATION`** (`REJECTED`).
@@ -35,8 +37,8 @@ Structured JSON log lines use `dfid`, `event`, `timestamp` (DIR-minified LG-2). 
 |------------------------|-------------------|----------------------|---------------|
 | `(EXT) Beaconmere Advisory Ltd - Standard Renewal.md` | TiV under `max_tiv`, UK-only wording | **BOUND** | `POLICY_BOUND` |
 | `(EXT) Cryowest Distribution Ltd - High Limit Facility.md` | TiV far above `max_tiv`, allowed geographies | **ESCALATED** | `AUTHORITY_CEILING` |
-| `(EXT) Nexora Commodities FZE - MENA Property Enquiry.md` | Syria/Damascus in extraction + TiV above `max_tiv` | **REJECTED** | `CONTRACT_VIOLATION` (combined message) |
-| `(EXT) Crimson Lane Retail Ltd - Renewal Broker Notes.md` | Misleading “UK-only” note but Syria in extraction + TiV above `max_tiv` | **REJECTED** | `CONTRACT_VIOLATION` |
+| `(EXT) Nexora Commodities FZE - MENA Property Enquiry.md` | Syria/Damascus in extraction + TiV above delegated `max_tiv` | **REJECTED** | `CONTRACT_VIOLATION` (combined message) |
+| `(EXT) Crimson Lane Retail Ltd - Renewal Broker Notes.md` | Misleading “UK-only” workflow note; **embedded prompt-injection** (MIME/TNEF-style junk) asking to bypass rules; factual schedule still shows **Damascus, Syria** + TiV above `max_tiv` | **REJECTED** | `CONTRACT_VIOLATION` |
 
 *Exact LLM wording can vary with a real model; with **MockLLM** the outcomes above are stable. Fixtures are processed in **alphabetical** order by filename.*
 
@@ -77,16 +79,24 @@ Each run appends DFID-tagged rows to SQLite, prints a per-email timeline to the 
 
 ## Configuration (config.yaml)
 
-All underwriting rules, LLM, agent, and **`email_processing`** live in **`config.yaml`**. The YAML block below is abbreviated; the committed file includes the full **`email_processing`** section documented next.
+All underwriting rules, LLM, agent, and **`email_processing`** live in **`config.yaml`**. The block below matches the sample layout (comments may differ slightly in the repo file).
 
 ```yaml
 underwriting:
-  max_tiv: 2000000
+  max_tiv: 2000000   # fallback if agent.contract.max_tiv omitted
   prohibited_industries: ["Fireworks", "CryptoMining"]
 
 llm_defaults:
   model: "gemma3:4b"
   base_url: "http://localhost:11434"
+
+email_processing:
+  emails_dir: "emails"
+  audit_db: "data/underwriting_audit.sqlite"
+  exclude_filename_substrings: ["HAILO"]
+  currency_fx_to_usd: { GBP: 1.0, USD: 1.0, EUR: 1.0 }
+  prohibited_territories: ["syrian arab republic", "syria", "damascus"]
+  injection_patterns: []   # optional pre-LLM substring scan; default empty
 
 agents:
   - agent_id: "underwriter_agent"
@@ -94,14 +104,12 @@ agents:
     created_by: "compliance@example.com"
     created_at: "2025-02-17T10:00:00Z"
     mission: |
-      You are an insurance underwriter. Analyze the client application...
+      You are an insurance underwriter...
     contract:
       role: EXECUTOR
-      max_tiv: 2000000
+      max_tiv: 3000000        # authoritative delegated ceiling in this sample
       prohibited_industries: ["Fireworks", "CryptoMining"]
       escalate_on_uncertainty: 0.65
-
-# email_processing: (see repo config.yaml — emails_dir, gates, audit_db, …)
 ```
 
 | Section | Purpose |
@@ -211,7 +219,7 @@ sequenceDiagram
 
 | Component | Purpose |
 |-----------|---------|
-| **AgentRegistry** | Stores the Underwriting Policy (Responsibility Contract): delegated max TiV $2M (`max_tiv`), prohibited industries: Fireworks, CryptoMining |
+| **AgentRegistry** | Stores the Underwriting Policy (Responsibility Contract): delegated **`max_tiv`** (from config; **3,000,000** in the committed sample), prohibited industries from contract |
 | **ContextStore** | Holds the Client Application state (business_type, revenue, industry) |
 | **DecisionLedger** | Append-only list storing only verified decisions |
 | **DecisionIntegrityModule (DIM)** | Proof Checker: recalculates Evidence Hash, rejects on mismatch (Zero Trust) |
@@ -312,14 +320,16 @@ Summary
 ======================================================================
   Ledger entries (verified only): 1
   ...
-  HTML report: .../results/simulation_report_2026-03-20_2017.html
+  HTML report: .../results/simulation_report_YYYY-MM-DD_HHMM.html
 ```
 
 ---
 
 ## Technical notes
 
+- **Imports:** `run.py` prepends the repo `src/` directory to `sys.path` so `utils.config_loader` and `dir` resolve when you run `python samples/33_insurance_underwriting/run.py` without an editable install; `pip install -e ".[samples]"` is still recommended.
 - **Real LLM:** Ollama + model from `llm_defaults` (e.g. Gemma). Set `USE_MOCK_LLM=1` for deterministic runs without Ollama.
+- **Env (see `run.py` docstring):** `USE_MOCK_LLM`, `UNDERWRITING_AUDIT_DB`, `LOG_LEVEL` (e.g. `DEBUG`).
 - **Zero API keys** when using local Ollama only.
 - **Reports:** Each run creates a **new** timestamped file under **`results/`**.
 
@@ -335,5 +345,5 @@ Summary
 | **Config** | `config.yaml`: `underwriting`, `llm_defaults`, `agents`, `email_processing` |
 | **Input** | Markdown emails under `emails/` + contract / gates from config |
 | **Output** | **BOUND** / **ESCALATED** / **REJECTED** with codes such as `POLICY_BOUND`, `AUTHORITY_CEILING`, `CONTRACT_VIOLATION`, `PROHIBITED_TERRITORY`, `EXTRACTION_FAILED`, or DIM strings (e.g. **TIV Exceeds Contract Max**, **Prohibited Industry**, **Evidence Invalid**) if the flow reaches DIM |
-| **Logic** | Ingest → optional injection gate → LLM extraction → territory / `max_tiv` gates → optional full ROA → DIM → ledger → mock bind |
+| **Logic** | `email_fixture_ingest` → optional pre-LLM `injection_patterns` scan → LLM extraction → post-extraction territory / `max_tiv` gates → optional full ROA → DIM → ledger → `policy_binding` mock bind |
 | **Goal** | Day Two prevention: unverified decisions do not reach the ledger or bind API |
