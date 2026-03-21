@@ -135,6 +135,7 @@ pip install -e .
 ```text
 decision-intelligence-runtime/
 ├── README.md
+├── FAQ.md                    # Frequently asked questions (architecture, adoption, compliance)
 ├── pyproject.toml            # pip install -e . installs dir + utils
 ├── requirements.txt          # Shared dependencies
 ├── src/
@@ -199,6 +200,8 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 - **[DIR Architecture](./docs/02-decision-runtime/DIR_Architectural_Pattern.md)** - Runtime components and invariants.
 - **[Topologies](./docs/03-topologies/DIR_Topologies.md)** - Operational modes (EOAM, SDS, DL+PCI).
 - **[Context as Code](./docs/08-conclusion/Context_as_Code.md)** - Treating documentation as a system prompt.
+- **[FAQ](./FAQ.md)** - Answers to common engineering questions about DIR/ROA: "Day Two" failure modes, Kernel vs User Space, comparison with orchestration frameworks, JIT state verification, idempotency, compliance (e.g. EU AI Act and Proof-Carrying Intents), and incremental adoption.
+
 
 ### Machine-optimized specification: DIR-minified.md
 

@@ -1,0 +1,38 @@
+---
+title: User Space vs Kernel Space - The Fragile Agent Loop
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
+flowchart LR
+    %% Define class styles following project standards
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef gapStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+    classDef sideEffect fill:#FFEBEE,stroke:#C62828,stroke-width:2px,color:#B71C1C,font-weight:bold;
+    classDef external fill:#FAFAFA,stroke:#9E9E9E,stroke-width:2px,color:#616161;
+
+    %% Nodes
+    Input(["`Input / Context`"]):::external --> Reasoning
+
+    %% Main Loop
+    subgraph AgentLoop ["`**The Fragile Agent Loop**`"]
+        direction TB
+        
+        Reasoning(["`**Probabilistic Reasoning**<br/>LLM: 'I think we should buy...'<br/>Non-Deterministic`"]):::userSpace
+        
+        TheGap{"`**THE GAP**<br/>Missing Validation<br/>Missing Governance`"}:::gapStyle
+        
+        Execution["`**Deterministic Execution**<br/>API: POST /trade/execute<br/>Irreversible Action`"]:::kernelSpace
+        
+        Reasoning ==>|Direct Control| TheGap
+        TheGap ==>|Unchecked Intent| Execution
+        Execution -.->|State Change / Error| Reasoning
+    end
+
+    %% Side Effects
+    Execution ==>|Side Effect| SideEffect((("`**Real World**<br/>**Impact**`"))):::sideEffect
+    
+    %% Style subgraph
+    style AgentLoop fill:#FAFAFA,stroke:#F57C00,stroke-width:3px

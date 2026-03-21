@@ -1,0 +1,56 @@
+---
+title: Decision Intelligence Runtime - High-Level Architecture
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
+flowchart TB
+    %% Professional color scheme with improved contrast
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+    classDef logStyle fill:#FFEBEE,stroke:#C62828,stroke-width:1px,color:#B71C1C;
+
+    subgraph User_Space ["`**USER SPACE**<br/>Probabilistic Reasoning`"]
+        Agent1(["`**Agent A**<br/>Strategist`"]):::userSpace
+        Agent2(["`**Agent B**<br/>Executor`"]):::userSpace
+        Agent3(["`**Agent C**<br/>Analyst`"]):::userSpace
+        
+        Agent1 -->|Proposes| Policies
+        Agent2 -->|Proposes| Policies
+        Agent3 -->|Proposes| Policies
+        
+        Policies["`**Policy Proposals**<br/>Claims, not Facts`"]:::userSpace
+    end
+
+    subgraph Kernel_Space ["`**KERNEL SPACE**<br/>Deterministic Runtime`"]
+        DIM{"`**Decision Integrity**<br/>**Module**<br/>Validation Gate`"}:::kernelSpace
+        ContextCompiler["`**Context Compiler**`"]:::kernelSpace
+        EscalationManager["`**Escalation Manager**`"]:::kernelSpace
+        ExecutionEngine["`**Execution Engine**<br/>Idempotent Side Effects`"]:::kernelSpace
+        RejectLog["`**Audit Log**`"]:::logStyle
+        ContextStore["`**Context Store**<br/>Session State & Memory`"]:::kernelSpace
+        
+        Policies ==>|Submit| DIM
+        DIM -.->|Reject/Expire| RejectLog
+        DIM ==>|Accept| ExecutionEngine
+        DIM -.->|Ambiguous| EscalationManager
+        ContextStore --> ContextCompiler
+        ContextCompiler -->|Working Context| Agent1
+    end
+
+    subgraph Infrastructure_Space ["`**INFRASTRUCTURE**<br/>External Systems`"]
+        ExtAPI1["`**API**`"]:::infraSpace
+        ExtAPI2["`**Database/ERP**`"]:::infraSpace
+        ExtAPI3["`**Notification Service**`"]:::infraSpace
+        
+        ExecutionEngine -->|Execute| ExtAPI1
+        ExecutionEngine -->|Execute| ExtAPI2
+        ExecutionEngine -->|Execute| ExtAPI3
+    end
+
+    %% Clean subgraph styling
+    style User_Space fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px
+    style Kernel_Space fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style Infrastructure_Space fill:#FAFAFA,stroke:#F57C00,stroke-width:3px
