@@ -42,9 +42,9 @@ AI agents fail in production not because models are wrong, but because the archi
 
 These failures are **not model failures**. They are **architecture failures**. The model reasoned correctly; the system lacked the infrastructure to execute safely.
 
-### 1.2 AIvestor  -  Documented Production Failure Cases
+### 1.2 Documented Production Failure Cases
 
-The following failure cases were observed in **AIvestor**, an autonomous multi-agent trading system operating against live financial markets. Each failure traced back not to model limitations but to missing architectural constraints.
+The following failure cases were observed in an autonomous multi-agent trading system operating against live financial markets. Each failure traced back not to model limitations but to missing architectural constraints.
 
 **Failure Case 1  -  Hallucination Loops (feedback poisoning)**
 
@@ -1270,7 +1270,7 @@ Escalation is not synonymous with human approval. It is the controlled routing o
 2. `StrategyAgent` (broader context, higher authority) may override, modify, or reject
 3. Only if `StrategyAgent` also cannot resolve → Human-in-the-Loop alert
 
-**Escalation Triggers (AIvestor reference):**
+**Escalation Triggers (Financial Trading Example):**
 - Agent proposes action exceeding authority limit (e.g., trade > $1,000)
 - Agent confidence < 0.7
 - Broker API 5xx error > 3 times
@@ -1408,7 +1408,7 @@ Think about how cities move people and goods. Roads, airspace, and railways all 
 > **"Smarter drivers don't eliminate traffic jams. Better road topology does."**
 > The same applies to AI systems: smarter agents won't fix architectural mismatches. The topology must match the decision type.
 
-In AIvestor, all three topologies run simultaneously:
+In a comprehensive deployment, all three topologies run simultaneously:
 - **EOAM** for daily portfolio rebalancing  -  strategic decisions requiring negotiation between Risk, Strategy, and Sentiment agents
 - **SDS** for momentum scalping  -  tactical decisions where speed and procedural precision override deliberation  
 - **DL+PCI** for regulatory audit trails  -  compliance decisions where absolute accountability trumps speed and flexibility
@@ -1577,7 +1577,7 @@ class TacticalTrader(ResponsibleAgent):
         EventBus.publish(proposal)
 ```
 
-**Holistic EOAM Architecture  -  AIvestor Reference Implementation:**
+**Holistic EOAM Architecture  -  Financial Reference Implementation:**
 
 ```mermaid
 ---
@@ -1585,7 +1585,7 @@ config:
   layout: dagre
   theme: neutral
   look: classic
-title: Holistic EOAM Architecture (AIvestor Reference)
+title: Holistic EOAM Architecture (Financial Reference)
 ---
 flowchart LR
  subgraph Data_Sources["**Data Sources**"]
