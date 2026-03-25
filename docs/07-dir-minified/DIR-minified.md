@@ -823,28 +823,157 @@ In practice, this turns a postmortem from "the agent traded" into "this exact in
 | 5 | **Validation Outcome** | Accept/Reject with reason code |
 | 6 | **Execution Result** | Final side effect (transaction ID, API response) |
 
-**Structured Decision Telemetry  -  the AIvestor SQL pattern:**
+**Structured Decision Telemetry  -  The Audit Reconstruction Pattern:**
 
-In a production trading simulation, each position generated a DecisionFlow queryable as a first-class system artifact:
+Because every layer binds to the same DFID, reconstructing an agent's reasoning and execution lifecycle becomes a deterministic SQL join across the architectural boundary, rather than grepping text logs:
 
 ```sql
-SELECT position_id
-     , instrument
-     , entry_price
-     , initial_exposure
-     , news_full_headline
-     , news_score
-     , news_justification     -- the agent's Explain field
-     , decisions_timeline      -- all child DFIDs in sequence
-     , close_price
-     , close_reason
-     , pnl_percent
-     , pnl_usd
-  FROM position_audit_agg_v
- WHERE simulation_id = 'sim_2026-02-24T11-20-18-516762+00-00_0dc07774';
+SELECT f.dfid
+     , f.agent_id
+     , f.trigger_event
+     , c.snapshot_id     AS context_hash
+     , p.justification   AS agent_reasoning
+     , p.policy_kind     AS proposed_action
+     , p.confidence
+     , v.outcome         AS validation_result
+     , v.reason_code     AS rejection_reason
+     , e.idempotency_key
+     , e.status          AS execution_status
+  FROM decision_flows f
+  LEFT JOIN context_snapshots c
+    ON f.dfid = c.dfid
+  LEFT JOIN policy_proposals p
+    ON f.dfid = p.dfid
+  LEFT JOIN dim_validations v
+    ON f.dfid = v.dfid
+  LEFT JOIN execution_log e
+    ON f.dfid = e.dfid
+ WHERE f.dfid = '550e8400-e29b-41d4-a716-446655440000';
 ```
 
 This is fundamentally different from prompt logging. The agent's reasoning becomes **one field among many**  -  not the system of record. The system of record is the validated decision and its deterministic execution boundary.
+
+**DFID Record Schema — Persistence Tables:**
+
+The SQL query above joins five tables. `PolicyProposal` (sec 3.2) and `ContextSnapshot` (sec 3.3) are defined in their respective sections — implementations MUST use those canonical definitions. The three tables below are the Runtime-owned persistence records not defined elsewhere:
+
+```python
+import uuid
+from datetime import datetime
+from typing import Optional, Literal
+from pydantic import BaseModel, Field
+
+FlowState  = Literal["CREATED", "ACTIVE", "VALIDATING", "ACCEPTED",
+                      "EXECUTING", "CLOSED", "ABORTED"]
+DIMOutcome = Literal["ACCEPTED", "REJECTED"]
+ExecStatus = Literal["PENDING", "SUCCESS", "FAILED", "DIRTY"]
+
+class DecisionFlow(BaseModel):
+    """Master correlation record — created by Runtime at trigger time."""
+    dfid:          str       = Field(default_factory=lambda: str(uuid.uuid4()))
+    agent_id:      str
+    trigger_event: str
+    state:         FlowState = "CREATED"
+    parent_dfid:   Optional[str] = None   # Hierarchical / Saga pattern (sec 4.2)
+    created_at:    datetime  = Field(default_factory=datetime.utcnow)
+
+class DIMValidation(BaseModel):
+    """Immutable record of each DIM evaluation — written before outcome is applied."""
+    dfid:           str
+    outcome:        DIMOutcome
+    gate_reached:   int               # 1–5: last gate evaluated before ACCEPT or REJECT
+    reason_code:    Optional[str]     # SCHEMA_INVALID | RBAC_DENIED | STALE_CONTEXT
+                                      # RESOURCE_CONTENTION | MISSION_DISSONANCE
+    attempt_number: int               # Intent Retry Governor — abort at MAX_INTENT_RETRIES
+    evaluated_at:   datetime
+
+class ExecutionLog(BaseModel):
+    """Side-effect record — PENDING written before API call; result written after."""
+    dfid:             str
+    idempotency_key:  str             # SHA256(dfid + step_id + canonical_params) — sec 4.5
+    step_id:          str
+    status:           ExecStatus      # DIRTY = partial Saga failure → triggers Compensation
+    external_receipt: Optional[str]   # Tx ID / API acknowledgment from external system
+    executed_at:      Optional[datetime]
+```
+
+**DFID Write Path — Runtime Propagation Pattern:**
+
+The SQL above is the read path (audit reconstruction). The following is the write path — how the Runtime stamps each artifact with the DFID as a decision advances through the state machine. Each `db.write` / `db.update` call corresponds to a state transition in sec 4.3. All writes are Kernel Space operations; the agent's only output is a `PolicyProposal`:
+
+```python
+# KERNEL SPACE — Runtime is the sole writer. Agent boundary is explicit below.
+
+def handle_trigger(trigger_event: str, agent_id: str) -> str:
+
+    # ── CREATED ──────────────────────────────────────────────────────────────
+    dfid = str(uuid.uuid4())
+    db.write(DecisionFlow(dfid=dfid, agent_id=agent_id,
+                          trigger_event=trigger_event, state="CREATED"))
+
+    # ── ACTIVE: Context Compilation ──────────────────────────────────────────
+    # snapshot_id binds the exact data the agent will see — required for
+    # DIM Gate 3 (STALE_CONTEXT) and decision replayability.
+    ctx = compile_working_context(agent_id=agent_id, dfid=dfid)
+    db.write(ContextSnapshot(dfid=dfid, snapshot_id=ctx["snapshot_id"],
+                              context_schema_version=ctx["schema_version"]))
+    db.update(DecisionFlow, dfid=dfid, state="ACTIVE")
+
+    # ═══════════════ USER SPACE BOUNDARY ════════════════════════════════════
+    # Agent receives context (including dfid). Its only available action is
+    # emit_policy_proposal() — it holds no API keys, no DB credentials.
+    proposal: PolicyProposal = agent_registry.invoke(agent_id, context=ctx, dfid=dfid)
+    # ════════════════════════════════════════════════════════════════════════
+
+    # ── VALIDATING: DIM Pipeline ─────────────────────────────────────────────
+    # Proposal is persisted before DIM evaluates — the record is immutable
+    # regardless of validation outcome.
+    db.write(proposal)
+    db.update(DecisionFlow, dfid=dfid, state="VALIDATING")
+
+    dim_result = dim.evaluate(proposal)
+    db.write(DIMValidation(dfid=dfid, **dim_result))
+
+    if dim_result.outcome == "REJECTED":
+        if dim_result.attempt_number >= MAX_INTENT_RETRIES:
+            db.update(DecisionFlow, dfid=dfid, state="ABORTED",
+                      tag="REASONING_EXHAUSTION")
+        return dfid   # ValidationFeedback returned to agent; retry allowed within limit
+
+    # ── ACCEPTED → JIT State Check ───────────────────────────────────────────
+    # Re-verifies live state immediately before the API call (Anti-TOCTOU, sec 4.5).
+    # Decouples slow LLM reasoning time from fast execution time (Invariant 3).
+    db.update(DecisionFlow, dfid=dfid, state="ACCEPTED")
+    if not jit_verifier.within_envelope(proposal):
+        db.update(DecisionFlow, dfid=dfid, state="ABORTED",
+                  tag="STATE_DRIFT_DETECTED")
+        return dfid
+
+    # ── EXECUTING ────────────────────────────────────────────────────────────
+    # Idempotency key is deterministic: retries of the same intent resolve to
+    # the same side effect. attempt_number is logged but NOT part of the key.
+    idem_key = sha256(f"{dfid}:{proposal.step_id}:{canonical(proposal.params)}")
+    db.write(ExecutionLog(dfid=dfid, idempotency_key=idem_key,
+                          step_id=proposal.step_id, status="PENDING"))
+    db.update(DecisionFlow, dfid=dfid, state="EXECUTING")
+
+    receipt = execution_engine.execute(proposal, idempotency_key=idem_key)
+
+    # ── CLOSED / ABORTED ─────────────────────────────────────────────────────
+    if receipt.success:
+        db.update(ExecutionLog, dfid=dfid, status="SUCCESS",
+                  external_receipt=receipt.tx_id)
+        db.update(DecisionFlow, dfid=dfid, state="CLOSED")
+    else:
+        # DIRTY signals a partial Saga failure — triggers Compensation workflow.
+        db.update(ExecutionLog, dfid=dfid,
+                  status="DIRTY" if receipt.partial else "FAILED")
+        db.update(DecisionFlow, dfid=dfid, state="ABORTED")
+
+    return dfid
+```
+
+> Saga compensation (`DIRTY` state), Human-in-the-Loop escalation (`ESCALATED` state), Context Compilation internals, and Idempotency retry logic are covered in sections 4.3, 4.4, 7, and 9 respectively.
 
 **Hierarchical DFIDs (Parent-Child / Saga Pattern):**
 - **Parent Flow:** High-level intent (Strategy: "Manage AAPL Swing Trade")
