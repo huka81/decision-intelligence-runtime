@@ -51,7 +51,7 @@ The following failure cases were observed in an autonomous multi-agent trading s
 The agent attempted to sell a position it no longer held. When the broker API returned an error, the model interpreted this as a signal to "try harder." Without a retry governor, it looped  -  each iteration generating new reasoning and consuming tokens. After three retries, it concluded that it should *buy* the position first in order to then sell it: a complete inversion of the original strategy, hallucinated through feedback poisoning.
 
 - **Root cause:** No retry governor; unbounded feedback cycles
-- **Mechanism required:** Intent Retry Governor with explicit `REASONING_EXHAUSTION` terminal state and a hard maximum (~3 retries before escalation to `ESCALATED`)
+- **Mechanism required:** Intent Retry Governor with explicit `REASONING_EXHAUSTION` terminal tag and a hard maximum (~3 retries before the flow transitions to `ABORTED`)
 
 **Failure Case 2  -  State Drift (TOCTOU)**
 
@@ -354,7 +354,8 @@ class PolicyProposal(BaseModel):
     agent_id: str
     policy_kind: str
     params: Dict[str, Any] = Field(default_factory=dict)
-    context_ref: Optional[str] = None
+    context_ref: Optional[str] = None        # ContextSnapshot.snapshot_id (DIM Gate 3)
+    mission_context_hash: Optional[str] = None  # Hash of mission/constraints section (DIM Gate 5)
     execution_constraints: Dict[str, Any] = Field(default_factory=dict)
     valid_until: Optional[datetime] = None
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
@@ -733,7 +734,7 @@ DIR is the privileged kernel that turns tentative Policy Proposals into controll
 | Pattern | Source | How DIR applies it |
 |---------|--------|--------------------|
 | **Zero Trust Architecture (ZTA)** | NIST SP 800-207 | No agent output is implicitly trusted. Every Policy Proposal traverses a Policy Enforcement Point (DIM) with explicit authorization rules. *Training alignment does not constitute cryptographic provenance.* |
-| **CQRS** (Command Query Responsibility Segregation) | Fowler, Young | Agents query Context Store during reasoning (read-only). Kernel exclusively owns write authority. Clean boundary between intent formation and state modification. |
+| **CQRS** (Command Query Responsibility Segregation) | Fowler, Young | Agents query Context Store and system state during reasoning (read-only with respect to business state and execution records). Agents may write to their own Session/Memory layer. Kernel exclusively owns write authority over DecisionFlow, Execution, and Validation records. Clean boundary between intent formation and state modification. |
 | **Saga Pattern** | Garcia-Molina & Salem (1987) | Multi-step workflows tracked via DFID parent-child hierarchy. Partial failures trigger pre-registered compensating transactions  -  not agent re-reasoning. |
 | **OS Kernel/User Space** | Modern OS design | Privilege separation: agents cannot directly mutate authoritative state or hold execution credentials. The Runtime is the fixed, trusted gatekeeper. |
 
@@ -889,33 +890,39 @@ def handle_trigger(trigger_event: str, agent_id: str) -> str:
     db.write(proposal)
     db.update(DecisionFlow, dfid=dfid, state="VALIDATING")
 
-    dim_result = dim.evaluate(proposal)
-    db.write(DIMValidation(dfid=dfid, **dim_result))
-
-    if dim_result.outcome == "REJECTED":
-        if dim_result.attempt_number >= MAX_INTENT_RETRIES:
-            db.update(DecisionFlow, dfid=dfid, state="ABORTED",
-                      tag="REASONING_EXHAUSTION")
+    try:
+        # DIM is the exclusive factory of ExecutionIntent (sec 3.3a).
+        # ValidationRejected is raised on any gate failure; intent is never produced.
+        intent: ExecutionIntent = dim.validate(proposal)
+    except ReasoningExhausted:
+        db.write(DIMValidation(dfid=dfid, outcome="REJECTED",
+                               reason_code="REASONING_EXHAUSTION", ...))
+        db.update(DecisionFlow, dfid=dfid, state="ABORTED")
+        return dfid
+    except ValidationRejected as e:
+        db.write(DIMValidation(dfid=dfid, outcome="REJECTED",
+                               reason_code=e.reason_code, ...))
         return dfid   # ValidationFeedback returned to agent; retry allowed within limit
+
+    db.write(DIMValidation(dfid=dfid, outcome="ACCEPTED", ...))
 
     # ── ACCEPTED → JIT State Check ───────────────────────────────────────────
     # Re-verifies live state immediately before the API call (Anti-TOCTOU, sec 4.5).
-    # Decouples slow LLM reasoning time from fast execution time (Invariant 3).
+    # Gate 3 checked exact hash at VALIDATING; JIT checks drift tolerance here.
     db.update(DecisionFlow, dfid=dfid, state="ACCEPTED")
-    if not jit_verifier.within_envelope(proposal):
+    if not jit_verifier.within_envelope(intent):
         db.update(DecisionFlow, dfid=dfid, state="ABORTED",
                   tag="STATE_DRIFT_DETECTED")
         return dfid
 
     # ── EXECUTING ────────────────────────────────────────────────────────────
-    # Idempotency key is deterministic: retries of the same intent resolve to
-    # the same side effect. attempt_number is logged but NOT part of the key.
-    idem_key = sha256(f"{dfid}:{proposal.step_id}:{canonical(proposal.params)}")
-    db.write(ExecutionLog(dfid=dfid, idempotency_key=idem_key,
-                          step_id=proposal.step_id, status="PENDING"))
+    # ExecutionIntent carries idempotency_key computed by DIM (sec 3.3a).
+    # attempt_number is logged for observability but is NOT part of the key.
+    db.write(ExecutionLog(dfid=dfid, idempotency_key=intent.idempotency_key,
+                          step_id=intent.policy_kind, status="PENDING"))
     db.update(DecisionFlow, dfid=dfid, state="EXECUTING")
 
-    receipt = execution_engine.execute(proposal, idempotency_key=idem_key)
+    receipt = execution_engine.execute(intent)   # ExecutionIntent — not PolicyProposal
 
     # ── CLOSED / ABORTED ─────────────────────────────────────────────────────
     if receipt.success:
@@ -931,7 +938,7 @@ def handle_trigger(trigger_event: str, agent_id: str) -> str:
     return dfid
 ```
 
-> Saga compensation (`DIRTY` state), Human-in-the-Loop escalation (`ESCALATED` state), Context Compilation internals, and Idempotency retry logic are covered in sections 4.3, 4.4, 7, and 9 respectively.
+> Saga compensation (`DIRTY` state) — sec 4.8. Human-in-the-Loop escalation (`ESCALATED` state) — sec 4.7. Context Compilation internals — sec 3.4. Idempotency key derivation — sec 4.5.
 
 **Hierarchical DFIDs (Parent-Child / Saga Pattern):**
 - **Parent Flow:** High-level intent (Strategy: "Manage AAPL Swing Trade")
@@ -1012,7 +1019,8 @@ stateDiagram-v2
     Escalated --> Accepted : Human Override
     Escalated --> Aborted : Human Reject
 
-    Accepted --> Executing : Create Execution Intent
+    Accepted --> Executing : JIT PASSED
+    Accepted --> Aborted   : JIT STATE_DRIFT_DETECTED
     Executing --> Closed : Success
     Executing --> Aborted : Runtime Error
 
@@ -1034,7 +1042,8 @@ stateDiagram-v2
 - `CREATED` → `ACTIVE`: Context compilation begins
 - `ACTIVE` → `VALIDATING`: Agent emits a Policy Proposal
 - `VALIDATING` → `ACCEPTED/ABORTED/ESCALATED`: DIM validation result
-- `ACCEPTED` → `EXECUTING`: Runtime creates Execution Intent
+- `ACCEPTED` → `EXECUTING`: JIT verification passes; Runtime creates Execution Intent
+- `ACCEPTED` → `ABORTED`: JIT detects state drift (`STATE_DRIFT_DETECTED`)
 - `EXECUTING` → `CLOSED/ABORTED`: External system call result
 - `ABORTED` with tag `DIRTY`: Multi-step flow failed mid-execution; triggers Saga Compensation
 
@@ -1081,7 +1090,7 @@ flowchart LR
 |------|---------------|----------------|
 | **1  -  Schema & Integrity** | JSON matches versioned Pydantic schema; required fields present; no extra fields | `SCHEMA_INVALID` |
 | **2  -  Authority (RBAC)** | Permissions resolved from Agent Registry; agent authorized for this policy kind and instrument | `RBAC_DENIED` |
-| **3  -  State Consistency** | `context_ref` / `context_snapshot_id` in proposal matches live state hash | `STALE_CONTEXT` |
+| **3  -  State Consistency** | `context_ref` (`context_snapshot_id`) in proposal matches live state hash | `STALE_CONTEXT` |
 | **4  -  Resource Locks** | Temporary lock/reservation on required assets placed; prevents horizontal contention between concurrent agents | `RESOURCE_CONTENTION` / `INSUFFICIENT_LIQUIDITY` |
 | **5  -  Mission Invariant** | `mission_context_hash` in proposal matches agent's registered mission contract | `MISSION_DISSONANCE` |
 
@@ -1091,6 +1100,7 @@ flowchart LR
 
 **Semantic Alignment Check (Optional  -  Soft Guard):**
 Detects "proxy gaming": agent narrative says "I am reducing risk" while policy says `{"action": "BUY_LEVERAGE"}`.
+This check may invoke a lightweight LLM call — it is intentionally placed **outside the deterministic DIM gates** (Gates 1–4) and runs in User Space context. It does not produce `ExecutionIntent`; its only outputs are an audit flag or an abort signal.
 
 - **Default (Audit Mode):** `SEMANTIC_MISMATCH` flags flow as `NEEDS_REVIEW` and triggers async alert. Does NOT block execution.
 - **Strict Mode (`strict_semantic_blocking: true`):** `SEMANTIC_MISMATCH` triggers immediate `ABORT`. **Violates Invariant 1 (Determinism).** Use only in low-throughput, high-risk environments.
@@ -1101,8 +1111,10 @@ Detects "proxy gaming": agent narrative says "I am reducing risk" while policy s
 
 LLM latency makes TOCTOU (Time-of-Check to Time-of-Use) races inevitable. The Runtime mitigates this with Just-In-Time State Verification executed **immediately before** the external API call.
 
+> **Gate 3 vs. JIT:** DIM Gate 3 (`STALE_CONTEXT`) verifies that the `context_ref` hash in the proposal matches the stored `ContextSnapshot` — a cryptographic identity check at validation time. JIT runs later, at execution time, and checks that **live world state** is still within a numerical drift envelope relative to that snapshot. They are complementary: Gate 3 ensures the agent saw the right data; JIT ensures the data has not moved too far by the time the order hits the wire.
+
 **Mechanism:**
-- Bind each policy to a `context_snapshot_id` and explicit `drift_envelope` (e.g., 50 bps = 0.5%)
+- Bind each policy to a `context_ref` (`context_snapshot_id`) and explicit `drift_envelope` (e.g., 50 bps = 0.5%)
 - Re-verify that live state is within the envelope relative to snapshot
 - If `current_state_age > hard_threshold` (e.g., 500ms) OR drift exceeds bounds → abort with `STATE_DRIFT_DETECTED`
 - Agent must re-reason against fresh context
@@ -1234,7 +1246,7 @@ Escalation is not synonymous with human approval. It is the controlled routing o
 - Broker API 5xx error > 3 times
 - Silence Watchdog: no decision in >30 minutes during active period
 
-**Escalation Budget (Rate Limiting):** Each agent has a token bucket (e.g., 3 escalations/hour). If budget exhausted → agent auto-demoted to `PASSIVE` (read-only); DecisionFlow silently aborted. Prevents "Alert Fatigue" and "Escalation DDoS."
+**Escalation Budget (Rate Limiting):** Each agent has a token bucket (e.g., 3 escalations/hour). If budget exhausted → agent auto-demoted to `SUSPENDED` (read-only); DecisionFlow silently aborted. Prevents "Alert Fatigue" and "Escalation DDoS."
 
 **Computation Budget (Token Cap per DFID):** Each DecisionFlow has a hard token limit (e.g., $0.50 or 10k tokens). If exceeded before a Policy Proposal is emitted → `ABORTED` (Timeout and Reject). Prevents "financial DDoS" from looping models.
 
@@ -2095,7 +2107,7 @@ class AuthorizationDenied(ValidationRejected):
 
 
 class StaleContextError(ValidationRejected):
-    """Gate 3: context_snapshot_id in proposal does not match live state."""
+    """Gate 3: context_ref (context_snapshot_id) in proposal does not match live state."""
 
 
 class ResourceContention(ValidationRejected):
@@ -2745,7 +2757,7 @@ When an LLM generates a new file, apply these rules in order:
 | **PCI (Proof-Carrying Intent)** | Topology C artifact containing: intent payload + context_ref + evidence_hash + roa_signature. Safety is a property of the artifact, not the process. |
 | **Policy** | Structured JSON object emitted by an ROA agent representing proposed course of action; subject to DIM validation; treated as a Claim until validated |
 | **Policy Enforcement Point (PEP)** | Security architectural term for a gatekeeper intercepting requests and validating them against policies. DIM is the PEP in DIR. |
-| **Policy Proposal** | Complete output artifact of the ROA decision lifecycle: `{dfid, agent_id, explain, policy, confidence, context_snapshot_id}` |
+| **Policy Proposal** | Complete output artifact of the ROA decision lifecycle: `{dfid, agent_id, policy_kind, params, context_ref, confidence, justification}` |
 | **Priority-Based Preemption (EOAM)** | DIM selects winning proposal using Agent Registry Priority Matrix (e.g., Risk > Strategy)  -  NOT a time-based race |
 | **Proof Checker (DL+PCI)** | DIM acting as minimalist verifier in Topology C: does not reason, only validates cryptographic proofs. No LLM. No network I/O during verification. |
 | **REASONING_EXHAUSTION** | DecisionFlow abort state triggered when an agent exhausts its `Maximum Intent Retries` (typically 3) within a single DFID |
