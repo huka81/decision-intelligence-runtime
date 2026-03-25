@@ -1,4 +1,4 @@
-﻿<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-03-06 | Last updated: 2026-03-06 </sup>
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-03-06 | Last updated: 2026-03-06 </sup>
 
 ---
 
@@ -211,39 +211,23 @@ Every ROA agent is governed by a **Responsibility Contract**  -  a formal, machi
 
 ```python
 from pydantic import BaseModel, Field
-from typing import List
-from enum import Enum
-
-class AuthorityLevel(str, Enum):
-    OBSERVE = "observe"           # Read-only analysis
-    PROPOSE = "propose"           # Propose actions for review
-    EXECUTE_LIMITED = "execute_limited"  # Execute within strict bounds
-    EXECUTE_FULL = "execute_full"        # Full execution authority (rare)
-
-class EscalationTrigger(BaseModel):
-    confidence_threshold: float = Field(
-        default=0.7,
-        description="Escalate if confidence falls below this threshold"
-    )
-    max_exposure_usd: float = Field(
-        default=10000.0,
-        description="Escalate if proposed action exceeds this exposure"
-    )
-    requires_human_approval: List[str] = Field(
-        default_factory=list,
-        description="Action types that always require human approval"
-    )
+from typing import List, Literal
 
 class ResponsibilityContract(BaseModel):
     agent_id: str = Field(description="Unique identifier for this agent instance")
+    role: Literal["STRATEGIST", "EXECUTOR", "MONITOR"] = Field(default="EXECUTOR")
     mission: str = Field(description="The agent's optimization target or guiding principle")
-    scope: str = Field(description="The domain or decision space this agent owns")
-    authority: AuthorityLevel = Field(description="Maximum level of action this agent can propose")
-    allowed_instruments: List[str] = Field(default_factory=list)
-    allowed_actions: List[str] = Field(default_factory=list)
-    forbidden_actions: List[str] = Field(default_factory=list)
-    max_position_size: float = Field(default=0.0)
-    escalation: EscalationTrigger = Field(default_factory=EscalationTrigger)
+    
+    # Authority Boundaries (What the agent can touch)
+    authorized_instruments: List[str] = Field(default_factory=list)
+    max_drawdown_limit: float = Field(default=0.05, description="Maximum drawdown limit (5%)")
+    
+    # Capability Manifest (What the agent can output)
+    allowed_policy_types: List[str] = Field(default_factory=list)
+    
+    # Escalation Triggers (When the agent must stop)
+    escalate_on_uncertainty: float = Field(default=0.7, description="Confidence threshold < 0.7 triggers escalation")
+    
     version: str = Field(default="1.0.0", description="Contract version for schema compatibility")
 ```
 
@@ -258,11 +242,12 @@ version: "1.2.0"                       # Immutable versioning for audit trails
 owner: "jane.doe@example.com"          # Human accountability  -  who is responsible?
 effective_from: "2026-02-01"           # Temporal validity of this contract version
 role: "EXECUTOR"
+mission: "Manage crypto positions. Protect capital while seeking alpha." # The agent's optimization target
 
 # Deterministic Boundaries (enforced by DIM in Kernel Space)
 permissions:
   allowed_instruments: ["ETH-USD", "BTC-USD"]
-  allowed_policy_types: ["TAKE_PROFIT", "CLOSE_POSITION", "REDUCE_SIZE", "HOLD"]
+  allowed_policy_types: ["TAKE_PROFIT", "CLOSE_POSITION", "REDUCE_SIZE", "HOLD", "BUY", "SELL"]
   max_order_size_usd: 50000.00
 
 # Safety and Economic Triggers (escalation and intervention logic)
@@ -346,24 +331,55 @@ This trajectory enables coherent multi-cycle reasoning: the agent's current prop
 
 The `explain` field is narrative metadata for human auditors  -  it is NEVER parsed for execution logic. The `policy` field is the only machine-processed artifact.
 
+```python
+from typing import Dict, Any, Optional
+from datetime import datetime
+from pydantic import BaseModel, Field
+
+def _utcnow() -> datetime:
+    return datetime.now()
+
+class ExplainResult(BaseModel):
+    """Output of Explain stage - context interpretation."""
+    dfid: str
+    agent_id: str
+    timestamp: datetime = Field(default_factory=_utcnow)
+    narrative: str = Field(description="Natural language interpretation")
+    identified_signals: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+
+class PolicyProposal(BaseModel):
+    """Structured intent from agent; validated by DIM before execution."""
+    dfid: str
+    agent_id: str
+    policy_kind: str
+    params: Dict[str, Any] = Field(default_factory=dict)
+    context_ref: Optional[str] = None
+    execution_constraints: Dict[str, Any] = Field(default_factory=dict)
+    valid_until: Optional[datetime] = None
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    justification: Optional[str] = None
+    explain_ref: Optional[str] = None
+```
+
 ```json
 {
   "dfid": "550e8400-e29b-41d4-a716-446655440000",
-  "agent_id": "momentum-trader-btc-01",
-  "timestamp": "2026-02-11T14:30:00Z",
-  "explain": "BTC has broken above the 20-day moving average with increasing volume. RSI at 62 suggests momentum without overbought conditions. Given the current portfolio allocation (15% crypto) and risk parameters, a modest position increase aligns with the momentum-following mandate.",
-  "policy": {
-    "action": "BUY",
+  "agent_id": "crypto_position_manager_01",
+  "policy_kind": "BUY",
+  "params": {
     "instrument": "BTC-USD",
-    "quantity": 0.05,
-    "execution_constraints": {
-      "max_price": 48500.00,
-      "valid_until": "2026-02-11T14:35:00Z",
-      "drift_envelope_bps": 50
-    }
+    "quantity": 0.05
   },
+  "context_ref": "snap_a1b2c3d4e5f6",
+  "execution_constraints": {
+    "max_price": 48500.00,
+    "drift_envelope_bps": 50
+  },
+  "valid_until": "2026-02-11T14:35:00Z",
   "confidence": 0.78,
-  "context_snapshot_id": "snap_a1b2c3d4e5f6"
+  "justification": "BTC has broken above the 20-day MA...",
+  "explain_ref": "exp_991a2b3c"
 }
 ```
 
@@ -483,6 +499,23 @@ flowchart TB
 ### 3.4 Context Store  -  The Four Layers
 
 Agents MUST NOT query external systems directly. All data comes from the Context Store, assembled by the Context Compiler (Kernel Space).
+
+```python
+from datetime import datetime
+from typing import Dict, Any
+from pydantic import BaseModel, Field
+
+def _utcnow() -> datetime:
+    return datetime.now()
+
+class ContextSnapshot(BaseModel):
+    """Frozen state of relevant context at a point in time."""
+    snapshot_id: str = Field(description="Unique hash/ID for this snapshot")
+    dfid: str = Field(description="Associated DecisionFlow ID")
+    timestamp: datetime = Field(default_factory=_utcnow)
+    data: Dict[str, Any] = Field(default_factory=dict, description="Frozen context data")
+    source: str = Field(default="context_store", description="Origin of context")
+```
 
 | Layer | Persistence | Contents | Purpose |
 |-------|------------|----------|---------|
