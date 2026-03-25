@@ -397,22 +397,8 @@ class PolicyProposal(BaseModel):
 
 ```python
 from __future__ import annotations
-
-import hashlib
-from datetime import datetime
-from typing import Any
-
-from pydantic import BaseModel, ConfigDict, Field, model_validator
-
-
-class ExecutionConstraints(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    max_price: float | None = Field(default=None, description="Maximum acceptable execution price")
-    min_price: float | None = Field(default=None, description="Minimum acceptable execution price")
-    valid_until: datetime = Field(description="Hard expiry  -  Runtime MUST NOT execute after this timestamp")
-    drift_envelope_bps: int = Field(default=50, description="Max price drift in basis points since snapshot")
-
+from typing import Dict, Any
+from pydantic import BaseModel, ConfigDict, Field
 
 class ExecutionIntent(BaseModel):
     """
@@ -422,37 +408,10 @@ class ExecutionIntent(BaseModel):
     """
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    dfid: str = Field(description="DecisionFlow ID  -  propagated unchanged from originating PolicyProposal")
-    source_proposal_hash: str = Field(
-        description="SHA256 of the serialized PolicyProposal. Enables full traceability: Proposal → Intent."
-    )
-    agent_id: str
-    validated_at: datetime = Field(description="Timestamp of DIM acceptance  -  set by Kernel, not agent")
-    validation_gate_version: str = Field(
-        description="SemVer of the DIM rule set used for validation. Enables historical audit of which rules applied."
-    )
-    context_snapshot_id: str = Field(
-        description="ID of the ContextSnapshot the proposal was validated against. Used for JIT re-check."
-    )
-
-    # Replicated from PolicyProposal.policy  -  DIM copies only validated fields
-    action: str
-    instrument: str
-    quantity: float
-    execution_constraints: ExecutionConstraints
-
-    kernel_signature: str = Field(
-        description=(
-            "HMAC-SHA256 of canonical ExecutionIntent fields, keyed with the Kernel's signing secret. "
-            "Proof that this artifact passed through DIM. Execution Engine MUST verify before dispatching."
-        )
-    )
-
-    @model_validator(mode="after")
-    def validate_not_expired(self) -> ExecutionIntent:
-        if self.execution_constraints.valid_until < self.validated_at:
-            raise ValueError("ExecutionIntent validated after its own valid_until  -  clock skew or replay attack")
-        return self
+    dfid: str = Field(description="DecisionFlow ID - propagated unchanged from originating PolicyProposal")
+    idempotency_key: str = Field(description="Derived from intent parameters to prevent duplicate executions")
+    policy_kind: str = Field(description="Type of action to execute")
+    params: Dict[str, Any] = Field(default_factory=dict, description="Execution parameters (e.g. quantity, instrument)")
 ```
 
 **Data flow and traceability:**
@@ -491,9 +450,8 @@ flowchart TB
 | **Origin** | Agent (User Space) | DIM (Kernel Space) |
 | **Trust status** | Untrusted claim | Kernel-validated artifact |
 | **Mutability** | Mutable during reasoning | `frozen=True`  -  immutable |
-| **`kernel_signature`** | Absent | Present  -  mandatory |
-| **`validated_at`** | Absent | Present  -  set by DIM clock |
-| **`source_proposal_hash`** | N/A (is the source) | Hash of originating proposal |
+| **`idempotency_key`** | Absent | Present  -  mandatory for execution |
+| **`justification`** | Present | Absent (Execution engine does not execute text) |
 | **Can agent construct?** | Yes | **No  -  DIM only** |
 
 ### 3.4 Context Store  -  The Four Layers
@@ -1934,19 +1892,21 @@ sequenceDiagram
 **DL+PCI blueprint:**
 
 ```python
-from pydantic import BaseModel
+from typing import Dict, Any
+from pydantic import BaseModel, Field
 
 class ProofCarryingIntent(BaseModel):
-    dfid: str
-    intent_payload: dict   # Syntactically bound policy
-    context_ref: str       # ContextSnapshotID hash
-    evidence_hash: str     # SHA256(DFID || H_s || H_c || H_r)
-    roa_signature: str     # Cryptographic bond to ROA identity
+    """Proof-Carrying Intent (PCI) for Topology C (DL+PCI)."""
+    dfid: str = Field(description="DecisionFlow ID for traceability")
+    intent_payload: Dict[str, Any] = Field(description="Structured decision; domain-specific")
+    context_ref: str = Field(description="ContextSnapshotID / hash for Evidence Hash binding")
+    evidence_hash: str = Field(description="SHA256(DFID || Context_Hash || Contract_Hash || Proposal_Params)")
+    signature: str = Field(default="", description="Cryptographic signature")
 
 class ProofChecker:
     def verify(self, pci: ProofCarryingIntent, ledger: "DecisionLedger") -> bool:
         # 1. Identity Attestation
-        if not self.verify_signature(pci.roa_signature, pci.dfid):
+        if not self.verify_signature(pci.signature, pci.dfid):
             raise InvalidSignatureError()
 
         # 2. Context Binding (no network I/O during verification)
