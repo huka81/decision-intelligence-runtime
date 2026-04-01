@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Sample 38 - Environmental bidding drift</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --fg: #e6edf3;
+      --muted: #8b949e;
+      --line: #58a6ff;
+      --line2: #a371f7;
+      --border: #30363d;
+      --warn: #d29922;
+      --cap: #6e7681;
+      --suspend: #f85149;
+    }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #010409;
+      color: var(--fg);
+      margin: 0;
+      padding: 2rem;
+      line-height: 1.5;
+    }
+    main { max-width: 1180px; margin: 0 auto; }
+    h1 { font-size: 1.35rem; }
+    h2 { font-size: 1.05rem; margin-top: 1.5rem; }
+    .muted { color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin-top: 1rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.55rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #161b22; }
+    .chart-wrap {
+      margin: 1rem 0 1.5rem;
+      padding: 0.75rem 0 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0d1117;
+      overflow: hidden;
+    }
+    .chart-wrap .chart {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 0;
+    }
+    .chart-legend {
+      list-style: none;
+      margin: 0;
+      padding: 0.65rem 1rem 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem 1.5rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      background: #161b22;
+    }
+    .chart-legend li { display: flex; align-items: center; gap: 0.45rem; margin: 0; }
+    .swatch {
+      display: inline-block;
+      width: 1.35rem;
+      height: 0;
+      border-bottom: 3px solid;
+      flex-shrink: 0;
+    }
+    .swatch.line-warn { border-color: #d29922; border-style: dashed; width: 1.6rem; }
+    .swatch.line-suspend { border-color: #f85149; width: 1.6rem; }
+    .swatch.line-purple { border-color: #a371f7; width: 1.6rem; }
+    .swatch.line-blue { border-color: #58a6ff; width: 1.6rem; }
+    .swatch.line-cap { border-color: #6e7681; border-style: dashed; width: 1.6rem; }
+    .panel {
+      background: #161b22;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+    }
+    .panel.susp { border-color: var(--suspend); }
+    .panel.experiment h2 { margin-top: 0; }
+    .panel.experiment p { margin: 0.65rem 0 0 0; }
+    .panel.experiment p:first-of-type { margin-top: 0; }
+    .swatch.zone-warm {
+      width: 1rem;
+      height: 0.65rem;
+      border: none;
+      border-radius: 2px;
+      background: #30363d;
+      border-bottom: none;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Sample 38 — Environmental drift (ad bidding)</h1>
+  <p class="muted">Run summary: simulation stopped with reason <strong>roi_environmental_monitor</strong>.
+     Cycles processed: 56 / 60.</p>
+
+  
+  <div class="panel experiment">
+    <h2>What this experiment demonstrates</h2>
+    <p>This sample illustrates <strong>environmental drift</strong> (Category 3 — state drift in the
+       market). The agent follows its mission: maintain top placement by bidding just above the
+       observed market floor. The <strong>contract hard cap</strong> is
+       <strong>max_cpc_usd = 2.00 USD</strong>. External business reality is summarized by
+       <strong>customer LTV = 1.80 USD</strong> — if realized CPC approaches or exceeds LTV,
+       acquisition is unprofitable even when the agent is kernel-compliant.</p>
+    <p>The <strong>Decision Integrity Module (DIM)</strong> enforces only encoded kernel rules
+       (schema, RBAC, TTL, context stub, and <strong>bid ≤ 2.00 USD</strong>). It does
+       <em>not</em> compare bids to LTV. When competitors escalate, bids can stay under the cap while
+       CAC exceeds LTV — a failure mode no schema check can catch.</p>
+    <p><strong>Simulation design:</strong> Roughly the first <strong>30</strong> cycles
+       keep <code>market_cpc_to_win</code> in a gentler band; the remainder simulate a bidding war
+       toward <strong>1.98 USD</strong>. The simulated agent always
+       bids <code>market_cpc_to_win + margin</code>, clipped to the contract ceiling.</p>
+    <p><strong>BusinessROIMonitor:</strong> After each execution, SQLite joins
+       <code>execution_log</code> to <code>market_snapshots</code> on <code>dfid</code> and computes
+       the average CPC over the last <strong>10</strong> bids. Estimated ROI is
+       <code>ltv_usd − avg_cpc</code>. If ROI is negative for <strong>5</strong> consecutive
+       evaluated cycles, the registry moves the agent to <code>SUSPENDED</code> with reason
+       <code>NEGATIVE_ROI_ENVIRONMENTAL_DRIFT</code>.</p>
+    <p><strong>How to read Figure 1:</strong> Panel A shows each executed bid versus the DIM cap and
+       LTV. Panel B shows the rolling average CPC; the grey warm-up band is expected until at least
+       10 bids exist. The trace table uses “—” in Avg CPC / ROI during the same warm-up.</p>
+  </div>
+
+
+  <div class="panel">
+    <p><strong>Agent</strong> BiddingAgent</p>
+    <p><strong>Registry status</strong> SUSPENDED
+       &nbsp;|&nbsp; <strong>Suspension reason</strong> NEGATIVE_ROI_ENVIRONMENTAL_DRIFT</p>
+    <p><strong>Hard limit (DIM)</strong> max_cpc_usd = 2.00 USD
+       &nbsp;|&nbsp; <strong>Business metric (monitor)</strong> ltv_usd = 1.80 USD
+       &nbsp;|&nbsp; <strong>Monitor</strong> rolling 10 bids;
+       suspend after 5 consecutive negative ROI cycles</p>
+  </div>
+
+  <div class="panel susp"><h2>Agent suspension</h2><p>After cycle <strong>#56</strong>, the BusinessROIMonitor detected <strong>5</strong> consecutive cycles with negative estimated ROI (rolling avg CPC above LTV <strong>1.80 USD</strong>). The registry moved <code>BiddingAgent</code> to <strong>SUSPENDED</strong> (reason: NEGATIVE_ROI_ENVIRONMENTAL_DRIFT).</p></div>
+
+  <h2>Figure 1 — CPC and rolling average</h2>
+  <p class="muted">Panel B warm-up until 10 executed bids; table columns Avg CPC / ROI match that behavior.</p>
+  <figure class="chart-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" class="chart" role="img" aria-label="CPC bids and rolling average vs LTV">
+<rect x="0" y="0" width="900" height="560" fill="var(--bg)" rx="6"/>
+<text x="450" y="22" text-anchor="middle" fill="var(--fg)" font-size="15" font-weight="600">Figure 1 — CPC bids and ROI monitor (rolling avg CPC)</text>
+<text x="450" y="40" text-anchor="middle" fill="var(--muted)" font-size="11">Horizontal axis: execution index (chronological accepted bids)</text>
+<text x="58" y="46" text-anchor="start" fill="var(--fg)" font-size="12" font-weight="600">A. CPC bid per execution</text>
+<line x1="58.0" y1="230.0" x2="876.0" y2="230.0" stroke="var(--muted)" stroke-width="1" opacity="0.5"/>
+<line x1="58.0" y1="52.0" x2="58.0" y2="230.0" stroke="var(--muted)" stroke-width="1" opacity="0.5"/>
+<line x1="58.0" y1="76.6" x2="876.0" y2="76.6" stroke="#6e7681" stroke-width="1.2" stroke-dasharray="6 4" opacity="0.9"/><text x="872.0" y="70.6" text-anchor="end" fill="#6e7681" font-size="10">DIM max 2.00 USD</text>
+<line x1="58.0" y1="107.2" x2="876.0" y2="107.2" stroke="#d29922" stroke-width="1.35" stroke-dasharray="5 4" opacity="0.92"/><text x="62.0" y="103.2" text-anchor="start" fill="#d29922" font-size="10">LTV 1.80 USD</text>
+<line x1="54.0" y1="230.0" x2="58.0" y2="230.0" stroke="var(--muted)" stroke-width="1" opacity="0.35"/><text x="52.0" y="234.0" text-anchor="end" fill="var(--muted)" font-size="10">1.00</text>
+<line x1="54.0" y1="141.0" x2="58.0" y2="141.0" stroke="var(--muted)" stroke-width="1" opacity="0.35"/><text x="52.0" y="145.0" text-anchor="end" fill="var(--muted)" font-size="10">1.58</text>
+<line x1="54.0" y1="52.0" x2="58.0" y2="52.0" stroke="var(--muted)" stroke-width="1" opacity="0.35"/><text x="52.0" y="56.0" text-anchor="end" fill="var(--muted)" font-size="10">2.16</text>
+<polyline fill="none" stroke="#58a6ff" stroke-width="2.6" points="58.0,195.6 72.9,194.7 87.7,191.5 102.6,192.7 117.5,187.9 132.4,187.6 147.2,184.6 162.1,184.8 177.0,182.1 191.9,180.7 206.7,178.5 221.6,174.8 236.5,174.1 251.3,170.0 266.2,169.9 281.1,169.7 296.0,166.1 310.8,164.6 325.7,164.6 340.6,160.9 355.5,161.5 370.3,157.9 385.2,155.3 400.1,152.8 414.9,149.7 429.8,149.4 444.7,150.3 459.6,146.4 474.4,145.5 489.3,141.4 504.2,140.7 519.1,142.2 533.9,136.7 548.8,136.7 563.7,134.9 578.5,131.4 593.4,129.3 608.3,127.6 623.2,125.4 638.0,122.4 652.9,118.9 667.8,119.1 682.7,115.8 697.5,114.2 712.4,109.6 727.3,109.6 742.1,105.0 757.0,106.0 771.9,99.9 786.8,99.6 801.6,95.0 816.5,93.4 831.4,90.9 846.3,92.4 861.1,86.8 876.0,85.5"/>
+<text x="58" y="250" text-anchor="start" fill="var(--fg)" font-size="12" font-weight="600">B. Rolling average CPC (last 10 bids) vs LTV</text>
+<text x="58" y="264" text-anchor="start" fill="var(--muted)" font-size="10">ROI estimate = LTV − avg CPC (mean of last 10 executed bids). Grey region: warm-up (fewer than 10 bids — rolling average undefined).</text>
+<line x1="58.0" y1="448.0" x2="876.0" y2="448.0" stroke="var(--muted)" stroke-width="1" opacity="0.5"/>
+<line x1="58.0" y1="258.0" x2="58.0" y2="448.0" stroke="var(--muted)" stroke-width="1" opacity="0.5"/>
+<rect x="58.0" y="258.0" width="126.4" height="190.0" fill="#30363d" opacity="0.45"/><text x="121" y="347" text-anchor="middle" fill="var(--muted)" font-size="10">Warm-up</text><text x="121" y="361" text-anchor="middle" fill="var(--muted)" font-size="10">(&lt; 10 exec)</text>
+<line x1="58.0" y1="317.0" x2="876.0" y2="317.0" stroke="#d29922" stroke-width="1.35" stroke-dasharray="5 4" opacity="0.92"/><text x="872.0" y="312.0" text-anchor="end" fill="#d29922" font-size="10">LTV 1.80 USD</text>
+<line x1="54.0" y1="448.0" x2="58.0" y2="448.0" stroke="var(--muted)" stroke-width="1" opacity="0.35"/><text x="52.0" y="452.0" text-anchor="end" fill="var(--muted)" font-size="10">1.00</text>
+<line x1="54.0" y1="353.0" x2="58.0" y2="353.0" stroke="var(--muted)" stroke-width="1" opacity="0.35"/><text x="52.0" y="357.0" text-anchor="end" fill="var(--muted)" font-size="10">1.58</text>
+<line x1="54.0" y1="258.0" x2="58.0" y2="258.0" stroke="var(--muted)" stroke-width="1" opacity="0.35"/><text x="52.0" y="262.0" text-anchor="end" fill="var(--muted)" font-size="10">2.16</text>
+<polyline fill="none" stroke="#a371f7" stroke-width="2.8" points="191.9,403.4 206.7,401.6 221.6,399.5 236.5,397.6 251.3,395.2 266.2,393.3 281.1,391.4 296.0,389.4 310.8,387.2 325.7,385.4 340.6,383.2 355.5,381.4 370.3,379.6 385.2,377.6 400.1,375.8 414.9,373.6 429.8,371.4 444.7,369.8 459.6,367.8 474.4,365.8 489.3,363.7 504.2,361.5 519.1,359.8 533.9,357.8 548.8,356.1 563.7,354.5 578.5,352.6 593.4,350.3 608.3,348.3 623.2,346.2 638.0,344.2 652.9,341.8 667.8,339.4 682.7,337.1 697.5,334.7 712.4,332.0 727.3,329.7 742.1,327.1 757.0,324.8 771.9,322.1 786.8,319.7 801.6,317.1 816.5,314.4 831.4,311.7 846.3,309.4 861.1,307.0 876.0,304.4"/>
+<line x1="58.0" y1="448.0" x2="58.0" y2="453.0" stroke="var(--muted)" stroke-width="1" opacity="0.55"/><text x="58.0" y="486.0" text-anchor="middle" fill="var(--muted)" font-size="11">1</text>
+<line x1="266.2" y1="448.0" x2="266.2" y2="453.0" stroke="var(--muted)" stroke-width="1" opacity="0.55"/><text x="266.2" y="486.0" text-anchor="middle" fill="var(--muted)" font-size="11">15</text>
+<line x1="474.4" y1="448.0" x2="474.4" y2="453.0" stroke="var(--muted)" stroke-width="1" opacity="0.55"/><text x="474.4" y="486.0" text-anchor="middle" fill="var(--muted)" font-size="11">29</text>
+<line x1="682.7" y1="448.0" x2="682.7" y2="453.0" stroke="var(--muted)" stroke-width="1" opacity="0.55"/><text x="682.7" y="486.0" text-anchor="middle" fill="var(--muted)" font-size="11">43</text>
+<line x1="876.0" y1="448.0" x2="876.0" y2="453.0" stroke="var(--muted)" stroke-width="1" opacity="0.55"/><text x="876.0" y="486.0" text-anchor="middle" fill="var(--muted)" font-size="11">56</text>
+<text x="467" y="546" text-anchor="middle" fill="var(--fg)" font-size="12" font-weight="500">Bid execution index (chronological)</text>
+<line x1="876.0" y1="52.0" x2="876.0" y2="448.0" stroke="#f85149" stroke-width="2" opacity="0.9"/>
+<text x="756.0" y="64.0" text-anchor="start" fill="#f85149" font-size="11" font-weight="700">Suspension</text>
+<circle cx="876.0" cy="304.4" r="6" fill="#f85149" stroke="var(--bg)" stroke-width="2"/>
+</svg>
+    <ul class="chart-legend" aria-label="Chart legend">
+      <li><span class="swatch line-blue"></span> Panel A: CPC bid each execution (line)</li>
+      <li><span class="swatch line-cap"></span> Panel A: DIM contract cap (max CPC)</li>
+      <li><span class="swatch line-warn"></span> LTV reference (business break-even on CPC)</li>
+      <li><span class="swatch zone-warm"></span> Panel B: warm-up (rolling avg not defined yet)</li>
+      <li><span class="swatch line-purple"></span> Panel B: rolling average CPC (last 10 bids)</li>
+      <li><span class="swatch line-suspend"></span> Red vertical line: suspension point</li>
+    </ul>
+    </figure>
+
+  <h2>Monitor events (tail)</h2><ul class="muted"><li><code>MONITOR_TICK</code> OK — {&quot;avg_cpc_bid_usd&quot;: 1.7222, &quot;avg_market_cpc_to_win_usd&quot;: 1.7022, &quot;bid_market_spread_usd&quot;: 0.02, &quot;ltv_usd&quot;: 1.8, &quot;roi_estimate&quot;: 0.0778, &quot;window_size&quot;: 10}</li><li><code>MONITOR_TICK</code> OK — {&quot;avg_cpc_bid_usd&quot;: 1.738, &quot;avg_market_cpc_to_win_usd&quot;: 1.718, &quot;bid_market_spread_usd&quot;: 0.02, &quot;ltv_usd&quot;: 1.8, &quot;roi_estimate&quot;: 0.062, &quot;window_size&quot;: 10}</li><li><code>MONITOR_TICK</code> OK — {&quot;avg_cpc_bid_usd&quot;: 1.7521, &quot;avg_market_cpc_to_win_usd&quot;: 1.7321, &quot;bid_market_spread_usd&quot;: 0.02, &quot;ltv_usd&quot;: 1.8, &quot;roi_estimate&quot;: 0.0479, &quot;window_size&quot;: 10}</li><li><code>MONITOR_TICK</code> OK — {&quot;avg_cpc_bid_usd&quot;: 1.7687, &quot;avg_market_cpc_to_win_usd&quot;: 1.7487, &quot;bid_market_spread_usd&quot;: 0.02, &quot;ltv_usd&quot;: 1.8, &quot;roi_estimate&quot;: 0.0313, &quot;window_size&quot;: 10}</li><li><code>MONITOR_TICK</code> OK — {&quot;avg_cpc_bid_usd&quot;: 1.7835, &quot;avg_market_cpc_to_win_usd&quot;: 1.7635, &quot;bid_market_spread_usd&quot;: 0.02, &quot;ltv_usd&quot;: 1.8, &quot;roi_estimate&quot;: 0.0165, &quot;window_size&quot;: 10}</li><li><code>MONITOR_TICK</code> OK — {&quot;avg_cpc_bid_usd&quot;: 1.799, &quot;avg_market_cpc_to_win_usd&quot;: 1.779, &quot;bid_market_spread_usd&quot;: 0.02, &quot;ltv_usd&quot;: 1.8, &quot;roi_estimate&quot;: 0.001, &quot;window_size&quot;: 10}</li><li><code>MONITOR_TICK</code> ALERT — {&quot;avg_cpc_bid_usd&quot;: 1.8158, &quot;avg_market_cpc_to_win_usd&quot;: 1.7958, &quot;bid_market_spread_usd&quot;: 0.02, &quot;consecutive_negative_roi_cycles&quot;: 1, &quot;ltv_usd&quot;: 1.8, &quot;roi_estimate&quot;: -0.0158, &quot;window_size&quot;: 10}</li><li><code>MONITOR_TICK</code> ALERT — {&quot;avg_cpc_bid_usd&quot;: 1.832, &quot;avg_market_cpc_to_win_usd&quot;: 1.812, &quot;bid_market_spread_usd&quot;: 0.02, &quot;consecutive_negative_roi_cycles&quot;: 2, &quot;ltv_usd&quot;: 1.8, &quot;roi_estimate&quot;: -0.032, &quot;window_size&quot;: 10}</li><li><code>MONITOR_TICK</code> ALERT — {&quot;avg_cpc_bid_usd&quot;: 1.8462, &quot;avg_market_cpc_to_win_usd&quot;: 1.8262, &quot;bid_market_spread_usd&quot;: 0.02, &quot;consecutive_negative_roi_cycles&quot;: 3, &quot;ltv_usd&quot;: 1.8, &quot;roi_estimate&quot;: -0.0462, &quot;window_size&quot;: 10}</li><li><code>MONITOR_TICK</code> ALERT — {&quot;avg_cpc_bid_usd&quot;: 1.8611, &quot;avg_market_cpc_to_win_usd&quot;: 1.8411, &quot;bid_market_spread_usd&quot;: 0.02, &quot;consecutive_negative_roi_cycles&quot;: 4, &quot;ltv_usd&quot;: 1.8, &quot;roi_estimate&quot;: -0.0611, &quot;window_size&quot;: 10}</li><li><code>MONITOR_TICK</code> ALERT — {&quot;avg_cpc_bid_usd&quot;: 1.8768, &quot;avg_market_cpc_to_win_usd&quot;: 1.8568, &quot;bid_market_spread_usd&quot;: 0.02, &quot;consecutive_negative_roi_cycles&quot;: 5, &quot;ltv_usd&quot;: 1.8, &quot;roi_estimate&quot;: -0.0768, &quot;window_size&quot;: 10}</li><li><code>AGENT_SUSPENDED</code> SUSPENDED — {&quot;agent_id&quot;: &quot;BiddingAgent&quot;, &quot;avg_cpc_bid_usd&quot;: 1.8768, &quot;avg_market_cpc_to_win_usd&quot;: 1.8568, &quot;ltv_usd&quot;: 1.8, &quot;reason&quot;: &quot;NEGATIVE_ROI_ENVIRONMENTAL_DRIFT&quot;}</li></ul>
+
+  <h2>Cycle-level trace</h2>
+  <p class="muted">Source: <code>data/market_conditions.json</code>. <code>market_cpc_to_win</code> is stored in
+     <code>market_snapshots</code> at compile time (kernel fact), not inferred from the agent output.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>DFID</th><th>Cycle</th><th>Search term</th><th>Market CPC</th><th>Bid USD</th>
+        <th>DIM</th><th>Executed</th><th>Avg CPC</th><th>ROI est.</th><th>Note</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td><code>44a35fe8...</code></td><td>c001</td><td>running shoes</td><td>1.204</td><td>1.224</td><td>ACCEPT</td><td>yes</td><td>—</td><td>—</td><td>early_sample</td></tr><tr><td>2</td><td><code>09d7abdf...</code></td><td>c002</td><td>wireless earbuds</td><td>1.210</td><td>1.230</td><td>ACCEPT</td><td>yes</td><td>—</td><td>—</td><td></td></tr><tr><td>3</td><td><code>b7ce1485...</code></td><td>c003</td><td>yoga mat</td><td>1.231</td><td>1.251</td><td>ACCEPT</td><td>yes</td><td>—</td><td>—</td><td></td></tr><tr><td>4</td><td><code>3a87f003...</code></td><td>c004</td><td>coffee maker</td><td>1.223</td><td>1.243</td><td>ACCEPT</td><td>yes</td><td>—</td><td>—</td><td></td></tr><tr><td>5</td><td><code>e8e21a3f...</code></td><td>c005</td><td>desk lamp</td><td>1.254</td><td>1.274</td><td>ACCEPT</td><td>yes</td><td>—</td><td>—</td><td></td></tr><tr><td>6</td><td><code>0303edf0...</code></td><td>c006</td><td>running shoes</td><td>1.257</td><td>1.277</td><td>ACCEPT</td><td>yes</td><td>—</td><td>—</td><td></td></tr><tr><td>7</td><td><code>37c59d35...</code></td><td>c007</td><td>wireless earbuds</td><td>1.276</td><td>1.296</td><td>ACCEPT</td><td>yes</td><td>—</td><td>—</td><td></td></tr><tr><td>8</td><td><code>2e58f6ca...</code></td><td>c008</td><td>yoga mat</td><td>1.275</td><td>1.295</td><td>ACCEPT</td><td>yes</td><td>—</td><td>—</td><td></td></tr><tr><td>9</td><td><code>5fbf8088...</code></td><td>c009</td><td>coffee maker</td><td>1.292</td><td>1.312</td><td>ACCEPT</td><td>yes</td><td>—</td><td>—</td><td></td></tr><tr><td>10</td><td><code>badd0510...</code></td><td>c010</td><td>desk lamp</td><td>1.302</td><td>1.322</td><td>ACCEPT</td><td>yes</td><td>1.272</td><td>0.528</td><td></td></tr><tr><td>11</td><td><code>d4bc6806...</code></td><td>c011</td><td>running shoes</td><td>1.316</td><td>1.336</td><td>ACCEPT</td><td>yes</td><td>1.283</td><td>0.517</td><td></td></tr><tr><td>12</td><td><code>af529115...</code></td><td>c012</td><td>wireless earbuds</td><td>1.340</td><td>1.360</td><td>ACCEPT</td><td>yes</td><td>1.296</td><td>0.504</td><td></td></tr><tr><td>13</td><td><code>69ffbb58...</code></td><td>c013</td><td>yoga mat</td><td>1.344</td><td>1.364</td><td>ACCEPT</td><td>yes</td><td>1.308</td><td>0.492</td><td></td></tr><tr><td>14</td><td><code>b94a99c1...</code></td><td>c014</td><td>coffee maker</td><td>1.371</td><td>1.391</td><td>ACCEPT</td><td>yes</td><td>1.322</td><td>0.478</td><td></td></tr><tr><td>15</td><td><code>44dbc789...</code></td><td>c015</td><td>desk lamp</td><td>1.371</td><td>1.391</td><td>ACCEPT</td><td>yes</td><td>1.334</td><td>0.466</td><td></td></tr><tr><td>16</td><td><code>ae914569...</code></td><td>c016</td><td>running shoes</td><td>1.373</td><td>1.393</td><td>ACCEPT</td><td>yes</td><td>1.346</td><td>0.454</td><td></td></tr><tr><td>17</td><td><code>6e069cf8...</code></td><td>c017</td><td>wireless earbuds</td><td>1.397</td><td>1.417</td><td>ACCEPT</td><td>yes</td><td>1.358</td><td>0.442</td><td></td></tr><tr><td>18</td><td><code>92c5dc29...</code></td><td>c018</td><td>yoga mat</td><td>1.406</td><td>1.426</td><td>ACCEPT</td><td>yes</td><td>1.371</td><td>0.429</td><td></td></tr><tr><td>19</td><td><code>12836096...</code></td><td>c019</td><td>coffee maker</td><td>1.407</td><td>1.427</td><td>ACCEPT</td><td>yes</td><td>1.382</td><td>0.418</td><td></td></tr><tr><td>20</td><td><code>9588ebda...</code></td><td>c020</td><td>desk lamp</td><td>1.430</td><td>1.450</td><td>ACCEPT</td><td>yes</td><td>1.395</td><td>0.405</td><td></td></tr><tr><td>21</td><td><code>4a4948ff...</code></td><td>c021</td><td>running shoes</td><td>1.427</td><td>1.447</td><td>ACCEPT</td><td>yes</td><td>1.406</td><td>0.394</td><td></td></tr><tr><td>22</td><td><code>e679f687...</code></td><td>c022</td><td>wireless earbuds</td><td>1.450</td><td>1.470</td><td>ACCEPT</td><td>yes</td><td>1.417</td><td>0.383</td><td></td></tr><tr><td>23</td><td><code>e747233a...</code></td><td>c023</td><td>yoga mat</td><td>1.467</td><td>1.487</td><td>ACCEPT</td><td>yes</td><td>1.430</td><td>0.370</td><td></td></tr><tr><td>24</td><td><code>3f3b1ff3...</code></td><td>c024</td><td>coffee maker</td><td>1.483</td><td>1.503</td><td>ACCEPT</td><td>yes</td><td>1.441</td><td>0.359</td><td></td></tr><tr><td>25</td><td><code>e13be972...</code></td><td>c025</td><td>desk lamp</td><td>1.503</td><td>1.523</td><td>ACCEPT</td><td>yes</td><td>1.454</td><td>0.346</td><td></td></tr><tr><td>26</td><td><code>0913c72a...</code></td><td>c026</td><td>running shoes</td><td>1.505</td><td>1.525</td><td>ACCEPT</td><td>yes</td><td>1.467</td><td>0.333</td><td></td></tr><tr><td>27</td><td><code>9cb72520...</code></td><td>c027</td><td>wireless earbuds</td><td>1.500</td><td>1.520</td><td>ACCEPT</td><td>yes</td><td>1.478</td><td>0.322</td><td></td></tr><tr><td>28</td><td><code>02c4eb28...</code></td><td>c028</td><td>yoga mat</td><td>1.525</td><td>1.545</td><td>ACCEPT</td><td>yes</td><td>1.490</td><td>0.310</td><td></td></tr><tr><td>29</td><td><code>1a2962bc...</code></td><td>c029</td><td>coffee maker</td><td>1.530</td><td>1.550</td><td>ACCEPT</td><td>yes</td><td>1.502</td><td>0.298</td><td></td></tr><tr><td>30</td><td><code>16b71d84...</code></td><td>c030</td><td>desk lamp</td><td>1.557</td><td>1.577</td><td>ACCEPT</td><td>yes</td><td>1.515</td><td>0.285</td><td></td></tr><tr><td>31</td><td><code>968bb2d5...</code></td><td>c031</td><td>running shoes</td><td>1.562</td><td>1.582</td><td>ACCEPT</td><td>yes</td><td>1.528</td><td>0.272</td><td></td></tr><tr><td>32</td><td><code>fce92263...</code></td><td>c032</td><td>wireless earbuds</td><td>1.552</td><td>1.572</td><td>ACCEPT</td><td>yes</td><td>1.538</td><td>0.262</td><td></td></tr><tr><td>33</td><td><code>81b89077...</code></td><td>c033</td><td>yoga mat</td><td>1.588</td><td>1.608</td><td>ACCEPT</td><td>yes</td><td>1.551</td><td>0.249</td><td></td></tr><tr><td>34</td><td><code>4f2dc03b...</code></td><td>c034</td><td>coffee maker</td><td>1.588</td><td>1.608</td><td>ACCEPT</td><td>yes</td><td>1.561</td><td>0.239</td><td></td></tr><tr><td>35</td><td><code>5c5e4ff0...</code></td><td>c035</td><td>desk lamp</td><td>1.600</td><td>1.620</td><td>ACCEPT</td><td>yes</td><td>1.571</td><td>0.229</td><td></td></tr><tr><td>36</td><td><code>73b80180...</code></td><td>c036</td><td>running shoes</td><td>1.623</td><td>1.643</td><td>ACCEPT</td><td>yes</td><td>1.583</td><td>0.217</td><td></td></tr><tr><td>37</td><td><code>d67cbe8c...</code></td><td>c037</td><td>wireless earbuds</td><td>1.637</td><td>1.657</td><td>ACCEPT</td><td>yes</td><td>1.596</td><td>0.204</td><td></td></tr><tr><td>38</td><td><code>9b412ac8...</code></td><td>c038</td><td>yoga mat</td><td>1.647</td><td>1.667</td><td>ACCEPT</td><td>yes</td><td>1.608</td><td>0.192</td><td></td></tr><tr><td>39</td><td><code>aec46376...</code></td><td>c039</td><td>coffee maker</td><td>1.661</td><td>1.681</td><td>ACCEPT</td><td>yes</td><td>1.622</td><td>0.178</td><td></td></tr><tr><td>40</td><td><code>52e25187...</code></td><td>c040</td><td>desk lamp</td><td>1.681</td><td>1.702</td><td>ACCEPT</td><td>yes</td><td>1.634</td><td>0.166</td><td></td></tr><tr><td>41</td><td><code>1ed8f8d6...</code></td><td>c041</td><td>running shoes</td><td>1.704</td><td>1.724</td><td>ACCEPT</td><td>yes</td><td>1.648</td><td>0.152</td><td></td></tr><tr><td>42</td><td><code>31ac2503...</code></td><td>c042</td><td>wireless earbuds</td><td>1.703</td><td>1.723</td><td>ACCEPT</td><td>yes</td><td>1.663</td><td>0.137</td><td></td></tr><tr><td>43</td><td><code>46b25664...</code></td><td>c043</td><td>yoga mat</td><td>1.724</td><td>1.744</td><td>ACCEPT</td><td>yes</td><td>1.677</td><td>0.123</td><td></td></tr><tr><td>44</td><td><code>7854c6ab...</code></td><td>c044</td><td>coffee maker</td><td>1.735</td><td>1.755</td><td>ACCEPT</td><td>yes</td><td>1.692</td><td>0.108</td><td></td></tr><tr><td>45</td><td><code>b3bd1934...</code></td><td>c045</td><td>desk lamp</td><td>1.764</td><td>1.784</td><td>ACCEPT</td><td>yes</td><td>1.708</td><td>0.092</td><td></td></tr><tr><td>46</td><td><code>4bc20e78...</code></td><td>c046</td><td>running shoes</td><td>1.765</td><td>1.785</td><td>ACCEPT</td><td>yes</td><td>1.722</td><td>0.078</td><td></td></tr><tr><td>47</td><td><code>94b2b351...</code></td><td>c047</td><td>wireless earbuds</td><td>1.794</td><td>1.814</td><td>ACCEPT</td><td>yes</td><td>1.738</td><td>0.062</td><td></td></tr><tr><td>48</td><td><code>cd9a6cfd...</code></td><td>c048</td><td>yoga mat</td><td>1.788</td><td>1.808</td><td>ACCEPT</td><td>yes</td><td>1.752</td><td>0.048</td><td></td></tr><tr><td>49</td><td><code>3c1b05bc...</code></td><td>c049</td><td>coffee maker</td><td>1.828</td><td>1.848</td><td>ACCEPT</td><td>yes</td><td>1.769</td><td>0.031</td><td></td></tr><tr><td>50</td><td><code>5d24b67a...</code></td><td>c050</td><td>desk lamp</td><td>1.830</td><td>1.850</td><td>ACCEPT</td><td>yes</td><td>1.783</td><td>0.017</td><td></td></tr><tr><td>51</td><td><code>ec31b989...</code></td><td>c051</td><td>running shoes</td><td>1.860</td><td>1.880</td><td>ACCEPT</td><td>yes</td><td>1.799</td><td>0.001</td><td></td></tr><tr><td>52</td><td><code>cb00e2eb...</code></td><td>c052</td><td>wireless earbuds</td><td>1.870</td><td>1.890</td><td>ACCEPT</td><td>yes</td><td>1.816</td><td>-0.016</td><td>late_sample</td></tr><tr><td>53</td><td><code>9044a5bc...</code></td><td>c053</td><td>yoga mat</td><td>1.887</td><td>1.907</td><td>ACCEPT</td><td>yes</td><td>1.832</td><td>-0.032</td><td></td></tr><tr><td>54</td><td><code>85b539dc...</code></td><td>c054</td><td>coffee maker</td><td>1.877</td><td>1.897</td><td>ACCEPT</td><td>yes</td><td>1.846</td><td>-0.046</td><td></td></tr><tr><td>55</td><td><code>c52959a8...</code></td><td>c055</td><td>desk lamp</td><td>1.913</td><td>1.933</td><td>ACCEPT</td><td>yes</td><td>1.861</td><td>-0.061</td><td></td></tr><tr><td>56</td><td><code>c31f426f...</code></td><td>c056</td><td>running shoes</td><td>1.921</td><td>1.942</td><td>ACCEPT</td><td>yes</td><td>1.877</td><td>-0.077</td><td></td></tr>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>

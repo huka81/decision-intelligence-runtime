@@ -1,0 +1,482 @@
+[
+  {
+    "cycle_id": "c001",
+    "search_term": "running shoes",
+    "market_cpc_to_win": 1.2042,
+    "impressions_available": 1000,
+    "channel": "search",
+    "campaign_id": "cmp-01"
+  },
+  {
+    "cycle_id": "c002",
+    "search_term": "wireless earbuds",
+    "market_cpc_to_win": 1.2099,
+    "impressions_available": 1017,
+    "channel": "search",
+    "campaign_id": "cmp-01"
+  },
+  {
+    "cycle_id": "c003",
+    "search_term": "yoga mat",
+    "market_cpc_to_win": 1.2309,
+    "impressions_available": 1034,
+    "channel": "search",
+    "campaign_id": "cmp-01"
+  },
+  {
+    "cycle_id": "c004",
+    "search_term": "coffee maker",
+    "market_cpc_to_win": 1.2232,
+    "impressions_available": 1051,
+    "channel": "search",
+    "campaign_id": "cmp-01"
+  },
+  {
+    "cycle_id": "c005",
+    "search_term": "desk lamp",
+    "market_cpc_to_win": 1.2542,
+    "impressions_available": 1068,
+    "channel": "search",
+    "campaign_id": "cmp-01"
+  },
+  {
+    "cycle_id": "c006",
+    "search_term": "running shoes",
+    "market_cpc_to_win": 1.2566,
+    "impressions_available": 1085,
+    "channel": "search",
+    "campaign_id": "cmp-01"
+  },
+  {
+    "cycle_id": "c007",
+    "search_term": "wireless earbuds",
+    "market_cpc_to_win": 1.2757,
+    "impressions_available": 1102,
+    "channel": "search",
+    "campaign_id": "cmp-01"
+  },
+  {
+    "cycle_id": "c008",
+    "search_term": "yoga mat",
+    "market_cpc_to_win": 1.2746,
+    "impressions_available": 1119,
+    "channel": "search",
+    "campaign_id": "cmp-01"
+  },
+  {
+    "cycle_id": "c009",
+    "search_term": "coffee maker",
+    "market_cpc_to_win": 1.2919,
+    "impressions_available": 1136,
+    "channel": "search",
+    "campaign_id": "cmp-01"
+  },
+  {
+    "cycle_id": "c010",
+    "search_term": "desk lamp",
+    "market_cpc_to_win": 1.3016,
+    "impressions_available": 1153,
+    "channel": "search",
+    "campaign_id": "cmp-01"
+  },
+  {
+    "cycle_id": "c011",
+    "search_term": "running shoes",
+    "market_cpc_to_win": 1.3156,
+    "impressions_available": 1170,
+    "channel": "search",
+    "campaign_id": "cmp-02"
+  },
+  {
+    "cycle_id": "c012",
+    "search_term": "wireless earbuds",
+    "market_cpc_to_win": 1.3396,
+    "impressions_available": 1187,
+    "channel": "search",
+    "campaign_id": "cmp-02"
+  },
+  {
+    "cycle_id": "c013",
+    "search_term": "yoga mat",
+    "market_cpc_to_win": 1.344,
+    "impressions_available": 1204,
+    "channel": "search",
+    "campaign_id": "cmp-02"
+  },
+  {
+    "cycle_id": "c014",
+    "search_term": "coffee maker",
+    "market_cpc_to_win": 1.3708,
+    "impressions_available": 1221,
+    "channel": "search",
+    "campaign_id": "cmp-02"
+  },
+  {
+    "cycle_id": "c015",
+    "search_term": "desk lamp",
+    "market_cpc_to_win": 1.3715,
+    "impressions_available": 1238,
+    "channel": "search",
+    "campaign_id": "cmp-02"
+  },
+  {
+    "cycle_id": "c016",
+    "search_term": "running shoes",
+    "market_cpc_to_win": 1.3727,
+    "impressions_available": 1255,
+    "channel": "search",
+    "campaign_id": "cmp-02"
+  },
+  {
+    "cycle_id": "c017",
+    "search_term": "wireless earbuds",
+    "market_cpc_to_win": 1.3965,
+    "impressions_available": 1272,
+    "channel": "search",
+    "campaign_id": "cmp-02"
+  },
+  {
+    "cycle_id": "c018",
+    "search_term": "yoga mat",
+    "market_cpc_to_win": 1.406,
+    "impressions_available": 1289,
+    "channel": "search",
+    "campaign_id": "cmp-02"
+  },
+  {
+    "cycle_id": "c019",
+    "search_term": "coffee maker",
+    "market_cpc_to_win": 1.4065,
+    "impressions_available": 1306,
+    "channel": "search",
+    "campaign_id": "cmp-02"
+  },
+  {
+    "cycle_id": "c020",
+    "search_term": "desk lamp",
+    "market_cpc_to_win": 1.4301,
+    "impressions_available": 1323,
+    "channel": "search",
+    "campaign_id": "cmp-02"
+  },
+  {
+    "cycle_id": "c021",
+    "search_term": "running shoes",
+    "market_cpc_to_win": 1.4267,
+    "impressions_available": 1340,
+    "channel": "search",
+    "campaign_id": "cmp-03"
+  },
+  {
+    "cycle_id": "c022",
+    "search_term": "wireless earbuds",
+    "market_cpc_to_win": 1.4497,
+    "impressions_available": 1357,
+    "channel": "search",
+    "campaign_id": "cmp-03"
+  },
+  {
+    "cycle_id": "c023",
+    "search_term": "yoga mat",
+    "market_cpc_to_win": 1.4666,
+    "impressions_available": 1374,
+    "channel": "search",
+    "campaign_id": "cmp-03"
+  },
+  {
+    "cycle_id": "c024",
+    "search_term": "coffee maker",
+    "market_cpc_to_win": 1.4832,
+    "impressions_available": 1391,
+    "channel": "search",
+    "campaign_id": "cmp-03"
+  },
+  {
+    "cycle_id": "c025",
+    "search_term": "desk lamp",
+    "market_cpc_to_win": 1.5034,
+    "impressions_available": 1408,
+    "channel": "search",
+    "campaign_id": "cmp-03"
+  },
+  {
+    "cycle_id": "c026",
+    "search_term": "running shoes",
+    "market_cpc_to_win": 1.5052,
+    "impressions_available": 1425,
+    "channel": "search",
+    "campaign_id": "cmp-03"
+  },
+  {
+    "cycle_id": "c027",
+    "search_term": "wireless earbuds",
+    "market_cpc_to_win": 1.4995,
+    "impressions_available": 1442,
+    "channel": "search",
+    "campaign_id": "cmp-03"
+  },
+  {
+    "cycle_id": "c028",
+    "search_term": "yoga mat",
+    "market_cpc_to_win": 1.5251,
+    "impressions_available": 1459,
+    "channel": "search",
+    "campaign_id": "cmp-03"
+  },
+  {
+    "cycle_id": "c029",
+    "search_term": "coffee maker",
+    "market_cpc_to_win": 1.5304,
+    "impressions_available": 1476,
+    "channel": "search",
+    "campaign_id": "cmp-03"
+  },
+  {
+    "cycle_id": "c030",
+    "search_term": "desk lamp",
+    "market_cpc_to_win": 1.5574,
+    "impressions_available": 1493,
+    "channel": "search",
+    "campaign_id": "cmp-03"
+  },
+  {
+    "cycle_id": "c031",
+    "search_term": "running shoes",
+    "market_cpc_to_win": 1.5618,
+    "impressions_available": 1510,
+    "channel": "search",
+    "campaign_id": "cmp-04"
+  },
+  {
+    "cycle_id": "c032",
+    "search_term": "wireless earbuds",
+    "market_cpc_to_win": 1.5524,
+    "impressions_available": 1527,
+    "channel": "search",
+    "campaign_id": "cmp-04"
+  },
+  {
+    "cycle_id": "c033",
+    "search_term": "yoga mat",
+    "market_cpc_to_win": 1.5878,
+    "impressions_available": 1544,
+    "channel": "search",
+    "campaign_id": "cmp-04"
+  },
+  {
+    "cycle_id": "c034",
+    "search_term": "coffee maker",
+    "market_cpc_to_win": 1.5883,
+    "impressions_available": 1561,
+    "channel": "search",
+    "campaign_id": "cmp-04"
+  },
+  {
+    "cycle_id": "c035",
+    "search_term": "desk lamp",
+    "market_cpc_to_win": 1.5998,
+    "impressions_available": 1578,
+    "channel": "search",
+    "campaign_id": "cmp-04"
+  },
+  {
+    "cycle_id": "c036",
+    "search_term": "running shoes",
+    "market_cpc_to_win": 1.6227,
+    "impressions_available": 1595,
+    "channel": "search",
+    "campaign_id": "cmp-04"
+  },
+  {
+    "cycle_id": "c037",
+    "search_term": "wireless earbuds",
+    "market_cpc_to_win": 1.6365,
+    "impressions_available": 1612,
+    "channel": "search",
+    "campaign_id": "cmp-04"
+  },
+  {
+    "cycle_id": "c038",
+    "search_term": "yoga mat",
+    "market_cpc_to_win": 1.6474,
+    "impressions_available": 1629,
+    "channel": "search",
+    "campaign_id": "cmp-04"
+  },
+  {
+    "cycle_id": "c039",
+    "search_term": "coffee maker",
+    "market_cpc_to_win": 1.6615,
+    "impressions_available": 1646,
+    "channel": "search",
+    "campaign_id": "cmp-04"
+  },
+  {
+    "cycle_id": "c040",
+    "search_term": "desk lamp",
+    "market_cpc_to_win": 1.6815,
+    "impressions_available": 1663,
+    "channel": "search",
+    "campaign_id": "cmp-04"
+  },
+  {
+    "cycle_id": "c041",
+    "search_term": "running shoes",
+    "market_cpc_to_win": 1.704,
+    "impressions_available": 1680,
+    "channel": "search",
+    "campaign_id": "cmp-05"
+  },
+  {
+    "cycle_id": "c042",
+    "search_term": "wireless earbuds",
+    "market_cpc_to_win": 1.703,
+    "impressions_available": 1697,
+    "channel": "search",
+    "campaign_id": "cmp-05"
+  },
+  {
+    "cycle_id": "c043",
+    "search_term": "yoga mat",
+    "market_cpc_to_win": 1.7241,
+    "impressions_available": 1714,
+    "channel": "search",
+    "campaign_id": "cmp-05"
+  },
+  {
+    "cycle_id": "c044",
+    "search_term": "coffee maker",
+    "market_cpc_to_win": 1.7349,
+    "impressions_available": 1731,
+    "channel": "search",
+    "campaign_id": "cmp-05"
+  },
+  {
+    "cycle_id": "c045",
+    "search_term": "desk lamp",
+    "market_cpc_to_win": 1.7644,
+    "impressions_available": 1748,
+    "channel": "search",
+    "campaign_id": "cmp-05"
+  },
+  {
+    "cycle_id": "c046",
+    "search_term": "running shoes",
+    "market_cpc_to_win": 1.7649,
+    "impressions_available": 1765,
+    "channel": "search",
+    "campaign_id": "cmp-05"
+  },
+  {
+    "cycle_id": "c047",
+    "search_term": "wireless earbuds",
+    "market_cpc_to_win": 1.7944,
+    "impressions_available": 1782,
+    "channel": "search",
+    "campaign_id": "cmp-05"
+  },
+  {
+    "cycle_id": "c048",
+    "search_term": "yoga mat",
+    "market_cpc_to_win": 1.7879,
+    "impressions_available": 1799,
+    "channel": "search",
+    "campaign_id": "cmp-05"
+  },
+  {
+    "cycle_id": "c049",
+    "search_term": "coffee maker",
+    "market_cpc_to_win": 1.8276,
+    "impressions_available": 1816,
+    "channel": "search",
+    "campaign_id": "cmp-05"
+  },
+  {
+    "cycle_id": "c050",
+    "search_term": "desk lamp",
+    "market_cpc_to_win": 1.8296,
+    "impressions_available": 1833,
+    "channel": "search",
+    "campaign_id": "cmp-05"
+  },
+  {
+    "cycle_id": "c051",
+    "search_term": "running shoes",
+    "market_cpc_to_win": 1.8596,
+    "impressions_available": 1850,
+    "channel": "search",
+    "campaign_id": "cmp-06"
+  },
+  {
+    "cycle_id": "c052",
+    "search_term": "wireless earbuds",
+    "market_cpc_to_win": 1.8703,
+    "impressions_available": 1867,
+    "channel": "search",
+    "campaign_id": "cmp-06"
+  },
+  {
+    "cycle_id": "c053",
+    "search_term": "yoga mat",
+    "market_cpc_to_win": 1.8865,
+    "impressions_available": 1884,
+    "channel": "search",
+    "campaign_id": "cmp-06"
+  },
+  {
+    "cycle_id": "c054",
+    "search_term": "coffee maker",
+    "market_cpc_to_win": 1.8769,
+    "impressions_available": 1901,
+    "channel": "search",
+    "campaign_id": "cmp-06"
+  },
+  {
+    "cycle_id": "c055",
+    "search_term": "desk lamp",
+    "market_cpc_to_win": 1.9133,
+    "impressions_available": 1918,
+    "channel": "search",
+    "campaign_id": "cmp-06"
+  },
+  {
+    "cycle_id": "c056",
+    "search_term": "running shoes",
+    "market_cpc_to_win": 1.9215,
+    "impressions_available": 1935,
+    "channel": "search",
+    "campaign_id": "cmp-06"
+  },
+  {
+    "cycle_id": "c057",
+    "search_term": "wireless earbuds",
+    "market_cpc_to_win": 1.9471,
+    "impressions_available": 1952,
+    "channel": "search",
+    "campaign_id": "cmp-06"
+  },
+  {
+    "cycle_id": "c058",
+    "search_term": "yoga mat",
+    "market_cpc_to_win": 1.9523,
+    "impressions_available": 1969,
+    "channel": "search",
+    "campaign_id": "cmp-06"
+  },
+  {
+    "cycle_id": "c059",
+    "search_term": "coffee maker",
+    "market_cpc_to_win": 1.9606,
+    "impressions_available": 1986,
+    "channel": "search",
+    "campaign_id": "cmp-06"
+  },
+  {
+    "cycle_id": "c060",
+    "search_term": "desk lamp",
+    "market_cpc_to_win": 1.99,
+    "impressions_available": 2003,
+    "channel": "search",
+    "campaign_id": "cmp-06"
+  }
+]

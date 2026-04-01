@@ -225,3 +225,6 @@ __marimo__/
 /docs/00-implementation-guidelines
 /docs/references
 *.not-push*
+/samples/37_drift_semantic_refund/agent-prompt.md
+/samples/36_drift_optimization_discount/agent-prompt.md
+/samples/38_drift_environmental_bidding/agent-prompt.md

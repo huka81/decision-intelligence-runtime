@@ -1,0 +1,40 @@
+paths:
+  database: data/bidding_audit.sqlite
+  inputs_file: data/market_conditions.json
+
+agent:
+  agent_id: BiddingAgent
+  agent_version: "1.0.0"
+  role: EXECUTOR
+  mission: "Maintain top 3 ad placement for key search terms without exceeding the contract CPC ceiling."
+  priority: 10
+  allowed_policy_types:
+    - cpc_bid
+
+contract:
+  max_cpc_usd: 2.00
+
+simulation:
+  # Fixture generation metadata — documents how data/market_conditions.json was produced.
+  # These fields are not used at runtime; the pipeline reads the pre-generated JSON directly.
+  normal_phase_iterations: 30
+  market_cpc_start: 1.20
+  market_cpc_end: 1.98
+  market_cpc_noise_pp: 0.02
+  simulation_seed: 38
+  bid_margin_above_market: 0.02
+
+dim:
+  allowed_agents:
+    - BiddingAgent
+  context_state:
+    risk_score: 0.1
+
+monitor:
+  window_size: 10
+  ltv_usd: 1.80
+  negative_roi_consecutive_cycles: 5
+  suspension_reason: NEGATIVE_ROI_ENVIRONMENTAL_DRIFT
+
+registry:
+  supported_versions: "1.x"

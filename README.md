@@ -146,7 +146,7 @@ decision-intelligence-runtime/
 ├── samples/                  # Reference implementations (01–11 mechanics, 31+ use cases)
 │   ├── README.md             # Sample catalog and run instructions
 │   ├── 00_quick_start/ … 11_topology_c_dl_pci/
-│   ├── 31_finance_trading/ … 35_crewai_roa_wrapper/ … 36_drift_optimization_discount/ … 37_drift_semantic_refund/
+│   ├── 31_finance_trading/ … 35_crewai_roa_wrapper/ … 36_drift_optimization_discount/ … 37_drift_semantic_refund/ … 38_drift_environmental_bidding/
 │   └── 88_meta_context_engineering/   # Meta-sample: System Prompt Toolkit
 ├── docs/                     # Architectural documentation
 │   ├── 00-introduction/      # DIR intro, framework mapping
@@ -193,6 +193,7 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 | 35 | `35_crewai_roa_wrapper` | ROA + DIR | **Customer claims/refunds** | CrewAI Crew → ROA. E-commerce refunds (EUR). Verifies ACCEPT/ESCALATE/REJECT by category, return window, amount; NL intake. |
 | 36 | `36_drift_optimization_discount` | DIR + DIM + Monitor | **Retention discounts** | Optimization drift (reward hacking): agent offers discounts within DIM hard cap but profitability decays in aggregate. PerformanceMonitor detects rolling-average breach and suspends the agent. Shows that **kernel compliance ≠ business health**. |
 | 37 | `37_drift_semantic_refund` | DIR + DIM + Monitor | **Support refunds** | Semantic drift (emotional manipulation): refunds stay under a EUR cap so DIM accepts, but the delay policy is violated. ComplianceMonitor joins `execution_log` to `context_snapshots` and suspends when rolling semantic violation rate exceeds the threshold. |
+| 38 | `38_drift_environmental_bidding` | DIR + DIM + Monitor | **AdTech / bidding** | Environmental drift: market CPC escalates; bids stay under a contract cap so DIM accepts, but rolling average CPC exceeds LTV. BusinessROIMonitor joins `execution_log` to `market_snapshots` and suspends after consecutive negative ROI cycles. See [samples/38_drift_environmental_bidding/README.md](samples/38_drift_environmental_bidding/README.md). |
 
 ---
 ## Documentation

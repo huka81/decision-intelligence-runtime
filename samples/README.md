@@ -55,6 +55,7 @@ Przykłady typu biznesowy use case, łączące mechanizmy w pełne scenariusze.
 | 35 | [35_crewai_roa_wrapper](35_crewai_roa_wrapper/) | ROA + DIR | **Customer claims/refunds** | CrewAI Crew → ROA. E-commerce refunds (EUR). Verifies ACCEPT/ESCALATE/REJECT by category, return window, amount; NL intake. |
 | 36 | [36_drift_optimization_discount](36_drift_optimization_discount/) | DIR + DIM + Monitor | **Retention discounts** | Optimization drift (reward hacking): agent offers discounts within DIM hard cap but profitability decays in aggregate. PerformanceMonitor detects rolling-average breach and suspends the agent. Shows that **kernel compliance ≠ business health**. |
 | 37 | [37_drift_semantic_refund](37_drift_semantic_refund/) | DIR + DIM + Monitor | **Support refunds** | Semantic drift (emotional manipulation): refunds stay under a EUR cap so DIM accepts, but delay policy is violated. ComplianceMonitor joins execution telemetry to context snapshots and suspends on rolling semantic violation rate. |
+| 38 | [38_drift_environmental_bidding](38_drift_environmental_bidding/) | DIR + DIM + Monitor | **AdTech / bidding** | Environmental drift: market CPC escalates; bids stay under a contract cap so DIM accepts, but rolling average CPC exceeds LTV. BusinessROIMonitor joins executions to market snapshots and suspends after consecutive negative ROI cycles. |
 
 ---
 
@@ -77,6 +78,7 @@ python samples/31_finance_trading/run.py
 # drift demos (kernel vs business health)
 python samples/36_drift_optimization_discount/run.py
 python samples/37_drift_semantic_refund/run.py
+python samples/38_drift_environmental_bidding/run.py
 ```
 
 Each sample has its own `README.md` with goal, how to run, and expected output.
