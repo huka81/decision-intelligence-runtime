@@ -90,6 +90,7 @@ class AgentRegistry:
                 ("agent_version", "TEXT"),
                 ("session_token", "TEXT"),
                 ("registered_at", "TIMESTAMP"),
+                ("suspension_reason", "TEXT"),
             ]:
                 try:
                     conn.execute(
@@ -194,3 +195,52 @@ class AgentRegistry:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute("SELECT agent_id FROM agent_registry WHERE status = 'ACTIVE'")
             return [row[0] for row in cursor.fetchall()]
+
+    def set_agent_status(
+        self,
+        agent_id: str,
+        status: str,
+        suspension_reason: Optional[str] = None,
+    ) -> bool:
+        """
+        Transition agent lifecycle status (e.g. ACTIVE -> SUSPENDED).
+
+        Args:
+            agent_id: Registered agent identifier.
+            status: New status value (e.g. 'SUSPENDED', 'ACTIVE').
+            suspension_reason: Optional machine-oriented reason (audit / ops).
+
+        Returns:
+            True if a row was updated.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.execute(
+                """
+                UPDATE agent_registry
+                SET status = ?, suspension_reason = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE agent_id = ?
+                """,
+                (status, suspension_reason, agent_id),
+            )
+            conn.commit()
+            updated = cur.rowcount > 0
+        if updated:
+            logger.info(
+                "Agent status: agent_id=%s status=%s reason=%s",
+                agent_id,
+                status,
+                suspension_reason,
+            )
+        return updated
+
+    def get_agent_status(self, agent_id: str) -> Optional[tuple]:
+        """Return (status, suspension_reason) if the agent exists, else None."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT status, suspension_reason FROM agent_registry WHERE agent_id = ?",
+                (agent_id,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                return None
+            return (row[0], row[1])

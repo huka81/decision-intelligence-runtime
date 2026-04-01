@@ -1,0 +1,802 @@
+[
+  {
+    "cancellation_id": "CX-2025-884200",
+    "customer_id": "acct_884200",
+    "plan": "Pro Monthly",
+    "submitted_at": "2025-03-01T10:00:00Z",
+    "channel": "web_portal",
+    "user_reason": "Too expensive for what I use."
+  },
+  {
+    "cancellation_id": "CX-2025-884201",
+    "customer_id": "acct_884201",
+    "plan": "Pro Annual",
+    "submitted_at": "2025-03-02T11:07:00Z",
+    "channel": "email_ticket",
+    "user_reason": "cancel"
+  },
+  {
+    "cancellation_id": "CX-2025-884202",
+    "customer_id": "acct_884202",
+    "plan": "Team (10 seats)",
+    "submitted_at": "2025-03-03T12:14:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "not using anymore"
+  },
+  {
+    "cancellation_id": "CX-2025-884203",
+    "customer_id": "acct_884203",
+    "plan": "Starter",
+    "submitted_at": "2025-03-04T13:21:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Price went up again without warning. Done."
+  },
+  {
+    "cancellation_id": "CX-2025-884204",
+    "customer_id": "acct_884204",
+    "plan": "Business Plus",
+    "submitted_at": "2025-03-05T14:28:00Z",
+    "channel": "phone_vm",
+    "user_reason": "I thought I cancelled last year?? Charges still showing on Amex."
+  },
+  {
+    "cancellation_id": "CX-2025-884205",
+    "customer_id": "acct_884205",
+    "plan": "Legacy Unlimited",
+    "submitted_at": "2025-03-06T15:35:00Z",
+    "channel": "web_portal",
+    "user_reason": "Company card policy changed. Need to shut this down by Friday."
+  },
+  {
+    "cancellation_id": "CX-2025-884206",
+    "customer_id": "acct_884206",
+    "plan": "Nonprofit",
+    "submitted_at": "2025-03-07T16:42:00Z",
+    "channel": "email_ticket",
+    "user_reason": "switched to competitor"
+  },
+  {
+    "cancellation_id": "CX-2025-884207",
+    "customer_id": "acct_884207",
+    "plan": "Education",
+    "submitted_at": "2025-03-08T17:49:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Your app is fine but we are downsizing the team from 12 to 4. Nothing personal."
+  },
+  {
+    "cancellation_id": "CX-2025-884208",
+    "customer_id": "acct_884208",
+    "plan": "Enterprise Trial",
+    "submitted_at": "2025-03-09T10:56:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "STOP BILLING ME"
+  },
+  {
+    "cancellation_id": "CX-2025-884209",
+    "customer_id": "acct_884209",
+    "plan": "SMB Bundle",
+    "submitted_at": "2025-03-10T11:03:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Honestly I have not logged in for 8 months. My fault. Please close it."
+  },
+  {
+    "cancellation_id": "CX-2025-884210",
+    "customer_id": "acct_884210",
+    "plan": "Pro Monthly",
+    "submitted_at": "2025-03-11T12:10:00Z",
+    "channel": "web_portal",
+    "user_reason": "Terrible support experience ticket #44821 still open after 3 weeks."
+  },
+  {
+    "cancellation_id": "CX-2025-884211",
+    "customer_id": "acct_884211",
+    "plan": "Pro Annual",
+    "submitted_at": "2025-03-12T13:17:00Z",
+    "channel": "email_ticket",
+    "user_reason": "just cancel thanks"
+  },
+  {
+    "cancellation_id": "CX-2025-884212",
+    "customer_id": "acct_884212",
+    "plan": "Team (10 seats)",
+    "submitted_at": "2025-03-13T14:24:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Moving everything to our parent org stack."
+  },
+  {
+    "cancellation_id": "CX-2025-884213",
+    "customer_id": "acct_884213",
+    "plan": "Starter",
+    "submitted_at": "2025-03-14T15:31:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "The renewal email buried the price. Feels dishonest. I am out."
+  },
+  {
+    "cancellation_id": "CX-2025-884214",
+    "customer_id": "acct_884214",
+    "plan": "Business Plus",
+    "submitted_at": "2025-03-15T16:38:00Z",
+    "channel": "phone_vm",
+    "user_reason": "no longer need"
+  },
+  {
+    "cancellation_id": "CX-2025-884215",
+    "customer_id": "acct_884215",
+    "plan": "Legacy Unlimited",
+    "submitted_at": "2025-03-16T17:45:00Z",
+    "channel": "web_portal",
+    "user_reason": "I am furious. You charged me twice in January and nobody replied to my dispute."
+  },
+  {
+    "cancellation_id": "CX-2025-884216",
+    "customer_id": "acct_884216",
+    "plan": "Nonprofit",
+    "submitted_at": "2025-03-17T10:52:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Budget freeze Q2. CFO mandate."
+  },
+  {
+    "cancellation_id": "CX-2025-884217",
+    "customer_id": "acct_884217",
+    "plan": "Education",
+    "submitted_at": "2025-03-18T11:59:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "trial ended forgot to cancel my bad"
+  },
+  {
+    "cancellation_id": "CX-2025-884218",
+    "customer_id": "acct_884218",
+    "plan": "Enterprise Trial",
+    "submitted_at": "2025-03-19T12:06:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Product is great but we outgrew the plan limits and enterprise quote was insane."
+  },
+  {
+    "cancellation_id": "CX-2025-884219",
+    "customer_id": "acct_884219",
+    "plan": "SMB Bundle",
+    "submitted_at": "2025-03-20T13:13:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Please cancel effective immediately. GDPR-related."
+  },
+  {
+    "cancellation_id": "CX-2025-884220",
+    "customer_id": "acct_884220",
+    "plan": "Pro Monthly",
+    "submitted_at": "2025-03-21T14:20:00Z",
+    "channel": "web_portal",
+    "user_reason": "x"
+  },
+  {
+    "cancellation_id": "CX-2025-884221",
+    "customer_id": "acct_884221",
+    "plan": "Pro Annual",
+    "submitted_at": "2025-03-22T15:27:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Lost my job. Need to cut every subscription today."
+  },
+  {
+    "cancellation_id": "CX-2025-884222",
+    "customer_id": "acct_884222",
+    "plan": "Team (10 seats)",
+    "submitted_at": "2025-03-23T16:34:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Retention chatbot kept looping. If this is AI save your breath."
+  },
+  {
+    "cancellation_id": "CX-2025-884223",
+    "customer_id": "acct_884223",
+    "plan": "Starter",
+    "submitted_at": "2025-03-24T17:41:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "We merged with Acme; they use a different vendor."
+  },
+  {
+    "cancellation_id": "CX-2025-884224",
+    "customer_id": "acct_884224",
+    "plan": "Business Plus",
+    "submitted_at": "2025-03-25T10:48:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Too many bugs in the mobile app. Lost client data twice."
+  },
+  {
+    "cancellation_id": "CX-2025-884225",
+    "customer_id": "acct_884225",
+    "plan": "Legacy Unlimited",
+    "submitted_at": "2025-03-26T11:55:00Z",
+    "channel": "web_portal",
+    "user_reason": "cancel subscription"
+  },
+  {
+    "cancellation_id": "CX-2025-884226",
+    "customer_id": "acct_884226",
+    "plan": "Nonprofit",
+    "submitted_at": "2025-03-27T12:02:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Not worth 89/mo for 2 reports I glance at."
+  },
+  {
+    "cancellation_id": "CX-2025-884227",
+    "customer_id": "acct_884227",
+    "plan": "Education",
+    "submitted_at": "2025-03-28T13:09:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Husband set this up. He passed away last month. Please close the account."
+  },
+  {
+    "cancellation_id": "CX-2025-884228",
+    "customer_id": "acct_884228",
+    "plan": "Enterprise Trial",
+    "submitted_at": "2025-03-01T14:16:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Going back to spreadsheets. Simpler for our shop."
+  },
+  {
+    "cancellation_id": "CX-2025-884229",
+    "customer_id": "acct_884229",
+    "plan": "SMB Bundle",
+    "submitted_at": "2025-03-02T15:23:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Your competitor offered half the price for the same seat count."
+  },
+  {
+    "cancellation_id": "CX-2025-884230",
+    "customer_id": "acct_884230",
+    "plan": "Pro Monthly",
+    "submitted_at": "2025-03-03T16:30:00Z",
+    "channel": "web_portal",
+    "user_reason": "I only needed it for one project. Project shipped."
+  },
+  {
+    "cancellation_id": "CX-2025-884231",
+    "customer_id": "acct_884231",
+    "plan": "Pro Annual",
+    "submitted_at": "2025-03-04T17:37:00Z",
+    "channel": "email_ticket",
+    "user_reason": "AUTORENEW TRAP. NEVER AGAIN."
+  },
+  {
+    "cancellation_id": "CX-2025-884232",
+    "customer_id": "acct_884232",
+    "plan": "Team (10 seats)",
+    "submitted_at": "2025-03-05T10:44:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Quiet quitting this software."
+  },
+  {
+    "cancellation_id": "CX-2025-884233",
+    "customer_id": "acct_884233",
+    "plan": "Starter",
+    "submitted_at": "2025-03-06T11:51:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "EU customer - invoicing in USD kills us on FX."
+  },
+  {
+    "cancellation_id": "CX-2025-884234",
+    "customer_id": "acct_884234",
+    "plan": "Business Plus",
+    "submitted_at": "2025-03-07T12:58:00Z",
+    "channel": "phone_vm",
+    "user_reason": "no reason"
+  },
+  {
+    "cancellation_id": "CX-2025-884235",
+    "customer_id": "acct_884235",
+    "plan": "Legacy Unlimited",
+    "submitted_at": "2025-03-08T13:05:00Z",
+    "channel": "web_portal",
+    "user_reason": "On maternity leave; pausing all tools for 6 months minimum."
+  },
+  {
+    "cancellation_id": "CX-2025-884236",
+    "customer_id": "acct_884236",
+    "plan": "Nonprofit",
+    "submitted_at": "2025-03-09T14:12:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Sales promised features that still are not shipped. I feel misled."
+  },
+  {
+    "cancellation_id": "CX-2025-884237",
+    "customer_id": "acct_884237",
+    "plan": "Education",
+    "submitted_at": "2025-03-10T15:19:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Church nonprofit. Cannot justify this line item to the board."
+  },
+  {
+    "cancellation_id": "CX-2025-884238",
+    "customer_id": "acct_884238",
+    "plan": "Enterprise Trial",
+    "submitted_at": "2025-03-11T16:26:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "bye"
+  },
+  {
+    "cancellation_id": "CX-2025-884239",
+    "customer_id": "acct_884239",
+    "plan": "SMB Bundle",
+    "submitted_at": "2025-03-12T17:33:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Integration with our ERP never worked. Paid consultants. Still broken."
+  },
+  {
+    "cancellation_id": "CX-2025-884240",
+    "customer_id": "acct_884240",
+    "plan": "Pro Monthly",
+    "submitted_at": "2025-03-13T10:40:00Z",
+    "channel": "web_portal",
+    "user_reason": "Two-factor lockout and support could not verify me for 11 days."
+  },
+  {
+    "cancellation_id": "CX-2025-884241",
+    "customer_id": "acct_884241",
+    "plan": "Pro Annual",
+    "submitted_at": "2025-03-14T11:47:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Switching to free tier elsewhere."
+  },
+  {
+    "cancellation_id": "CX-2025-884242",
+    "customer_id": "acct_884242",
+    "plan": "Team (10 seats)",
+    "submitted_at": "2025-03-15T12:54:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Contractor engagement ended. This was theirs."
+  },
+  {
+    "cancellation_id": "CX-2025-884243",
+    "customer_id": "acct_884243",
+    "plan": "Starter",
+    "submitted_at": "2025-03-16T13:01:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "I hate writing this but we are insolvent."
+  },
+  {
+    "cancellation_id": "CX-2025-884244",
+    "customer_id": "acct_884244",
+    "plan": "Business Plus",
+    "submitted_at": "2025-03-17T14:08:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Annual plan auto-renewed while I was in hospital. Please refund and cancel."
+  },
+  {
+    "cancellation_id": "CX-2025-884245",
+    "customer_id": "acct_884245",
+    "plan": "Legacy Unlimited",
+    "submitted_at": "2025-03-18T15:15:00Z",
+    "channel": "web_portal",
+    "user_reason": "Too loud marketing emails. Unsub did not work. Nuclear option."
+  },
+  {
+    "cancellation_id": "CX-2025-884246",
+    "customer_id": "acct_884246",
+    "plan": "Nonprofit",
+    "submitted_at": "2025-03-19T16:22:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Engineering wants self-hosted."
+  },
+  {
+    "cancellation_id": "CX-2025-884247",
+    "customer_id": "acct_884247",
+    "plan": "Education",
+    "submitted_at": "2025-03-20T17:29:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "ok cancel"
+  },
+  {
+    "cancellation_id": "CX-2025-884248",
+    "customer_id": "acct_884248",
+    "plan": "Enterprise Trial",
+    "submitted_at": "2025-03-21T10:36:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Quality regressed hard after the February release."
+  },
+  {
+    "cancellation_id": "CX-2025-884249",
+    "customer_id": "acct_884249",
+    "plan": "SMB Bundle",
+    "submitted_at": "2025-03-22T11:43:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Found duplicate charge on invoice INV-9931. Until resolved I am gone."
+  },
+  {
+    "cancellation_id": "CX-2025-884250",
+    "customer_id": "acct_884250",
+    "plan": "Pro Monthly",
+    "submitted_at": "2025-03-23T12:50:00Z",
+    "channel": "web_portal",
+    "user_reason": "Student discount expired and full price jumped 40 percent overnight."
+  },
+  {
+    "cancellation_id": "CX-2025-884251",
+    "customer_id": "acct_884251",
+    "plan": "Pro Annual",
+    "submitted_at": "2025-03-24T13:57:00Z",
+    "channel": "email_ticket",
+    "user_reason": "We are sunsetting the product that depended on your API."
+  },
+  {
+    "cancellation_id": "CX-2025-884252",
+    "customer_id": "acct_884252",
+    "plan": "Team (10 seats)",
+    "submitted_at": "2025-03-25T14:04:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Just testing. Thought trial was longer."
+  },
+  {
+    "cancellation_id": "CX-2025-884253",
+    "customer_id": "acct_884253",
+    "plan": "Starter",
+    "submitted_at": "2025-03-26T15:11:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Account executive ghosted us after POC."
+  },
+  {
+    "cancellation_id": "CX-2025-884254",
+    "customer_id": "acct_884254",
+    "plan": "Business Plus",
+    "submitted_at": "2025-03-27T16:18:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Legal says we need data residency in Canada."
+  },
+  {
+    "cancellation_id": "CX-2025-884255",
+    "customer_id": "acct_884255",
+    "plan": "Legacy Unlimited",
+    "submitted_at": "2025-03-28T17:25:00Z",
+    "channel": "web_portal",
+    "user_reason": "Simple: I do not use it."
+  },
+  {
+    "cancellation_id": "CX-2025-884256",
+    "customer_id": "acct_884256",
+    "plan": "Nonprofit",
+    "submitted_at": "2025-03-01T10:32:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Emotional support animal ate my credit card. Literally. Cancelling everything."
+  },
+  {
+    "cancellation_id": "CX-2025-884257",
+    "customer_id": "acct_884257",
+    "plan": "Education",
+    "submitted_at": "2025-03-02T11:39:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Your dashboard is pretty but slow as molasses."
+  },
+  {
+    "cancellation_id": "CX-2025-884258",
+    "customer_id": "acct_884258",
+    "plan": "Enterprise Trial",
+    "submitted_at": "2025-03-03T12:46:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Merged accounts - duplicate subscription."
+  },
+  {
+    "cancellation_id": "CX-2025-884259",
+    "customer_id": "acct_884259",
+    "plan": "SMB Bundle",
+    "submitted_at": "2025-03-04T13:53:00Z",
+    "channel": "phone_vm",
+    "user_reason": "PLEASE CANCEL I ASKED THREE TIMES IN CHAT"
+  },
+  {
+    "cancellation_id": "CX-2025-884260",
+    "customer_id": "acct_884260",
+    "plan": "Pro Monthly",
+    "submitted_at": "2025-03-05T14:00:00Z",
+    "channel": "web_portal",
+    "user_reason": "Moving to retirement. Trimming tools."
+  },
+  {
+    "cancellation_id": "CX-2025-884261",
+    "customer_id": "acct_884261",
+    "plan": "Pro Annual",
+    "submitted_at": "2025-03-06T15:07:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Startup died. Thanks for the ride."
+  },
+  {
+    "cancellation_id": "CX-2025-884262",
+    "customer_id": "acct_884262",
+    "plan": "Team (10 seats)",
+    "submitted_at": "2025-03-07T16:14:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Compliance audit flagged third-party SaaS sprawl."
+  },
+  {
+    "cancellation_id": "CX-2025-884263",
+    "customer_id": "acct_884263",
+    "plan": "Starter",
+    "submitted_at": "2025-03-08T17:21:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "I prefer the old UI. New one confuses my team."
+  },
+  {
+    "cancellation_id": "CX-2025-884264",
+    "customer_id": "acct_884264",
+    "plan": "Business Plus",
+    "submitted_at": "2025-03-09T10:28:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Price OK but hidden per-seat fees on addons = dealbreaker."
+  },
+  {
+    "cancellation_id": "CX-2025-884265",
+    "customer_id": "acct_884265",
+    "plan": "Legacy Unlimited",
+    "submitted_at": "2025-03-10T11:35:00Z",
+    "channel": "web_portal",
+    "user_reason": "no"
+  },
+  {
+    "cancellation_id": "CX-2025-884266",
+    "customer_id": "acct_884266",
+    "plan": "Nonprofit",
+    "submitted_at": "2025-03-11T12:42:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Winter heating bills crushed us. Cutting luxuries."
+  },
+  {
+    "cancellation_id": "CX-2025-884267",
+    "customer_id": "acct_884267",
+    "plan": "Education",
+    "submitted_at": "2025-03-12T13:49:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "You fixed the outage after 4 days. Trust is gone."
+  },
+  {
+    "cancellation_id": "CX-2025-884268",
+    "customer_id": "acct_884268",
+    "plan": "Enterprise Trial",
+    "submitted_at": "2025-03-13T14:56:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Adopted open-source alternative."
+  },
+  {
+    "cancellation_id": "CX-2025-884269",
+    "customer_id": "acct_884269",
+    "plan": "SMB Bundle",
+    "submitted_at": "2025-03-14T15:03:00Z",
+    "channel": "phone_vm",
+    "user_reason": "HR offboarding checklist item 14: cancel SaaS."
+  },
+  {
+    "cancellation_id": "CX-2025-884270",
+    "customer_id": "acct_884270",
+    "plan": "Pro Monthly",
+    "submitted_at": "2025-03-15T16:10:00Z",
+    "channel": "web_portal",
+    "user_reason": "Double subscription - personal and work email both billed."
+  },
+  {
+    "cancellation_id": "CX-2025-884271",
+    "customer_id": "acct_884271",
+    "plan": "Pro Annual",
+    "submitted_at": "2025-03-16T17:17:00Z",
+    "channel": "email_ticket",
+    "user_reason": "N/A"
+  },
+  {
+    "cancellation_id": "CX-2025-884272",
+    "customer_id": "acct_884272",
+    "plan": "Team (10 seats)",
+    "submitted_at": "2025-03-17T10:24:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Macro downturn. Every dollar scrutinized."
+  },
+  {
+    "cancellation_id": "CX-2025-884273",
+    "customer_id": "acct_884273",
+    "plan": "Starter",
+    "submitted_at": "2025-03-18T11:31:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Son used my card for school project. Cancelling now."
+  },
+  {
+    "cancellation_id": "CX-2025-884274",
+    "customer_id": "acct_884274",
+    "plan": "Business Plus",
+    "submitted_at": "2025-03-19T12:38:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Documentation drifted from reality. Wasted 20h onboarding hires."
+  },
+  {
+    "cancellation_id": "CX-2025-884275",
+    "customer_id": "acct_884275",
+    "plan": "Legacy Unlimited",
+    "submitted_at": "2025-03-20T13:45:00Z",
+    "channel": "web_portal",
+    "user_reason": "Chose wrong tier. Rather cancel than negotiate downgrade drama."
+  },
+  {
+    "cancellation_id": "CX-2025-884276",
+    "customer_id": "acct_884276",
+    "plan": "Nonprofit",
+    "submitted_at": "2025-03-21T14:52:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Good product. Bad timing for us."
+  },
+  {
+    "cancellation_id": "CX-2025-884277",
+    "customer_id": "acct_884277",
+    "plan": "Education",
+    "submitted_at": "2025-03-22T15:59:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "cancel pls urgent"
+  },
+  {
+    "cancellation_id": "CX-2025-884278",
+    "customer_id": "acct_884278",
+    "plan": "Enterprise Trial",
+    "submitted_at": "2025-03-23T16:06:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Security review failed pen test findings on your SSO flow."
+  },
+  {
+    "cancellation_id": "CX-2025-884279",
+    "customer_id": "acct_884279",
+    "plan": "SMB Bundle",
+    "submitted_at": "2025-03-24T17:13:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Nonprofit grant ended."
+  },
+  {
+    "cancellation_id": "CX-2025-884280",
+    "customer_id": "acct_884280",
+    "plan": "Pro Monthly",
+    "submitted_at": "2025-03-25T10:20:00Z",
+    "channel": "web_portal",
+    "user_reason": "I am moving abroad; payment methods no longer work with your billing."
+  },
+  {
+    "cancellation_id": "CX-2025-884281",
+    "customer_id": "acct_884281",
+    "plan": "Pro Annual",
+    "submitted_at": "2025-03-26T11:27:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Feature parity with Notion now. Sorry."
+  },
+  {
+    "cancellation_id": "CX-2025-884282",
+    "customer_id": "acct_884282",
+    "plan": "Team (10 seats)",
+    "submitted_at": "2025-03-27T12:34:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Angry: webinar said lifetime lock-in then you changed terms."
+  },
+  {
+    "cancellation_id": "CX-2025-884283",
+    "customer_id": "acct_884283",
+    "plan": "Starter",
+    "submitted_at": "2025-03-28T13:41:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Consolidating under Microsoft bundle."
+  },
+  {
+    "cancellation_id": "CX-2025-884284",
+    "customer_id": "acct_884284",
+    "plan": "Business Plus",
+    "submitted_at": "2025-03-01T14:48:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Loved it for 2 years. New PM hates it. Politics."
+  },
+  {
+    "cancellation_id": "CX-2025-884285",
+    "customer_id": "acct_884285",
+    "plan": "Legacy Unlimited",
+    "submitted_at": "2025-03-02T15:55:00Z",
+    "channel": "web_portal",
+    "user_reason": "Taxes. Need clean books. Close unused vendors."
+  },
+  {
+    "cancellation_id": "CX-2025-884286",
+    "customer_id": "acct_884286",
+    "plan": "Nonprofit",
+    "submitted_at": "2025-03-03T16:02:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Minimalist phase. Fewer apps."
+  },
+  {
+    "cancellation_id": "CX-2025-884287",
+    "customer_id": "acct_884287",
+    "plan": "Education",
+    "submitted_at": "2025-03-04T17:09:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Your status page lied during the outage."
+  },
+  {
+    "cancellation_id": "CX-2025-884288",
+    "customer_id": "acct_884288",
+    "plan": "Enterprise Trial",
+    "submitted_at": "2025-03-05T10:16:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Pilot failed. Steering committee said no."
+  },
+  {
+    "cancellation_id": "CX-2025-884289",
+    "customer_id": "acct_884289",
+    "plan": "SMB Bundle",
+    "submitted_at": "2025-03-06T11:23:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Please. Just. Cancel."
+  },
+  {
+    "cancellation_id": "CX-2025-884290",
+    "customer_id": "acct_884290",
+    "plan": "Pro Monthly",
+    "submitted_at": "2025-03-07T12:30:00Z",
+    "channel": "web_portal",
+    "user_reason": "Renewal quote 2.3x last year. No justification given."
+  },
+  {
+    "cancellation_id": "CX-2025-884291",
+    "customer_id": "acct_884291",
+    "plan": "Pro Annual",
+    "submitted_at": "2025-03-08T13:37:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Freelancer; client pulled the contract."
+  },
+  {
+    "cancellation_id": "CX-2025-884292",
+    "customer_id": "acct_884292",
+    "plan": "Team (10 seats)",
+    "submitted_at": "2025-03-09T14:44:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Data export took 6 days. Unacceptable for exit."
+  },
+  {
+    "cancellation_id": "CX-2025-884293",
+    "customer_id": "acct_884293",
+    "plan": "Starter",
+    "submitted_at": "2025-03-10T15:51:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Kids college tuition priority. This is first cut."
+  },
+  {
+    "cancellation_id": "CX-2025-884294",
+    "customer_id": "acct_884294",
+    "plan": "Business Plus",
+    "submitted_at": "2025-03-11T16:58:00Z",
+    "channel": "phone_vm",
+    "user_reason": "ok"
+  },
+  {
+    "cancellation_id": "CX-2025-884295",
+    "customer_id": "acct_884295",
+    "plan": "Legacy Unlimited",
+    "submitted_at": "2025-03-12T17:05:00Z",
+    "channel": "web_portal",
+    "user_reason": "Switching roles; new employer forbids this vendor."
+  },
+  {
+    "cancellation_id": "CX-2025-884296",
+    "customer_id": "acct_884296",
+    "plan": "Nonprofit",
+    "submitted_at": "2025-03-13T10:12:00Z",
+    "channel": "email_ticket",
+    "user_reason": "Sandbox accidentally promoted to prod billing. Fix your UX."
+  },
+  {
+    "cancellation_id": "CX-2025-884297",
+    "customer_id": "acct_884297",
+    "plan": "Education",
+    "submitted_at": "2025-03-14T11:19:00Z",
+    "channel": "in_app_flow",
+    "user_reason": "Emotional: I trusted you with our roadmap data and you leaked the deck."
+  },
+  {
+    "cancellation_id": "CX-2025-884298",
+    "customer_id": "acct_884298",
+    "plan": "Enterprise Trial",
+    "submitted_at": "2025-03-15T12:26:00Z",
+    "channel": "chat_transcript",
+    "user_reason": "Seasonal business. Off-season shutdown."
+  },
+  {
+    "cancellation_id": "CX-2025-884299",
+    "customer_id": "acct_884299",
+    "plan": "SMB Bundle",
+    "submitted_at": "2025-03-16T13:33:00Z",
+    "channel": "phone_vm",
+    "user_reason": "Too many clicks to do basic tasks."
+  }
+]

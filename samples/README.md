@@ -53,6 +53,7 @@ Przykłady typu biznesowy use case, łączące mechanizmy w pełne scenariusze.
 | 33 | [33_insurance_underwriting](33_insurance_underwriting/) | [Topology C](../docs/03-topologies/DIR_Topologies.md) | Insurance underwriting | Risk evaluation with cryptographic Proof-Carrying Intents (PCI). |
 | 34 | [34_langchain_roa_wrapper](34_langchain_roa_wrapper/) | ROA + DIR | **FinOps** | LangChain ReAct → ROA. Cloud cost management. Verifies mission injection blocks PROD termination. |
 | 35 | [35_crewai_roa_wrapper](35_crewai_roa_wrapper/) | ROA + DIR | **Customer claims/refunds** | CrewAI Crew → ROA. E-commerce refunds (EUR). Verifies ACCEPT/ESCALATE/REJECT by category, return window, amount; NL intake. |
+| 36 | [36_drift_optimization_discount](36_drift_optimization_discount/) | DIR + DIM + Monitor | **Retention discounts** | Optimization drift (reward hacking): agent offers discounts within DIM hard cap but profitability decays in aggregate. PerformanceMonitor detects rolling-average breach and suspends the agent. Shows that **kernel compliance ≠ business health**. |
 
 ---
 

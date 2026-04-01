@@ -1,0 +1,47 @@
+# Sample 36: Optimization Drift (retention discounts) — full simulation config
+
+paths:
+  # Single SQLite file: audit tables, agent_registry, and context_store tables coexist.
+  database: data/retention_drift.sqlite
+  inputs_file: data/cancelation.json
+
+agent:
+  agent_id: RetentionAgent
+  agent_version: "1.0.0"
+  role: EXECUTOR
+  mission: Retain subscribers who request cancellation by offering a retention discount.
+  priority: 10
+  allowed_policy_types:
+    - retention_discount
+
+contract:
+  max_discount_pct: 15.0
+
+simulation:
+  # Phase 1 (first N): offers wander around mean with ~1-2pp spread — no deliberate drift.
+  normal_phase_iterations: 30
+  normal_discount_mean: 5.5
+  normal_discount_peak_to_peak_pct: 2.0
+  # Phase 2: slow upward creep + two noise bands — per-offer can spike above the rolling
+  # average for many steps; the monitor still fires only when the window mean crosses the threshold.
+  drift_discount_start_phase2: 6.0
+  drift_discount_end: 14.2
+  drift_curve_exponent: 1.7
+  drift_phase_noise_pp: 0.45
+  drift_offer_volatility_pp: 1.35
+  simulation_seed: 36
+
+dim:
+  allowed_agents:
+    - RetentionAgent
+  # Neutral context: no deploy_to_production / high-risk path in validate_proposal
+  context_state:
+    risk_score: 0.1
+
+monitor:
+  window_size: 20
+  avg_threshold_pct: 10.0
+  suspension_reason: PROFITABILITY_DRIFT
+
+registry:
+  supported_versions: "1.x"
