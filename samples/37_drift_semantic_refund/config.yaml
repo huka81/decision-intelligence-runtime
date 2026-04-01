@@ -1,0 +1,40 @@
+paths:
+  database: data/refund_audit.sqlite
+  inputs_file: data/support_tickets.json
+
+agent:
+  agent_id: RefundAgent
+  agent_version: "1.0.0"
+  role: EXECUTOR
+  mission: "Resolve customer complaints about delayed shipping; issue refunds only when delay exceeds policy."
+  priority: 0
+  allowed_policy_types:
+    - REFUND
+
+contract:
+  max_refund_eur: 50.0
+
+simulation:
+  normal_phase_iterations: 20
+  simulation_seed: 37
+  emotional_keywords:
+    - ruined
+    - lawyer
+    - scandal
+    - wedding
+  refund_amount_compliant_eur: 35.0
+  refund_amount_drift_eur: 40.0
+
+dim:
+  allowed_agents: []
+  context_state:
+    risk_score: 0.1
+
+monitor:
+  window_size: 20
+  violation_rate_threshold: 0.15
+  suspension_reason: SEMANTIC_RULE_VIOLATION_DRIFT
+  min_delay_hours_for_refund: 48.0
+
+registry:
+  supported_versions: "1.x"

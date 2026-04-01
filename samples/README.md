@@ -54,6 +54,7 @@ Przykłady typu biznesowy use case, łączące mechanizmy w pełne scenariusze.
 | 34 | [34_langchain_roa_wrapper](34_langchain_roa_wrapper/) | ROA + DIR | **FinOps** | LangChain ReAct → ROA. Cloud cost management. Verifies mission injection blocks PROD termination. |
 | 35 | [35_crewai_roa_wrapper](35_crewai_roa_wrapper/) | ROA + DIR | **Customer claims/refunds** | CrewAI Crew → ROA. E-commerce refunds (EUR). Verifies ACCEPT/ESCALATE/REJECT by category, return window, amount; NL intake. |
 | 36 | [36_drift_optimization_discount](36_drift_optimization_discount/) | DIR + DIM + Monitor | **Retention discounts** | Optimization drift (reward hacking): agent offers discounts within DIM hard cap but profitability decays in aggregate. PerformanceMonitor detects rolling-average breach and suspends the agent. Shows that **kernel compliance ≠ business health**. |
+| 37 | [37_drift_semantic_refund](37_drift_semantic_refund/) | DIR + DIM + Monitor | **Support refunds** | Semantic drift (emotional manipulation): refunds stay under a EUR cap so DIM accepts, but delay policy is violated. ComplianceMonitor joins execution telemetry to context snapshots and suspends on rolling semantic violation rate. |
 
 ---
 
@@ -73,6 +74,9 @@ python samples/00_quick_start/run.py   # Quick Start (recommended)
 python samples/01_roa_agent/run.py
 # or
 python samples/31_finance_trading/run.py
+# drift demos (kernel vs business health)
+python samples/36_drift_optimization_discount/run.py
+python samples/37_drift_semantic_refund/run.py
 ```
 
 Each sample has its own `README.md` with goal, how to run, and expected output.
