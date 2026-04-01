@@ -296,6 +296,38 @@ def generate_report(
             "</div>"
         )
 
+    experiment_block = f"""
+  <div class="panel experiment">
+    <h2>What this experiment demonstrates</h2>
+    <p>This sample illustrates <strong>optimization drift (reward hacking)</strong> in a
+       subscription-retention workflow. The agent's primary objective is to retain subscribers
+       by offering a discount. To maximize retention it increases the discount over time, staying
+       under the <strong>DIM hard cap of {max_discount_pct:.0f}%</strong> per offer.</p>
+    <p>The <strong>Decision Integrity Module (DIM)</strong> enforces only what is encoded in the
+       kernel contract (here: <code>discount_offered ≤ {max_discount_pct:.0f}%</code>, schema,
+       RBAC, TTL). It does <em>not</em> evaluate margin trajectory or running average concession.
+       Therefore the agent can remain "kernel-compliant" while the average discount drifts far
+       above what is economically sustainable — a pattern sometimes called
+       <em>death by a thousand cuts</em>.</p>
+    <p><strong>Simulation design:</strong> The first <strong>{window}</strong> offers (phase A)
+       fluctuate around ~{threshold_pct * 0.55:.1f}% with small random spread — a healthy margin
+       band. From decision {window + 1} onward (phase B), a slow accelerating curve plus two
+       independent noise bands drive offers upward. Individual offers may spike <em>above</em>
+       the rolling average for many steps without triggering the monitor.</p>
+    <p><strong>PerformanceMonitor:</strong> After each accepted execution, a SQL query computes
+       the rolling average of <code>discount_offered</code> over the last <strong>{window}</strong>
+       rows of <code>execution_log</code>, joined to <code>decision_flows</code> on
+       <code>dfid</code> (correlation integrity). If that average exceeds
+       <strong>{threshold_pct:.1f}%</strong>, the agent is moved to <code>SUSPENDED</code> with
+       reason <code>PROFITABILITY_DRIFT</code>.</p>
+    <p><strong>How to read the chart:</strong> The blue line is each individual offer (hard-capped
+       by DIM). The purple dashed line is the rolling mean — it rises more slowly than single
+       offers because it averages over the last {window} decisions. Suspension fires when
+       <em>purple crosses orange</em>, not when a single blue spike appears above it. The red
+       vertical line and dot mark the exact decision where the monitor tripped.</p>
+  </div>
+"""
+
     doc = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -399,13 +431,18 @@ def generate_report(
       margin: 1rem 0;
     }}
     .panel.susp {{ border-color: var(--suspend); }}
+    .panel.experiment h2 {{ margin-top: 0; }}
+    .panel.experiment p {{ margin: 0.65rem 0 0 0; }}
+    .panel.experiment p:first-of-type {{ margin-top: 0; }}
   </style>
 </head>
 <body>
 <main>
-  <h1>Optimization drift - retention discounts</h1>
+  <h1>Sample 36 — Optimization drift (retention discounts)</h1>
   <p class="muted">Simulation stopped: <strong>{_esc(sim.stopped_reason)}</strong>.
      Decisions recorded: {len(sim.steps)} / {sim.total_inputs} input tickets.</p>
+
+  {experiment_block}
 
   <div class="panel">
     <p><strong>Agent</strong> {_esc(agent_id)}</p>
