@@ -3,7 +3,7 @@
 ---
 
 # Context as Code: The Philosophy Behind the Repository
-![Context as Code](../../assets/images/4_form_scratch.png)
+![Context as Code](../../assets/images/8_form_scratch.png)
 
 ### Why architecture defines behavior in AI systems
 

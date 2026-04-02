@@ -30,17 +30,18 @@ This file is the **single-source context** for the Decision Intelligence Runtime
 
 ## 1. MOTIVATION  -  Why DIR Exists
 
-### 1.1 The Day Two Problem
+### 1.1 The Day Two and Day Three Problems
 
-AI agents fail in production not because models are wrong, but because the architecture around them is missing. Three failure modes emerge universally:
+AI agents fail in production not because models are wrong, but because the architecture around them is missing. Four failure modes emerge universally:
 
 | Failure | Root Cause | Required Mechanism |
 |---------|------------|-------------------|
 | **Hallucination Loops** | No retry governor; unbounded feedback cycles | Intent Retry Governor (REASONING_EXHAUSTION state, max ~3 retries) |
 | **State Drift (Stale Context)** | TOCTOU race: reasoning completed at T0, execution at T1 | Context hash-binding (ContextSnapshotID) + JIT State Verification |
 | **Execution Chaos** | No exactly-once guarantees; duplicate side effects | Idempotency key derived from decision context |
+| **Agent Drift (Day Three)** | Kernel Compliance does not guarantee Business Health over time | Post-Execution Governance (Monitors) + Circuit Breaking (Suspension) |
 
-These failures are **not model failures**. They are **architecture failures**. The model reasoned correctly; the system lacked the infrastructure to execute safely.
+These failures are **not model failures**. They are **architecture failures**. The model reasoned correctly; the system lacked the infrastructure to execute safely in the long term.
 
 ### 1.2 Documented Production Failure Cases
 
@@ -67,7 +68,14 @@ Without idempotency controls, network timeouts caused the agent to retry executi
 - **Root cause:** No idempotency; no duplicate intent protection
 - **Mechanism required:** `SHA256(DFID + Step_ID + Canonical_Params)`. The runtime recognizes duplicate intents and prevents duplicate side effects regardless of environmental state changes at retry time
 
-> **Key insight:** In each case, the agent's reasoning was sound. The failures occurred *after* reasoning  -  in the gap between "what the agent decided" and "what the system actually did." These were failures of architecture, not intelligence.
+**Failure Case 4  -  Agent Drift (Optimization / Semantic / Environmental)**
+
+The agent operated within its hard limits (e.g., maximum allowed discount of 15%), but over time, it consistently offered the maximum discount to every user to maximize retention. Each individual transaction passed the safety checks (Kernel Compliance), but the aggregate result destroyed profitability (Business Health).
+
+- **Root cause:** Kernel constraints evaluate transactions individually and statelessly, lacking awareness of aggregate trends.
+- **Mechanism required:** Post-Execution Governance. Asynchronous monitors analyzing rolling windows of execution data linked via DFID, with the ability to trigger a `SUSPENDED` state in the Agent Registry (Circuit Breaking).
+
+> **Key insight:** In each case, the agent's reasoning was technically sound or within constraints. The failures occurred either *after* reasoning (Day Two: TOCTOU, Chaos) or *in the aggregate* over time (Day Three: Agent Drift). These were failures of architecture, not intelligence.
 
 ### 1.3 The Core Thesis
 
@@ -211,7 +219,7 @@ Every ROA agent is governed by a **Responsibility Contract**  -  a formal, machi
 
 ```python
 from pydantic import BaseModel, Field
-from typing import List, Literal
+from typing import List, Literal, Dict
 
 class ResponsibilityContract(BaseModel):
     agent_id: str = Field(description="Unique identifier for this agent instance")
@@ -227,6 +235,9 @@ class ResponsibilityContract(BaseModel):
     
     # Escalation Triggers (When the agent must stop)
     escalate_on_uncertainty: float = Field(default=0.7, description="Confidence threshold < 0.7 triggers escalation")
+    
+    # Aggregate Governance (Thresholds for Post-Execution Monitors)
+    aggregate_thresholds: Dict[str, float] = Field(default_factory=dict, description="Limits for aggregate behavior (e.g., max_average_discount_30d: 0.10)")
     
     version: str = Field(default="1.0.0", description="Contract version for schema compatibility")
 ```
@@ -256,9 +267,15 @@ safety_rules:
   max_drawdown_limit_pct: 4.0         # Hard stop-loss enforced by Runtime
   wake_up_threshold_pnl_pct: 2.5     # Cost optimization: suppress noise signals
   escalate_on_uncertainty: 0.70       # If confidence < 70%, escalate to human
+
+# Aggregate Governance (Thresholds for Post-Execution Monitors)
+aggregate_thresholds:
+  max_average_discount_30d: 0.10      # Monitors will suspend agent if average discount > 10% over 30 days
 ```
 
 Note the `owner` field: every contract MUST have a named human accountable for its behavior. This prevents "agent accountability vacuum"  -  the situation where no person is responsible for an agent's decisions.
+
+The Agent Registry also maintains the **Runtime Status** of each agent (e.g., `ACTIVE`, `SUSPENDED`). Post-Execution Governance monitors can trigger Circuit Breakers to switch an agent to `SUSPENDED` if Agent Drift is detected, instantly blocking further proposals. Reverting an agent from `SUSPENDED` back to `ACTIVE` is strictly the domain of a human operator (Human-in-the-Loop) following a Post-Incident Review; an agent cannot "un-suspend" itself.
 
 ### 3.2 The Decision Lifecycle: Explain → Policy → Self-Check → Emit
 
@@ -1053,6 +1070,8 @@ DIM is the **Policy Enforcement Point (PEP)** of the Runtime. It is the kernel's
 
 > **"Training alignment does not constitute cryptographic provenance."** The DIM does not trust that a model is "aligned." It evaluates five explicit, deterministic criteria against registered authority. A hallucinating model, a prompt-injected agent, and a well-aligned model all traverse the same pipeline. Security derives from structural enforcement, not behavioral trust.
 
+**Crucial Limitation:** DIM evaluates decisions *individually and statelessly* (except for resource locks). It enforces **Kernel Compliance** but is blind to aggregate trends, meaning it cannot detect Agent Drift (e.g., an agent offering the max allowed discount on every transaction). Protecting long-term Business Health requires asynchronous Post-Execution Governance (see 4.6).
+
 ```mermaid
 %%{init: {'theme': 'neutral'}}%%
 flowchart LR
@@ -1219,6 +1238,21 @@ flowchart LR
     Result -- TERMINAL --> Abort(["Mark ABORTED"]):::stop
     Retry -.-> Intent
 ```
+
+### 4.6 POST-EXECUTION GOVERNANCE & DRIFT (The "Day Three" Defense)
+
+While the Decision Integrity Module (DIM) ensures *Kernel Compliance* (validating single, isolated transactions against hard limits), it is fundamentally blind to aggregate trends. An agent can technically obey all rules but still act against the business intent over time. This discrepancy between technical compliance and long-term business health is known as **Agent Drift** (the "Day Three" problem).
+
+**Taxonomy of Agent Drift:**
+1. **Optimization Drift (Reward Hacking):** The agent optimizes its primary objective (e.g., customer retention) by consistently pushing secondary variables (e.g., discounts) to their maximum DIM-allowed limits, eroding overall profitability.
+2. **Semantic Drift:** The agent breaks core business intent because it yields to contextual manipulation (e.g., emotional language like "my wedding is ruined!"), yet its actions (e.g., issuing a small refund) remain within legal financial bounds. Since DIM only checks numbers and JSON structures, detecting this drift requires **Asynchronous Semantic Auditing**—using analytical, lower-cost LLMs to review historical logs post-execution without adding latency or risk to the live critical path.
+3. **Environmental Drift:** The agent's logic remains sound, but the external environment changes (e.g., rising market costs), turning previously profitable actions into aggregate losses.
+
+**The Defense Mechanism:**
+To protect against drift, DIR implements asynchronous **Post-Execution Governance**:
+- **Rolling Window Monitors:** Specialized jobs periodically join the `execution_log` with `context_snapshots` (using the `dfid` as the correlation key) to analyze aggregate behavior over time.
+- **Circuit Breaking (Suspension):** When a monitor detects statistically significant drift (e.g., average margin drops below a threshold), it triggers a circuit breaker. This updates the Agent Registry, setting the agent's status to `SUSPENDED`.
+- **Enforcement:** The DIM will reject any new Policy Proposal from a `SUSPENDED` agent, effectively stopping the bleeding until human intervention occurs.
 
 ### 4.7 Escalation  -  Governance by Exception
 
@@ -2721,6 +2755,7 @@ When an LLM generates a new file, apply these rules in order:
 |------|-----------|
 | **Artifacts Context** | The "library" layer of the Context Store  -  large, static, or reference data retrieved via RAG (e.g., compliance rulebooks, strategy whitepapers) |
 | **Agent Registry** | Kernel Space service acting as single source of truth for agent identity, capability manifests, authority, lifecycle, and schema versioning |
+| **Agent Drift** | "Day Three" aggregate failure where an agent technically obeys Kernel constraints but its decisions erode long-term Business Health (Optimization, Semantic, Environmental). |
 | **Atomic Context (SDS)** | Pre-validated input package assembled by Context Compiler before SDS inference: Mission + Constraints + Snapshot |
 | **Authority Level** | Enumerated capability bound in Responsibility Contract: `OBSERVE` / `PROPOSE` / `EXECUTE_LIMITED` / `EXECUTE_FULL` |
 | **Boxed Intelligence Pattern** | ROA governance wrapper around generative frameworks (LangChain, CrewAI); strips execution tools, allows only `emit_policy_proposal()` |
@@ -2731,6 +2766,7 @@ When an LLM generates a new file, apply these rules in order:
 | **Context Store** | Structured, layered, deterministic data store serving as single source of truth for agent reasoning. Four layers: Session, State, Memory, Artifacts |
 | **ContextSnapshotID** | Hash uniquely representing the "frozen reality" an agent used during reasoning; bound to Policy Proposal; verified by DIM (JIT) before execution |
 | **CQRS (DIR adaptation)** | Command Query Responsibility Segregation: agents emit tentative commands (proposals); Runtime validates and commits. Only validated proposals trigger side effects. |
+| **Circuit Breaking** | Post-Execution mechanism that transitions an agent's Registry status to `SUSPENDED` when aggregate monitors detect Agent Drift. |
 | **Decision Atom (SDS)** | Single context-complete package for atomic execution: intent + ContextSnapshotID hash-binding + signature |
 | **Decision Integrity Module (DIM)** | Deterministic Kernel Space component acting as Policy Enforcement Point (PEP). Validates all proposals through 5 hard gates. No LLMs. No probabilistic logic. |
 | **Decision Ledger (DL)** | Append-only, immutable record of all verified intents. Serves as Zero-Trust audit trail. Enables offline cryptographic verification and deterministic replay. |
@@ -2741,6 +2777,7 @@ When an LLM generates a new file, apply these rules in order:
 | **Drift Envelope** | Contract-level parameter specifying maximum allowable state deviation (e.g., 50 bps = 0.5% price slippage) before JIT Verification rejects execution |
 | **EOAM (Event-Oriented Agent Mesh)** | Topology A: decentralized choreography where agents subscribe to event topics and reason in parallel; safety via Priority-Based Preemption in DIM |
 | **Escalation Budget** | Rate-limiting token bucket restricting agent escalation requests (e.g., 3/hour); prevents Alert Fatigue and Escalation DDoS |
+| **Environmental Drift** | Type of Agent Drift where the agent logic remains constant, but shifts in the external environment (e.g., costs) make previously safe actions harmful. |
 | **Evidence Hash ($H_{evidence}$)** | Composite cryptographic proof: `SHA256(DFID ‖ H_state ‖ H_contract ‖ H_rules)`  -  binds intent to specific state, authority, and rule-set |
 | **Execution Intent** | Validated, approved object derived from a Policy Proposal. The only artifact authorized to trigger external I/O. Never produced without DIM validation. |
 | **Execution Parametrization** | Agent encodes execution boundary conditions (max price, validity window, drift tolerance) rather than raw commands; decouples reasoning time from execution time |
@@ -2755,7 +2792,9 @@ When an LLM generates a new file, apply these rules in order:
 | **Mission** | Agent's optimization target or guiding principle. An interpretive constraint used during Explain and Policy formation. NOT executable intent. |
 | **Mission Dissonance** | DIM rejection code (`MISSION_DISSONANCE`) when `mission_context_hash` in proposal does not match agent's registered contract |
 | **PCI (Proof-Carrying Intent)** | Topology C artifact containing: intent payload + context_ref + evidence_hash + roa_signature. Safety is a property of the artifact, not the process. |
+| **Optimization Drift** | Type of Agent Drift (Reward Hacking) where the agent maximizes its goal by consistently pushing secondary variables (e.g., discounts) to their hard DIM limits. |
 | **Policy** | Structured JSON object emitted by an ROA agent representing proposed course of action; subject to DIM validation; treated as a Claim until validated |
+| **Post-Execution Governance** | Asynchronous system (monitors and circuit breakers) that analyzes rolling windows of DecisionFlows to detect aggregate Agent Drift and enforce Business Health. |
 | **Policy Enforcement Point (PEP)** | Security architectural term for a gatekeeper intercepting requests and validating them against policies. DIM is the PEP in DIR. |
 | **Policy Proposal** | Complete output artifact of the ROA decision lifecycle: `{dfid, agent_id, policy_kind, params, context_ref, confidence, justification}` |
 | **Priority-Based Preemption (EOAM)** | DIM selects winning proposal using Agent Registry Priority Matrix (e.g., Risk > Strategy)  -  NOT a time-based race |
@@ -2767,6 +2806,7 @@ When an LLM generates a new file, apply these rules in order:
 | **SDS (Sovereign Decision Stream)** | Topology B: linear pipeline where a single agent produces an atomic decision using constrained decoding; minimal latency |
 | **Semantic Alignment Check** | Optional Soft Guard detecting narrative/policy mismatch (proxy gaming). Default: audit-only. Strict mode: blocks execution (violates Invariant 1). |
 | **Self-Check** | Third stage of ROA decision lifecycle: agent verifies mission alignment before emitting. Cost-optimization heuristic only  -  NO security value. |
+| **Semantic Drift** | Type of Agent Drift where the agent breaks core business intent due to contextual manipulation (e.g., emotional language), despite staying within legal financial constraints. |
 | **Session Context** | Ephemeral layer of Context Store  -  current trigger, intermediate reasoning, prompt chain for this interaction. Resets at DecisionFlow close. |
 | **Soft Guards** | Non-blocking, probabilistic validation (LLM-based). Operate as auditors only in default mode. Must not be used as primary safety mechanism. |
 | **State Context** | Authoritative layer of Context Store  -  live, deterministic view of the world synced from external systems. Ground truth for DIM validation. |

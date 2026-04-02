@@ -671,10 +671,12 @@ The Registry allows the Runtime to validate not just *who* the agent is, but whe
 
 The registry enables:
 
-* **Lifecycle management** - Create, initialize, persist, retire agents.
+* **Lifecycle management** - Create, initialize, persist, retire, and suspend agents (e.g., via Circuit Breakers during Agent Drift).
 * **Routing** - Send policies, context updates, or escalations to the correct agent.
 * **Governance** - Enforce global rules about who is allowed to act on what.
 * **Traceability** - Link every decision to a responsible entity.
+
+*(For details on agent suspension and aggregate drift management, see [Governance and Agent Drift](../04-governance/DIR_Governance.md).)*
 
 Think of the registry as the **organizing principle** that binds the agent ecosystem together.
 Without it, a multi-agent system becomes an emergent swarm.

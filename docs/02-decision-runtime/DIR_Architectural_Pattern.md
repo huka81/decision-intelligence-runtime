@@ -455,6 +455,13 @@ The pipeline functions as a **Policy Enforcement Point (PEP)**. It evaluates pro
     > *The Runtime does not interpret mission semantics.
     > It validates **contractual alignment**, not semantic intent.
     > The `mission_context_hash` represents an immutable contract snapshot, not a philosophical goal.*
+
+### 6.2.1 Limitation: Kernel Compliance vs. Business Health
+
+It is critical to note that the DIM evaluates decisions **individually and statelessly** (excluding resource locking). It ensures **Kernel Compliance** (that a single transaction is technically safe) but it cannot guarantee **Business Health** over time. If an agent consistently proposes values just under the hard limit (e.g., offering the maximum allowed discount to every user), it will pass DIM validation but erode aggregate profitability.
+
+To protect against such aggregate failures (Optimization Drift, Semantic Drift, Environmental Drift), the system relies on **Post-Execution Governance** (monitors and circuit breakers). For full details, see **[Governance and Agent Drift](../04-governance/DIR_Governance.md)**.
+
 Drift & Explanation-Intent Divergence
 
 > *Semantic Alignment is not a security mechanism.

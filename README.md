@@ -111,6 +111,16 @@ A pluralistic approach to agent orchestration. No single execution model satisfi
 
 **[Read Decision Intelligence Topologies](./docs/03-topologies/DIR_Topologies.md)**
 
+### 4. Post-Execution Governance & Drift
+*Current Status: Work in Progress*
+
+An architectural defense against "Day Three" problems, where an agent's individual decisions are technically valid (Kernel Compliance), but its aggregate behavior over time erodes business intent (Business Health).
+* **Agent Drift Taxonomy:** Formal classification of Optimization (Reward Hacking), Semantic, and Environmental drift.
+* **Rolling Window Monitors:** Asynchronous analysis of execution logs and context snapshots linked via DFID.
+* **Circuit Breaking:** Automated mechanism to transition an agent's Registry status to `SUSPENDED` upon detecting statistically significant drift.
+
+**[Read Governance & Agent Drift](./docs/04-governance/DIR_Governance.md)**
+
 ---
 
 # Getting Started
@@ -184,16 +194,16 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 
 ### Business Use Cases (31+)
 
-| # | Sample | Topology | Domain | What it checks |
-|---|--------|----------|--------|----------------|
-| 31 | `31_finance_trading` | EOAM | **Finance/trading** | Market quotes, news, parallel agents; position spawning and execution. |
-| 32 | `32_fraud_gate` | SDS | **Fraud detection** | Real-time payment fraud gate; constrained decoding, JIT state drift, drift-attack demo. |
-| 33 | `33_insurance_underwriting` | DL+PCI | **Insurance underwriting** | Risk evaluation with cryptographic Proof-Carrying Intents (PCI). |
-| 34 | `34_langchain_roa_wrapper` | ROA + DIR | **FinOps** | LangChain ReAct → ROA. Cloud cost management. Verifies mission injection blocks PROD termination. |
-| 35 | `35_crewai_roa_wrapper` | ROA + DIR | **Customer claims/refunds** | CrewAI Crew → ROA. E-commerce refunds (EUR). Verifies ACCEPT/ESCALATE/REJECT by category, return window, amount; NL intake. |
-| 36 | `36_drift_optimization_discount` | DIR + DIM + Monitor | **Retention discounts** | Optimization drift (reward hacking): agent offers discounts within DIM hard cap but profitability decays in aggregate. PerformanceMonitor detects rolling-average breach and suspends the agent. Shows that **kernel compliance ≠ business health**. |
-| 37 | `37_drift_semantic_refund` | DIR + DIM + Monitor | **Support refunds** | Semantic drift (emotional manipulation): refunds stay under a EUR cap so DIM accepts, but the delay policy is violated. ComplianceMonitor joins `execution_log` to `context_snapshots` and suspends when rolling semantic violation rate exceeds the threshold. |
-| 38 | `38_drift_environmental_bidding` | DIR + DIM + Monitor | **AdTech / bidding** | Environmental drift: market CPC escalates; bids stay under a contract cap so DIM accepts, but rolling average CPC exceeds LTV. BusinessROIMonitor joins `execution_log` to `market_snapshots` and suspends after consecutive negative ROI cycles. See [samples/38_drift_environmental_bidding/README.md](samples/38_drift_environmental_bidding/README.md). |
+| # | Sample | Domain | What it checks |
+|---|--------|--------|----------------|
+| 31 | `31_finance_trading` | **Finance/trading** | Market quotes, news, parallel agents; position spawning and execution. **(Topology: EOAM)** |
+| 32 | `32_fraud_gate` | **Fraud detection** | Real-time payment fraud gate; constrained decoding, JIT state drift, drift-attack demo. **(Topology: SDS)** |
+| 33 | `33_insurance_underwriting` | **Insurance underwriting** | Risk evaluation with cryptographic Proof-Carrying Intents (PCI). **(Topology: DL+PCI)** |
+| 34 | `34_langchain_roa_wrapper` | **FinOps** | LangChain ReAct → ROA. Cloud cost management. Verifies mission injection blocks PROD termination. |
+| 35 | `35_crewai_roa_wrapper` | **Customer claims/refunds** | CrewAI Crew → ROA. E-commerce refunds (EUR). Verifies ACCEPT/ESCALATE/REJECT by category, return window, amount; NL intake. |
+| 36 | `36_drift_optimization_discount` | **Retention discounts** | Optimization drift (reward hacking): agent offers discounts within DIM hard cap but profitability decays in aggregate. PerformanceMonitor detects rolling-average breach and suspends the agent. Shows that **kernel compliance ≠ business health**. *(See [Governance & Drift](./docs/04-governance/DIR_Governance.md))* |
+| 37 | `37_drift_semantic_refund` | **Support refunds** | Semantic drift (emotional manipulation): refunds stay under a EUR cap so DIM accepts, but the delay policy is violated. ComplianceMonitor joins `execution_log` to `context_snapshots` and suspends when rolling semantic violation rate exceeds the threshold. *(See [Governance & Drift](./docs/04-governance/DIR_Governance.md))* |
+| 38 | `38_drift_environmental_bidding` | **AdTech / bidding** | Environmental drift: market CPC escalates; bids stay under a contract cap so DIM accepts, but rolling average CPC exceeds LTV. BusinessROIMonitor joins `execution_log` to `market_snapshots` and suspends after consecutive negative ROI cycles. *(See [Governance & Drift](./docs/04-governance/DIR_Governance.md))* |
 
 ---
 ## Documentation
@@ -202,6 +212,7 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 - **[ROA Manifesto](./docs/01-roa-manifesto/ROA_Manifesto.md)** - Responsibility-oriented agent design.
 - **[DIR Architecture](./docs/02-decision-runtime/DIR_Architectural_Pattern.md)** - Runtime components and invariants.
 - **[Topologies](./docs/03-topologies/DIR_Topologies.md)** - Operational modes (EOAM, SDS, DL+PCI).
+- **[Governance & Drift](./docs/04-governance/DIR_Governance.md)** - Managing aggregate safety and business health over time.
 - **[Context as Code](./docs/08-conclusion/Context_as_Code.md)** - Treating documentation as a system prompt.
 - **[FAQ](./FAQ.md)** - Answers to common engineering questions about DIR/ROA: "Day Two" failure modes, Kernel vs User Space, comparison with orchestration frameworks, JIT state verification, idempotency, compliance (e.g. EU AI Act and Proof-Carrying Intents), and incremental adoption.
 
