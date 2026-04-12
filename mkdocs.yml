@@ -42,6 +42,8 @@ theme:
   features:
     - navigation.tabs
     - navigation.sections
+    # Section tabs need an index page; without this, "Samples" can open a non-page URL → 404.
+    - navigation.indexes
     - content.code.copy
 
 nav:
@@ -54,7 +56,7 @@ nav:
   - Topologies: 03-topologies/DIR_Topologies.md
   - Governance: 04-governance/DIR_Governance.md
   - Samples:
-      - Overview: samples/index.md
+      - samples/index.md
       - "00 - Quick start": samples/00_quick_start.md
       - "01 - ROA agent": samples/01_roa_agent.md
       - "02 - DFID propagation": samples/02_dfid_propagation.md
