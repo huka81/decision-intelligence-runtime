@@ -3,7 +3,7 @@
 ---
 
 # Responsibility-Oriented Agents (ROA) Manifesto
-![The Evolution of Agent Architecture](../../assets/images/1_roa_scratch.png)
+![The Evolution of Agent Architecture](../assets/images/1_roa_scratch.png)
 
 ### An architectural pattern for reliable, accountable AI decision systems
 
@@ -290,7 +290,7 @@ To prevent these roles from blending into a single opaque loop, ROA adopts a str
 
 The remaining stages - **Validate** and **Execute** - are handled not by the agent but by the deterministic runtime. This division ensures that the agent remains responsible for *reasoning*, while the system remains responsible for *safety and correctness*.
 
-![Responsibility-Oriented Agents](../../assets/images/context-store.svg)
+![Responsibility-Oriented Agents](../assets/images/context-store.svg)
 
 ---
 
@@ -369,7 +369,7 @@ This is an intentional boundary:
 > The runtime ensures that thinking results in safe and correct action.**
 
 
-![Explain → Policy decision lifecycle](../../assets/images/explain-policy.png)
+![Explain → Policy decision lifecycle](../assets/images/explain-policy.png)
 
 ---
 
@@ -472,7 +472,7 @@ The agent proposes - the runtime executes.
 This division ensures that decision-making remains interpretable and explainable, while execution remains safe and controlled.
 
 
-![Deterministic Runtime Execution](../../assets/images/execution.png)
+![Deterministic Runtime Execution](../assets/images/execution.png)
 
 ---
 
@@ -595,7 +595,7 @@ Dynamic agents offer several benefits:
 
 The opposite approach-embedding all responsibilities into one “general-purpose” agent-quickly becomes unmanageable.
 
-![Dynamic Agents and Hierarchy](../../assets/images/dynamic-agents.png)
+![Dynamic Agents and Hierarchy](../assets/images/dynamic-agents.png)
 
 ---
 

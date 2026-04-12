@@ -3,6 +3,10 @@ on:
   push:
     branches:
       - feature/mkdocs
+
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest

@@ -5,7 +5,7 @@
 # Beyond Prompt Engineering: Building a Deterministic Runtime for Responsible AI Agents
 ### From experimental scripts to production-grade decision systems
 
-![The Evolution of Agent Architecture](../../assets/images/1_roa_scratch.png)
+![The Evolution of Agent Architecture](../assets/images/1_roa_scratch.png)
 
 ## Introduction: The "Day Two" Challenge
 
@@ -92,7 +92,7 @@ The gap was not in reasoning, but in execution semantics. Without validation pip
 
 ## Section 2: The Wall - Kernel Space vs. User Space
 
-![The Wall](../../assets/images/2_dir_roa_scratch.png)
+![The Wall](../assets/images/2_dir_roa_scratch.png)
 *Figure 2. The Architectural Wall: Probabilistic reasoning (User Space 'Brain') must be strictly separated from deterministic execution (Kernel Space 'Machine') via a secure runtime interface.*
 
 To solve the problems exposed by AIvestor, I stopped thinking about agents as chatbots and started thinking about them as operating system processes.
@@ -564,7 +564,7 @@ The runtime caches these keys. A cache hit short-circuits execution and returns 
 
 The ROA/DIR separation defines *who* proposes and *how* validation occurs. However, it leaves open a critical architectural question: *how do signals flow through the system?*
 
-![Topologies](../../assets/images/3_topologies_scratch.png)
+![Topologies](../assets/images/3_topologies_scratch.png)
 *Figure 3. Architectural Pluralism: Different decision classes require distinct coordination infrastructures - Mesh (Roads), Stream (Air), and Ledger (Rail). Each is optimized for specific decision-making needs.*
 
 Think about transportation infrastructure. Roads, airspace, and railways all move things from point A to point B, but they use fundamentally different coordination models. Drivers negotiate locally and produce traffic jams. Pilots follow controlled separation rules enforced by air traffic control. Trains move on predetermined routes with authoritative signals - no runtime negotiation at all.

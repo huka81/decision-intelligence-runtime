@@ -3,7 +3,7 @@
 ---
 
 # Decision Intelligence Runtime: Governance and Agent Drift
-![Decision Intelligence Topologies](../../assets/images/4_governance_scratch.png)
+![Decision Intelligence Topologies](../assets/images/4_governance_scratch.png)
 
 ### Managing aggregate safety and business health over time
 

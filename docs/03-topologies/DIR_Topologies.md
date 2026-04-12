@@ -3,7 +3,7 @@
 ---
 
 # Decision Intelligence Topologies: Scaling Auditable Autonomy
-![Decision Intelligence Topologies](../../assets/images/3_topologies_scratch.png)
+![Decision Intelligence Topologies](../assets/images/3_topologies_scratch.png)
 
 ### Agent orchestration patterns for complex decision systems
 
