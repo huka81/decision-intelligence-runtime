@@ -1,0 +1,21 @@
+# One-time: GitHub repo → Settings → Pages → Build and deployment → Source:
+# "Deploy from a branch" → Branch: gh-pages, folder: / (root). Otherwise https://…github.io/…/ shows 404.
+name: Publish Docs
+on:
+  push:
+    branches:
+      - feature/mkdocs
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+      - run: pip install mkdocs-material mkdocs-include-markdown-plugin
+      - run: mkdocs gh-deploy --force

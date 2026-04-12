@@ -3,7 +3,7 @@
 ---
 
 # Decision Intelligence Runtime (DIR): An Architectural Pattern for Safe AI Execution
-![DIR](../../assets/images/2_dir_roa_scratch.png)
+![DIR](../assets/images/2_dir_roa_scratch.png)
 
 ### Bridging the gap between probabilistic reasoning and deterministic action
 

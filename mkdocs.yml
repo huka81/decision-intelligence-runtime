@@ -1,0 +1,89 @@
+site_name: Decision Intelligence Runtime (DIR)
+site_description: Deterministic execution kernel for autonomous AI agents.
+repo_url: https://github.com/huka81/decision-intelligence-runtime
+site_url: https://huka81.github.io/decision-intelligence-runtime/
+
+# docs_dir must be a subfolder of the repo root (not "."). docs/index.md pulls in ../README.md
+# via mkdocs-include-markdown-plugin (relative URL rewrite).
+docs_dir: docs
+
+exclude_docs: |
+  **/*.not-push.md
+
+hooks:
+  - mkdocs_hooks.py
+
+plugins:
+  - include-markdown:
+      rewrite_relative_urls: true
+  - search
+
+# Mermaid: without this, ```mermaid fences render as plain highlighted code.
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    # Section tabs need an index page; without this, "Samples" can open a non-page URL → 404.
+    - navigation.indexes
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Project:
+      - Introduction: 00-introduction/DIR-introduction.md
+      - Responsible-Oriented Agents: 01-roa-manifesto/ROA_Manifesto.md
+      - Decision Intelligence Runtime: 02-decision-runtime/DIR_Architectural_Pattern.md
+      - Topologies: 03-topologies/DIR_Topologies.md
+      - Governance & Agent Drift: 04-governance/DIR_Governance.md
+      - Context as code: 08-conclusion/Context_as_Code.md
+      - Intelligent AI delegation framework mapping: 00-introduction/Intelligent_Delegation_Framework_Mapping.md
+  - Samples:
+      - 09-pages/samples/index.md
+      - "00 - Quick start": 09-pages/samples/00_quick_start.md
+      - "01 - ROA agent": 09-pages/samples/01_roa_agent.md
+      - "02 - DFID propagation": 09-pages/samples/02_dfid_propagation.md
+      - "03 - Idempotency guard": 09-pages/samples/03_idempotency_guard.md
+      - "04 - Context store": 09-pages/samples/04_context_store.md
+      - "05 - DIM validation": 09-pages/samples/05_dim_validation.md
+      - "06 - Agent registry": 09-pages/samples/06_agent_registry.md
+      - "07 - Event bus (swappable)": 09-pages/samples/07_event_bus_swappable.md
+      - "08 - Bootstrap SQLite": 09-pages/samples/08_bootstrap_sqlite.md
+      - "09 - Topology A (EOAM)": 09-pages/samples/09_topology_a_eoam.md
+      - "10 - Topology B (SDS)": 09-pages/samples/10_topology_b_sds.md
+      - "11 - Topology C (DL+PCI)": 09-pages/samples/11_topology_c_dl_pci.md
+      - "31 - Finance trading": 09-pages/samples/31_finance_trading.md
+      - "32 - Fraud gate": 09-pages/samples/32_fraud_gate.md
+      - "33 - Insurance underwriting": 09-pages/samples/33_insurance_underwriting.md
+      - "34 - LangChain ROA wrapper": 09-pages/samples/34_langchain_roa_wrapper.md
+      - "35 - CrewAI ROA wrapper": 09-pages/samples/35_crewai_roa_wrapper.md
+      - "36 - Drift optimization discount": 09-pages/samples/36_drift_optimization_discount.md
+      - "37 - Drift semantic refund": 09-pages/samples/37_drift_semantic_refund.md
+      - "38 - Drift environmental bidding": 09-pages/samples/38_drift_environmental_bidding.md
+      - "88 - Meta context engineering": 09-pages/samples/88_meta_context_engineering.md
+  - FAQ: 09-pages/faq.md
+  - About:
+      - About the author: 09-pages/author.md
+      - License: 09-pages/license.md
+      - Version: 09-pages/version.md
+      - Release notes: 09-pages/history.md
+      - Change log: 09-pages/history.md
+      - Contributing: 09-pages/contributing.md
