@@ -167,6 +167,8 @@ venv.bak/
 
 # mkdocs documentation
 /site
+# Created transiently by mkdocs_hooks.py so README image paths resolve under docs/
+/docs/assets
 
 # mypy
 .mypy_cache/

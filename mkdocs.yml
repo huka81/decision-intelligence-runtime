@@ -2,22 +2,20 @@ site_name: Decision Intelligence Runtime (DIR)
 site_description: Deterministic execution kernel for autonomous AI agents.
 repo_url: https://github.com/huka81/decision-intelligence-runtime
 
-# README lives at repo root; numbered articles live under docs/. With docs_dir: .,
-# exclude other Markdown trees so MkDocs does not publish the whole repository.
-docs_dir: .
+# docs_dir must be a subfolder of the repo root (not "."). docs/index.md pulls in ../README.md
+# via mkdocs-include-markdown-plugin (relative URL rewrite).
+docs_dir: docs
 
 exclude_docs: |
-  /publications/
-  /samples/
-  /.cursor/
-  /.github/
-  /FAQ.md
-  /FAQ-initial.md
-  /HISTORY.md
-  /miguel-response.md
-  /CONTRIBUTING.md
-  /site/
-  /docs/**/*.not-push.md
+  **/*.not-push.md
+
+hooks:
+  - mkdocs_hooks.py
+
+plugins:
+  - include-markdown:
+      rewrite_relative_urls: true
+  - search
 
 theme:
   name: material
@@ -38,14 +36,14 @@ theme:
     - content.code.copy
 
 nav:
-  - Home: README.md
+  - Home: index.md
   - Introduction:
-      - DIR introduction: docs/00-introduction/DIR-introduction.md
-      - Intelligent delegation framework mapping: docs/00-introduction/Intelligent_Delegation_Framework_Mapping.md
-  - ROA manifesto: docs/01-roa-manifesto/ROA_Manifesto.md
-  - Decision runtime: docs/02-decision-runtime/DIR_Architectural_Pattern.md
-  - Topologies: docs/03-topologies/DIR_Topologies.md
-  - Governance & agent drift: docs/04-governance/DIR_Governance.md
-  - DIR minified (context as code): docs/07-dir-minified/DIR-minified.md
+      - DIR introduction: 00-introduction/DIR-introduction.md
+      - Intelligent delegation framework mapping: 00-introduction/Intelligent_Delegation_Framework_Mapping.md
+  - ROA manifesto: 01-roa-manifesto/ROA_Manifesto.md
+  - Decision runtime: 02-decision-runtime/DIR_Architectural_Pattern.md
+  - Topologies: 03-topologies/DIR_Topologies.md
+  - Governance & agent drift: 04-governance/DIR_Governance.md
+  - DIR minified (context as code): 07-dir-minified/DIR-minified.md
   - Conclusion:
-      - Context as code: docs/08-conclusion/Context_as_Code.md
+      - Context as code: 08-conclusion/Context_as_Code.md
