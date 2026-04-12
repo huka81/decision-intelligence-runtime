@@ -12,7 +12,7 @@ import json
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -316,8 +316,9 @@ class SqliteSagaStorage:
 class SqliteResourceLockStorage:
     """SQLite backend for ResourceLockManager (DIR §6.2).
 
-    Uses ``BEGIN IMMEDIATE`` transactions to prevent concurrent over-allocation.
-    Retries until ``timeout_sec`` is exhausted.
+    ``acquire_batch`` uses ``BEGIN IMMEDIATE`` to guarantee that the
+    check-and-insert performed by :class:`ResourceLockManager` is not
+    interleaved with another concurrent ``acquire_batch``.
     """
 
     def __init__(self, db_path: str) -> None:
@@ -337,14 +338,27 @@ class SqliteResourceLockStorage:
             """)
             conn.commit()
 
-    def try_acquire_atomic(
+    def get_locked_amount(self, resource_id: str, exclude_dfid: str) -> float:
+        """Return total locked amount for resource_id (excluding exclude_dfid)."""
+        with _connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT COALESCE(SUM(amount), 0) FROM resource_locks "
+                "WHERE resource_id = ? AND dfid != ?",
+                (resource_id, exclude_dfid),
+            )
+            row = cursor.fetchone()
+            return float(row[0]) if row else 0.0
+
+    def acquire_batch(
         self,
         dfid: str,
         resources: Dict[str, float],
-        availability_provider: Callable[[str], float],
         timeout_sec: float,
-    ) -> str:
-        sorted_ids = sorted(resources.keys())
+    ) -> bool:
+        """Atomically write all locks using ``BEGIN IMMEDIATE``.
+
+        Returns True if written, False if contention persisted beyond timeout.
+        """
         deadline = time.monotonic() + timeout_sec
 
         while time.monotonic() < deadline:
@@ -352,28 +366,15 @@ class SqliteResourceLockStorage:
                 conn = sqlite3.connect(self.db_path, timeout=0.1)
                 conn.execute("BEGIN IMMEDIATE")
                 try:
-                    for rid in sorted_ids:
-                        amount = resources[rid]
-                        available = availability_provider(rid)
-                        cursor = conn.execute(
-                            "SELECT COALESCE(SUM(amount), 0) FROM resource_locks "
-                            "WHERE resource_id = ? AND dfid != ?",
-                            (rid, dfid),
-                        )
-                        locked = float(cursor.fetchone()[0])
-                        if available - locked < amount:
-                            conn.rollback()
-                            conn.close()
-                            return "INSUFFICIENT_LIQUIDITY"
-                    for rid in sorted_ids:
+                    for rid, amount in resources.items():
                         conn.execute(
                             "INSERT OR REPLACE INTO resource_locks "
                             "(dfid, resource_id, amount) VALUES (?, ?, ?)",
-                            (dfid, rid, resources[rid]),
+                            (dfid, rid, amount),
                         )
                     conn.commit()
                     conn.close()
-                    return "ACQUIRED"
+                    return True
                 except Exception:
                     conn.rollback()
                     conn.close()
@@ -382,7 +383,7 @@ class SqliteResourceLockStorage:
                 time.sleep(0.05)
                 continue
 
-        return "RESOURCE_CONTENTION_TIMEOUT"
+        return False
 
     def release(self, dfid: str) -> None:
         with _connect(self.db_path) as conn:

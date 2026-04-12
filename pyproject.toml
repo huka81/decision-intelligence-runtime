@@ -55,6 +55,7 @@ Issues = "https://github.com/your-org/decision-intelligence-runtime/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["dir_core*"]
 
 [tool.ruff]
 line-length = 100

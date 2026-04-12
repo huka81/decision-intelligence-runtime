@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import json
 import threading
-import time
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +155,7 @@ class MemorySagaStorage:
 class MemoryResourceLockStorage:
     """In-memory backend for ResourceLockManager.
 
-    Thread-safe via a reentrant lock; no retry delay needed.
+    Thread-safe via a reentrant lock.
     """
 
     def __init__(self) -> None:
@@ -166,28 +165,24 @@ class MemoryResourceLockStorage:
     def init_schema(self) -> None:
         pass
 
-    def try_acquire_atomic(
+    def get_locked_amount(self, resource_id: str, exclude_dfid: str) -> float:
+        """Return total locked amount for resource_id (excluding exclude_dfid)."""
+        with self._mutex:
+            return sum(
+                locks.get(resource_id, 0.0)
+                for d, locks in self._locks.items()
+                if d != exclude_dfid
+            )
+
+    def acquire_batch(
         self,
         dfid: str,
         resources: Dict[str, float],
-        availability_provider: Callable[[str], float],
         timeout_sec: float,
-    ) -> str:
-        deadline = time.monotonic() + timeout_sec
-        while time.monotonic() < deadline:
-            with self._mutex:
-                for rid, amount in resources.items():
-                    available = availability_provider(rid)
-                    locked = sum(
-                        locks.get(rid, 0.0)
-                        for d, locks in self._locks.items()
-                        if d != dfid
-                    )
-                    if available - locked < amount:
-                        return "INSUFFICIENT_LIQUIDITY"
-                self._locks[dfid] = dict(resources)
-                return "ACQUIRED"
-        return "RESOURCE_CONTENTION_TIMEOUT"
+    ) -> bool:
+        with self._mutex:
+            self._locks[dfid] = dict(resources)
+            return True
 
     def release(self, dfid: str) -> None:
         with self._mutex:

@@ -18,7 +18,7 @@ Example — custom PostgreSQL backend for AgentRegistry::
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
 
 class StorageError(Exception):
@@ -149,24 +149,40 @@ class SagaStorage(Protocol):
 class ResourceLockStorage(Protocol):
     def init_schema(self) -> None: ...
 
-    def try_acquire_atomic(
+    def get_locked_amount(self, resource_id: str, exclude_dfid: str) -> float:
+        """Return the total reserved amount for resource_id, excluding
+        any lock already held by exclude_dfid (so re-acquiring is idempotent).
+        """
+        ...
+
+    def acquire_batch(
         self,
         dfid: str,
         resources: Dict[str, float],
-        availability_provider: Callable[[str], float],
         timeout_sec: float,
-    ) -> str:
-        """Atomically check availability and acquire locks for all resources.
+    ) -> bool:
+        """Atomically write all locks for dfid.
+
+        The availability check is performed by :class:`ResourceLockManager`
+        *before* calling this method.  Implementations must ensure the write
+        is atomic so that two concurrent callers cannot both see "enough room"
+        and both succeed.
 
         Args:
             dfid: Flow identifier claiming the locks.
             resources: Mapping of resource_id -> requested amount.
-            availability_provider: Callable(resource_id) -> total available amount.
-            timeout_sec: Maximum time to wait for exclusive access.
+            timeout_sec: Maximum time to wait for exclusive write access.
 
         Returns:
-            One of "ACQUIRED", "INSUFFICIENT_LIQUIDITY",
-            "RESOURCE_CONTENTION_TIMEOUT".
+            ``True`` if all locks were written, ``False`` if exclusive access
+            could not be obtained within *timeout_sec*
+            (``RESOURCE_CONTENTION_TIMEOUT``).
+
+        Note:
+            Implementations that guarantee atomic check-and-set (e.g. a
+            Postgres ``INSERT ... WHERE available - locked >= requested``)
+            may perform the availability check themselves and raise
+            :exc:`InsufficientCapacityError` when capacity is exceeded.
         """
         ...
 
