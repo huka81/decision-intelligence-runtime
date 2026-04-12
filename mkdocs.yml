@@ -18,6 +18,14 @@ plugins:
       rewrite_relative_urls: true
   - search
 
+# Mermaid: without this, ```mermaid fences render as plain highlighted code.
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
 theme:
   name: material
   palette:
