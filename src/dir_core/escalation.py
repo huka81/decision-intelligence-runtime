@@ -5,13 +5,14 @@ Human-in-the-Loop: request escalation, budget (token bucket), resolve.
 """
 
 import json
-import sqlite3
 import logging
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 
 from .models import EscalationRequest, Policy, PolicyProposal
+from .storage.base import EscalationStorage
+from .storage.sqlite import SqliteEscalationStorage
 
 logger = logging.getLogger(__name__)
 
@@ -34,67 +35,48 @@ HumanDecision = Literal["OVERRIDE", "MODIFY", "ABORT"]
 
 
 class EscalationManager:
-    """Manages escalation requests, budget, and resolution (DIR §9)."""
+    """Manages escalation requests, budget, and resolution (DIR §9).
+
+    Storage backend is pluggable. Pass ``storage=`` for a custom backend, or
+    ``db_path=`` to use the built-in SQLite backend (default behaviour).
+
+    Args:
+        db_path: Path to SQLite database. Used when ``storage`` is not provided.
+        max_escalations_per_hour: Token-bucket capacity per agent per window.
+        refill_interval_sec: Window length in seconds (default 3600 = 1 hour).
+        storage: Custom :class:`~dir_core.storage.EscalationStorage` backend.
+            When provided, ``db_path`` is ignored.
+
+    Raises:
+        ValueError: When neither ``db_path`` nor ``storage`` is supplied.
+    """
 
     def __init__(
         self,
-        db_path: str,
+        db_path: Optional[str] = None,
         max_escalations_per_hour: int = 3,
         refill_interval_sec: int = 3600,
+        *,
+        storage: Optional[EscalationStorage] = None,
     ):
-        self.db_path = db_path
         self.max_escalations_per_hour = max_escalations_per_hour
         self.refill_interval_sec = refill_interval_sec
-        self._init_db()
 
-    def _init_db(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS escalation_budget (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    agent_id TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS escalation_requests (
-                    dfid TEXT PRIMARY KEY,
-                    agent_id TEXT,
-                    reason TEXT,
-                    context_json TEXT,
-                    proposal_json TEXT,
-                    impact TEXT,
-                    status TEXT DEFAULT 'PENDING',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    resolved_at TIMESTAMP,
-                    human_decision TEXT
-                )
-            """)
-            conn.commit()
+        if storage is not None:
+            self._storage: EscalationStorage = storage
+        elif db_path is not None:
+            self.db_path = db_path  # kept for backward compatibility
+            self._storage = SqliteEscalationStorage(db_path)
+        else:
+            raise ValueError(
+                "Provide either 'db_path' (SQLite) or 'storage' (custom backend)."
+            )
 
     def _get_window_count(self, agent_id: str, now: datetime) -> int:
         """Count escalations in current refill window (last N seconds)."""
         since = now - timedelta(seconds=self.refill_interval_sec)
         since_str = since.strftime("%Y-%m-%d %H:%M:%S")
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                """
-                SELECT COUNT(*) FROM escalation_budget
-                WHERE agent_id = ? AND created_at >= ?
-                """,
-                (agent_id, since_str),
-            )
-            row = cursor.fetchone()
-            return int(row[0]) if row else 0
-
-    def _record_escalation(self, agent_id: str, now: datetime) -> None:
-        """Record one escalation for agent."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT INTO escalation_budget (agent_id) VALUES (?)",
-                (agent_id,),
-            )
-            conn.commit()
+        return self._storage.get_window_count(agent_id, since_str)
 
     def request_escalation(
         self,
@@ -119,24 +101,15 @@ class EscalationManager:
             )
             return EscalationOutcome.BUDGET_EXHAUSTED
 
-        self._record_escalation(agent_id, now)
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO escalation_requests
-                (dfid, agent_id, reason, context_json, proposal_json, impact, status)
-                VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
-                """,
-                (
-                    dfid,
-                    agent_id,
-                    reason,
-                    json.dumps(context, default=str),
-                    proposal.model_dump_json(),
-                    impact.value,
-                ),
-            )
-            conn.commit()
+        self._storage.record_budget_token(agent_id)
+        self._storage.insert_request(
+            dfid=dfid,
+            agent_id=agent_id,
+            reason=reason,
+            context_json=json.dumps(context, default=str),
+            proposal_json=proposal.model_dump_json(),
+            impact=impact.value,
+        )
         return EscalationOutcome.GRANTED
 
     def request_from_model(
@@ -194,37 +167,13 @@ class EscalationManager:
         proposal_json = (
             modified_proposal.model_dump_json() if modified_proposal else None
         )
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                """
-                UPDATE escalation_requests
-                SET status = 'RESOLVED', resolved_at = ?, human_decision = ?,
-                    proposal_json = COALESCE(?, proposal_json)
-                WHERE dfid = ?
-                """,
-                (now.isoformat(), decision, proposal_json, dfid),
-            )
-            conn.commit()
+        self._storage.resolve_request(
+            dfid=dfid,
+            resolved_at=now.isoformat(),
+            decision=decision,
+            proposal_json=proposal_json,
+        )
 
     def get_pending(self) -> List[Dict[str, Any]]:
         """Return list of pending escalation requests."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                """
-                SELECT dfid, agent_id, reason, context_json, proposal_json, impact
-                FROM escalation_requests WHERE status = 'PENDING'
-                """
-            )
-            rows = cursor.fetchall()
-            return [
-                {
-                    "dfid": r["dfid"],
-                    "agent_id": r["agent_id"],
-                    "reason": r["reason"],
-                    "context": json.loads(r["context_json"] or "{}"),
-                    "proposal": json.loads(r["proposal_json"] or "{}"),
-                    "impact": r["impact"],
-                }
-                for r in rows
-            ]
+        return self._storage.get_pending_requests()

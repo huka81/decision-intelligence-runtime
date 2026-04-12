@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from .intent_retry import IntentRetryGovernor
+    from .storage.base import LifecycleStorage
 
 
 class FlowStatus(str, Enum):
@@ -31,24 +32,30 @@ def transition(
     to_status: FlowStatus,
     retry_governor: Optional["IntentRetryGovernor"] = None,
     db_path: Optional[str] = None,
+    *,
+    storage: Optional["LifecycleStorage"] = None,
 ) -> None:
-    """Record transition. On CLOSED/ABORTED, resets retry governor for dfid."""
+    """Record a flow status transition.
+
+    On CLOSED/ABORTED, resets the retry governor for dfid.
+
+    Args:
+        dfid: DecisionFlow identifier.
+        from_status: Current status.
+        to_status: Target status.
+        retry_governor: Optional governor to reset on terminal transitions.
+        db_path: SQLite path for persistence (legacy kwarg). When ``storage``
+            is also provided, ``storage`` takes precedence.
+        storage: Custom :class:`~dir_core.storage.LifecycleStorage` backend.
+            Pass ``None`` to skip persistence entirely.
+    """
     if retry_governor is not None and to_status in (FlowStatus.CLOSED, FlowStatus.ABORTED):
         retry_governor.reset(dfid)
-    if db_path:
-        import sqlite3
-        with sqlite3.connect(db_path) as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS flow_transitions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    dfid TEXT, from_status TEXT, to_status TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-            conn.execute(
-                "INSERT INTO flow_transitions (dfid, from_status, to_status) VALUES (?, ?, ?)",
-                (dfid, from_status.value, to_status.value),
-            )
-            conn.commit()
+
+    _storage = storage
+    if _storage is None and db_path is not None:
+        from .storage.sqlite import SqliteLifecycleStorage
+        _storage = SqliteLifecycleStorage(db_path)
+
+    if _storage is not None:
+        _storage.record_transition(dfid, from_status.value, to_status.value)

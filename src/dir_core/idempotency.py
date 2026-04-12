@@ -6,14 +6,18 @@ Key is formed from:
 - Step ID (unique within flow)
 - Canonical parameters (sorted JSON)
 
-Backend can be in-memory (testing) or SQLite (production/persistence).
+Backend can be in-memory (testing) or persistent (production). The built-in
+backends are :class:`MemoryBackend` and :class:`SQLiteBackend`; custom backends
+must satisfy the :class:`IdempotencyBackend` protocol.
 """
 
 import hashlib
 import json
-import sqlite3
 import logging
 from typing import Any, Callable, Dict, Optional, Protocol
+
+from .storage.memory import MemoryIdempotencyStorage
+from .storage.sqlite import SqliteIdempotencyStorage
 
 logger = logging.getLogger(__name__)
 
@@ -26,56 +30,37 @@ def idempotency_key(dfid: str, step_id: str, params: Dict[str, Any]) -> str:
 
 
 class IdempotencyBackend(Protocol):
+    """Protocol satisfied by all idempotency storage backends."""
+
     def get(self, key: str) -> Optional[Dict[str, Any]]: ...
     def set(self, key: str, result: Dict[str, Any]) -> None: ...
 
 
-class MemoryBackend:
-    def __init__(self):
-        self._cache: Dict[str, Dict[str, Any]] = {}
+# ---------------------------------------------------------------------------
+# Backward-compatible aliases
+# ---------------------------------------------------------------------------
 
-    def get(self, key: str) -> Optional[Dict[str, Any]]:
-        return self._cache.get(key)
+#: In-memory backend — alias for :class:`~dir_core.storage.MemoryIdempotencyStorage`.
+MemoryBackend = MemoryIdempotencyStorage
 
-    def set(self, key: str, result: Dict[str, Any]) -> None:
-        self._cache[key] = result
+#: SQLite-backed persistent backend — alias for
+#: :class:`~dir_core.storage.SqliteIdempotencyStorage`.
+SQLiteBackend = SqliteIdempotencyStorage
 
 
-class SQLiteBackend:
-    def __init__(self, db_path: str):
-        self.db_path = db_path
-        self._init_db()
-
-    def _init_db(self):
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS idempotency_cache (
-                    key TEXT PRIMARY KEY,
-                    result JSON,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            conn.commit()
-
-    def get(self, key: str) -> Optional[Dict[str, Any]]:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("SELECT result FROM idempotency_cache WHERE key = ?", (key,))
-            row = cursor.fetchone()
-            if row:
-                return json.loads(row[0])
-            return None
-
-    def set(self, key: str, result: Dict[str, Any]) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO idempotency_cache (key, result) VALUES (?, ?)",
-                (key, json.dumps(result))
-            )
-            conn.commit()
+# ---------------------------------------------------------------------------
+# Guard
+# ---------------------------------------------------------------------------
 
 
 class IdempotencyGuard:
-    """Guard that checks cache before execution and records result after."""
+    """Guard that checks cache before execution and records result after.
+
+    Args:
+        backend: Any object satisfying :class:`IdempotencyBackend`
+            (e.g. ``MemoryBackend()``, ``SQLiteBackend("cache.db")``,
+            or a custom implementation).
+    """
 
     def __init__(self, backend: IdempotencyBackend):
         self.backend = backend
@@ -83,17 +68,14 @@ class IdempotencyGuard:
     def run(self, dfid: str, step_id: str, params: Dict[str, Any], func: Callable[..., Any]) -> Any:
         """Run func(params) with idempotency protection."""
         key = idempotency_key(dfid, step_id, params)
-        
-        # 1. Check cache
+
         cached = self.backend.get(key)
         if cached is not None:
             logger.info(f"[Idempotency] HIT key={key[:8]}...")
             return cached
 
-        # 2. Execute
         logger.info(f"[Idempotency] MISS key={key[:8]}... Executing.")
         result = func(**params)
 
-        # 3. Store result
         self.backend.set(key, result)
         return result

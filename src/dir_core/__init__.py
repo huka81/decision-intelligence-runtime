@@ -1,15 +1,27 @@
 """
-Decision Intelligence Runtime (DIR) – core package for ROA/DIR.
+Decision Intelligence Runtime (DIR) - core package for ROA/DIR.
 
-Core components per docs: DFID, EventBus, DIM, Context Store, models, etc.
-Samples import from this package after `pip install -e .` from repo root.
+Core components: DFID, EventBus, DIM, Context Store, models, pluggable storage.
 
-Supporting utilities (market simulation, logging) are in utils package.
-Re-exported here for backward compatibility.
+Install::
+
+    pip install dir-runtime
+
+Custom storage backend example::
+
+    from dir_core import AgentRegistry
+    from dir_core.storage import AgentRegistryStorage
+
+    class MyPostgresStorage:
+        def init_schema(self) -> None: ...
+        def upsert_agent(self, agent_id, contract_json, priority,
+                         status, agent_version, session_token) -> None: ...
+        # implement remaining AgentRegistryStorage methods
+
+    registry = AgentRegistry(storage=MyPostgresStorage())
 """
 
 from .agent_registry import AgentRegistry, HandshakeResult
-from utils import ensure_db
 from .arbitration import DEFAULT_PRIORITY_MATRIX, select_winner
 from .dim import validate_proposal
 from .context_store import ContextStore
@@ -69,31 +81,60 @@ from .wakeup import (
     should_wake,
     volatility_elevated,
 )
-from utils import (
-    NewsEvent,
-    NewsGenerator,
-    QuoteGenerator,
-    QuoteTick,
-    format_dfid_prefix,
-    log_with_dfid,
-    score_news,
+
+# Storage layer - protocols and built-in backends
+from .storage import (
+    # Protocols (implement these to create a custom backend)
+    AgentRegistryStorage,
+    ContextStorage,
+    IdempotencyStorage,
+    SagaStorage,
+    ResourceLockStorage,
+    IntentRetryStorage,
+    EscalationStorage,
+    LifecycleStorage,
+    # Exceptions
+    StorageError,
+    ResourceContentionError,
+    # SQLite backends (default, no extra deps)
+    SqliteAgentRegistryStorage,
+    SqliteContextStorage,
+    SqliteIdempotencyStorage,
+    SqliteSagaStorage,
+    SqliteResourceLockStorage,
+    SqliteIntentRetryStorage,
+    SqliteEscalationStorage,
+    SqliteLifecycleStorage,
+    # Memory backends (testing / ephemeral)
+    MemoryAgentRegistryStorage,
+    MemoryContextStorage,
+    MemoryIdempotencyStorage,
+    MemorySagaStorage,
+    MemoryResourceLockStorage,
+    MemoryIntentRetryStorage,
+    MemoryEscalationStorage,
+    MemoryLifecycleStorage,
+    # Bundles & factories
+    StorageBundle,
+    sqlite_storage,
+    memory_storage,
 )
 
 __all__ = [
     "DEFAULT_PRIORITY_MATRIX",
-    # DIM (DIR §6)
+    # DIM (DIR ?6)
     "validate_proposal",
     "new_dfid",
     "new_dfid_with_parent",
     "select_winner",
-    # EventBus (DIR Topologies §2)
+    # EventBus (DIR Topologies ?2)
     "Event",
     "EventBus",
     "EventMetadata",
     "EventType",
     "LoggingEventBus",
     "create_event_bus",
-    # EOAM (Topologies §2)
+    # EOAM (Topologies ?2)
     "WakeupPredicate",
     "price_change_significant",
     "volatility_elevated",
@@ -106,32 +147,30 @@ __all__ = [
     "hash_content",
     "proposal_params_for_hash",
     "ProofChecker",
-    # Intent Retry Governor (DIR §6.2)
+    # Intent Retry Governor (DIR ?6.2)
     "IntentRetryGovernor",
     "REASONING_EXHAUSTION",
-    # Lifecycle (DIR §4.3)
+    # Lifecycle (DIR ?4.3)
     "FlowStatus",
     "transition",
-    # Escalation Manager (DIR §9)
+    # Escalation Manager (DIR ?9)
     "EscalationManager",
     "EscalationOutcome",
     "ImpactCategory",
-    # Resource Locking (DIR §6.2)
+    # Resource Locking (DIR ?6.2)
     "ResourceLockManager",
     "LockResult",
-    # Agent Registry (DIR §2.3)
+    # Agent Registry (DIR ?2.3)
     "AgentRegistry",
     "HandshakeResult",
-    # Context Store (DIR §8)
+    # Context Store (DIR ?8)
     "ContextStore",
-    # Idempotency (DIR §7)
+    # Idempotency (DIR ?7)
     "IdempotencyGuard",
     "idempotency_key",
     "SQLiteBackend",
     "MemoryBackend",
-    # Bootstrap
-    "ensure_db",
-    # Saga Compensation (DIR §7)
+    # Saga Compensation (DIR ?7)
     "SagaCompensation",
     "CompensationAction",
     # SDS (Topology B)
@@ -150,18 +189,43 @@ __all__ = [
     "AgentState",
     "DecisionRecord",
     "EscalationRequest",
-    # DecisionFlow (DIR §5.4)
+    # DecisionFlow (DIR ?5.4)
     "DecisionFlow",
     "ContextSnapshot",
     "FlowEvent",
-    # Re-exports from utils (backward compatibility)
-    "QuoteTick",
-    "NewsEvent",
-    "QuoteGenerator",
-    "NewsGenerator",
-    "score_news",
-    "log_with_dfid",
-    "format_dfid_prefix",
+    # Storage layer - protocols
+    "AgentRegistryStorage",
+    "ContextStorage",
+    "IdempotencyStorage",
+    "SagaStorage",
+    "ResourceLockStorage",
+    "IntentRetryStorage",
+    "EscalationStorage",
+    "LifecycleStorage",
+    "StorageError",
+    "ResourceContentionError",
+    # Storage layer - SQLite backends
+    "SqliteAgentRegistryStorage",
+    "SqliteContextStorage",
+    "SqliteIdempotencyStorage",
+    "SqliteSagaStorage",
+    "SqliteResourceLockStorage",
+    "SqliteIntentRetryStorage",
+    "SqliteEscalationStorage",
+    "SqliteLifecycleStorage",
+    # Storage layer - memory backends
+    "MemoryAgentRegistryStorage",
+    "MemoryContextStorage",
+    "MemoryIdempotencyStorage",
+    "MemorySagaStorage",
+    "MemoryResourceLockStorage",
+    "MemoryIntentRetryStorage",
+    "MemoryEscalationStorage",
+    "MemoryLifecycleStorage",
+    # Storage bundles & factories
+    "StorageBundle",
+    "sqlite_storage",
+    "memory_storage",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

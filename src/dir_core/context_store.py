@@ -15,81 +15,73 @@ See DIR §8.1, ROA §7.2 for layer definitions.
 """
 
 import json
-import sqlite3
 import logging
 from typing import Any, Dict, Optional
+
+from .storage.base import ContextStorage
+from .storage.sqlite import SqliteContextStorage
 
 logger = logging.getLogger(__name__)
 
 
 class ContextStore:
-    def __init__(self, db_path: str):
-        self.db_path = db_path
-        self._init_db()
+    """Multi-layered context store for agent state (DIR §8).
 
-    def _init_db(self):
-        """Ensure tables exist."""
-        with sqlite3.connect(self.db_path) as conn:
-            # Session: Linked to DFID
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS context_session (
-                    dfid TEXT PRIMARY KEY,
-                    data JSON,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            # State: Linked to Agent ID
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS context_state (
-                    agent_id TEXT PRIMARY KEY,
-                    data JSON,
-                    version INTEGER DEFAULT 1,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            conn.commit()
+    Storage backend is pluggable. Pass ``storage=`` for a custom backend, or
+    ``db_path=`` to use the built-in SQLite backend (default behaviour).
+
+    Args:
+        db_path: Path to SQLite database. Used when ``storage`` is not provided.
+        storage: Custom :class:`~dir_core.storage.ContextStorage` backend.
+            When provided, ``db_path`` is ignored.
+
+    Raises:
+        ValueError: When neither ``db_path`` nor ``storage`` is supplied.
+    """
+
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        *,
+        storage: Optional[ContextStorage] = None,
+    ):
+        if storage is not None:
+            self._storage: ContextStorage = storage
+        elif db_path is not None:
+            self.db_path = db_path  # kept for backward compatibility
+            self._storage = SqliteContextStorage(db_path)
+        else:
+            raise ValueError(
+                "Provide either 'db_path' (SQLite) or 'storage' (custom backend)."
+            )
 
     # -------------------------------------------------------------------------
     # Layer 1: Session (Ephemeral)
     # -------------------------------------------------------------------------
 
     def get_session(self, dfid: str) -> Dict[str, Any]:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("SELECT data FROM context_session WHERE dfid = ?", (dfid,))
-            row = cursor.fetchone()
-            return json.loads(row[0]) if row else {}
+        raw = self._storage.get_session(dfid)
+        return json.loads(raw) if raw else {}
 
     def update_session(self, dfid: str, updates: Dict[str, Any]) -> None:
         """Merge updates into existing session."""
         current = self.get_session(dfid)
         current.update(updates)
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO context_session (dfid, data) VALUES (?, ?)",
-                (dfid, json.dumps(current))
-            )
-            conn.commit()
+        self._storage.set_session(dfid, json.dumps(current))
 
     # -------------------------------------------------------------------------
     # Layer 2: State (Authoritative)
     # -------------------------------------------------------------------------
 
     def get_state(self, agent_id: str) -> Dict[str, Any]:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("SELECT data FROM context_state WHERE agent_id = ?", (agent_id,))
-            row = cursor.fetchone()
-            return json.loads(row[0]) if row else {}
+        raw = self._storage.get_state(agent_id)
+        return json.loads(raw) if raw else {}
 
     def update_state(self, agent_id: str, updates: Dict[str, Any]) -> None:
         """Merge updates into existing state."""
         current = self.get_state(agent_id)
         current.update(updates)
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO context_state (agent_id, data) VALUES (?, ?)",
-                (agent_id, json.dumps(current))
-            )
-            conn.commit()
+        self._storage.set_state(agent_id, json.dumps(current))
 
     # -------------------------------------------------------------------------
     # Compiler
@@ -102,9 +94,9 @@ class ContextStore:
         """
         session_data = self.get_session(dfid)
         state_data = self.get_state(agent_id)
-        
+
         # In a real system, we'd fetch Memory and Artifacts here too.
-        
+
         return {
             "meta": {
                 "agent_id": agent_id,

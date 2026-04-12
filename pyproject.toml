@@ -4,19 +4,54 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dir-runtime"
-version = "0.1.0"
-description = "Decision Intelligence Runtime – shared package for ROA/DIR samples"
+version = "0.2.0"
+description = "Decision Intelligence Runtime - pluggable ROA/DIR engine for agentic AI systems"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12"
+keywords = ["ai", "agents", "decision-intelligence", "roa", "dir", "llm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "pydantic>=2.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "ruff>=0.1"]
+# SQLite backend - no extra deps, sqlite3 is part of stdlib
+# Include this label so users can signal explicit SQLite intent in their dependencies
+sqlite = []
+
+# PostgreSQL backend (user must implement the storage protocol - this provides psycopg2)
+postgres = ["psycopg2-binary>=2.9"]
+
+# Async PostgreSQL
+asyncpg = ["asyncpg>=0.29"]
+
+# EOAM / trading samples extras
 eoam = ["httpx", "pyyaml", "plotly"]
+
+# Sample-running extras
 samples = ["pyyaml", "markdown>=3.5"]
+
+# Development / testing
+dev = [
+    "pytest>=7",
+    "pytest-cov>=4",
+    "ruff>=0.1",
+    "mypy>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/decision-intelligence-runtime"
+Documentation = "https://github.com/your-org/decision-intelligence-runtime#readme"
+Issues = "https://github.com/your-org/decision-intelligence-runtime/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -24,3 +59,12 @@ where = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+ignore_missing_imports = true

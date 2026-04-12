@@ -7,12 +7,14 @@ Handshake with SemVer alignment; schema serving for Context compilation.
 
 import json
 import re
-import sqlite3
 import uuid
 import logging
 import warnings
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
+
+from .storage.base import AgentRegistryStorage
+from .storage.sqlite import SqliteAgentRegistryStorage
 
 logger = logging.getLogger(__name__)
 
@@ -57,48 +59,38 @@ def _version_compatible(agent_ver: str, supported: str) -> bool:
 
 
 class AgentRegistry:
+    """Registry of active agents with SemVer handshake (DIR §2.3).
+
+    Storage backend is pluggable. Pass ``storage=`` for a custom backend, or
+    ``db_path=`` to use the built-in SQLite backend (default behaviour).
+
+    Args:
+        db_path: Path to SQLite database. Used when ``storage`` is not provided.
+        supported_versions: SemVer constraint for handshake (e.g. ``"1.x"``).
+        storage: Custom :class:`~dir_core.storage.AgentRegistryStorage` backend.
+            When provided, ``db_path`` is ignored.
+
+    Raises:
+        ValueError: When neither ``db_path`` nor ``storage`` is supplied.
+    """
+
     def __init__(
         self,
-        db_path: str,
+        db_path: Optional[str] = None,
         supported_versions: str = "1.x",
+        *,
+        storage: Optional[AgentRegistryStorage] = None,
     ):
-        self.db_path = db_path
         self.supported_versions = supported_versions
-        self._init_db()
-
-    def _init_db(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS agent_registry (
-                    agent_id TEXT PRIMARY KEY,
-                    contract JSON,
-                    priority INTEGER DEFAULT 0,
-                    status TEXT DEFAULT 'ACTIVE',
-                    agent_version TEXT,
-                    session_token TEXT,
-                    registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            try:
-                conn.execute(
-                    "ALTER TABLE agent_registry RENAME COLUMN manifest TO contract"
-                )
-            except sqlite3.OperationalError:
-                pass
-            for col, spec in [
-                ("agent_version", "TEXT"),
-                ("session_token", "TEXT"),
-                ("registered_at", "TIMESTAMP"),
-                ("suspension_reason", "TEXT"),
-            ]:
-                try:
-                    conn.execute(
-                        f"ALTER TABLE agent_registry ADD COLUMN {col} {spec}"
-                    )
-                except sqlite3.OperationalError:
-                    pass
-            conn.commit()
+        if storage is not None:
+            self._storage: AgentRegistryStorage = storage
+        elif db_path is not None:
+            self.db_path = db_path  # kept for backward compatibility
+            self._storage = SqliteAgentRegistryStorage(db_path)
+        else:
+            raise ValueError(
+                "Provide either 'db_path' (SQLite) or 'storage' (custom backend)."
+            )
 
     def handshake(
         self,
@@ -117,16 +109,14 @@ class AgentRegistry:
                 reason="VERSION_MISMATCH",
             )
         token = str(uuid.uuid4())
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO agent_registry
-                (agent_id, contract, priority, status, agent_version, session_token)
-                VALUES (?, ?, ?, 'ACTIVE', ?, ?)
-                """,
-                (agent_id, json.dumps(contract), priority, agent_version, token),
-            )
-            conn.commit()
+        self._storage.upsert_agent(
+            agent_id=agent_id,
+            contract_json=json.dumps(contract),
+            priority=priority,
+            status="ACTIVE",
+            agent_version=agent_version,
+            session_token=token,
+        )
         logger.info("Handshake: agent_id=%s ver=%s accepted", agent_id, agent_version)
         return HandshakeResult(accepted=True, session_token=token)
 
@@ -158,26 +148,20 @@ class AgentRegistry:
             DeprecationWarning,
             stacklevel=2,
         )
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO agent_registry (agent_id, contract, priority, status)
-                VALUES (?, ?, ?, 'ACTIVE')
-                """,
-                (agent_id, json.dumps(contract), priority),
-            )
-            conn.commit()
+        self._storage.upsert_agent(
+            agent_id=agent_id,
+            contract_json=json.dumps(contract),
+            priority=priority,
+            status="ACTIVE",
+            agent_version=None,
+            session_token=None,
+        )
         logger.info("Registered agent: %s (priority=%d)", agent_id, priority)
 
     def get_agent_contract(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve agent capability contract."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                "SELECT contract FROM agent_registry WHERE agent_id = ?",
-                (agent_id,),
-            )
-            row = cursor.fetchone()
-            return json.loads(row[0]) if row else None
+        rec = self._storage.get_agent(agent_id)
+        return rec["contract"] if rec else None
 
     def get_agent_manifest(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve agent capability contract. Deprecated: use get_agent_contract."""
@@ -185,16 +169,12 @@ class AgentRegistry:
 
     def get_agent_priority(self, agent_id: str) -> int:
         """Retrieve agent priority (default 0)."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("SELECT priority FROM agent_registry WHERE agent_id = ?", (agent_id,))
-            row = cursor.fetchone()
-            return row[0] if row else 0
+        rec = self._storage.get_agent(agent_id)
+        return rec["priority"] if rec else 0
 
     def list_agents(self) -> List[str]:
         """List all active agent IDs."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("SELECT agent_id FROM agent_registry WHERE status = 'ACTIVE'")
-            return [row[0] for row in cursor.fetchall()]
+        return self._storage.list_active_agents()
 
     def set_agent_status(
         self,
@@ -213,17 +193,7 @@ class AgentRegistry:
         Returns:
             True if a row was updated.
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cur = conn.execute(
-                """
-                UPDATE agent_registry
-                SET status = ?, suspension_reason = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE agent_id = ?
-                """,
-                (status, suspension_reason, agent_id),
-            )
-            conn.commit()
-            updated = cur.rowcount > 0
+        updated = self._storage.update_status(agent_id, status, suspension_reason)
         if updated:
             logger.info(
                 "Agent status: agent_id=%s status=%s reason=%s",
@@ -235,12 +205,4 @@ class AgentRegistry:
 
     def get_agent_status(self, agent_id: str) -> Optional[tuple]:
         """Return (status, suspension_reason) if the agent exists, else None."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                "SELECT status, suspension_reason FROM agent_registry WHERE agent_id = ?",
-                (agent_id,),
-            )
-            row = cursor.fetchone()
-            if row is None:
-                return None
-            return (row[0], row[1])
+        return self._storage.get_status(agent_id)

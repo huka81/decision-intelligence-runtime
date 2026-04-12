@@ -5,12 +5,13 @@ Parent-Child flows: mark_dirty on partial failure, deterministic compensation.
 """
 
 import json
-import sqlite3
 import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
 from .models import CompensationAction
+from .storage.base import SagaStorage
+from .storage.sqlite import SqliteSagaStorage
 
 logger = logging.getLogger(__name__)
 
@@ -24,34 +25,47 @@ class CompensationResult:
 
 
 class SagaCompensation:
-    """Manages dirty state and deterministic compensation (DIR §7)."""
+    """Manages dirty state and deterministic compensation (DIR §7).
+
+    Storage backend is pluggable. Pass ``storage=`` for a custom backend, or
+    ``db_path=`` to use the built-in SQLite backend (default behaviour).
+
+    Args:
+        db_path: Path to SQLite database. Used when ``storage`` is not provided.
+        revert_callback: Called with (dfid, partial_state) on REVERT.
+        close_all_callback: Called with (dfid,) on CLOSE_ALL.
+        alert_human_callback: Called with (dfid, partial_state) on ALERT_HUMAN.
+        storage: Custom :class:`~dir_core.storage.SagaStorage` backend.
+            When provided, ``db_path`` is ignored.
+
+    Raises:
+        ValueError: When neither ``db_path`` nor ``storage`` is supplied.
+    """
 
     def __init__(
         self,
-        db_path: str,
+        db_path: Optional[str] = None,
         revert_callback: Optional[Callable[[str, Dict[str, Any]], bool]] = None,
         close_all_callback: Optional[Callable[[str], bool]] = None,
         alert_human_callback: Optional[
             Callable[[str, Dict[str, Any]], None]
         ] = None,
+        *,
+        storage: Optional[SagaStorage] = None,
     ):
-        self.db_path = db_path
         self.revert_callback = revert_callback
         self.close_all_callback = close_all_callback
         self.alert_human_callback = alert_human_callback
-        self._init_db()
 
-    def _init_db(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS saga_dirty_state (
-                    dfid TEXT PRIMARY KEY,
-                    failed_step TEXT,
-                    partial_state_json TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            conn.commit()
+        if storage is not None:
+            self._storage: SagaStorage = storage
+        elif db_path is not None:
+            self.db_path = db_path  # kept for backward compatibility
+            self._storage = SqliteSagaStorage(db_path)
+        else:
+            raise ValueError(
+                "Provide either 'db_path' (SQLite) or 'storage' (custom backend)."
+            )
 
     def mark_dirty(
         self,
@@ -60,41 +74,18 @@ class SagaCompensation:
         partial_state: Dict[str, Any],
     ) -> None:
         """Record flow as PARTIAL_SUCCESS_DIRTY after step failure."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO saga_dirty_state
-                (dfid, failed_step, partial_state_json)
-                VALUES (?, ?, ?)
-                """,
-                (dfid, failed_step, json.dumps(partial_state, default=str)),
-            )
-            conn.commit()
+        self._storage.mark_dirty(
+            dfid, failed_step, json.dumps(partial_state, default=str)
+        )
         logger.warning("Saga dirty: dfid=%s failed_step=%s", dfid, failed_step)
 
     def get_dirty_flows(self) -> List[str]:
         """Return list of dfids in dirty state."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                "SELECT dfid FROM saga_dirty_state"
-            )
-            return [row[0] for row in cursor.fetchall()]
+        return self._storage.get_dirty_flows()
 
     def get_dirty_state(self, dfid: str) -> Optional[Dict[str, Any]]:
         """Return partial state for dirty flow."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                "SELECT failed_step, partial_state_json "
-                "FROM saga_dirty_state WHERE dfid = ?",
-                (dfid,),
-            )
-            row = cursor.fetchone()
-            if not row:
-                return None
-            return {
-                "failed_step": row[0],
-                "partial_state": json.loads(row[1] or "{}"),
-            }
+        return self._storage.get_dirty_state(dfid)
 
     def execute_compensation(
         self,
@@ -148,6 +139,4 @@ class SagaCompensation:
 
     def _clear_dirty(self, dfid: str) -> None:
         """Remove flow from dirty state after successful compensation."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("DELETE FROM saga_dirty_state WHERE dfid = ?", (dfid,))
-            conn.commit()
+        self._storage.clear_dirty(dfid)

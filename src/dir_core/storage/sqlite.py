@@ -1,0 +1,585 @@
+"""
+SQLite storage backends for dir_core modules.
+
+These are the default built-in implementations used when ``db_path`` is
+provided to any manager class. They require no additional dependencies
+(``sqlite3`` is part of the Python standard library).
+"""
+
+from __future__ import annotations
+
+import json
+import sqlite3
+import time
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _connect(db_path: str) -> sqlite3.Connection:
+    """Open a SQLite connection, creating parent directories if needed."""
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    return sqlite3.connect(db_path)
+
+
+# ---------------------------------------------------------------------------
+# Agent Registry
+# ---------------------------------------------------------------------------
+
+
+class SqliteAgentRegistryStorage:
+    """SQLite backend for AgentRegistry (DIR §2.3)."""
+
+    def __init__(self, db_path: str) -> None:
+        self.db_path = db_path
+        self.init_schema()
+
+    def init_schema(self) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS agent_registry (
+                    agent_id TEXT PRIMARY KEY,
+                    contract JSON,
+                    priority INTEGER DEFAULT 0,
+                    status TEXT DEFAULT 'ACTIVE',
+                    agent_version TEXT,
+                    session_token TEXT,
+                    registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            # Best-effort migrations for legacy schemas
+            try:
+                conn.execute(
+                    "ALTER TABLE agent_registry RENAME COLUMN manifest TO contract"
+                )
+            except sqlite3.OperationalError:
+                pass
+            for col, spec in [
+                ("agent_version", "TEXT"),
+                ("session_token", "TEXT"),
+                ("registered_at", "TIMESTAMP"),
+                ("suspension_reason", "TEXT"),
+            ]:
+                try:
+                    conn.execute(
+                        f"ALTER TABLE agent_registry ADD COLUMN {col} {spec}"
+                    )
+                except sqlite3.OperationalError:
+                    pass
+            conn.commit()
+
+    def upsert_agent(
+        self,
+        agent_id: str,
+        contract_json: str,
+        priority: int,
+        status: str,
+        agent_version: Optional[str],
+        session_token: Optional[str],
+    ) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO agent_registry
+                (agent_id, contract, priority, status, agent_version, session_token)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (agent_id, contract_json, priority, status, agent_version, session_token),
+            )
+            conn.commit()
+
+    def get_agent(self, agent_id: str) -> Optional[Dict[str, Any]]:
+        with _connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT agent_id, contract, priority, status, agent_version, session_token "
+                "FROM agent_registry WHERE agent_id = ?",
+                (agent_id,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                "agent_id": row[0],
+                "contract": json.loads(row[1]) if row[1] else {},
+                "priority": row[2],
+                "status": row[3],
+                "agent_version": row[4],
+                "session_token": row[5],
+            }
+
+    def update_status(
+        self, agent_id: str, status: str, suspension_reason: Optional[str]
+    ) -> bool:
+        with _connect(self.db_path) as conn:
+            cur = conn.execute(
+                """
+                UPDATE agent_registry
+                SET status = ?, suspension_reason = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE agent_id = ?
+                """,
+                (status, suspension_reason, agent_id),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+    def get_status(self, agent_id: str) -> Optional[tuple]:
+        with _connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT status, suspension_reason FROM agent_registry WHERE agent_id = ?",
+                (agent_id,),
+            )
+            row = cursor.fetchone()
+            return (row[0], row[1]) if row else None
+
+    def list_active_agents(self) -> List[str]:
+        with _connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT agent_id FROM agent_registry WHERE status = 'ACTIVE'"
+            )
+            return [row[0] for row in cursor.fetchall()]
+
+
+# ---------------------------------------------------------------------------
+# Context Store
+# ---------------------------------------------------------------------------
+
+
+class SqliteContextStorage:
+    """SQLite backend for ContextStore (DIR §8)."""
+
+    def __init__(self, db_path: str) -> None:
+        self.db_path = db_path
+        self.init_schema()
+
+    def init_schema(self) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS context_session (
+                    dfid TEXT PRIMARY KEY,
+                    data JSON,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS context_state (
+                    agent_id TEXT PRIMARY KEY,
+                    data JSON,
+                    version INTEGER DEFAULT 1,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+
+    def get_session(self, dfid: str) -> Optional[str]:
+        with _connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT data FROM context_session WHERE dfid = ?", (dfid,)
+            )
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+    def set_session(self, dfid: str, data_json: str) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO context_session (dfid, data) VALUES (?, ?)",
+                (dfid, data_json),
+            )
+            conn.commit()
+
+    def get_state(self, agent_id: str) -> Optional[str]:
+        with _connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT data FROM context_state WHERE agent_id = ?", (agent_id,)
+            )
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+    def set_state(self, agent_id: str, data_json: str) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO context_state (agent_id, data) VALUES (?, ?)",
+                (agent_id, data_json),
+            )
+            conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Idempotency
+# ---------------------------------------------------------------------------
+
+
+class SqliteIdempotencyStorage:
+    """SQLite backend for IdempotencyGuard (DIR §7)."""
+
+    def __init__(self, db_path: str) -> None:
+        self.db_path = db_path
+        self._init()
+
+    def _init(self) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS idempotency_cache (
+                    key TEXT PRIMARY KEY,
+                    result JSON,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+
+    def get(self, key: str) -> Optional[Dict[str, Any]]:
+        with _connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT result FROM idempotency_cache WHERE key = ?", (key,)
+            )
+            row = cursor.fetchone()
+            return json.loads(row[0]) if row else None
+
+    def set(self, key: str, result: Dict[str, Any]) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO idempotency_cache (key, result) VALUES (?, ?)",
+                (key, json.dumps(result)),
+            )
+            conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Saga
+# ---------------------------------------------------------------------------
+
+
+class SqliteSagaStorage:
+    """SQLite backend for SagaCompensation (DIR §7)."""
+
+    def __init__(self, db_path: str) -> None:
+        self.db_path = db_path
+        self.init_schema()
+
+    def init_schema(self) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS saga_dirty_state (
+                    dfid TEXT PRIMARY KEY,
+                    failed_step TEXT,
+                    partial_state_json TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+
+    def mark_dirty(self, dfid: str, failed_step: str, partial_state_json: str) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO saga_dirty_state (dfid, failed_step, partial_state_json)
+                VALUES (?, ?, ?)
+                """,
+                (dfid, failed_step, partial_state_json),
+            )
+            conn.commit()
+
+    def get_dirty_flows(self) -> List[str]:
+        with _connect(self.db_path) as conn:
+            cursor = conn.execute("SELECT dfid FROM saga_dirty_state")
+            return [row[0] for row in cursor.fetchall()]
+
+    def get_dirty_state(self, dfid: str) -> Optional[Dict[str, Any]]:
+        with _connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT failed_step, partial_state_json FROM saga_dirty_state WHERE dfid = ?",
+                (dfid,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                "failed_step": row[0],
+                "partial_state": json.loads(row[1] or "{}"),
+            }
+
+    def clear_dirty(self, dfid: str) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute("DELETE FROM saga_dirty_state WHERE dfid = ?", (dfid,))
+            conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Resource Locking
+# ---------------------------------------------------------------------------
+
+
+class SqliteResourceLockStorage:
+    """SQLite backend for ResourceLockManager (DIR §6.2).
+
+    Uses ``BEGIN IMMEDIATE`` transactions to prevent concurrent over-allocation.
+    Retries until ``timeout_sec`` is exhausted.
+    """
+
+    def __init__(self, db_path: str) -> None:
+        self.db_path = db_path
+        self.init_schema()
+
+    def init_schema(self) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS resource_locks (
+                    dfid TEXT,
+                    resource_id TEXT,
+                    amount REAL,
+                    acquired_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (dfid, resource_id)
+                )
+            """)
+            conn.commit()
+
+    def try_acquire_atomic(
+        self,
+        dfid: str,
+        resources: Dict[str, float],
+        availability_provider: Callable[[str], float],
+        timeout_sec: float,
+    ) -> str:
+        sorted_ids = sorted(resources.keys())
+        deadline = time.monotonic() + timeout_sec
+
+        while time.monotonic() < deadline:
+            try:
+                conn = sqlite3.connect(self.db_path, timeout=0.1)
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    for rid in sorted_ids:
+                        amount = resources[rid]
+                        available = availability_provider(rid)
+                        cursor = conn.execute(
+                            "SELECT COALESCE(SUM(amount), 0) FROM resource_locks "
+                            "WHERE resource_id = ? AND dfid != ?",
+                            (rid, dfid),
+                        )
+                        locked = float(cursor.fetchone()[0])
+                        if available - locked < amount:
+                            conn.rollback()
+                            conn.close()
+                            return "INSUFFICIENT_LIQUIDITY"
+                    for rid in sorted_ids:
+                        conn.execute(
+                            "INSERT OR REPLACE INTO resource_locks "
+                            "(dfid, resource_id, amount) VALUES (?, ?, ?)",
+                            (dfid, rid, resources[rid]),
+                        )
+                    conn.commit()
+                    conn.close()
+                    return "ACQUIRED"
+                except Exception:
+                    conn.rollback()
+                    conn.close()
+                    raise
+            except sqlite3.OperationalError:
+                time.sleep(0.05)
+                continue
+
+        return "RESOURCE_CONTENTION_TIMEOUT"
+
+    def release(self, dfid: str) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute("DELETE FROM resource_locks WHERE dfid = ?", (dfid,))
+            conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Intent Retry
+# ---------------------------------------------------------------------------
+
+
+class SqliteIntentRetryStorage:
+    """SQLite backend for IntentRetryGovernor (DIR §6.2)."""
+
+    def __init__(self, db_path: str) -> None:
+        self.db_path = db_path
+        self._init()
+
+    def _init(self) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS intent_retry (
+                    dfid TEXT PRIMARY KEY,
+                    rejection_count INTEGER DEFAULT 0,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+
+    def get_count(self, dfid: str) -> int:
+        with _connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT rejection_count FROM intent_retry WHERE dfid = ?", (dfid,)
+            )
+            row = cursor.fetchone()
+            return row[0] if row else 0
+
+    def set_count(self, dfid: str, count: int) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO intent_retry (dfid, rejection_count, updated_at) "
+                "VALUES (?, ?, CURRENT_TIMESTAMP)",
+                (dfid, count),
+            )
+            conn.commit()
+
+    def delete(self, dfid: str) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute("DELETE FROM intent_retry WHERE dfid = ?", (dfid,))
+            conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Escalation
+# ---------------------------------------------------------------------------
+
+
+class SqliteEscalationStorage:
+    """SQLite backend for EscalationManager (DIR §9)."""
+
+    def __init__(self, db_path: str) -> None:
+        self.db_path = db_path
+        self.init_schema()
+
+    def init_schema(self) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS escalation_budget (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    agent_id TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS escalation_requests (
+                    dfid TEXT PRIMARY KEY,
+                    agent_id TEXT,
+                    reason TEXT,
+                    context_json TEXT,
+                    proposal_json TEXT,
+                    impact TEXT,
+                    status TEXT DEFAULT 'PENDING',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    resolved_at TIMESTAMP,
+                    human_decision TEXT
+                )
+            """)
+            conn.commit()
+
+    def get_window_count(self, agent_id: str, since_str: str) -> int:
+        with _connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM escalation_budget "
+                "WHERE agent_id = ? AND created_at >= ?",
+                (agent_id, since_str),
+            )
+            row = cursor.fetchone()
+            return int(row[0]) if row else 0
+
+    def record_budget_token(self, agent_id: str) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT INTO escalation_budget (agent_id) VALUES (?)", (agent_id,)
+            )
+            conn.commit()
+
+    def insert_request(
+        self,
+        dfid: str,
+        agent_id: str,
+        reason: str,
+        context_json: str,
+        proposal_json: str,
+        impact: str,
+    ) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO escalation_requests
+                (dfid, agent_id, reason, context_json, proposal_json, impact, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
+                """,
+                (dfid, agent_id, reason, context_json, proposal_json, impact),
+            )
+            conn.commit()
+
+    def resolve_request(
+        self,
+        dfid: str,
+        resolved_at: str,
+        decision: str,
+        proposal_json: Optional[str],
+    ) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute(
+                """
+                UPDATE escalation_requests
+                SET status = 'RESOLVED', resolved_at = ?, human_decision = ?,
+                    proposal_json = COALESCE(?, proposal_json)
+                WHERE dfid = ?
+                """,
+                (resolved_at, decision, proposal_json, dfid),
+            )
+            conn.commit()
+
+    def get_pending_requests(self) -> List[Dict[str, Any]]:
+        with _connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT dfid, agent_id, reason, context_json, proposal_json, impact "
+                "FROM escalation_requests WHERE status = 'PENDING'"
+            )
+            rows = cursor.fetchall()
+            return [
+                {
+                    "dfid": r["dfid"],
+                    "agent_id": r["agent_id"],
+                    "reason": r["reason"],
+                    "context": json.loads(r["context_json"] or "{}"),
+                    "proposal": json.loads(r["proposal_json"] or "{}"),
+                    "impact": r["impact"],
+                }
+                for r in rows
+            ]
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle
+# ---------------------------------------------------------------------------
+
+
+class SqliteLifecycleStorage:
+    """SQLite backend for lifecycle.transition (DIR §4.3)."""
+
+    def __init__(self, db_path: str) -> None:
+        self.db_path = db_path
+        self._init()
+
+    def _init(self) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS flow_transitions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    dfid TEXT,
+                    from_status TEXT,
+                    to_status TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+
+    def record_transition(self, dfid: str, from_status: str, to_status: str) -> None:
+        with _connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT INTO flow_transitions (dfid, from_status, to_status) "
+                "VALUES (?, ?, ?)",
+                (dfid, from_status, to_status),
+            )
+            conn.commit()
