@@ -1,6 +1,7 @@
 site_name: Decision Intelligence Runtime (DIR)
 site_description: Deterministic execution kernel for autonomous AI agents.
 repo_url: https://github.com/huka81/decision-intelligence-runtime
+site_url: https://huka81.github.io/decision-intelligence-runtime/
 
 # docs_dir must be a subfolder of the repo root (not "."). docs/index.md pulls in ../README.md
 # via mkdocs-include-markdown-plugin (relative URL rewrite).

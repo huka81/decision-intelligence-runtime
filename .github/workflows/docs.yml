@@ -1,3 +1,5 @@
+# One-time: GitHub repo → Settings → Pages → Build and deployment → Source:
+# "Deploy from a branch" → Branch: gh-pages, folder: / (root). Otherwise https://…github.io/…/ shows 404.
 name: Publish Docs
 on:
   push:

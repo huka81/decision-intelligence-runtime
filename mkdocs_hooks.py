@@ -45,6 +45,8 @@ def on_page_markdown(markdown, page, config, **kwargs):
         ("](./FAQ.md)", f"]({repo}/blob/main/FAQ.md)"),
         ("](../FAQ.md)", f"]({repo}/blob/main/FAQ.md)"),
         ("](FAQ.md)", f"]({repo}/blob/main/FAQ.md)"),
+        ("](../LICENSE)", f"]({repo}/blob/main/LICENSE)"),
+        ("](./LICENSE)", f"]({repo}/blob/main/LICENSE)"),
         ("](LICENSE)", f"]({repo}/blob/main/LICENSE)"),
     ):
         markdown = markdown.replace(old, new)
