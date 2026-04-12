@@ -56,27 +56,27 @@ nav:
   - Topologies: 03-topologies/DIR_Topologies.md
   - Governance: 04-governance/DIR_Governance.md
   - Samples:
-      - samples/index.md
-      - "00 - Quick start": samples/00_quick_start.md
-      - "01 - ROA agent": samples/01_roa_agent.md
-      - "02 - DFID propagation": samples/02_dfid_propagation.md
-      - "03 - Idempotency guard": samples/03_idempotency_guard.md
-      - "04 - Context store": samples/04_context_store.md
-      - "05 - DIM validation": samples/05_dim_validation.md
-      - "06 - Agent registry": samples/06_agent_registry.md
-      - "07 - Event bus (swappable)": samples/07_event_bus_swappable.md
-      - "08 - Bootstrap SQLite": samples/08_bootstrap_sqlite.md
-      - "09 - Topology A (EOAM)": samples/09_topology_a_eoam.md
-      - "10 - Topology B (SDS)": samples/10_topology_b_sds.md
-      - "11 - Topology C (DL+PCI)": samples/11_topology_c_dl_pci.md
-      - "31 - Finance trading": samples/31_finance_trading.md
-      - "32 - Fraud gate": samples/32_fraud_gate.md
-      - "33 - Insurance underwriting": samples/33_insurance_underwriting.md
-      - "34 - LangChain ROA wrapper": samples/34_langchain_roa_wrapper.md
-      - "35 - CrewAI ROA wrapper": samples/35_crewai_roa_wrapper.md
-      - "36 - Drift optimization discount": samples/36_drift_optimization_discount.md
-      - "37 - Drift semantic refund": samples/37_drift_semantic_refund.md
-      - "38 - Drift environmental bidding": samples/38_drift_environmental_bidding.md
-      - "88 - Meta context engineering": samples/88_meta_context_engineering.md
+      - 09-samples/index.md
+      - "00 - Quick start": 09-samples/00_quick_start.md
+      - "01 - ROA agent": 09-samples/01_roa_agent.md
+      - "02 - DFID propagation": 09-samples/02_dfid_propagation.md
+      - "03 - Idempotency guard": 09-samples/03_idempotency_guard.md
+      - "04 - Context store": 09-samples/04_context_store.md
+      - "05 - DIM validation": 09-samples/05_dim_validation.md
+      - "06 - Agent registry": 09-samples/06_agent_registry.md
+      - "07 - Event bus (swappable)": 09-samples/07_event_bus_swappable.md
+      - "08 - Bootstrap SQLite": 09-samples/08_bootstrap_sqlite.md
+      - "09 - Topology A (EOAM)": 09-samples/09_topology_a_eoam.md
+      - "10 - Topology B (SDS)": 09-samples/10_topology_b_sds.md
+      - "11 - Topology C (DL+PCI)": 09-samples/11_topology_c_dl_pci.md
+      - "31 - Finance trading": 09-samples/31_finance_trading.md
+      - "32 - Fraud gate": 09-samples/32_fraud_gate.md
+      - "33 - Insurance underwriting": 09-samples/33_insurance_underwriting.md
+      - "34 - LangChain ROA wrapper": 09-samples/34_langchain_roa_wrapper.md
+      - "35 - CrewAI ROA wrapper": 09-samples/35_crewai_roa_wrapper.md
+      - "36 - Drift optimization discount": 09-samples/36_drift_optimization_discount.md
+      - "37 - Drift semantic refund": 09-samples/37_drift_semantic_refund.md
+      - "38 - Drift environmental bidding": 09-samples/38_drift_environmental_bidding.md
+      - "88 - Meta context engineering": 09-samples/88_meta_context_engineering.md
   - Conclusion:
       - Context as code: 08-conclusion/Context_as_Code.md
