@@ -8,7 +8,7 @@ import logging
 from typing import TYPE_CHECKING, Optional, Tuple
 
 if TYPE_CHECKING:
-    from dir.agent_registry import AgentRegistry
+    from dir_core.agent_registry import AgentRegistry
 
     from audit_store import AuditStore
 
@@ -90,3 +90,4 @@ class ComplianceMonitor:
             return True, rate
 
         return False, rate
+

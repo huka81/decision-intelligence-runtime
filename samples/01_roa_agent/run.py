@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from dir import (
+from dir_core import (
     AgentState,
     DecisionRecord,
     EscalationRequest,
@@ -1034,3 +1034,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

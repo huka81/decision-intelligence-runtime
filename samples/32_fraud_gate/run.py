@@ -16,7 +16,7 @@ import json
 import logging
 import os
 
-from dir import new_dfid
+from dir_core import new_dfid
 from utils.ollama_client import OllamaClient, check_ollama
 
 try:
@@ -222,3 +222,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

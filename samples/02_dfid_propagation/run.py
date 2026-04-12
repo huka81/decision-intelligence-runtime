@@ -22,7 +22,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from dir import (
+from dir_core import (
     ContextSnapshot,
     DecisionFlow,
     EscalationRequest,
@@ -480,3 +480,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

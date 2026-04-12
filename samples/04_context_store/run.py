@@ -18,9 +18,9 @@ import logging
 from pathlib import Path
 from pprint import pprint
 
-from dir import new_dfid
+from dir_core import new_dfid
 from utils import ensure_db
-from dir.context_store import ContextStore
+from dir_core.context_store import ContextStore
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -84,3 +84,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

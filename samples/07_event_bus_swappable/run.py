@@ -21,7 +21,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from dir import (
+from dir_core import (
     Event,
     EventBus,
     EventMetadata,
@@ -507,3 +507,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

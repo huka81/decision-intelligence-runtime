@@ -15,9 +15,9 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from dir import new_dfid
-from dir.models import ProofCarryingIntent
-from dir.pci import compute_evidence_hash, hash_content
+from dir_core import new_dfid
+from dir_core.models import ProofCarryingIntent
+from dir_core.pci import compute_evidence_hash, hash_content
 
 from kernel import AgentRegistry, intent_subset_for_evidence_hash
 from models import ClientApplication, EmailSubmissionExtraction, PolicyProposal
@@ -371,3 +371,4 @@ class ROAUnderwriterAgent:
             proposal.total_insured_value, proposal.premium, proposal.industry,
         )
         return pci, report
+

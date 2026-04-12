@@ -10,9 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from dir import ContextStore, PolicyProposal, new_dfid
-from dir.agent_registry import AgentRegistry
-from dir.models import ContextSnapshot
+from dir_core import ContextStore, PolicyProposal, new_dfid
+from dir_core.agent_registry import AgentRegistry
+from dir_core.models import ContextSnapshot
 
 from audit_store import AuditStore
 from bidding_dim import validate_cpc_bid_proposal
@@ -302,3 +302,4 @@ def run_simulation(
         result.stopped_reason = "completed_all_inputs"
 
     return result
+

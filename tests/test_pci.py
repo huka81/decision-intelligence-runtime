@@ -1,7 +1,7 @@
 """Tests for dir.pci module."""
 
-from dir.models import ProofCarryingIntent
-from dir.pci import (
+from dir_core.models import ProofCarryingIntent
+from dir_core.pci import (
     ProofChecker,
     compute_evidence_hash,
     hash_content,
@@ -73,3 +73,4 @@ def test_proof_checker_verify_mismatch() -> None:
     )
     assert ok is False
     assert "Evidence Invalid" in reason
+

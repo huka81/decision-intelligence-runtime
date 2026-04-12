@@ -10,8 +10,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from dir import ContextStore, PolicyProposal, new_dfid
-from dir.agent_registry import AgentRegistry
+from dir_core import ContextStore, PolicyProposal, new_dfid
+from dir_core.agent_registry import AgentRegistry
 
 from audit_store import AuditStore
 from models import RetentionSampleConfig
@@ -286,3 +286,4 @@ def moving_average_series(audit: AuditStore, window: int) -> List[Optional[float
         avg = sum(r["discount_offered"] for r in slice_rows) / window
         series.append(avg)
     return series
+

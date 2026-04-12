@@ -46,7 +46,7 @@ from pydantic import BaseModel, Field
 
 from crewai import Agent, Crew, LLM, Process, Task
 
-from dir import PolicyProposal, new_dfid
+from dir_core import PolicyProposal, new_dfid
 from utils.logging_utils import log_with_dfid
 from utils.ollama_client import check_ollama
 
@@ -513,3 +513,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

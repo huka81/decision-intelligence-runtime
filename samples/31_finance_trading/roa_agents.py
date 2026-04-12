@@ -13,7 +13,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
-from dir import (
+from dir_core import (
     AgentState,
     EscalationRequest,
     ExplainResult,
@@ -24,7 +24,7 @@ from dir import (
     new_dfid,
 )
 from utils.logging_utils import log_with_dfid
-from dir.models import DecisionRecord
+from dir_core.models import DecisionRecord
 
 try:
     from .llm_client import LLMClient
@@ -564,3 +564,4 @@ class ROANewsScorerAgent(ROAAgentLLMBase):
         if isinstance(result, PolicyProposal):
             return result
         return None
+

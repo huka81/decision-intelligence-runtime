@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from dir import new_dfid
+from dir_core import new_dfid
 
 from audit_store import AuditStore
 from email_fixture_ingest import (
@@ -402,3 +402,4 @@ def build_llm(config: Dict[str, Any], use_mock: bool = False) -> Any:
     model = defaults.get("model", "gemma3:4b")
     base_url = defaults.get("base_url", "http://localhost:11434")
     return OllamaClient(model=model, base_url=base_url)
+

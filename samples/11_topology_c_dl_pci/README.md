@@ -318,7 +318,7 @@ is_valid = ledger.verify_integrity()
 
 ## Why Decision Ledger & PCI matter
 
-From DIR Architectural Pattern §2.4 / Topologies C:
+from dir_core Architectural Pattern §2.4 / Topologies C:
 
 > *"High-stakes decisions (fund transfers, medical diagnoses, infrastructure changes) require cryptographic non-repudiation and tamper-evident audit trails. Traditional logs can be modified post-hoc. Decision Ledgers provide append-only, cryptographically linked records where any tampering breaks the chain. Proof-Carrying Intents ensure that agents cannot deny their decisions and that intents cannot be replayed or modified in transit."*
 
@@ -484,3 +484,4 @@ if sum(valid_sigs) >= threshold:
 ```
 
 This prevents single-point-of-failure (compromised agent) and distributes accountability.
+

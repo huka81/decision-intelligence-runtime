@@ -10,9 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from dir import ContextStore, PolicyProposal, new_dfid
-from dir.agent_registry import AgentRegistry
-from dir.models import ContextSnapshot
+from dir_core import ContextStore, PolicyProposal, new_dfid
+from dir_core.agent_registry import AgentRegistry
+from dir_core.models import ContextSnapshot
 
 from audit_store import AuditStore
 from compliance_monitor import ComplianceMonitor
@@ -380,3 +380,4 @@ def rolling_violation_series(
         )
         series.append(viol / float(window))
     return series
+

@@ -1,7 +1,7 @@
 """Tests for dir.ledger module."""
 
-from dir.ledger import DecisionLedger
-from dir.models import ProofCarryingIntent
+from dir_core.ledger import DecisionLedger
+from dir_core.models import ProofCarryingIntent
 
 
 def test_ledger_append_and_entries() -> None:
@@ -49,3 +49,4 @@ def test_ledger_entries_copy() -> None:
     e2 = ledger.entries()
     assert e1 is not e2
     assert e1 == e2
+

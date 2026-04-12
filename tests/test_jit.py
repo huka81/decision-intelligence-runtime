@@ -1,6 +1,6 @@
 """Tests for dir.jit module."""
 
-from dir.jit import JITStateVerifier, verify_drift
+from dir_core.jit import JITStateVerifier, verify_drift
 
 
 def test_verify_drift_no_drift() -> None:
@@ -61,3 +61,4 @@ def test_jit_state_verifier() -> None:
     )
     assert verdict2 == "REJECT"
     assert "STATE_DRIFT" in reason2 or "drift" in reason2.lower()
+

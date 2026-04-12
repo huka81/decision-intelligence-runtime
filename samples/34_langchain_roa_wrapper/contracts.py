@@ -11,7 +11,7 @@ DIR Alignment: ROA Manifesto §3.1 (Responsibility Contract)
 from dataclasses import dataclass
 from typing import Any, Dict, List, Literal
 
-from dir import ResponsibilityContract
+from dir_core import ResponsibilityContract
 
 
 @dataclass
@@ -63,3 +63,4 @@ class FinOpsContract:
             authorized_instruments=[],
             allowed_policy_types=self.allowed_policy_types,
         )
+

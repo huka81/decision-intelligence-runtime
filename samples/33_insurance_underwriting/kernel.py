@@ -2,15 +2,15 @@
 Kernel Space components for the Digital Underwriter (Topology C / DL+PCI).
 
 AgentRegistry, ContextStore (domain-specific). DecisionLedger, ProofChecker,
-compute_evidence_hash, hash_content, proposal_params_for_hash from dir (framework).
+compute_evidence_hash, hash_content, proposal_params_for_hash from dir_core (framework).
 """
 
 import logging
 from typing import Any, Dict, List, Optional
 
-from dir.ledger import DecisionLedger
-from dir.models import ProofCarryingIntent
-from dir.pci import (
+from dir_core.ledger import DecisionLedger
+from dir_core.models import ProofCarryingIntent
+from dir_core.pci import (
     ProofChecker,
     compute_evidence_hash,
     hash_content,
@@ -190,3 +190,4 @@ class DecisionIntegrityModule:
         self.ledger.append(pci)
         logger.info("[DFID=%s] Policy Bound.", pci.dfid[:8])
         return "Policy Bound"
+

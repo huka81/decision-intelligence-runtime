@@ -11,7 +11,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Protocol
 
-from dir import (
+from dir_core import (
     EventBus,
     EventMetadata,
     EventType,
@@ -221,7 +221,7 @@ class EOAMOrchestrator:
             raise RuntimeError(
                 "Orchestrator.set_spawn_deps(llm, position_template) must be called before spawn"
             )
-        from dir import ResponsibilityContract
+        from dir_core import ResponsibilityContract
         try:
             from .roa_agents import ROAPositionAgent
         except ImportError:
@@ -299,3 +299,4 @@ class EOAMOrchestrator:
             "tracked_instruments": list(self._last_prices.keys()),
             "last_prices": dict(self._last_prices),
         }
+

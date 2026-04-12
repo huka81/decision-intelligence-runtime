@@ -2,8 +2,8 @@
 
 from datetime import datetime, timedelta, timezone
 
-from dir.dim import validate_proposal
-from dir.models import PolicyProposal
+from dir_core.dim import validate_proposal
+from dir_core.models import PolicyProposal
 
 
 def _make_proposal(**kwargs) -> PolicyProposal:
@@ -77,3 +77,4 @@ def test_ttl_explicit_now_parameter() -> None:
     verdict2, reason2 = validate_proposal(proposal, {}, now=past_valid)
     assert verdict2 == "REJECT"
     assert reason2 == "TTL_EXPIRED"
+

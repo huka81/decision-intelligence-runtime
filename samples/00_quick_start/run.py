@@ -29,13 +29,13 @@ import textwrap
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from dir import (
+from dir_core import (
     ContextStore,
     PolicyProposal,
     new_dfid,
     validate_proposal,
 )
-from dir.agent_registry import AgentRegistry
+from dir_core.agent_registry import AgentRegistry
 from utils import ensure_db
 from utils.config_loader import load_yaml_config
 from utils.ollama_client import LLMClient, OllamaClient, check_ollama
@@ -500,3 +500,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

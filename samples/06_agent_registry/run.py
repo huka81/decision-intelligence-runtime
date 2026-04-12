@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 from pprint import pprint
 
-from dir.agent_registry import AgentRegistry
+from dir_core.agent_registry import AgentRegistry
 from utils import ensure_db
 
 # Configure logging
@@ -85,3 +85,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

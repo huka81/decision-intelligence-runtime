@@ -14,8 +14,8 @@ DIR Alignment: DIR Architectural Pattern §6 (Decision Integrity Module)
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 
-from dir import PolicyProposal
-from dir.dim import validate_proposal
+from dir_core import PolicyProposal
+from dir_core.dim import validate_proposal
 
 from contracts import ClaimsContract
 
@@ -121,3 +121,4 @@ def validate_claims_proposal(
         )
 
     return "ACCEPT", "Validation passed"
+

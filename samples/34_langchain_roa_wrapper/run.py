@@ -24,8 +24,8 @@ import logging
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
-from dir import PolicyProposal, new_dfid
-from dir.dim import validate_proposal
+from dir_core import PolicyProposal, new_dfid
+from dir_core.dim import validate_proposal
 from utils.logging_utils import log_with_dfid
 from utils.ollama_client import check_ollama
 
@@ -428,3 +428,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

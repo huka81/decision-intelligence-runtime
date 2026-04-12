@@ -1,8 +1,8 @@
 """Tests for Intent Retry Governor (DIR §6.2)."""
 
-from dir.dim import validate_proposal
-from dir.intent_retry import REASONING_EXHAUSTION, IntentRetryGovernor
-from dir.models import PolicyProposal
+from dir_core.dim import validate_proposal
+from dir_core.intent_retry import REASONING_EXHAUSTION, IntentRetryGovernor
+from dir_core.models import PolicyProposal
 
 
 def test_record_and_should_abort_memory() -> None:
@@ -59,3 +59,4 @@ def test_dim_no_governor_no_record() -> None:
     v, r = validate_proposal(proposal, context)
     assert v == "REJECT"
     assert "Risk score" in r
+

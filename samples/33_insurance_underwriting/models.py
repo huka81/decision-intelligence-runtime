@@ -2,7 +2,7 @@
 Domain models for the Digital Underwriter use case (Topology C / DL+PCI).
 
 Pydantic models for insurance underwriting: Responsibility Contract, Client Application,
-Policy Proposal. ProofCarryingIntent imported from dir.models (framework).
+Policy Proposal. ProofCarryingIntent imported from dir_core.models (framework).
 """
 
 from dataclasses import dataclass
@@ -10,7 +10,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from dir.models import ProofCarryingIntent
+from dir_core.models import ProofCarryingIntent
 
 
 @dataclass
@@ -145,3 +145,4 @@ class PolicyProposal(BaseModel):
         le=1.0,
         description="Self-assessed certainty 0..1; not a permission grant",
     )
+

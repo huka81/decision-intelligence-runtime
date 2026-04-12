@@ -3,7 +3,7 @@
 import tempfile
 from pathlib import Path
 
-from dir.agent_registry import AgentRegistry, HandshakeResult
+from dir_core.agent_registry import AgentRegistry, HandshakeResult
 
 
 def test_handshake_success() -> None:
@@ -67,3 +67,4 @@ def test_get_schema() -> None:
             Path(path).unlink(missing_ok=True)
         except OSError:
             pass  # Windows: file may be locked by SQLite
+

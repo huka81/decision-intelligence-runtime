@@ -11,8 +11,8 @@ Shows:
 import logging
 from typing import Dict, Any
 
-from dir.dim import validate_proposal
-from dir.models import PolicyProposal
+from dir_core.dim import validate_proposal
+from dir_core.models import PolicyProposal
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -88,3 +88,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

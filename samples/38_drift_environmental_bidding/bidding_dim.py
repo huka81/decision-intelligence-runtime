@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
-from dir.dim import validate_proposal
-from dir.models import PolicyProposal
+from dir_core.dim import validate_proposal
+from dir_core.models import PolicyProposal
 
 ValidationVerdict = Literal["ACCEPT", "REJECT"]
 ValidationResult = Tuple[ValidationVerdict, str]
@@ -41,3 +41,4 @@ def validate_cpc_bid_proposal(
         return "REJECT", f"CPC_EXCEEDS_CONTRACT max={max_cpc_usd}"
 
     return "ACCEPT", "Validation passed"
+

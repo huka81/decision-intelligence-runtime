@@ -27,8 +27,8 @@ from typing import Any, Dict, List
 
 import __init__  # noqa: F401 - loads .env via package __init__.py
 
-from dir import PolicyProposal, ResponsibilityContract, create_event_bus
-from dir.dim import validate_proposal
+from dir_core import PolicyProposal, ResponsibilityContract, create_event_bus
+from dir_core.dim import validate_proposal
 from utils.config_loader import load_yaml_config
 from utils.logging_utils import log_with_dfid
 from utils.news_generator import NewsGenerator
@@ -489,3 +489,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

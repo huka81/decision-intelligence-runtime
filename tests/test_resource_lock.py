@@ -3,7 +3,7 @@
 import tempfile
 from pathlib import Path
 
-from dir.resource_lock import LockResult, ResourceLockManager
+from dir_core.resource_lock import LockResult, ResourceLockManager
 
 
 def test_acquire_and_release() -> None:
@@ -50,3 +50,4 @@ def test_lock_normalization_alphabetical() -> None:
             Path(path).unlink(missing_ok=True)
         except OSError:
             pass  # Windows: file may be locked by SQLite
+

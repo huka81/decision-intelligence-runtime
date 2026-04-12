@@ -21,8 +21,8 @@ _SRC = _REPO_ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from dir import ContextStore
-from dir.agent_registry import AgentRegistry
+from dir_core import ContextStore
+from dir_core.agent_registry import AgentRegistry
 from utils.config_loader import load_yaml_config
 
 from audit_store import AuditStore
@@ -113,3 +113,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

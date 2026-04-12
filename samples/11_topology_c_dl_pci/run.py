@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from dir import new_dfid
+from dir_core import new_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -210,3 +210,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

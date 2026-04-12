@@ -11,7 +11,7 @@ Requires PYTHONPATH including workspace src/ (see .vscode/settings.json).
 import logging
 from typing import Any, Dict, List, Optional
 
-from dir import (
+from dir_core import (
     EventBus,
     EventMetadata,
     EventType,
@@ -20,8 +20,8 @@ from dir import (
     new_dfid,
     validate_proposal,
 )
-from dir.intent_retry import IntentRetryGovernor
-from dir.lifecycle import FlowStatus, transition
+from dir_core.intent_retry import IntentRetryGovernor
+from dir_core.lifecycle import FlowStatus, transition
 from utils.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -176,3 +176,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
