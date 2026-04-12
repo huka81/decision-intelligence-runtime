@@ -50,12 +50,12 @@ nav:
   - Home: index.md
   - Project:
       - Introduction: 00-introduction/DIR-introduction.md
-      - Intelligent delegation framework mapping: 00-introduction/Intelligent_Delegation_Framework_Mapping.md
       - Responsible-Oriented Agents: 01-roa-manifesto/ROA_Manifesto.md
-      - Runtime: 02-decision-runtime/DIR_Architectural_Pattern.md
+      - Decision Intelligence Runtime: 02-decision-runtime/DIR_Architectural_Pattern.md
       - Topologies: 03-topologies/DIR_Topologies.md
-      - Governance: 04-governance/DIR_Governance.md
+      - Governance & Agent Drift: 04-governance/DIR_Governance.md
       - Context as code: 08-conclusion/Context_as_Code.md
+      - Intelligent AI delegation framework mapping: 00-introduction/Intelligent_Delegation_Framework_Mapping.md
   - Samples:
       - 09-pages/samples/index.md
       - "00 - Quick start": 09-pages/samples/00_quick_start.md
@@ -79,16 +79,11 @@ nav:
       - "37 - Drift semantic refund": 09-pages/samples/37_drift_semantic_refund.md
       - "38 - Drift environmental bidding": 09-pages/samples/38_drift_environmental_bidding.md
       - "88 - Meta context engineering": 09-pages/samples/88_meta_context_engineering.md
+  - FAQ: 09-pages/faq.md
   - About:
-      - This repository: index.md
       - About the author: 09-pages/author.md
-      - Contact: 09-pages/contact.md
       - License: 09-pages/license.md
       - Version: 09-pages/version.md
       - Release notes: 09-pages/history.md
       - Change log: 09-pages/history.md
-      - Roadmap: 09-pages/roadmap.md
-      - FAQ: 09-pages/faq.md
-      - Support: 09-pages/support.md
       - Contributing: 09-pages/contributing.md
-      - Code of conduct: 09-pages/code-of-conduct.md

@@ -6,6 +6,6 @@ For roughly two decades he has delivered data architecture, analytics, and moder
 
 In recent years the focus has narrowed to **Decision Intelligence**, **Responsibility-Oriented Agents (ROA)**, and the **Decision Intelligence Runtime (DIR)** patterns documented in this repository: explicit roles, boundaries, auditability, and deterministic execution around probabilistic models—so that agents are not treated as black-box orchestration loops.
 
-The **AIvestor** R&D project was a hands-on stress test of those ideas: an event-driven agent architecture under real market constraints, with emphasis on explainability, decision history, and traceability rather than headline metrics. The project has concluded; the architectural lessons feed directly into the material you see here.
+The **[AIvestor](https://aivestor.pl)** R&D project was a hands-on stress test of those ideas: an event-driven agent architecture under real market constraints, with emphasis on explainability, decision history, and traceability rather than headline metrics. The project has concluded; the architectural lessons feed directly into the material you see here.
 
-He is interested in calm, engineering-grade conversations about agents, architecture, and how organizations actually run when automation scales—**[LinkedIn](https://www.linkedin.com/in/arturhuk/)**.
+He is interested in calm, engineering-grade conversations about agents, architecture, and how organizations actually run when automation scales - **[LinkedIn](https://www.linkedin.com/in/arturhuk/)**.
