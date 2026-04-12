@@ -1,0 +1,51 @@
+site_name: Decision Intelligence Runtime (DIR)
+site_description: Deterministic execution kernel for autonomous AI agents.
+repo_url: https://github.com/huka81/decision-intelligence-runtime
+
+# README lives at repo root; numbered articles live under docs/. With docs_dir: .,
+# exclude other Markdown trees so MkDocs does not publish the whole repository.
+docs_dir: .
+
+exclude_docs: |
+  /publications/
+  /samples/
+  /.cursor/
+  /.github/
+  /FAQ.md
+  /FAQ-initial.md
+  /HISTORY.md
+  /miguel-response.md
+  /CONTRIBUTING.md
+  /site/
+  /docs/**/*.not-push.md
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+
+nav:
+  - Home: README.md
+  - Introduction:
+      - DIR introduction: docs/00-introduction/DIR-introduction.md
+      - Intelligent delegation framework mapping: docs/00-introduction/Intelligent_Delegation_Framework_Mapping.md
+  - ROA manifesto: docs/01-roa-manifesto/ROA_Manifesto.md
+  - Decision runtime: docs/02-decision-runtime/DIR_Architectural_Pattern.md
+  - Topologies: docs/03-topologies/DIR_Topologies.md
+  - Governance & agent drift: docs/04-governance/DIR_Governance.md
+  - DIR minified (context as code): docs/07-dir-minified/DIR-minified.md
+  - Conclusion:
+      - Context as code: docs/08-conclusion/Context_as_Code.md
