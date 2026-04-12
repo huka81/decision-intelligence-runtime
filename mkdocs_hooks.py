@@ -12,7 +12,7 @@ import mkdocs.plugins
 
 log = logging.getLogger("mkdocs")
 
-# Sync with docs/samples/*.md stubs and mkdocs.yml nav → Samples.
+# Sync with docs/09-pages/samples/*.md stubs and mkdocs.yml nav → Samples.
 _SAMPLE_READMES: tuple[str, ...] = (
     "00_quick_start",
     "01_roa_agent",
@@ -52,12 +52,17 @@ def on_page_markdown(markdown, page, config, **kwargs):
     markdown = markdown.replace("../../assets/", "../assets/")
     uri = page.file.src_uri.replace("\\", "/")
 
-    if uri.startswith("samples/"):
+    if uri.startswith("09-pages/samples/"):
         markdown = markdown.replace("](../docs/", "](../")
-        if uri == "samples/index.md":
+        if uri == "09-pages/samples/index.md":
             for d in _SAMPLE_READMES:
                 markdown = markdown.replace(f"]({d}/README.md)", f"]({d}.md)")
                 markdown = markdown.replace(f"]({d}/)", f"]({d}.md)")
+        return markdown
+
+    if uri == "09-pages/faq.md":
+        markdown = markdown.replace("](../docs/", "](../")
+        markdown = markdown.replace("](assets/", "](../assets/")
         return markdown
 
     if uri != "index.md":
