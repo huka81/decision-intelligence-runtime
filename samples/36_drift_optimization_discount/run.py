@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import time
 from pathlib import Path
 import webbrowser
 
@@ -23,7 +24,7 @@ if str(_SRC) not in sys.path:
 
 from dir_core import ContextStore
 from dir_core.agent_registry import AgentRegistry
-from utils.config_loader import load_yaml_config
+from dir_core.utils.config_loader import load_yaml_config
 
 from audit_store import AuditStore
 from models import RetentionSampleConfig
@@ -38,6 +39,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _unlink_retry(path: Path, *, attempts: int = 10, delay_s: float = 0.15) -> None:
+    """Windows may keep SQLite files briefly locked; retry avoids flaky run_all failures."""
+    last_err: OSError | None = None
+    for _ in range(attempts):
+        try:
+            path.unlink()
+            return
+        except PermissionError as e:
+            last_err = e
+            time.sleep(delay_s)
+    if last_err is None:
+        raise PermissionError(f"could not unlink: {path}")
+    raise last_err
+
+
 def main() -> None:
     sample_dir = Path(__file__).resolve().parent
     raw = load_yaml_config(sample_dir / "config.yaml")
@@ -45,13 +61,30 @@ def main() -> None:
 
     (sample_dir / "data").mkdir(parents=True, exist_ok=True)
     # Deterministic demo: reset DB each run (see README). Remove legacy triple-file layout if present.
-    for rel in (
-        cfg.paths.database,
-        "data/retention_audit.sqlite",
-    ):
-        p = sample_dir / rel
-        if p.exists():
-            p.unlink()
+    primary_db = sample_dir / cfg.paths.database
+    if primary_db.exists():
+        try:
+            _unlink_retry(primary_db)
+        except PermissionError:
+            alt_rel = f"data/retention_drift_run_{os.getpid()}.sqlite"
+            logger.warning(
+                "Could not remove locked database %s; using %s for this run.",
+                primary_db.name,
+                alt_rel,
+            )
+            cfg = cfg.model_copy(
+                update={"paths": cfg.paths.model_copy(update={"database": alt_rel})}
+            )
+
+    legacy_audit = sample_dir / "data/retention_audit.sqlite"
+    if legacy_audit.exists():
+        try:
+            _unlink_retry(legacy_audit)
+        except PermissionError:
+            logger.warning(
+                "Could not remove legacy audit database %s; continuing.",
+                legacy_audit.name,
+            )
 
     db_path = str(sample_dir / cfg.paths.database)
     audit = AuditStore(sample_dir / cfg.paths.database)

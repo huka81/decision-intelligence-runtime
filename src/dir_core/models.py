@@ -430,7 +430,7 @@ class DecisionFlow(BaseModel):
     def get_timeline_report(self) -> str:
         """Generate human-readable timeline report."""
         lines = [
-            f"═══ DecisionFlow Report ═══",
+            f"=== DecisionFlow Report ===",
             f"DFID: {self.dfid}",
             f"Status: {self.status}",
             f"Created: {self.created_at.isoformat()}",
@@ -440,7 +440,7 @@ class DecisionFlow(BaseModel):
         if self.context_snapshot:
             lines.append(f"Context: {self.context_snapshot.snapshot_id}")
         lines.append(f"Agents: {', '.join(self.participating_agents) or 'none'}")
-        lines.append(f"\n─── Timeline ({len(self.timeline)} events) ───")
+        lines.append(f"\n--- Timeline ({len(self.timeline)} events) ---")
         
         for i, event in enumerate(self.timeline, 1):
             time_str = event.timestamp.strftime("%H:%M:%S.%f")[:-3]
@@ -448,7 +448,7 @@ class DecisionFlow(BaseModel):
             lines.append(f"  {i:2}. [{time_str}] {event.event_type}{agent_str}: {event.summary}")
         
         if self.outcome_summary:
-            lines.append(f"\n─── Outcome ───")
+            lines.append(f"\n--- Outcome ---")
             lines.append(f"  {self.outcome_summary}")
         
         return "\n".join(lines)

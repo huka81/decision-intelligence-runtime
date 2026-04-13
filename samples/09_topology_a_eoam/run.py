@@ -21,8 +21,8 @@ from dir_core import (
 )
 from dir_core.intent_retry import IntentRetryGovernor
 from dir_core.lifecycle import FlowStatus, transition
-from utils.logging_utils import log_with_dfid
-from utils.quote_generator import QuoteGenerator
+from dir_core.utils.logging_utils import log_with_dfid
+from dir_core.utils.quote_generator import QuoteGenerator
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

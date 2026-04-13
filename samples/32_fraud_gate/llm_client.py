@@ -1,5 +1,5 @@
 """
-LLM client for Fraud Guard agent: Ollama (from utils) and MockLLM.
+LLM client for Fraud Guard agent: Ollama (from dir_core.utils) and MockLLM.
 
 Usage:
   client = OllamaClient(model="gemma3:4b", base_url="http://localhost:11434")
@@ -15,7 +15,7 @@ import logging
 import re
 from typing import Optional
 
-from utils.ollama_client import LLMClient, OllamaClient
+from dir_core.utils.llm_client import LLMClient, OllamaClient
 
 logger = logging.getLogger(__name__)
 

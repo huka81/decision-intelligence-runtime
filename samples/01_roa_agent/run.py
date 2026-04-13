@@ -33,7 +33,7 @@ from dir_core import (
     SelfCheckResult,
     new_dfid,
 )
-from utils.logging_utils import log_with_dfid
+from dir_core.utils.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -1020,7 +1020,7 @@ def main() -> None:
         result_g = evolving_agent.run_decision_cycle(dfid_g, ctx)
         
         outcome = "ESCALATED" if isinstance(result_g, EscalationRequest) else result_g.policy_kind
-        print(f"  Challenge {i}: vol={ctx['volatility']:.1%} → {outcome} (policy v{evolving_agent.state.policy_version})")
+        print(f"  Challenge {i}: vol={ctx['volatility']:.1%} -> {outcome} (policy v{evolving_agent.state.policy_version})")
     
     # After challenges, check if policy version evolved
     print(f"\n  Final policy version: v{evolving_agent.state.policy_version}")
@@ -1029,7 +1029,7 @@ def main() -> None:
     # Show how trajectory influenced the version change
     escalation_count = sum(1 for r in evolving_agent.state.decision_trajectory if r.outcome == "ESCALATED")
     print(f"  Escalations in history: {escalation_count}")
-    print(f"  → Agent {'shifted to more conservative strategy' if evolving_agent.state.policy_version > 1 else 'maintained original strategy'}")
+    print(f"  -> Agent {'shifted to more conservative strategy' if evolving_agent.state.policy_version > 1 else 'maintained original strategy'}")
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from dir_core import new_dfid
-from utils import ensure_db
+from dir_core.storage import ensure_db
 from dir_core.idempotency import IdempotencyGuard, SQLiteBackend
 
 # Configure logging

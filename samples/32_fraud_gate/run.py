@@ -17,7 +17,7 @@ import logging
 import os
 
 from dir_core import new_dfid
-from utils.ollama_client import OllamaClient, check_ollama
+from dir_core.utils.llm_client import OllamaClient, check_ollama
 
 try:
     from .agent import FraudGuardAgent

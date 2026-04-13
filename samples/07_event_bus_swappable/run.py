@@ -34,7 +34,7 @@ from dir_core import (
     select_winner,
     should_wake,
 )
-from utils.logging_utils import log_with_dfid
+from dir_core.utils.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

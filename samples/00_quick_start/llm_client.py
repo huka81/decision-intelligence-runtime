@@ -16,7 +16,7 @@ import logging
 import re
 from typing import Optional
 
-from utils.ollama_client import LLMClient, OllamaClient  # re-exported for callers
+from dir_core.utils.llm_client import LLMClient, OllamaClient  # re-exported for callers
 
 __all__ = ["LLMClient", "OllamaClient", "MockLLM"]
 

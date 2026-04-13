@@ -325,7 +325,7 @@ Summary
 
 ## Technical notes
 
-- **Imports:** `run.py` prepends the repo `src/` directory to `sys.path` so `utils.config_loader` and `dir` resolve when you run `python samples/33_insurance_underwriting/run.py` without an editable install; `pip install -e ".[samples]"` is still recommended.
+- **Imports:** `run.py` prepends the repo `src/` directory to `sys.path` so `dir_core.utils.config_loader` and `dir_core` resolve when you run `python samples/33_insurance_underwriting/run.py` without an editable install; `pip install -e ".[samples]"` is still recommended.
 - **Real LLM:** Ollama + model from `llm_defaults` (e.g. Gemma). Set `USE_MOCK_LLM=1` for deterministic runs without Ollama.
 - **Env (see `run.py` docstring):** `USE_MOCK_LLM`, `UNDERWRITING_AUDIT_DB`, `LOG_LEVEL` (e.g. `DEBUG`).
 - **Zero API keys** when using local Ollama only.

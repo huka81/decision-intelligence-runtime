@@ -23,7 +23,7 @@ if str(_SRC) not in sys.path:
 
 from dir_core import ContextStore
 from dir_core.agent_registry import AgentRegistry
-from utils.config_loader import load_yaml_config
+from dir_core.utils.config_loader import load_yaml_config
 
 from audit_store import AuditStore
 from compliance_monitor import ComplianceMonitor

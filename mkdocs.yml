@@ -66,7 +66,7 @@ nav:
       - "05 - DIM validation": 09-pages/samples/05_dim_validation.md
       - "06 - Agent registry": 09-pages/samples/06_agent_registry.md
       - "07 - Event bus (swappable)": 09-pages/samples/07_event_bus_swappable.md
-      - "08 - Bootstrap SQLite": 09-pages/samples/08_bootstrap_sqlite.md
+      - "08 - Custom repo (PostgreSQL)": 09-pages/samples/08_custom_repo_psql.md
       - "09 - Topology A (EOAM)": 09-pages/samples/09_topology_a_eoam.md
       - "10 - Topology B (SDS)": 09-pages/samples/10_topology_b_sds.md
       - "11 - Topology C (DL+PCI)": 09-pages/samples/11_topology_c_dl_pci.md

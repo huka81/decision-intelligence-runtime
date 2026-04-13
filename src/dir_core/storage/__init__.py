@@ -61,6 +61,7 @@ from .sqlite import (
     SqliteLifecycleStorage,
     SqliteResourceLockStorage,
     SqliteSagaStorage,
+    ensure_db,
 )
 
 
@@ -130,6 +131,8 @@ __all__ = [
     # Exceptions
     "StorageError",
     "ResourceContentionError",
+    # SQLite helpers
+    "ensure_db",
     # SQLite backends
     "SqliteAgentRegistryStorage",
     "SqliteContextStorage",

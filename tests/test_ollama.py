@@ -1,8 +1,8 @@
-"""Tests for utils.ollama_client module."""
+"""Tests for dir_core.utils.llm_client module (OllamaClient)."""
 
 import pytest
 
-from utils.ollama_client import OllamaClient, check_ollama
+from dir_core.utils.llm_client import OllamaClient, check_ollama
 
 BASE_URL = "http://localhost:11434"
 MODEL = "gemma3:4b"

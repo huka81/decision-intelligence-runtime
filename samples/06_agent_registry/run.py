@@ -13,7 +13,7 @@ from pathlib import Path
 from pprint import pprint
 
 from dir_core.agent_registry import AgentRegistry
-from utils import ensure_db
+from dir_core.storage import ensure_db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -63,9 +63,9 @@ def main() -> None:
     print(f"\n[Discovery] Active Agents: {agents}")
     
     if "agent_supervisor" in agents and "agent_trader_btc" in agents:
-         print("   ✅ Listing successful")
+         print("   [OK] Listing successful")
     else:
-         print("   ❌ Listing failed")
+         print("   [NO] Listing failed")
 
     # 4. Inspect Metadata
     print("\n[Inspection] Checking 'agent_trader_btc'...")

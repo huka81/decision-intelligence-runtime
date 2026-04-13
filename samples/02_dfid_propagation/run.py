@@ -33,7 +33,7 @@ from dir_core import (
     new_dfid,
     new_dfid_with_parent,
 )
-from utils.logging_utils import log_with_dfid
+from dir_core.utils.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -460,19 +460,19 @@ def main() -> None:
     print(f"\n{flow_a.get_timeline_report()}")
     
     # Show parent-child relationship
-    print(f"\n{'─' * 50}")
+    print(f"\n{'-' * 50}")
     print(f"Parent Flow: {parent_dfid}")
-    print(f"  → Child Flows: {parent_flow.child_dfids}")
+    print(f"  -> Child Flows: {parent_flow.child_dfids}")
     
     # Registry summary
-    print(f"\n{'─' * 50}")
+    print(f"\n{'-' * 50}")
     print("Flow Registry Summary:")
     for dfid, flow in registry.get_all_flows().items():
         parent_info = f" (child of {flow.parent_dfid[:8]}...)" if flow.parent_dfid else ""
         print(f"  {dfid[:12]}... [{flow.status}] agents={len(flow.participating_agents)}{parent_info}")
     
     # Grep hint
-    print(f"\n{'─' * 50}")
+    print(f"\n{'-' * 50}")
     print("Traceability hint:")
     print(f"  grep '[DFID={flow_a.dfid}]' to trace Scenario A")
     print(f"  All events for a DFID can be reconstructed from DecisionFlow.timeline")

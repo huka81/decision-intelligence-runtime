@@ -19,7 +19,7 @@ from dir_core import (
     new_dfid,
     select_winner,
 )
-from utils.logging_utils import log_with_dfid
+from dir_core.utils.logging_utils import log_with_dfid
 
 logger = logging.getLogger(__name__)
 

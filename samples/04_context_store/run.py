@@ -19,7 +19,7 @@ from pathlib import Path
 from pprint import pprint
 
 from dir_core import new_dfid
-from utils import ensure_db
+from dir_core.storage import ensure_db
 from dir_core.context_store import ContextStore
 
 # Configure logging

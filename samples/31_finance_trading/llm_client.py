@@ -1,9 +1,8 @@
 """
-LLM client for EOAM ROA agents: Ollama and Gemini (from utils), MockLLM for tests without a server.
+LLM client for EOAM ROA agents: Ollama and Gemini (from dir_core.utils), MockLLM for tests without a server.
 
 Usage:
-  from utils.ollama_client import OllamaClient
-  from utils.gemini_client import GeminiClient
+  from dir_core.utils.llm_client import OllamaClient, GeminiClient
   client = OllamaClient(model="gemma3:4b", base_url="http://localhost:11434")
   # or: client = GeminiClient(model="gemini-1.5-flash", api_key="your-key")
   text = client.generate("What is the trend?", system="You are a market analyst.")
@@ -14,7 +13,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from utils.ollama_client import LLMClient
+from dir_core.utils.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 

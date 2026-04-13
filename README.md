@@ -138,7 +138,7 @@ An architectural defense against "Day Three" problems, where an agent's individu
 ```bash
 pip install -e .
 ```
-*This installs the `dir` package (source in `src/dir`), making it available to all sample implementations.*
+*This installs the `dir_core` package (source in `src/dir_core`), making it available to all sample implementations.*
 
 ## Repository Structure
 
@@ -146,16 +146,16 @@ pip install -e .
 decision-intelligence-runtime/
 ├── README.md
 ├── FAQ.md                    # Frequently asked questions (architecture, adoption, compliance)
-├── pyproject.toml            # pip install -e . installs dir + utils
+├── pyproject.toml            # pip install -e . installs dir_core (incl. dir_core.utils for samples)
 ├── requirements.txt          # Shared dependencies
 ├── src/
-│   ├── dir/                  # Core DIR/ROA components (per docs spec)
-│   │   # DFID, EventBus, DIM, Context Store, models, arbitration, PCI, etc.
-│   └── utils/                # Supporting utilities for samples
-│       # QuoteGenerator, NewsGenerator, market_events, logging_utils
+│   └── dir_core/             # Core DIR/ROA components (per docs spec)
+│       # DFID, EventBus, DIM, Context Store, models, arbitration, PCI, etc.
+│       └── utils/            # Supporting utilities for samples
+│           # QuoteGenerator, NewsGenerator, market_events, logging_utils
 ├── samples/                  # Reference implementations (01–11 mechanics, 31+ use cases)
 │   ├── README.md             # Sample catalog and run instructions
-│   ├── 00_quick_start/ … 11_topology_c_dl_pci/
+│   ├── 00_quick_start/ … 08_custom_repo_psql/ … 11_topology_c_dl_pci/
 │   ├── 31_finance_trading/ … 35_crewai_roa_wrapper/ … 36_drift_optimization_discount/ … 37_drift_semantic_refund/ … 38_drift_environmental_bidding/
 │   └── 88_meta_context_engineering/   # Meta-sample: System Prompt Toolkit
 ├── docs/                     # Architectural documentation
@@ -186,7 +186,7 @@ Execute any sample from the repository root: `python samples/<folder>/run.py`
 | 05 | `05_dim_validation` | DIR Pattern | Decision Integrity Module: deterministic validation gate |
 | 06 | `06_agent_registry` | DIR Pattern | Agent Registry: manifests and capability handshake |
 | 07 | `07_event_bus_swappable` | Infrastructure | In-memory Event Bus; note on swapping for Kafka/PubSub |
-| 08 | `08_bootstrap_sqlite` | Infrastructure | Bootstrap: ensure DB and tables exist before run |
+| 08 | `08_custom_repo_psql` | Infrastructure | **Custom PostgreSQL storage backend**: implement all DIR storage Protocols; `build_repository → Repository`; full canonical 10-table schema. Demonstrates pluggable `storage=` pattern — same scenario as `00_quick_start`, no SQLite. See [sample README](samples/08_custom_repo_psql/README.md). |
 | 09 | `09_topology_a_eoam` | Topology A | Event-Oriented Agent Mesh |
 | 10 | `10_topology_b_sds` | Topology B | Sovereign Decision Stream |
 | 11 | `11_topology_c_dl_pci` | Topology C | Decision Ledger & Proof-Carrying Intents |

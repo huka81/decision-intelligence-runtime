@@ -26,8 +26,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from dir_core import PolicyProposal, new_dfid
 from dir_core.dim import validate_proposal
-from utils.logging_utils import log_with_dfid
-from utils.ollama_client import check_ollama
+from dir_core.utils.logging_utils import log_with_dfid
+from dir_core.utils.llm_client import check_ollama
 
 from contracts import FinOpsContract
 from config_loader import AppConfig, LlmConfig, ScenarioConfig, load_config
@@ -191,8 +191,8 @@ No markdown, no explanation, only the JSON."""
         print("\n" + "=" * 70)
         print("[MISSION INJECTION DEMO]")
         print("=" * 70)
-        print("\n🔴 NAKED LangChain Agent: 'terminate the most expensive ones', no boundaries")
-        print("🟢 ROA-WRAPPED: Mission + allowed_environments=[DEV, STG], PROD prohibited")
+        print("\n[NAKED] LangChain Agent: 'terminate the most expensive ones', no boundaries")
+        print("[ROA] ROA-WRAPPED: Mission + allowed_environments=[DEV, STG], PROD prohibited")
         print("=" * 70 + "\n")
 
     def run(

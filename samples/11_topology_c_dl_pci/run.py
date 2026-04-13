@@ -72,7 +72,7 @@ class DecisionLedger:
         
         entry = LedgerEntry(index, prev.entry_hash, ts, pci, entry_hash)
         self.chain.append(entry)
-        logger.info(f"⛓️  Block #{index} appended. Hash: {entry_hash[:8]}...")
+        logger.info(f"[LEDGER] Block #{index} appended. Hash: {entry_hash[:8]}...")
         return True
     
     def verify_integrity(self) -> bool:
@@ -143,13 +143,13 @@ class LedgertGatekeeper:
         
         # 1. Verify User
         if agent_id not in self.keys:
-            logger.warning(f"⛔ REJECT: Unknown agent {agent_id}")
+            logger.warning(f"[REJECT] Unknown agent {agent_id}")
             return False
             
         # 2. Verify Context Binding
         current_ctx_hash = hash_content(context_snapshot)
         if payload["context_bind"] != current_ctx_hash:
-            logger.warning("⛔ REJECT: Context mismatch (Stale intent or replay?)")
+            logger.warning("[REJECT] Context mismatch (Stale intent or replay?)")
             return False
             
         # 3. Verify Signature
@@ -157,10 +157,10 @@ class LedgertGatekeeper:
         is_valid = verify_signature(self.keys[agent_id], canonical_str, proof["signature"])
         
         if not is_valid:
-            logger.warning("⛔ REJECT: Invalid Signature")
+            logger.warning("[REJECT] Invalid Signature")
             return False
             
-        logger.info(f"✅ VERIFIED PCI from {agent_id}. Action: {payload['action']}")
+        logger.info(f"[OK] VERIFIED PCI from {agent_id}. Action: {payload['action']}")
         self.ledger.append(pci)
         return True
 
@@ -203,9 +203,9 @@ def main():
     # Scene 4: Ledger Integrity Check
     print("\n[Scene 4] Ledger Verification")
     if ledger.verify_integrity():
-        print("✅ Ledger Integrity OK")
+        print("[OK] Ledger Integrity OK")
     else:
-        print("❌ Ledger Corrupted")
+        print("[FAIL] Ledger Corrupted")
 
 
 if __name__ == "__main__":

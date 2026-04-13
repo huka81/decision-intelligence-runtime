@@ -47,8 +47,8 @@ from pydantic import BaseModel, Field
 from crewai import Agent, Crew, LLM, Process, Task
 
 from dir_core import PolicyProposal, new_dfid
-from utils.logging_utils import log_with_dfid
-from utils.ollama_client import check_ollama
+from dir_core.utils.logging_utils import log_with_dfid
+from dir_core.utils.llm_client import check_ollama
 
 from contracts import ClaimsContract
 from config_loader import AppConfig, LlmConfig, ScenarioConfig, load_config
@@ -477,7 +477,7 @@ def main() -> None:
     print(f"  Config : config.yaml")
     print(f"  LLM    : {cfg.llm.effective_model()} @ {cfg.llm.effective_base_url()}")
     print(f"  Agent  : {cfg.contract.agent_id}")
-    print(f"  Crew   : Claims Analyst → Decision Maker (sequential, output_json)")
+    print(f"  Crew   : Claims Analyst -> Decision Maker (sequential, output_json)")
     print(f"  DIM    : 5-layer validation (RBAC, order, window, category, amount)")
     print(f"  Scenarios: {len(cfg.scenarios)}")
 
@@ -490,11 +490,11 @@ def main() -> None:
             _, verdict, _ = run_scenario(
                 scenario, wrapper, cfg.context_store, cfg.contract, llm=llm
             )
-            ok = "✓" if verdict == scenario.expected else "✗ UNEXPECTED"
+            ok = "[OK]" if verdict == scenario.expected else "[X] UNEXPECTED"
             results.append((scenario.label, verdict, ok))
         except Exception as exc:
             print(f"\n  [ERROR] {exc}")
-            results.append((scenario.label, "ERROR", "✗"))
+            results.append((scenario.label, "ERROR", "[X]"))
 
     print("\n" + "=" * 70)
     print("[SUMMARY]")
@@ -504,11 +504,11 @@ def main() -> None:
 
     print()
     print("  KEY INSIGHT:")
-    print("  - NL intake: claim_text → LLM extracts order_id, amount, category (realistic).")
+    print("  - NL intake: claim_text -> LLM extracts order_id, amount, category (realistic).")
     print("  - Gemma3 (CrewAI) reasons about claims in User Space (probabilistic).")
     print("  - DIM validates proposals in Kernel Space (deterministic).")
     print("  - output_json replaces tool-calling for models without function support.")
-    print("  - All configuration lives in config.yaml — no hardcoded values in code.")
+    print("  - All configuration lives in config.yaml - no hardcoded values in code.")
 
 
 if __name__ == "__main__":
