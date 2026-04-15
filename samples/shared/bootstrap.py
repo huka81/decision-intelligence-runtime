@@ -13,6 +13,13 @@ from dir_core.storage import StorageBundle, sqlite_storage, memory_storage
 from dir_core.utils.llm_client import LLMClient
 
 from .llm.clients import OllamaClient, GeminiClient, MockLLMClient, check_ollama
+from .contracts.provider import (
+    ContractProvider,
+    YamlContractProvider,
+    JsonContractProvider,
+    DatabaseContractProvider,
+    OpaRegoContractProvider,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +27,13 @@ logger = logging.getLogger(__name__)
 class Environment:
     llm: LLMClient
     repository: StorageBundle
+    contracts: ContractProvider
 
 
 def setup_environment(
     config: Dict[str, Any],
     mock_llm_strategy: Optional[Callable[[str, Optional[str]], str]] = None,
+    config_path: Optional[str] = None,
 ) -> Environment:
     """
     Build the Environment (LLM and Storage) based on the config dict.
@@ -110,4 +119,31 @@ def setup_environment(
     else:
         raise ValueError(f"Unknown database provider: {db_provider}")
 
-    return Environment(llm=llm, repository=repository)
+    # 3. Build Contract Provider
+    contracts_config = config.get("contracts", {})
+    contracts_provider_type = contracts_config.get("provider", "yaml").lower()
+    
+    if contracts_provider_type == "yaml":
+        c_path = contracts_config.get("path", config_path)
+        if not c_path:
+            raise ValueError("YamlContractProvider requires a 'path' or fallback to 'config_path'")
+        contracts_provider = YamlContractProvider(file_path=str(c_path))
+        logger.info(f"Using YamlContractProvider at {c_path}.")
+    elif contracts_provider_type == "json":
+        c_path = contracts_config.get("path")
+        if not c_path:
+            raise ValueError("JsonContractProvider requires a 'path' in config.contracts")
+        contracts_provider = JsonContractProvider(file_path=str(c_path))
+        logger.info(f"Using JsonContractProvider at {c_path}.")
+    elif contracts_provider_type == "database":
+        conn_str = contracts_config.get("connection_string", "mock://db")
+        contracts_provider = DatabaseContractProvider(connection_string=conn_str)
+        logger.info("Using DatabaseContractProvider.")
+    elif contracts_provider_type == "opa":
+        endpoint = contracts_config.get("opa_endpoint", "http://localhost:8181")
+        contracts_provider = OpaRegoContractProvider(opa_endpoint=endpoint)
+        logger.info("Using OpaRegoContractProvider.")
+    else:
+        raise ValueError(f"Unknown contracts provider: {contracts_provider_type}")
+
+    return Environment(llm=llm, repository=repository, contracts=contracts_provider)

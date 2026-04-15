@@ -65,7 +65,7 @@ from dir_core import (
     validate_proposal,
 )
 from dir_core.agent_registry import AgentRegistry
-from dir_core.utils.config_loader import load_yaml_config
+from shared.config import load_yaml_config
 
 from shared.bootstrap import setup_environment
 from shared.llm.clients import OllamaClient
@@ -344,13 +344,14 @@ def execute_and_audit(
 
 def main() -> None:
     sample_dir = Path(__file__).resolve().parent
-    config = load_yaml_config(sample_dir / "config.yaml")
+    config_path = sample_dir / "config.yaml"
+    config = load_yaml_config(config_path)
 
     contract = config.get("contract", {})
     agent_id = contract.get("agent_id", "crypto_position_manager_01")
     agent_version = contract.get("version", "1.2.0")
     contract_meta = contract_audit_meta(contract)
-    env = setup_environment(config)
+    env = setup_environment(config, config_path=str(config_path))
     llm = env.llm
     repo = env.repository
 

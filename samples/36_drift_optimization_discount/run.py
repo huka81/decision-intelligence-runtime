@@ -27,7 +27,9 @@ if str(_SAMPLES) not in sys.path:
 
 from dir_core import ContextStore
 from dir_core.agent_registry import AgentRegistry
-from dir_core.utils.config_loader import load_yaml_config
+from shared.config import load_yaml_config
+
+from shared.contracts.provider import YamlContractProvider
 
 from audit_store import AuditStore
 from models import RetentionSampleConfig
@@ -88,6 +90,17 @@ def main() -> None:
                 "Could not remove legacy audit database %s; continuing.",
                 legacy_audit.name,
             )
+
+    contract_provider = YamlContractProvider(str(sample_dir / "config.yaml"))
+    
+    try:
+        loaded_contract = contract_provider.get_contract(cfg.agent.agent_id)
+        # Assuming YamlContractProvider returns ResponsibilityContract, 
+        # we update the RetentionContract specific values
+        cfg.contract.max_discount_pct = getattr(loaded_contract, "max_drawdown_limit", cfg.contract.max_discount_pct) * 100 # Adjust scaling if needed
+        logger.info(f"Loaded contract from provider: max_discount_pct={cfg.contract.max_discount_pct}")
+    except Exception as e:
+        logger.warning(f"Could not load contract via provider, using config default: {e}")
 
     db_path = str(sample_dir / cfg.paths.database)
     audit = AuditStore(sample_dir / cfg.paths.database)

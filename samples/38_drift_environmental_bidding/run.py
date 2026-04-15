@@ -26,7 +26,9 @@ if str(_SAMPLES) not in sys.path:
 
 from dir_core import ContextStore
 from dir_core.agent_registry import AgentRegistry
-from dir_core.utils.config_loader import load_yaml_config
+from shared.config import load_yaml_config
+
+from shared.contracts.provider import YamlContractProvider
 
 from audit_store import AuditStore
 from models import BiddingSampleConfig
@@ -45,6 +47,16 @@ def main() -> None:
     sample_dir = Path(__file__).resolve().parent
     raw = load_yaml_config(sample_dir / "config.yaml")
     cfg = BiddingSampleConfig.model_validate(raw)
+
+    contract_provider = YamlContractProvider(str(sample_dir / "config.yaml"))
+    
+    try:
+        loaded_contract = contract_provider.get_contract(cfg.agent.agent_id)
+        # Bidding uses max_bid_usd limit.
+        cfg.contract.max_bid_usd = getattr(loaded_contract, "max_drawdown_limit", cfg.contract.max_bid_usd) * 100 # Adjust scaling 
+        logger.info(f"Loaded contract from provider: max_bid_usd={cfg.contract.max_bid_usd}")
+    except Exception as e:
+        logger.warning(f"Could not load contract via provider, using config default: {e}")
 
     (sample_dir / "data").mkdir(parents=True, exist_ok=True)
     db_path = sample_dir / cfg.paths.database

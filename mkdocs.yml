@@ -56,6 +56,13 @@ nav:
       - Governance & Agent Drift: 04-governance/DIR_Governance.md
       - Context as code: 08-conclusion/Context_as_Code.md
       - Intelligent AI delegation framework mapping: 00-introduction/Intelligent_Delegation_Framework_Mapping.md
+  - dir-core Package:
+      - Overview: 09-pages/package/index.md
+      - Installation: 09-pages/package/installation.md
+      - Architecture: 09-pages/package/architecture.md
+      - Ports & Adapters: 09-pages/package/ports_and_adapters.md
+      - Core Components: 09-pages/package/core_components.md
+      - Models & DTOs: 09-pages/package/models.md
   - Samples:
       - 09-pages/samples/index.md
       - "00 - Quick start": 09-pages/samples/00_quick_start.md

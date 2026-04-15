@@ -20,8 +20,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from shared.config import load_yaml_config
 from contracts import FinOpsContract
-from dir_core.utils.config_loader import load_yaml_config
 
 _DEFAULT_CONFIG = Path(__file__).parent / "config.yaml"
 

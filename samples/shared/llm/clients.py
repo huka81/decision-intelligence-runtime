@@ -73,7 +73,7 @@ class GeminiClient(LLMClient):
 
     def __init__(
         self,
-        model: str = "gemini-1.5-flash",
+        model: str = "gemini-flash-latest",
         api_key: Optional[str] = None,
         timeout: int = 60,
     ):
@@ -81,7 +81,7 @@ class GeminiClient(LLMClient):
         Initialize Gemini client.
 
         Args:
-            model: Model name (e.g., "gemini-1.5-pro", "gemini-1.5-flash")
+            model: Model name (e.g., "gemini-1.5-pro", "gemini-flash-latest")
             api_key: Google API key. If None, reads from GOOGLE_API_KEY or
                 GEMINI_API_KEY env var.
             timeout: Request timeout in seconds

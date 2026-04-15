@@ -29,7 +29,7 @@ if str(_SAMPLES) not in sys.path:
     sys.path.insert(0, str(_SAMPLES))
 
 from models import UnderwritingContract
-from dir_core.utils.config_loader import load_yaml_config
+from shared.config import load_yaml_config
 from report_generator import generate_email_report
 
 from pipeline import build_llm, run_email_pipeline

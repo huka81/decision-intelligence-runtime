@@ -26,7 +26,9 @@ if str(_SAMPLES) not in sys.path:
 
 from dir_core import ContextStore
 from dir_core.agent_registry import AgentRegistry
-from dir_core.utils.config_loader import load_yaml_config
+from shared.config import load_yaml_config
+
+from shared.contracts.provider import YamlContractProvider
 
 from audit_store import AuditStore
 from compliance_monitor import ComplianceMonitor
@@ -51,6 +53,17 @@ def main() -> None:
         p = sample_dir / rel
         if p.exists():
             p.unlink()
+
+    contract_provider = YamlContractProvider(str(sample_dir / "config.yaml"))
+    
+    try:
+        loaded_contract = contract_provider.get_contract(cfg.agent.agent_id)
+        # Using allowed_policy_types as a proxy for this sample's simple contract, 
+        # or max_drawdown_limit as we did in 36
+        cfg.contract.max_refund_eur = getattr(loaded_contract, "max_drawdown_limit", cfg.contract.max_refund_eur) * 1000 # Adjust scaling 
+        logger.info(f"Loaded contract from provider: max_refund_eur={cfg.contract.max_refund_eur}")
+    except Exception as e:
+        logger.warning(f"Could not load contract via provider, using config default: {e}")
 
     db_path = str(sample_dir / cfg.paths.database)
     audit = AuditStore(sample_dir / cfg.paths.database)

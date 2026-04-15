@@ -46,7 +46,7 @@ from dir_core import (
 )
 from dir_core.agent_registry import AgentRegistry
 from dir_core.storage import ensure_db
-from dir_core.utils.config_loader import load_yaml_config
+from shared.config import load_yaml_config
 from dir_core.utils.llm_client import LLMClient
 from shared.llm.clients import OllamaClient, check_ollama
 

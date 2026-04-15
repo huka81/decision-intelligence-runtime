@@ -37,7 +37,7 @@ import __init__  # noqa: F401 - loads .env via package __init__.py
 
 from dir_core import PolicyProposal, ResponsibilityContract, create_event_bus
 from dir_core.dim import validate_proposal
-from dir_core.utils.config_loader import load_yaml_config
+from shared.config import load_yaml_config
 from dir_core.utils.logging_utils import log_with_dfid
 
 try:
@@ -70,11 +70,14 @@ def mock_strategy(prompt: str, sys_prompt: str | None = None) -> str:
     return 'ACTION: HOLD\nJUSTIFICATION: Mock policy per mission.\nCONFIDENCE: 0.8'
 
 
-def build_agents(config: Dict[str, Any], llm: Any) -> tuple[List[Any], List[Any], Dict[str, Any] | None]:
+def build_agents(config: Dict[str, Any], env: Any) -> tuple[List[Any], List[Any], Dict[str, Any] | None]:
     """
     Build instrument agents, news agent, and position template from config.
     Returns (instrument_agents, news_agents, position_template).
     """
+    llm = env.llm
+    contracts_provider = env.contracts
+    
     instruments: List[Any] = []
     news_agents: List[Any] = []
     position_template: Dict[str, Any] | None = None
@@ -84,9 +87,9 @@ def build_agents(config: Dict[str, Any], llm: Any) -> tuple[List[Any], List[Any]
     for agent_cfg in config.get("agents", []):
         agent_type = agent_cfg.get("type")
         agent_id = agent_cfg.get("agent_id", "")
-        contract_dict = dict(agent_cfg.get("contract", {}))
-        contract_dict["agent_id"] = agent_id
-        contract = ResponsibilityContract(**contract_dict)
+        
+        # Load contract using ContractProvider instead of raw config
+        contract = contracts_provider.get_contract(agent_id)
 
         if agent_type == "instrument":
             scope = agent_cfg.get("scope")
@@ -107,7 +110,7 @@ def main() -> None:
     config_path = sample_dir / "config.yaml"
     config = load_yaml_config(config_path)
 
-    env = setup_environment(config, mock_llm_strategy=mock_strategy)
+    env = setup_environment(config, mock_llm_strategy=mock_strategy, config_path=str(config_path))
     llm = env.llm
 
     sim = config.get("simulation", {})
@@ -122,7 +125,7 @@ def main() -> None:
     quote_seed = seeds.get("quote", 42)
     news_seed = seeds.get("news", 43)
 
-    instrument_agents, news_agents, position_template = build_agents(config, llm)
+    instrument_agents, news_agents, position_template = build_agents(config, env)
     if not instrument_agents:
         raise ValueError("Config must define at least one instrument agent")
 
