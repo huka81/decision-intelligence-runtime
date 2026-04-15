@@ -10,7 +10,7 @@ For SQLite file bootstrap before wiring backends, use ``dir_core.storage.ensure_
 """
 
 from .config_loader import load_yaml_config
-from .llm_client import GeminiClient, LLMClient, OllamaClient, check_ollama
+from .llm_client import LLMClient
 from .logging_utils import format_dfid_prefix, log_with_dfid
 
 __all__ = [
@@ -18,7 +18,4 @@ __all__ = [
     "log_with_dfid",
     "format_dfid_prefix",
     "LLMClient",
-    "OllamaClient",
-    "GeminiClient",
-    "check_ollama",
 ]

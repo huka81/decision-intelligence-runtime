@@ -42,13 +42,21 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+_SAMPLES = _REPO_ROOT / "samples"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+if str(_SAMPLES) not in sys.path:
+    sys.path.insert(0, str(_SAMPLES))
+
 from pydantic import BaseModel, Field
 
 from crewai import Agent, Crew, LLM, Process, Task
 
 from dir_core import PolicyProposal, new_dfid
 from dir_core.utils.logging_utils import log_with_dfid
-from dir_core.utils.llm_client import check_ollama
+from shared.llm.clients import check_ollama
 
 from contracts import ClaimsContract
 from config_loader import AppConfig, LlmConfig, ScenarioConfig, load_config

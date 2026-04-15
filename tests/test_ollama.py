@@ -1,8 +1,15 @@
 """Tests for dir_core.utils.llm_client module (OllamaClient)."""
 
+import sys
+from pathlib import Path
 import pytest
 
-from dir_core.utils.llm_client import OllamaClient, check_ollama
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_SAMPLES = _REPO_ROOT / "samples"
+if str(_SAMPLES) not in sys.path:
+    sys.path.insert(0, str(_SAMPLES))
+
+from shared.llm.clients import OllamaClient, check_ollama
 
 BASE_URL = "http://localhost:11434"
 MODEL = "gemma3:4b"

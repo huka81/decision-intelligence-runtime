@@ -52,8 +52,11 @@ from typing import Any, Dict, Optional, Tuple
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC = _REPO_ROOT / "src"
+_SAMPLES = _REPO_ROOT / "samples"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
+if str(_SAMPLES) not in sys.path:
+    sys.path.insert(0, str(_SAMPLES))
 
 from dir_core import (
     ContextStore,
@@ -63,14 +66,9 @@ from dir_core import (
 )
 from dir_core.agent_registry import AgentRegistry
 from dir_core.utils.config_loader import load_yaml_config
-from dir_core.utils.llm_client import LLMClient, OllamaClient, check_ollama
 
-try:
-    from .dir_repo import apply_schema, build_repository, connect
-    from .llm_client import MockLLM
-except ImportError:
-    from dir_repo import apply_schema, build_repository, connect
-    from llm_client import MockLLM
+from shared.bootstrap import setup_environment
+from shared.llm.clients import OllamaClient
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -206,37 +204,6 @@ def agent_reason(
     )
 
 
-# ---------------------------------------------------------------------------
-# LLM client factory
-# ---------------------------------------------------------------------------
-
-
-def _build_llm(config: Dict[str, Any]) -> LLMClient:
-    llm_cfg = config.get("llm_defaults", {})
-
-    if os.getenv("USE_MOCK_LLM", "").strip() in ("1", "true", "yes"):
-        logger.info("[LLM] Using MockLLM (USE_MOCK_LLM=1)")
-        return MockLLM()
-
-    if not llm_cfg or str(llm_cfg.get("provider", "")).lower() == "mock":
-        logger.info("[LLM] Using MockLLM (provider=mock or llm_defaults absent)")
-        return MockLLM()
-
-    model = os.getenv("OLLAMA_MODEL", llm_cfg.get("model", "gemma3:4b"))
-    base_url = os.getenv(
-        "OLLAMA_BASE_URL", llm_cfg.get("base_url", "http://localhost:11434")
-    )
-
-    if not check_ollama(base_url, model):
-        logger.warning(
-            "[LLM] Ollama not reachable at %s or model '%s' not found — "
-            "falling back to MockLLM.",
-            base_url, model,
-        )
-        return MockLLM()
-
-    logger.info("[LLM] Using Ollama: model=%s base_url=%s", model, base_url)
-    return OllamaClient(model=model, base_url=base_url)
 
 
 # ---------------------------------------------------------------------------
@@ -368,25 +335,6 @@ def execute_and_audit(
     return receipt
 
 
-# ---------------------------------------------------------------------------
-# Database connection helpers (env overrides for CI / Docker)
-# ---------------------------------------------------------------------------
-
-
-def _db_config(config: Dict[str, Any]) -> Dict[str, Any]:
-    """Merge config["database"] with optional environment variable overrides."""
-    cfg = dict(config.get("database", {}))
-    overrides = {
-        "host":     os.getenv("DB_HOST"),
-        "port":     os.getenv("DB_PORT"),
-        "dbname":   os.getenv("DB_NAME"),
-        "user":     os.getenv("DB_USER"),
-        "password": os.getenv("DB_PASS"),
-    }
-    for key, val in overrides.items():
-        if val is not None:
-            cfg[key] = int(val) if key == "port" else val
-    return cfg
 
 
 # ---------------------------------------------------------------------------
@@ -402,7 +350,9 @@ def main() -> None:
     agent_id = contract.get("agent_id", "crypto_position_manager_01")
     agent_version = contract.get("version", "1.2.0")
     contract_meta = contract_audit_meta(contract)
-    llm = _build_llm(config)
+    env = setup_environment(config)
+    llm = env.llm
+    repo = env.repository
 
     log_audit_event(
         logging.INFO,
@@ -414,19 +364,6 @@ def main() -> None:
             "contract_effective_from": contract_meta["effective_from"],
         },
     )
-
-    # ------------------------------------------------------------------
-    # Storage: connect to PostgreSQL, apply schema, open repository
-    # ------------------------------------------------------------------
-    db_cfg = _db_config(config)
-    logger.info(
-        "[DB] Connecting to PostgreSQL: host=%s port=%s dbname=%s user=%s",
-        db_cfg.get("host"), db_cfg.get("port"),
-        db_cfg.get("dbname"), db_cfg.get("user"),
-    )
-    conn = connect(db_cfg)
-    apply_schema(conn)           # CREATE TABLE IF NOT EXISTS — idempotent
-    repo = build_repository(conn)
 
     registry = AgentRegistry(
         storage=repo.agent_registry, supported_versions="1.x"
@@ -593,8 +530,7 @@ def main() -> None:
         print(f"    Verdict: {verdict2} — {reason2}")
     print("=" * 80)
 
-    conn.close()
-    logger.info("[DB] Connection closed.")
+    logger.info("[DB] Done.")
 
 
 if __name__ == "__main__":

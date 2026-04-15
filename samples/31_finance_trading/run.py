@@ -25,6 +25,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+_SAMPLES = _REPO_ROOT / "samples"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+if str(_SAMPLES) not in sys.path:
+    sys.path.insert(0, str(_SAMPLES))
+
 import __init__  # noqa: F401 - loads .env via package __init__.py
 
 from dir_core import PolicyProposal, ResponsibilityContract, create_event_bus
@@ -33,16 +41,16 @@ from dir_core.utils.config_loader import load_yaml_config
 from dir_core.utils.logging_utils import log_with_dfid
 
 try:
-    from dir_core.utils.llm_client import GeminiClient, OllamaClient
-    from .llm_client import MockLLM
+    from shared.llm.clients import GeminiClient, OllamaClient, MockLLMClient
+    from shared.bootstrap import setup_environment
     from .mock_context import NewsGenerator, QuoteGenerator
     from .orchestrator import EOAMOrchestrator
     from .roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
     from .simulation_recorder import SimulationRecorder
     from .report_generator import generate_html_report
 except ImportError:
-    from dir_core.utils.llm_client import GeminiClient, OllamaClient
-    from llm_client import MockLLM
+    from shared.llm.clients import GeminiClient, OllamaClient, MockLLMClient
+    from shared.bootstrap import setup_environment
     from mock_context import NewsGenerator, QuoteGenerator
     from orchestrator import EOAMOrchestrator
     from roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
@@ -53,48 +61,13 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def build_llm(config: Dict[str, Any], use_mock: bool = False) -> Any:
-    """
-    Build LLM client from config (Ollama, Gemini, or MockLLM).
-    
-    Provider selection (in order of priority):
-      1. If use_mock=True or USE_MOCK_LLM env is set: MockLLM
-      2. If config has llm_defaults.provider: use that provider
-      3. Auto-detect from model name: "gemini-*" → Gemini, else → Ollama
-    
-    Config example:
-      llm_defaults:
-        provider: "gemini"  # or "ollama" or "mock" (optional, auto-detected if omitted)
-        model: "gemini-1.5-flash"
-        base_url: "http://localhost:11434"  # for Ollama only
-        api_key: "your-key"  # for Gemini only (or use GOOGLE_API_KEY env var)
-    """
-    if use_mock:
-        return MockLLM(policy_action="HOLD", policy_confidence=0.8)
-    
-    defaults = config.get("llm_defaults", {})
-    model = defaults.get("model", "llama3.2")
-    provider = defaults.get("provider", "").lower()
-    
-    # Auto-detect provider if not specified
-    if not provider:
-        if model.startswith("gemini"):
-            provider = "gemini"
-        else:
-            provider = "ollama"
-    
-    if provider == "mock":
-        return MockLLM(policy_action="HOLD", policy_confidence=0.8)
-    elif provider == "gemini":
-        api_key = defaults.get("api_key")  # Optional, will use env var if not provided
-        timeout = defaults.get("timeout", 60)
-        return GeminiClient(model=model, api_key=api_key, timeout=timeout)
-    elif provider == "ollama":
-        base_url = defaults.get("base_url", "http://localhost:11434")
-        timeout = defaults.get("timeout", 60)
-        return OllamaClient(model=model, base_url=base_url, timeout=timeout)
-    else:
-        raise ValueError(f"Unknown LLM provider: {provider}. Use 'ollama', 'gemini', or 'mock'.")
+def mock_strategy(prompt: str, sys_prompt: str | None = None) -> str:
+    prompt_lower = prompt.lower()
+    if "choose one action" in prompt_lower or "output action" in prompt_lower or "action, justification" in prompt_lower:
+        return 'ACTION: HOLD\nJUSTIFICATION: Mock policy per mission.\nCONFIDENCE: 0.8'
+    if "narrative" in prompt_lower or "signals:" in prompt_lower or "risks:" in prompt_lower or "opportunities:" in prompt_lower:
+        return 'Narrative: Market context observed. SIGNALS: price_update, trend. RISKS: volatility. OPPORTUNITIES: trend continuation. '
+    return 'ACTION: HOLD\nJUSTIFICATION: Mock policy per mission.\nCONFIDENCE: 0.8'
 
 
 def build_agents(config: Dict[str, Any], llm: Any) -> tuple[List[Any], List[Any], Dict[str, Any] | None]:
@@ -134,19 +107,8 @@ def main() -> None:
     config_path = sample_dir / "config.yaml"
     config = load_yaml_config(config_path)
 
-    use_mock_llm = os.environ.get("USE_MOCK_LLM", "").strip().lower() in ("1", "true", "yes")
-    llm = build_llm(config, use_mock=use_mock_llm)
-    
-    # Log which LLM provider is being used
-    llm_class_name = llm.__class__.__name__
-    if isinstance(llm, MockLLM):
-        logger.info("Using MockLLM (no real LLM required)")
-    elif isinstance(llm, GeminiClient):
-        logger.info("Using Gemini API (model: %s)", llm.model)
-    elif isinstance(llm, OllamaClient):
-        logger.info("Using Ollama (model: %s, url: %s)", llm.model, llm.base_url)
-    else:
-        logger.info("Using LLM: %s", llm_class_name)
+    env = setup_environment(config, mock_llm_strategy=mock_strategy)
+    llm = env.llm
 
     sim = config.get("simulation", {})
     instruments = sim.get("instruments", ["BTC-USD", "ETH-USD"])

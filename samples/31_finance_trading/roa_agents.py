@@ -26,10 +26,7 @@ from dir_core import (
 from dir_core.utils.logging_utils import log_with_dfid
 from dir_core.models import DecisionRecord
 
-try:
-    from .llm_client import LLMClient
-except ImportError:
-    from llm_client import LLMClient
+from dir_core.utils.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 

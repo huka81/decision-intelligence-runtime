@@ -22,8 +22,11 @@ from typing import Any, Dict
 # Allow `python samples/33_insurance_underwriting/run.py` without editable install
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC = _REPO_ROOT / "src"
+_SAMPLES = _REPO_ROOT / "samples"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
+if str(_SAMPLES) not in sys.path:
+    sys.path.insert(0, str(_SAMPLES))
 
 from models import UnderwritingContract
 from dir_core.utils.config_loader import load_yaml_config

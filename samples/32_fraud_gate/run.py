@@ -15,9 +15,16 @@ import hashlib
 import json
 import logging
 import os
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SAMPLES = _REPO_ROOT / "samples"
+if str(_SAMPLES) not in sys.path:
+    sys.path.insert(0, str(_SAMPLES))
 
 from dir_core import new_dfid
-from dir_core.utils.llm_client import OllamaClient, check_ollama
+from shared.llm.clients import OllamaClient, check_ollama
 
 try:
     from .agent import FraudGuardAgent

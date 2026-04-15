@@ -68,12 +68,13 @@ test_*.db
 
 # Sample data directories (SQLite DBs generated at runtime)
 samples/**/*.db
+samples/**/*.sqlite
 
 # Sample data directories (JSON files generated at runtime)
 samples/**/data/*.json
 
 # Sample data directories (HTML files generated at runtime)
-samples/**/report.html
+samples/**/*.html
 
 # Flask stuff:
 instance/

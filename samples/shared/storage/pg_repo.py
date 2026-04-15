@@ -39,7 +39,7 @@ from dir_core.storage import StorageBundle
 # dir_core.storage.StorageBundle — the alias is for readability at call sites.
 Repository = StorageBundle
 
-_SCHEMA_PATH = Path(__file__).parent / "schema.sql"
+_SCHEMA_PATH = Path(__file__).parent / "pg_schema.sql"
 
 # Each CREATE TABLE statement in schema.sql (psycopg2: one command per execute).
 _CREATE_TABLE_RE = re.compile(

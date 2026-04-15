@@ -18,8 +18,11 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC = _REPO_ROOT / "src"
+_SAMPLES = _REPO_ROOT / "samples"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
+if str(_SAMPLES) not in sys.path:
+    sys.path.insert(0, str(_SAMPLES))
 
 from dir_core import ContextStore
 from dir_core.agent_registry import AgentRegistry
