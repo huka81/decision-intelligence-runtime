@@ -8,6 +8,7 @@ compute_evidence_hash, hash_content, proposal_params_for_hash from dir_core (fra
 import logging
 from typing import Any, Dict, List, Optional
 
+from dir_core import AgentRegistry, ContextStore
 from dir_core.ledger import DecisionLedger
 from dir_core.models import ProofCarryingIntent
 from dir_core.pci import (
@@ -17,7 +18,7 @@ from dir_core.pci import (
     proposal_params_for_hash,
 )
 
-from models import ClientApplication, PolicyProposal, UnderwritingContract
+from models import PolicyProposal
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,6 @@ def intent_subset_for_evidence_hash(intent_payload: Dict[str, Any]) -> str:
 
 # Re-export for backward compatibility (agent imports from kernel)
 __all__ = [
-    "AgentRegistry",
-    "ContextStore",
     "DecisionIntegrityModule",
     "DecisionLedger",
     "EXECUTION_RELEVANT_INTENT_KEYS",
@@ -48,71 +47,6 @@ __all__ = [
     "intent_subset_for_evidence_hash",
     "proposal_params_for_hash",
 ]
-
-
-# =============================================================================
-# AgentRegistry (stores Responsibility Contract)
-# =============================================================================
-
-
-class AgentRegistry:
-    """
-    In-memory store for the Underwriting Policy (Responsibility Contract).
-
-    The DIM queries this for authoritative rules. The agent does not define
-    these rules; the Registry is the source of truth.
-    """
-
-    def __init__(self, contract: UnderwritingContract):
-        self.contract = contract
-
-    @property
-    def max_tiv(self) -> float:
-        return self.contract.max_tiv
-
-    @property
-    def prohibited_industries(self) -> List[str]:
-        return self.contract.prohibited_industries
-
-    def get_contract_hash(self) -> str:
-        """SHA256 of the contract for Evidence Hash computation."""
-        return hash_content(self.contract.model_dump())
-
-
-# =============================================================================
-# ContextStore (holds Client Application state)
-# =============================================================================
-
-
-class ContextStore:
-    """
-    In-memory store for Client Application state.
-
-    The DIM uses this for authoritative context when verifying the Evidence Hash.
-    The agent receives context from here; the DIM recomputes Context_Hash from
-    this store, never from the PCI.
-    """
-
-    def __init__(self):
-        self._context: Optional[ClientApplication] = None
-
-    def set_context(self, context: ClientApplication) -> None:
-        """Set the current client application."""
-        self._context = context
-
-    def get_context(self) -> Optional[ClientApplication]:
-        """Return the current client application."""
-        return self._context
-
-    def get_context_hash(self) -> str:
-        """
-        SHA256 of the current context for Evidence Hash computation.
-
-        Returns empty hash if no context is set (verification will fail).
-        """
-        if self._context is None:
-            return ""
-        return hash_content(self._context.model_dump())
 
 
 # =============================================================================
@@ -140,35 +74,48 @@ class DecisionIntegrityModule:
         self.ledger = ledger
 
     def verify_and_commit(
-        self, pci: ProofCarryingIntent, context: ClientApplication
+        self, pci: ProofCarryingIntent, agent_id: str
     ) -> str:
         """
         Verify the PCI and commit to Ledger if valid.
 
         Steps:
-        1. Set context in store (for this verification).
+        1. Context was set in store.
         2. Use ProofChecker to verify evidence_hash (Zero Trust).
         3. If match: run business-rule checks (prohibited industry, max TiV).
         4. If all pass: append to Ledger, return "Policy Bound".
         5. Otherwise: return rejection reason.
         """
-        self.context_store.set_context(context)
-
         def get_proposal_params(intent_payload: Dict[str, Any]) -> str:
             return intent_subset_for_evidence_hash(intent_payload)
 
+        def get_context_hash() -> str:
+            session = self.context_store.get_session(pci.dfid)
+            return hash_content(session) if session else ""
+
+        def get_contract_hash() -> str:
+            contract = self.registry.get_agent_contract(agent_id)
+            return hash_content(contract) if contract else ""
+
         ok, reason = ProofChecker().verify(
             pci,
-            get_context_hash=self.context_store.get_context_hash,
-            get_contract_hash=self.registry.get_contract_hash,
+            get_context_hash=get_context_hash,
+            get_contract_hash=get_contract_hash,
             get_proposal_params=get_proposal_params,
         )
         if not ok:
             return reason
 
+        contract = self.registry.get_agent_contract(agent_id)
+        if not contract:
+            return "Contract Not Found"
+
+        max_tiv = contract.get("max_tiv", 0)
+        prohibited_industries = contract.get("prohibited_industries", [])
+
         # Business rule checks (prohibited industry, max TiV)
         proposal = PolicyProposal.model_validate(pci.intent_payload)
-        prohibited_lower = {x.strip().lower() for x in self.registry.prohibited_industries}
+        prohibited_lower = {x.strip().lower() for x in prohibited_industries}
         if proposal.industry.strip().lower() in prohibited_lower:
             logger.warning(
                 "[DFID=%s] REJECT: Prohibited Industry (%s).",
@@ -177,12 +124,12 @@ class DecisionIntegrityModule:
             )
             return "Prohibited Industry"
 
-        if proposal.total_insured_value > self.registry.max_tiv:
+        if proposal.total_insured_value > max_tiv:
             logger.warning(
                 "[DFID=%s] REJECT: TiV %.0f exceeds contract max_tiv %.0f.",
                 pci.dfid[:8],
                 proposal.total_insured_value,
-                self.registry.max_tiv,
+                max_tiv,
             )
             return "TIV Exceeds Contract Max"
 

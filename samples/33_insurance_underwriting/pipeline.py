@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from dir_core import new_dfid
+from dir_core import AgentRegistry, ContextStore, new_dfid
 from dir_core.storage import AuditStore, sqlite_storage
 from email_fixture_ingest import (
     client_application_from_fixture,
@@ -23,8 +23,6 @@ from email_fixture_ingest import (
 )
 from gates import run_post_extraction_gates, run_pre_agent_gates
 from kernel import (
-    AgentRegistry,
-    ContextStore,
     DecisionIntegrityModule,
     DecisionLedger,
 )
@@ -95,8 +93,9 @@ def _record(
 def process_email_file(
     path: Path,
     *,
-    contract: UnderwritingContract,
+    contract_dict: Dict[str, Any],
     registry: AgentRegistry,
+    context_store: ContextStore,
     dim: DecisionIntegrityModule,
     agent: ROAUnderwriterAgent,
     binder: PolicyBindingClient,
@@ -112,6 +111,9 @@ def process_email_file(
 
     fixture = load_markdown_email_fixture(path)
     context = client_application_from_fixture(fixture, fx)
+    
+    # Register context into canonical storage
+    context_store.update_session(dfid, context.model_dump())
 
     result = EmailCaseResult(
         dfid=dfid,
@@ -150,7 +152,7 @@ def process_email_file(
     )
     structured_log(dfid, "CONTEXT_COMPILED", requested_tiv_usd=None)
 
-    gate = run_pre_agent_gates(fixture.body_text, context, contract, config)
+    gate = run_pre_agent_gates(fixture.body_text, context, UnderwritingContract.model_validate(contract_dict), config)
     if gate is not None:
         result.reason_code = gate.code
         result.lifecycle_state = gate.lifecycle_state
@@ -210,6 +212,8 @@ def process_email_file(
     context = context.model_copy(
         update={"requested_tiv_usd": facts.broker_requested_tiv_usd}
     )
+    context_store.update_session(dfid, context.model_dump())
+    
     detail_lim = f"tiv_usd={facts.broker_requested_tiv_usd:,.0f}"
     detail_ter = (facts.stated_territories or "")[:500]
     result.add_step(
@@ -234,7 +238,7 @@ def process_email_file(
     )
 
     post = run_post_extraction_gates(
-        context, facts.stated_territories, contract, config
+        context, facts.stated_territories, UnderwritingContract.model_validate(contract_dict), config
     )
     if post is not None:
         result.reason_code = post.code
@@ -286,7 +290,7 @@ def process_email_file(
     )
 
     result.add_step("DIM_VERIFY_AND_COMMIT", "VALIDATING", "Proof check + business rules")
-    dim_out = dim.verify_and_commit(pci, context)
+    dim_out = dim.verify_and_commit(pci, contract_dict["agent_id"])
     result.dim_result = dim_out
     _record(
         audit,
@@ -339,13 +343,6 @@ def run_email_pipeline(
     config: Dict[str, Any],
     llm: Any,
 ) -> tuple[List[EmailCaseResult], DecisionLedger, AuditStore]:
-    contract = _contract_from_config(config)
-    registry = AgentRegistry(contract)
-    context_store = ContextStore()
-    ledger = DecisionLedger()
-    dim = DecisionIntegrityModule(registry, context_store, ledger)
-    agent = ROAUnderwriterAgent(registry, llm)
-
     db_path = sample_dir / config.get("email_processing", {}).get(
         "audit_db", "data/underwriting_audit.sqlite"
     )
@@ -356,6 +353,22 @@ def run_email_pipeline(
     audit = AuditStore(repository.decision_audit, repository.idempotency)
     binder = PolicyBindingClient(audit)
 
+    contract = _contract_from_config(config)
+    contract_dict = contract.model_dump()
+    agent_id = contract_dict["agent_id"]
+
+    registry = AgentRegistry(storage=repository.agent_registry)
+    registry.handshake(
+        agent_id=agent_id,
+        contract=contract_dict,
+        agent_version=contract_dict["version"]
+    )
+    
+    context_store = ContextStore(storage=repository.context)
+    ledger = DecisionLedger()
+    dim = DecisionIntegrityModule(registry, context_store, ledger)
+    agent = ROAUnderwriterAgent(registry, agent_id, llm)
+
     ep = config.get("email_processing", {})
     emails_dir = sample_dir / ep.get("emails_dir", "emails")
     paths = list_markdown_fixtures(emails_dir)
@@ -365,8 +378,9 @@ def run_email_pipeline(
         results.append(
             process_email_file(
                 path,
-                contract=contract,
+                contract_dict=contract_dict,
                 registry=registry,
+                context_store=context_store,
                 dim=dim,
                 agent=agent,
                 binder=binder,

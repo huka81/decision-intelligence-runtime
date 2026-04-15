@@ -19,7 +19,8 @@ from dir_core import new_dfid
 from dir_core.models import ProofCarryingIntent
 from dir_core.pci import compute_evidence_hash, hash_content
 
-from kernel import AgentRegistry, intent_subset_for_evidence_hash
+from dir_core import AgentRegistry
+from kernel import intent_subset_for_evidence_hash
 from models import ClientApplication, EmailSubmissionExtraction, PolicyProposal
 
 
@@ -188,10 +189,10 @@ class ROAUnderwriterAgent:
     evidence_hash for DIM verification (Topology C).
     """
 
-    def __init__(self, registry: AgentRegistry, llm: LLMClient):
+    def __init__(self, registry: AgentRegistry, agent_id: str, llm: LLMClient):
         self.registry = registry
         self.llm = llm
-        self.agent_id = registry.contract.agent_id
+        self.agent_id = agent_id
 
     def extract_submission_facts(
         self,
@@ -236,8 +237,11 @@ class ROAUnderwriterAgent:
 
     def explain(self, dfid: str, context: ClientApplication) -> Dict[str, Any]:
         """§4.1: LLM interprets client application."""
+        contract = self.registry.get_agent_contract(self.agent_id) or {}
+        mission = contract.get("mission", "")
+        
         system = (
-            f"Mission: {self.registry.contract.mission}\n"
+            f"Mission: {mission}\n"
             "Output format: Narrative: <summary>. SIGNALS: <comma-separated>. "
             "RISKS: <comma-separated>. OPPORTUNITIES: <comma-separated>."
         )
@@ -264,10 +268,15 @@ class ROAUnderwriterAgent:
         self, dfid: str, explain_result: Dict[str, Any], context: ClientApplication
     ) -> PolicyProposal:
         """§4.2: LLM proposes coverage, premium, industry."""
+        contract = self.registry.get_agent_contract(self.agent_id) or {}
+        mission = contract.get("mission", "")
+        max_tiv = contract.get("max_tiv", 0)
+        prohibited = contract.get("prohibited_industries", [])
+        
         system = (
-            f"Mission: {self.registry.contract.mission}\n"
-            f"Max Total Insured Value (TiV): {self.registry.max_tiv}. "
-            f"Prohibited industries: {self.registry.prohibited_industries}.\n"
+            f"Mission: {mission}\n"
+            f"Max Total Insured Value (TiV): {max_tiv}. "
+            f"Prohibited industries: {prohibited}.\n"
             "Output format (one per line):\n"
             "TOTAL_INSURED_VALUE: <number>\nPREMIUM: <number>\nINDUSTRY: <from context>\n"
             "JUSTIFICATION: <short reason>\nCONFIDENCE: <0.0-1.0>"
@@ -287,17 +296,21 @@ class ROAUnderwriterAgent:
         )
         logger.info("[DFID=%s] [%s] Calling LLM for Policy", dfid[:8], self.agent_id)
         response = self.llm.generate(user, system=system)
-        return _parse_policy(response, context, self.registry.max_tiv)
+        return _parse_policy(response, context, max_tiv)
 
     def self_check(self, proposal: PolicyProposal) -> tuple[bool, Optional[str]]:
         """§4.3: Deterministic boundary check."""
-        prohibited_lower = {x.strip().lower() for x in self.registry.prohibited_industries}
+        contract = self.registry.get_agent_contract(self.agent_id) or {}
+        max_tiv = contract.get("max_tiv", 0)
+        prohibited = contract.get("prohibited_industries", [])
+        
+        prohibited_lower = {x.strip().lower() for x in prohibited}
         if proposal.industry.strip().lower() in prohibited_lower:
             return False, f"Industry {proposal.industry} is prohibited"
-        if proposal.total_insured_value > self.registry.max_tiv:
+        if proposal.total_insured_value > max_tiv:
             return (
                 False,
-                f"TiV {proposal.total_insured_value} exceeds max_tiv {self.registry.max_tiv}",
+                f"TiV {proposal.total_insured_value} exceeds max_tiv {max_tiv}",
             )
         return True, None
 
@@ -332,7 +345,8 @@ class ROAUnderwriterAgent:
             )
 
         context_hash = hash_content(context.model_dump())
-        contract_hash = self.registry.get_contract_hash()
+        contract = self.registry.get_agent_contract(self.agent_id) or {}
+        contract_hash = hash_content(contract)
         proposal_params = intent_subset_for_evidence_hash(proposal.model_dump())
 
         if forge_evidence_hash:
