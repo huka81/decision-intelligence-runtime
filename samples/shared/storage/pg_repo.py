@@ -35,6 +35,7 @@ import psycopg2.errors
 import psycopg2.extensions
 
 from dir_core.storage import StorageBundle
+from dir_core.storage.json_util import dumps_json_dict
 
 # One PostgreSQL repository exposes every DIR storage role.  Same type as
 # dir_core.storage.StorageBundle — the alias is for readability at call sites.
@@ -312,7 +313,7 @@ class PgIdempotencyStorage:
                     result     = EXCLUDED.result,
                     created_at = NOW()
                 """,
-                (key, json.dumps(result)),
+                (key, dumps_json_dict(result)),
             )
         self._conn.commit()
 
@@ -348,7 +349,14 @@ class PgDecisionAuditStorage:
                     (dfid, event, timestamp, step_id, state, detail_json)
                 VALUES (%s, %s, %s, %s, %s, %s::jsonb)
                 """,
-                (dfid, event, ts, step_id, state, json.dumps(details or {})),
+                (
+                    dfid,
+                    event,
+                    ts,
+                    step_id,
+                    state,
+                    dumps_json_dict(details or {}),
+                ),
             )
         self._conn.commit()
 

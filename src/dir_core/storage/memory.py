@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import threading
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..data_types import AgentRegistryStatus
 
@@ -61,7 +61,7 @@ class MemoryAgentRegistryStorage:
         self._store[agent_id]["suspension_reason"] = suspension_reason
         return True
 
-    def get_status(self, agent_id: str) -> Optional[tuple]:
+    def get_status(self, agent_id: str) -> Optional[Tuple[str, Optional[str]]]:
         rec = self._store.get(agent_id)
         if rec is None:
             return None

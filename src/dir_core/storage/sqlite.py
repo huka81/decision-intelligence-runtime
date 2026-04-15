@@ -16,9 +16,11 @@ import sqlite3
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ..data_types import AgentRegistryStatus
+
+from .json_util import dumps_json_dict
 
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
@@ -143,7 +145,7 @@ class SqliteAgentRegistryStorage:
             conn.commit()
             return cur.rowcount > 0
 
-    def get_status(self, agent_id: str) -> Optional[tuple]:
+    def get_status(self, agent_id: str) -> Optional[Tuple[str, Optional[str]]]:
         with _connect(self.db_path) as conn:
             cursor = conn.execute(
                 "SELECT status, suspension_reason "
@@ -243,7 +245,7 @@ class SqliteIdempotencyStorage:
             conn.execute(
                 "INSERT OR REPLACE INTO idempotency_cache (key, result) "
                 "VALUES (?, ?)",
-                (key, json.dumps(result)),
+                (key, dumps_json_dict(result)),
             )
             conn.commit()
 
@@ -274,7 +276,7 @@ class SqliteDecisionAuditStorage:
         details: Optional[Dict[str, Any]] = None,
     ) -> None:
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        payload = json.dumps(details or {}, sort_keys=True, default=str)
+        payload = dumps_json_dict(details or {})
         with _connect(self.db_path) as conn:
             conn.execute(
                 """

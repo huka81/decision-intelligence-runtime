@@ -678,7 +678,7 @@ flowchart TB
         LLM["llm_client\n(Ollama / Gemini / MockLLM)"]
         ROA["roa_agents\n(Instrument, Position, NewsScorer)"]
         Orch["orchestrator"]
-        Rec["simulation_recorder\n(StorageBundle)"]
+        Rec["simulation_audit\n(decision_audit)"]
         Rep["report_generator\n(HTML + Charts)"]
     end
 
@@ -712,7 +712,7 @@ flowchart TB
 - **llm_client:** `OllamaClient` (sync HTTP to Ollama), `GeminiClient` (Google AI API), or `MockLLM`; interface `generate(prompt, system=None) -> str`.
 - **roa_agents:** ROA base (Explain → Policy → Self-Check → Proposal) and concrete agents (Instrument, Position, NewsScorer) using the LLM and config-driven contracts with `wake_up_threshold_pct`.
 - **orchestrator:** Registers agents with the bus (OBSERVATION by scope, NEWS global), **implements Wake-up Predicates for Signal Suppression (DIR Topologies §2.3)**, emits observations/news with DFID, collects proposals per DFID, arbitrates by priority_matrix, spawns position agents from template. Tracks suppressed signals for reporting.
-- **simulation_recorder:** Collects simulation data in memory and persists to SQLite database via `dir_core` canonical `DecisionAuditStorage` in real-time during simulation run.
+- **simulation_audit:** Writes simulation events only through `StorageBundle.decision_audit` during the run—no parallel in-memory collector. The HTML report hydrates chart and lifecycle views from the persisted audit stream.
 - **report_generator:** Generates interactive HTML reports **directly from canonical decision audit events** with:
   - **Plotly charts:** Price lines with hover tooltips, visual markers (⭐ News, ▲ Position Opens, 🔷 Decisions)
   - **Position lifecycle cards:** Professional styling with gradients, P&L boxes, timeline events
@@ -867,46 +867,33 @@ agents:
 
 ## Database Storage
 
-All simulation data is automatically saved to a SQLite database (`simulation_data.db`) for persistent storage and analysis.
+All simulation data is automatically saved to the persistent database via the `dir-core` canonical **`StorageBundle`** (specifically `DecisionAuditStorage`).
 
-### Database Schema
+You can configure the database provider in `config.yaml`:
 
-- **simulations** - Header record for each simulation run:
-  - `simulation_id TEXT PRIMARY KEY` - Unique ID (timestamp + config hash)
-  - `run_timestamp TEXT` - ISO 8601 UTC timestamp
-  - `config_hash TEXT` - SHA256 hash of configuration (first 16 chars)
-  - `simulation_ticks INTEGER` - Maximum ticks configured
-  - `total_decisions, total_positions, total_news_events INTEGER` - Counters
-  - `status TEXT` - 'running', 'completed', or 'error'
-  - `completed_at TEXT` - Completion timestamp
-  - `error_message TEXT` - Error details if failed
+```yaml
+database:
+  # provider: "postgres"
+  # host: "localhost"
+  # dbname: "dir_quickstart"
+  # user: "dir_user"
+  # password: "dir_pass"
+  provider: "sqlite"
+  db_path: "data/simulation_data.db"
+```
 
-- **ticks** - Market observations (FOREIGN KEY: simulation_id)
-  - Fields: tick_index, instrument, price, timestamp, dfid, trend, volatility
+If you switch to `postgres`, ensure you have PostgreSQL running and the `psycopg2-binary` package installed (just like in `samples/08_custom_repo_psql/`).
 
-- **decisions** - Agent proposals and DIM results (FOREIGN KEY: simulation_id)
-  - Fields: tick_index, dfid, parent_dfid, agent_id, policy_kind, justification, dim_result, dim_reason, explain_narrative, explain_signals (JSON), explain_risks (JSON), explain_opportunities (JSON), instrument, price, event_type, instruments_affected (JSON)
+### Canonical Audit Events
 
-- **positions** - Spawned position agents (FOREIGN KEY: simulation_id)
-  - Fields: position_id, instrument, entry_tick, entry_price, parent_dfid, news_headline
+Instead of custom tables, all events are stored in the canonical `decision_audit_events` table. The `event` column categorizes the records, and `detail_json` contains the payload:
+- `SIMULATION_START`, `SIMULATION_END`
+- `MARKET_TICK`
+- `AGENT_DECISION` (includes DIM results and justifications)
+- `POSITION_SPAWNED`, `POSITION_EVENT`, `POSITION_CLOSED`, `POSITION_EXPOSURE_UPDATED`
+- `NEWS_GENERATED`
 
-- **position_lifecycle_events** - Position agent decisions (FOREIGN KEY: simulation_id)
-  - Fields: position_id, tick_index, policy_kind, price, justification
-
-- **news_events** - News events (FOREIGN KEY: simulation_id)
-  - Fields: dfid, headline, sentiment, instruments_affected (JSON), raw_score
-
-### Example Queries
-
-```sql
--- List recent simulations
-SELECT simulation_id, run_timestamp, status, total_decisions, total_positions
-FROM simulations
-ORDER BY run_timestamp DESC
-LIMIT 10;
-
--- Average price per instrument for a specific simulation
-SELECT instrument, AVG(price) as avg_price, MIN(price) as min_price, MAX(price) as max_price
+The HTML report generator (`report_generator.py`) reads directly from this canonical event log.
 FROM ticks
 WHERE simulation_id = 'sim_2026-02-23T...'
 GROUP BY instrument;

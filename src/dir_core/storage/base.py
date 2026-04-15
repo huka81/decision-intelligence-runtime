@@ -5,6 +5,10 @@ Implement any Protocol to create a custom storage backend (PostgreSQL, Redis,
 CSV, cloud KV store, etc.). Pass the instance via the ``storage=`` kwarg of the
 corresponding manager class.
 
+For JSON columns (audit ``details``, idempotency ``result``), implementations
+should use :func:`~dir_core.storage.json_util.dumps_json_dict` so custom
+backends match the built-in SQLite and sample PostgreSQL encodings.
+
 Example — custom PostgreSQL backend for AgentRegistry::
 
     class MyPgAgentStorage:
@@ -18,7 +22,7 @@ Example — custom PostgreSQL backend for AgentRegistry::
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, List, Optional, Protocol, Tuple, runtime_checkable
 
 
 class StorageError(Exception):
@@ -63,7 +67,7 @@ class AgentRegistryStorage(Protocol):
         """Update status and suspension_reason. Return True if a row was changed."""
         ...
 
-    def get_status(self, agent_id: str) -> Optional[tuple]:
+    def get_status(self, agent_id: str) -> Optional[Tuple[str, Optional[str]]]:
         """Return (status, suspension_reason) or None if agent does not exist."""
         ...
 
@@ -110,7 +114,12 @@ class IdempotencyStorage(Protocol):
         ...
 
     def set(self, key: str, result: Dict[str, Any]) -> None:
-        """Store result under key."""
+        """Store result under key.
+
+        Implementations SHOULD persist JSON with the same encoding rules as
+        :func:`~dir_core.storage.json_util.dumps_json_dict` (stable key order,
+        ``default=str``) so disk backends stay interchangeable.
+        """
         ...
 
 
@@ -132,7 +141,14 @@ class DecisionAuditStorage(Protocol):
         state: str = "",
         details: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Append one DFID-scoped audit row."""
+        """Append one DFID-scoped audit row.
+
+        *details* is persisted as JSON. Implementations MUST use the same
+        encoding as :func:`~dir_core.storage.json_util.dumps_json_dict`
+        (``sort_keys=True``, ``default=str``) so SQLite, PostgreSQL, and any
+        other backend produce comparable ``detail_json`` / ``detail_json``-text
+        column values and do not fail on non-JSON-native values.
+        """
         ...
 
     def events_for_dfid(self, dfid: str) -> List[Dict[str, Any]]:

@@ -55,6 +55,7 @@ from .memory import (
     MemoryResourceLockStorage,
     MemorySagaStorage,
 )
+from .json_util import dumps_json_dict
 from .sqlite import (
     SqliteAgentRegistryStorage,
     SqliteContextStorage,
@@ -142,6 +143,7 @@ __all__ = [
     "ResourceContentionError",
     # SQLite helpers
     "ensure_db",
+    "dumps_json_dict",
     # SQLite backends
     "SqliteAgentRegistryStorage",
     "SqliteContextStorage",

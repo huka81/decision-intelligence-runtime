@@ -13,13 +13,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from simulation_recorder import (
-    SimulationRecorder,
-    TickRecord,
-    SimDecisionRecord,
-    PositionRecord,
+from simulation_audit import (
+    SimulationReportState,
+    hydrate_report_state_from_audit,
 )
 
+
+from dir_core.storage import StorageBundle
 
 def _escape(s: str) -> str:
     """Escape HTML special chars."""
@@ -41,14 +41,14 @@ def _section(title: str, content: str, expanded: bool = True) -> str:
     </details>"""
 
 
-def _build_chart_html(recorder: SimulationRecorder) -> str:
+def _build_chart_html(state: SimulationReportState) -> str:
     """Build Plotly charts for each instrument: price vs tick with decision points and rich tooltips."""
     try:
         import plotly.graph_objects as go
     except ImportError:
         return "<p><em>Chart requires plotly. Install: pip install plotly</em></p>"
 
-    instruments = list({t.instrument for t in recorder.ticks if t.instrument})
+    instruments = list({t.instrument for t in state.ticks if t.instrument})
     if not instruments:
         return "<p><em>No tick data to plot.</em></p>"
 
@@ -66,7 +66,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
 
     charts_html = []
     for idx, inst in enumerate(instruments):
-        ticks_inst = [t for t in recorder.ticks if t.instrument == inst]
+        ticks_inst = [t for t in state.ticks if t.instrument == inst]
         if not ticks_inst:
             continue
 
@@ -101,7 +101,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
         )
 
         decisions_inst = [
-            d for d in recorder.decisions
+            d for d in state.decisions
             if d.instrument == inst or (inst in (d.instruments_affected or []))
         ]
 
@@ -166,7 +166,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
         
         # Add NEWS_QUALIFIED events (news_scorer agent)
         news_qualified = [
-            d for d in recorder.decisions
+            d for d in state.decisions
             if d.policy_kind == "NEWS_QUALIFIED" and (inst in (d.instruments_affected or []))
         ]
         
@@ -193,7 +193,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
                 
                 # Find associated positions spawned from this news
                 spawned_positions = [
-                    p for p in recorder.positions 
+                    p for p in state.positions 
                     if p.parent_dfid == d.dfid and p.instrument == inst
                 ]
                 pos_info = ""
@@ -234,7 +234,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
                 )
         
         # Add OPEN_POSITION markers
-        positions_inst = [p for p in recorder.positions if p.instrument == inst]
+        positions_inst = [p for p in state.positions if p.instrument == inst]
         
         if positions_inst:
             x_open = []
@@ -327,11 +327,11 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
     return "\n".join(charts_html)
 
 
-def _build_dfid_tree_html(recorder: SimulationRecorder) -> str:
+def _build_dfid_tree_html(state: SimulationReportState) -> str:
     """Build DFID hierarchy tree."""
     lines = []
     seen = set()
-    for pos in recorder.positions:
+    for pos in state.positions:
         if pos.parent_dfid and pos.parent_dfid not in seen:
             seen.add(pos.parent_dfid)
             lines.append(f"<tr><td><code>{_escape(pos.parent_dfid)}</code></td><td>News (NEWS_QUALIFIED)</td></tr>")
@@ -349,13 +349,13 @@ def _build_dfid_tree_html(recorder: SimulationRecorder) -> str:
     </table>"""
 
 
-def _build_decisions_table_html(recorder: SimulationRecorder) -> str:
+def _build_decisions_table_html(state: SimulationReportState) -> str:
     """Build decisions table with details."""
-    if not recorder.decisions:
+    if not state.decisions:
         return "<p><em>No decisions recorded.</em></p>"
 
     rows = []
-    for i, d in enumerate(recorder.decisions):
+    for i, d in enumerate(state.decisions):
         dim_class = "ok" if d.dim_result == "ACCEPT" else "reject"
         rows.append(
             f"""
@@ -383,13 +383,13 @@ def _build_decisions_table_html(recorder: SimulationRecorder) -> str:
     </table>"""
 
 
-def _build_position_lifecycle_html(recorder: SimulationRecorder) -> str:
+def _build_position_lifecycle_html(state: SimulationReportState) -> str:
     """Build position lifecycle section with detailed audit trail."""
-    if not recorder.positions:
+    if not state.positions:
         return "<p><em>No positions opened.</em></p>"
 
     blocks = []
-    for pos in recorder.positions:
+    for pos in state.positions:
         # Determine status
         status_emoji = "✅" if pos.close_tick is not None else "⏳"
         status_text = "CLOSED" if pos.close_tick is not None else "OPEN"
@@ -499,7 +499,7 @@ def _build_position_lifecycle_html(recorder: SimulationRecorder) -> str:
 
 def generate_html_report(
     simulation_id: str,
-    db_path: str | Path,
+    bundle: StorageBundle,
     output_path: Path,
     simulation_ticks: int = 0,
     news_count: int = 0,
@@ -508,95 +508,16 @@ def generate_html_report(
     """
     Generate complete HTML audit report for finance trading simulation from canonical database.
     """
-    from dir_core.storage import sqlite_storage
-    bundle = sqlite_storage(str(db_path))
     events = bundle.decision_audit.all_events_chronological()
-    
-    recorder = SimulationRecorder(simulation_id=simulation_id)
-    
-    for row in events:
-        d = row.get("details", {})
-        if d.get("simulation_id") != simulation_id:
-            continue
-        ev_type = row.get("event")
-        if ev_type == "MARKET_TICK":
-            recorder.ticks.append(TickRecord(
-                tick_index=d.get('tick_index', 0),
-                instrument=d.get('instrument', ''),
-                price=d.get('price', 0.0),
-                timestamp=d.get('timestamp', row['timestamp']),
-                dfid=row['dfid'],
-                trend=d.get('trend', 'neutral'),
-                volatility=d.get('volatility', 0.0),
-            ))
-        elif ev_type == "AGENT_DECISION":
-            recorder.decisions.append(SimDecisionRecord(
-                tick_index=d.get('tick_index', 0),
-                dfid=row['dfid'],
-                parent_dfid=d.get('parent_dfid'),
-                agent_id=d.get('agent_id', ''),
-                policy_kind=d.get('policy_kind', ''),
-                justification=d.get('justification'),
-                dim_result=d.get('dim_result', ''),
-                dim_reason=d.get('dim_reason', ''),
-                explain_narrative=d.get('explain_narrative'),
-                explain_signals=d.get('explain_signals', []),
-                explain_risks=d.get('explain_risks', []),
-                explain_opportunities=d.get('explain_opportunities', []),
-                instrument=d.get('instrument'),
-                price=d.get('price'),
-                event_type=d.get('event_type', ''),
-                instruments_affected=d.get('instruments_affected', []),
-            ))
-        elif ev_type == "POSITION_SPAWNED":
-            recorder.positions.append(PositionRecord(
-                position_id=d.get('position_id', ''),
-                instrument=d.get('instrument', ''),
-                entry_tick=d.get('entry_tick', 0),
-                entry_price=d.get('entry_price', 0.0),
-                initial_exposure=d.get('initial_exposure', 0.0),
-                current_exposure=d.get('initial_exposure', 0.0),
-                quantity=d.get('quantity', 0.0),
-                parent_dfid=d.get('parent_dfid') or row['dfid'],
-                news_headline=d.get('news_headline'),
-                lifecycle_events=[],
-            ))
-        elif ev_type == "POSITION_EVENT":
-            for p in recorder.positions:
-                if p.position_id == d.get('position_id'):
-                    p.lifecycle_events.append({
-                        "tick_index": d.get('tick_index'),
-                        "policy_kind": d.get('policy_kind'),
-                        "price": d.get('price'),
-                        "justification": d.get('justification'),
-                    })
-        elif ev_type == "POSITION_CLOSED":
-            for p in recorder.positions:
-                if p.position_id == d.get('position_id'):
-                    p.close_tick = d.get('close_tick')
-                    p.close_price = d.get('close_price')
-                    p.close_reason = d.get('close_reason')
-                    p.current_exposure = 0.0
-        elif ev_type == "POSITION_EXPOSURE_UPDATED":
-            for p in recorder.positions:
-                if p.position_id == d.get('position_id'):
-                    p.current_exposure = d.get('new_exposure', 0.0)
-        elif ev_type == "NEWS_GENERATED":
-            recorder.news_events.append({
-                "dfid": row['dfid'],
-                "headline": d.get('headline', ''),
-                "sentiment": d.get('sentiment'),
-                "instruments_affected": d.get('instruments_affected', []),
-                "raw_score": d.get('raw_score'),
-            })
+    state = hydrate_report_state_from_audit(events, simulation_id)
 
     # Generate report from loaded data
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    chart_html = _build_chart_html(recorder)
-    dfid_html = _build_dfid_tree_html(recorder)
-    decisions_html = _build_decisions_table_html(recorder)
-    lifecycle_html = _build_position_lifecycle_html(recorder)
+    chart_html = _build_chart_html(state)
+    dfid_html = _build_dfid_tree_html(state)
+    decisions_html = _build_decisions_table_html(state)
+    lifecycle_html = _build_position_lifecycle_html(state)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1016,8 +937,8 @@ def generate_html_report(
         <p><strong>Ticks:</strong> {simulation_ticks}</p>
         <p><strong>News events:</strong> {news_count}</p>
         <p><strong>Elapsed:</strong> {elapsed_seconds:.1f}s</p>
-        <p><strong>Decisions:</strong> {len(recorder.decisions)}</p>
-        <p><strong>Positions:</strong> {len(recorder.positions)}</p>
+        <p><strong>Decisions:</strong> {len(state.decisions)}</p>
+        <p><strong>Positions:</strong> {len(state.positions)}</p>
     </div>
 
     <h2>📈 Price Charts with Decision Points</h2>
@@ -1046,20 +967,47 @@ if __name__ == "__main__":
 
     parser = ArgumentParser(description="Generate HTML report for finance trading simulation")
     parser.add_argument("--simulation-id", type=str, help="Simulation ID to load (uses most recent if not specified)")
-    parser.add_argument("--db-path", type=Path, default=Path("data/simulation_data.db"), help="Path to simulation_data.db")
+    parser.add_argument(
+        "--db-path",
+        type=Path,
+        default=Path("data/simulation_data.db"),
+        help="SQLite database path (only when config.yaml is missing or database.provider is sqlite)",
+    )
     parser.add_argument("--output-path", type=Path, default=None, help="Where to save the HTML report")
     args = parser.parse_args()
 
-    # Resolve database path
-    db_path = args.db_path if args.db_path.is_absolute() else Path(__file__).parent / args.db_path
-    
-    if not db_path.exists():
-        print(f"Database not found: {db_path}")
-        print("Run a simulation first to create the database.")
-        exit(1)
-    
-    from dir_core.storage import sqlite_storage
-    bundle = sqlite_storage(str(db_path))
+    sample_dir = Path(__file__).resolve().parent
+    config_path = sample_dir / "config.yaml"
+    cli_db_path = args.db_path if args.db_path.is_absolute() else sample_dir / args.db_path
+
+    from shared.config import load_yaml_config
+    from shared.bootstrap import normalize_database_provider, open_storage_bundle
+
+    if config_path.exists():
+        config = load_yaml_config(config_path)
+        db_cfg = config.get("database") or {}
+        db_provider = normalize_database_provider(db_cfg.get("provider", "memory"))
+        if db_provider == "sqlite":
+            cfg_sqlite = db_cfg.get("db_path", "data/simulation_data.db")
+            sqlite_path = (
+                Path(cfg_sqlite)
+                if Path(cfg_sqlite).is_absolute()
+                else sample_dir / cfg_sqlite
+            )
+            if not sqlite_path.exists():
+                print(f"SQLite database not found: {sqlite_path}")
+                print("Run a simulation first to create the database.")
+                exit(1)
+        bundle = open_storage_bundle(db_cfg)
+    else:
+        if not cli_db_path.exists():
+            print(f"Database not found: {cli_db_path}")
+            print("Run a simulation first or add config.yaml with database settings.")
+            exit(1)
+        from dir_core.storage import sqlite_storage
+
+        bundle = sqlite_storage(str(cli_db_path))
+        
     events = bundle.decision_audit.all_events_chronological()
     
     # If no simulation ID provided, try to get the most recent one
@@ -1087,7 +1035,7 @@ if __name__ == "__main__":
     
     generate_html_report(
         simulation_id=simulation_id,
-        db_path=db_path,
+        bundle=bundle,
         output_path=output_path,
         simulation_ticks=sim_summary.get("simulation_ticks", 0),
         news_count=sim_summary.get("total_news_events", 0),

@@ -23,6 +23,91 @@ from .contracts.provider import (
 
 logger = logging.getLogger(__name__)
 
+
+def normalize_database_provider(raw: object) -> str:
+    """Map YAML / user spellings to internal provider tokens."""
+    if raw is None:
+        return "memory"
+    s = str(raw).strip().lower()
+    if s in ("postgresql", "psql", "pg"):
+        return "postgres"
+    return s
+
+
+def open_storage_bundle(database_cfg: Dict[str, Any]) -> StorageBundle:
+    """Build a :class:`StorageBundle` from a ``database`` config section only.
+
+    Canonical wiring used across samples:
+
+    - **PostgreSQL**: ``samples.shared.storage.pg_repo.connect`` →
+      ``apply_schema`` → ``build_repository``.
+    - **SQLite**: :func:`dir_core.storage.sqlite_storage`.
+    - **memory**: :func:`dir_core.storage.memory_storage`.
+
+    Environment overrides for PostgreSQL (``DB_HOST``, ``DB_PORT``, ``DB_NAME``,
+    ``DB_USER``, ``DB_PASS``) match :func:`setup_environment`.
+    """
+    db_provider = normalize_database_provider(database_cfg.get("provider", "memory"))
+
+    if db_provider == "postgres":
+        try:
+            from .storage.pg_repo import connect, apply_schema, build_repository
+        except ImportError as e:
+            raise ImportError(
+                "PostgreSQL storage requires the 'psycopg2-binary' package. "
+                "Install with: pip install psycopg2-binary"
+            ) from e
+
+        overrides = {
+            "host": os.getenv("DB_HOST"),
+            "port": os.getenv("DB_PORT"),
+            "dbname": os.getenv("DB_NAME"),
+            "user": os.getenv("DB_USER"),
+            "password": os.getenv("DB_PASS"),
+        }
+        cfg = dict(database_cfg)
+        for key, val in overrides.items():
+            if val is not None:
+                cfg[key] = int(val) if key == "port" else val
+        cfg.pop("provider", None)
+
+        conn = connect(cfg)
+        apply_schema(conn)
+        repository = build_repository(conn)
+        logger.info("Using PostgreSQL repository.")
+        return repository
+
+    if db_provider == "sqlite":
+        db_path = database_cfg.get("db_path", "data/app.db")
+        dir_name = os.path.dirname(db_path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
+        repository = sqlite_storage(db_path)
+        logger.info("Using SQLite repository at %s.", db_path)
+        return repository
+
+    if db_provider == "memory":
+        repository = memory_storage()
+        logger.info("Using in-memory repository.")
+        return repository
+
+    raise ValueError(f"Unknown database provider: {db_provider}")
+
+
+def database_connection_summary(config: Dict[str, Any]) -> str:
+    """Short human-readable description of configured persistence (no I/O)."""
+    db = config.get("database") or {}
+    p = normalize_database_provider(db.get("provider", "memory"))
+    if p == "postgres":
+        return (
+            f"PostgreSQL host={db.get('host')} port={db.get('port', 5432)} "
+            f"dbname={db.get('dbname')} user={db.get('user')}"
+        )
+    if p == "sqlite":
+        return f"SQLite path={db.get('db_path', 'data/app.db')}"
+    return "In-memory storage"
+
+
 @dataclass
 class Environment:
     llm: LLMClient
@@ -77,47 +162,8 @@ def setup_environment(
     else:
         raise ValueError(f"Unknown LLM provider: {provider}")
 
-    # 2. Build Storage
-    db_config = config.get("database", {})
-    db_provider = db_config.get("provider", "memory").lower()
-    
-    if db_provider == "postgres":
-        # Import dynamically to avoid psycopg2 dependency if not used
-        try:
-            from .storage.pg_repo import connect, apply_schema, build_repository
-        except ImportError:
-            raise ImportError("psycopg2-binary is required for PostgreSQL storage")
-            
-        overrides = {
-            "host":     os.getenv("DB_HOST"),
-            "port":     os.getenv("DB_PORT"),
-            "dbname":   os.getenv("DB_NAME"),
-            "user":     os.getenv("DB_USER"),
-            "password": os.getenv("DB_PASS"),
-        }
-        cfg = dict(db_config)
-        for key, val in overrides.items():
-            if val is not None:
-                cfg[key] = int(val) if key == "port" else val
-        # Remove 'provider' as psycopg2.connect doesn't expect it
-        cfg.pop("provider", None)
-        
-        conn = connect(cfg)
-        apply_schema(conn)
-        repository = build_repository(conn)
-        logger.info("Using PostgreSQL repository.")
-    elif db_provider == "sqlite":
-        db_path = db_config.get("db_path", "data/app.db")
-        dir_name = os.path.dirname(db_path)
-        if dir_name:
-            os.makedirs(dir_name, exist_ok=True)
-        repository = sqlite_storage(db_path)
-        logger.info(f"Using SQLite repository at {db_path}.")
-    elif db_provider == "memory":
-        repository = memory_storage()
-        logger.info("Using in-memory repository.")
-    else:
-        raise ValueError(f"Unknown database provider: {db_provider}")
+    # 2. Build Storage (PostgreSQL via pg_repo.build_repository, SQLite via sqlite_storage)
+    repository = open_storage_bundle(config.get("database") or {})
 
     # 3. Build Contract Provider
     contracts_config = config.get("contracts", {})
