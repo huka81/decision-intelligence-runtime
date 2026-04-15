@@ -15,8 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from dir_core import new_dfid
-
-from audit_store import AuditStore
+from dir_core.storage import AuditStore, sqlite_storage
 from email_fixture_ingest import (
     client_application_from_fixture,
     list_markdown_fixtures,
@@ -352,7 +351,9 @@ def run_email_pipeline(
     )
     if os.environ.get("UNDERWRITING_AUDIT_DB"):
         db_path = Path(os.environ["UNDERWRITING_AUDIT_DB"])
-    audit = AuditStore(db_path)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    repository = sqlite_storage(str(db_path.resolve()))
+    audit = AuditStore(repository.decision_audit, repository.idempotency)
     binder = PolicyBindingClient(audit)
 
     ep = config.get("email_processing", {})

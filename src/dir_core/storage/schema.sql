@@ -234,3 +234,23 @@ CREATE TABLE IF NOT EXISTS flow_transitions (
     to_status   TEXT      NOT NULL,
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+
+-- -----------------------------------------------------------------------------
+-- Observability — append-only decision audit events (core data model)
+--
+-- DFID-scoped audit rows for compliance and debugging, alongside lifecycle
+-- transitions in flow_transitions.  Exposed as DecisionAuditStorage; paired
+-- with idempotency_cache via AuditStore where replay-safe steps are required.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS decision_audit_events (
+    id          INTEGER   PRIMARY KEY AUTOINCREMENT,
+    dfid        TEXT      NOT NULL,
+    event       TEXT      NOT NULL,
+    timestamp   TEXT      NOT NULL,
+    step_id     TEXT      NOT NULL DEFAULT '',
+    state       TEXT      NOT NULL DEFAULT '',
+    detail_json JSON      NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX IF NOT EXISTS idx_decision_audit_events_dfid ON decision_audit_events(dfid);

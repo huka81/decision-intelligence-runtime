@@ -122,6 +122,48 @@ class MemoryIdempotencyStorage:
 
 
 # ---------------------------------------------------------------------------
+# Decision audit trail
+# ---------------------------------------------------------------------------
+
+
+class MemoryDecisionAuditStorage:
+    """In-memory backend for DFID-scoped decision audit rows."""
+
+    def __init__(self) -> None:
+        self._rows: List[Dict[str, Any]] = []
+
+    def init_schema(self) -> None:
+        pass
+
+    def record(
+        self,
+        dfid: str,
+        event: str,
+        *,
+        step_id: str = "",
+        state: str = "",
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        self._rows.append(
+            {
+                "dfid": dfid,
+                "event": event,
+                "timestamp": ts,
+                "step_id": step_id,
+                "state": state,
+                "details": dict(details or {}),
+            }
+        )
+
+    def events_for_dfid(self, dfid: str) -> List[Dict[str, Any]]:
+        return [dict(r) for r in self._rows if r["dfid"] == dfid]
+
+    def all_events_chronological(self) -> List[Dict[str, Any]]:
+        return [dict(r) for r in self._rows]
+
+
+# ---------------------------------------------------------------------------
 # Saga
 # ---------------------------------------------------------------------------
 

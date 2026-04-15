@@ -115,6 +115,89 @@ class IdempotencyStorage(Protocol):
 
 
 # ---------------------------------------------------------------------------
+# Decision audit trail (core data model: decision_audit_events + idempotency_cache)
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class DecisionAuditStorage(Protocol):
+    def init_schema(self) -> None: ...
+
+    def record(
+        self,
+        dfid: str,
+        event: str,
+        *,
+        step_id: str = "",
+        state: str = "",
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Append one DFID-scoped audit row."""
+        ...
+
+    def events_for_dfid(self, dfid: str) -> List[Dict[str, Any]]:
+        """Return events for *dfid* in insertion order (details = dict per row)."""
+        ...
+
+    def all_events_chronological(self) -> List[Dict[str, Any]]:
+        """Return all events in insertion order."""
+        ...
+
+
+class AuditStore:
+    """Repository helper: append-only audit rows plus idempotent replay (DIR §7).
+
+    Combines :class:`DecisionAuditStorage` (``decision_audit_events``) and
+    :class:`IdempotencyStorage` (``idempotency_cache``). Construct from a
+    :class:`~dir_core.storage.StorageBundle` as
+    ``AuditStore(bundle.decision_audit, bundle.idempotency)``.
+    """
+
+    __slots__ = ("_decision_audit", "_idempotency")
+
+    def __init__(
+        self,
+        decision_audit: DecisionAuditStorage,
+        idempotency: IdempotencyStorage,
+    ) -> None:
+        self._decision_audit = decision_audit
+        self._idempotency = idempotency
+
+    def close(self) -> None:
+        """No-op when backends use short-lived connections per call."""
+        return None
+
+    def record(
+        self,
+        dfid: str,
+        event: str,
+        *,
+        step_id: str = "",
+        state: str = "",
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        self._decision_audit.record(
+            dfid, event, step_id=step_id, state=state, details=details
+        )
+
+    def get_idempotent_result(self, key: str) -> Optional[Dict[str, Any]]:
+        return self._idempotency.get(key)
+
+    def save_idempotent_result(
+        self, key: str, dfid: str, result: Dict[str, Any]
+    ) -> None:
+        payload = dict(result)
+        payload["_dfid"] = dfid
+        self._idempotency.set(key, payload)
+
+    def events_for_dfid(self, dfid: str) -> List[Dict[str, Any]]:
+        return self._decision_audit.events_for_dfid(dfid)
+
+    def all_events_chronological(self) -> List[Dict[str, Any]]:
+        return self._decision_audit.all_events_chronological()
+
+
+# ---------------------------------------------------------------------------
 # Saga Compensation (DIR §7, Topologies §6.4)
 # ---------------------------------------------------------------------------
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -245,6 +246,97 @@ class SqliteIdempotencyStorage:
                 (key, json.dumps(result)),
             )
             conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Decision audit trail
+# ---------------------------------------------------------------------------
+
+
+class SqliteDecisionAuditStorage:
+    """SQLite backend for append-only decision_audit_events."""
+
+    def __init__(self, db_path: str) -> None:
+        self.db_path = db_path
+        self.init_schema()
+
+    def init_schema(self) -> None:
+        with _connect(self.db_path) as conn:
+            _apply_schema(conn)
+
+    def record(
+        self,
+        dfid: str,
+        event: str,
+        *,
+        step_id: str = "",
+        state: str = "",
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        payload = json.dumps(details or {}, sort_keys=True, default=str)
+        with _connect(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO decision_audit_events
+                    (dfid, event, timestamp, step_id, state, detail_json)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (dfid, event, ts, step_id, state, payload),
+            )
+            conn.commit()
+
+    def events_for_dfid(self, dfid: str) -> List[Dict[str, Any]]:
+        with _connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT dfid, event, timestamp, step_id, state, detail_json
+                FROM decision_audit_events
+                WHERE dfid = ?
+                ORDER BY id ASC
+                """,
+                (dfid,),
+            )
+            rows = cursor.fetchall()
+        out: List[Dict[str, Any]] = []
+        for r in rows:
+            out.append(
+                {
+                    "dfid": r["dfid"],
+                    "event": r["event"],
+                    "timestamp": r["timestamp"],
+                    "step_id": r["step_id"],
+                    "state": r["state"],
+                    "details": json.loads(r["detail_json"] or "{}"),
+                }
+            )
+        return out
+
+    def all_events_chronological(self) -> List[Dict[str, Any]]:
+        with _connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT dfid, event, timestamp, step_id, state, detail_json
+                FROM decision_audit_events
+                ORDER BY id ASC
+                """
+            )
+            rows = cursor.fetchall()
+        out: List[Dict[str, Any]] = []
+        for r in rows:
+            out.append(
+                {
+                    "dfid": r["dfid"],
+                    "event": r["event"],
+                    "timestamp": r["timestamp"],
+                    "step_id": r["step_id"],
+                    "state": r["state"],
+                    "details": json.loads(r["detail_json"] or "{}"),
+                }
+            )
+        return out
 
 
 # ---------------------------------------------------------------------------

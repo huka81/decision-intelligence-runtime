@@ -13,7 +13,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from audit_store import AuditStore
+from dir_core.storage import AuditStore
 
 logger = logging.getLogger(__name__)
 

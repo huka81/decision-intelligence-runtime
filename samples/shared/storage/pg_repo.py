@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import re
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -90,6 +91,7 @@ def build_repository(
         agent_registry=PgAgentRegistryStorage(conn),
         context=PgContextStorage(conn),
         idempotency=PgIdempotencyStorage(conn),
+        decision_audit=PgDecisionAuditStorage(conn),
         saga=PgSagaStorage(conn),
         resource_lock=PgResourceLockStorage(conn),
         intent_retry=PgIntentRetryStorage(conn),
@@ -313,6 +315,88 @@ class PgIdempotencyStorage:
                 (key, json.dumps(result)),
             )
         self._conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Observability — decision audit events
+# ---------------------------------------------------------------------------
+
+
+class PgDecisionAuditStorage:
+    """PostgreSQL backend for decision_audit_events."""
+
+    def __init__(self, conn: psycopg2.extensions.connection) -> None:
+        self._conn = conn
+
+    def init_schema(self) -> None:
+        pass
+
+    def record(
+        self,
+        dfid: str,
+        event: str,
+        *,
+        step_id: str = "",
+        state: str = "",
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO decision_audit_events
+                    (dfid, event, timestamp, step_id, state, detail_json)
+                VALUES (%s, %s, %s, %s, %s, %s::jsonb)
+                """,
+                (dfid, event, ts, step_id, state, json.dumps(details or {})),
+            )
+        self._conn.commit()
+
+    def events_for_dfid(self, dfid: str) -> List[Dict[str, Any]]:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT dfid, event, timestamp, step_id, state, detail_json::text
+                FROM decision_audit_events
+                WHERE dfid = %s
+                ORDER BY id ASC
+                """,
+                (dfid,),
+            )
+            rows = cur.fetchall()
+        return [
+            {
+                "dfid": r[0],
+                "event": r[1],
+                "timestamp": r[2],
+                "step_id": r[3],
+                "state": r[4],
+                "details": json.loads(r[5] or "{}"),
+            }
+            for r in rows
+        ]
+
+    def all_events_chronological(self) -> List[Dict[str, Any]]:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT dfid, event, timestamp, step_id, state, detail_json::text
+                FROM decision_audit_events
+                ORDER BY id ASC
+                """
+            )
+            rows = cur.fetchall()
+        return [
+            {
+                "dfid": r[0],
+                "event": r[1],
+                "timestamp": r[2],
+                "step_id": r[3],
+                "state": r[4],
+                "details": json.loads(r[5] or "{}"),
+            }
+            for r in rows
+        ]
 
 
 # ---------------------------------------------------------------------------

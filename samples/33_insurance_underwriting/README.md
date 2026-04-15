@@ -271,7 +271,6 @@ samples/33_insurance_underwriting/
 ├── pipeline.py             # Orchestrator: DFID, gates, ROA, DIM, mock bind, audit
 ├── email_fixture_ingest.py # Load `.md` fixtures → coarse ClientApplication
 ├── gates.py                # Kernel hard gates (injection, territory, authority ceiling)
-├── audit_store.py          # SQLite append-only decision_events + bind idempotency
 ├── policy_binding.py       # Mock bind API (post-ledger)
 ├── emails/                 # `*.md` fixtures (EXT … broker submissions)
 ├── data/                   # Runtime data (created on first run)

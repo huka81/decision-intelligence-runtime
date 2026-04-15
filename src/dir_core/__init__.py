@@ -101,7 +101,9 @@ from .wakeup import (
 from .storage import (
     # Protocols (implement these to create a custom backend)
     AgentRegistryStorage,
+    AuditStore,
     ContextStorage,
+    DecisionAuditStorage,
     IdempotencyStorage,
     SagaStorage,
     ResourceLockStorage,
@@ -114,6 +116,7 @@ from .storage import (
     # SQLite backends (default, no extra deps)
     SqliteAgentRegistryStorage,
     SqliteContextStorage,
+    SqliteDecisionAuditStorage,
     SqliteIdempotencyStorage,
     SqliteSagaStorage,
     SqliteResourceLockStorage,
@@ -123,6 +126,7 @@ from .storage import (
     # Memory backends (testing / ephemeral)
     MemoryAgentRegistryStorage,
     MemoryContextStorage,
+    MemoryDecisionAuditStorage,
     MemoryIdempotencyStorage,
     MemorySagaStorage,
     MemoryResourceLockStorage,
@@ -223,7 +227,9 @@ __all__ = [
     "FlowEvent",
     # Storage layer - protocols
     "AgentRegistryStorage",
+    "AuditStore",
     "ContextStorage",
+    "DecisionAuditStorage",
     "IdempotencyStorage",
     "SagaStorage",
     "ResourceLockStorage",
@@ -235,6 +241,7 @@ __all__ = [
     # Storage layer - SQLite backends
     "SqliteAgentRegistryStorage",
     "SqliteContextStorage",
+    "SqliteDecisionAuditStorage",
     "SqliteIdempotencyStorage",
     "SqliteSagaStorage",
     "SqliteResourceLockStorage",
@@ -244,6 +251,7 @@ __all__ = [
     # Storage layer - memory backends
     "MemoryAgentRegistryStorage",
     "MemoryContextStorage",
+    "MemoryDecisionAuditStorage",
     "MemoryIdempotencyStorage",
     "MemorySagaStorage",
     "MemoryResourceLockStorage",
