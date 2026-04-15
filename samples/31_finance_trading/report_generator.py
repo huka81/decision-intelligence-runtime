@@ -19,7 +19,6 @@ from simulation_recorder import (
     SimDecisionRecord,
     PositionRecord,
 )
-from simulation_database import SimulationDatabase
 
 
 def _escape(s: str) -> str:
@@ -507,84 +506,90 @@ def generate_html_report(
     elapsed_seconds: float = 0.0,
 ) -> None:
     """
-    Generate complete HTML audit report for finance trading simulation from database.
-
-    Args:
-        simulation_id: Simulation ID to load data for
-        db_path: Path to simulation_data.db
-        output_path: Where to save the HTML file
-        simulation_ticks: Total ticks run
-        news_count: Total news events
-        elapsed_seconds: Wall-clock duration
+    Generate complete HTML audit report for finance trading simulation from canonical database.
     """
-    # Load data from database
-    db = SimulationDatabase(db_path)
-    db.connect()
+    from dir_core.storage import sqlite_storage
+    bundle = sqlite_storage(str(db_path))
+    events = bundle.decision_audit.all_events_chronological()
     
-    try:
-        # Load all data for this simulation
-        ticks_data = db.load_ticks(simulation_id)
-        decisions_data = db.load_decisions(simulation_id)
-        positions_data = db.load_positions(simulation_id)
-        news_events_data = db.load_news_events(simulation_id)
-        
-        # Create temporary recorder with loaded data
-        recorder = SimulationRecorder()
-        
-        # Convert loaded data to recorder format
-        for t in ticks_data:
+    recorder = SimulationRecorder(simulation_id=simulation_id)
+    
+    for row in events:
+        d = row.get("details", {})
+        if d.get("simulation_id") != simulation_id:
+            continue
+        ev_type = row.get("event")
+        if ev_type == "MARKET_TICK":
             recorder.ticks.append(TickRecord(
-                tick_index=t['tick_index'],
-                instrument=t['instrument'],
-                price=t['price'],
-                timestamp=t['timestamp'],
-                dfid=t['dfid'],
-                trend=t.get('trend', 'neutral'),
-                volatility=t.get('volatility', 0.0),
+                tick_index=d.get('tick_index', 0),
+                instrument=d.get('instrument', ''),
+                price=d.get('price', 0.0),
+                timestamp=d.get('timestamp', row['timestamp']),
+                dfid=row['dfid'],
+                trend=d.get('trend', 'neutral'),
+                volatility=d.get('volatility', 0.0),
             ))
-        
-        for d in decisions_data:
+        elif ev_type == "AGENT_DECISION":
             recorder.decisions.append(SimDecisionRecord(
-                tick_index=d['tick_index'],
-                dfid=d['dfid'],
+                tick_index=d.get('tick_index', 0),
+                dfid=row['dfid'],
                 parent_dfid=d.get('parent_dfid'),
-                agent_id=d['agent_id'],
-                policy_kind=d['policy_kind'],
+                agent_id=d.get('agent_id', ''),
+                policy_kind=d.get('policy_kind', ''),
                 justification=d.get('justification'),
-                dim_result=d['dim_result'],
-                dim_reason=d['dim_reason'],
+                dim_result=d.get('dim_result', ''),
+                dim_reason=d.get('dim_reason', ''),
                 explain_narrative=d.get('explain_narrative'),
                 explain_signals=d.get('explain_signals', []),
                 explain_risks=d.get('explain_risks', []),
                 explain_opportunities=d.get('explain_opportunities', []),
                 instrument=d.get('instrument'),
                 price=d.get('price'),
-                event_type=d['event_type'],
+                event_type=d.get('event_type', ''),
                 instruments_affected=d.get('instruments_affected', []),
             ))
-        
-        for p in positions_data:
+        elif ev_type == "POSITION_SPAWNED":
             recorder.positions.append(PositionRecord(
-                position_id=p['position_id'],
-                instrument=p['instrument'],
-                entry_tick=p['entry_tick'],
-                entry_price=p['entry_price'],
-                initial_exposure=p['initial_exposure'],
-                current_exposure=p['current_exposure'],
-                quantity=p['quantity'],
-                parent_dfid=p.get('parent_dfid'),
-                news_headline=p.get('news_headline'),
-                lifecycle_events=p.get('lifecycle_events', []),
-                close_tick=p.get('close_tick'),
-                close_price=p.get('close_price'),
-                close_reason=p.get('close_reason'),
+                position_id=d.get('position_id', ''),
+                instrument=d.get('instrument', ''),
+                entry_tick=d.get('entry_tick', 0),
+                entry_price=d.get('entry_price', 0.0),
+                initial_exposure=d.get('initial_exposure', 0.0),
+                current_exposure=d.get('initial_exposure', 0.0),
+                quantity=d.get('quantity', 0.0),
+                parent_dfid=d.get('parent_dfid') or row['dfid'],
+                news_headline=d.get('news_headline'),
+                lifecycle_events=[],
             ))
-        
-        recorder.news_events = news_events_data
-        
-    finally:
-        db.close()
-    
+        elif ev_type == "POSITION_EVENT":
+            for p in recorder.positions:
+                if p.position_id == d.get('position_id'):
+                    p.lifecycle_events.append({
+                        "tick_index": d.get('tick_index'),
+                        "policy_kind": d.get('policy_kind'),
+                        "price": d.get('price'),
+                        "justification": d.get('justification'),
+                    })
+        elif ev_type == "POSITION_CLOSED":
+            for p in recorder.positions:
+                if p.position_id == d.get('position_id'):
+                    p.close_tick = d.get('close_tick')
+                    p.close_price = d.get('close_price')
+                    p.close_reason = d.get('close_reason')
+                    p.current_exposure = 0.0
+        elif ev_type == "POSITION_EXPOSURE_UPDATED":
+            for p in recorder.positions:
+                if p.position_id == d.get('position_id'):
+                    p.current_exposure = d.get('new_exposure', 0.0)
+        elif ev_type == "NEWS_GENERATED":
+            recorder.news_events.append({
+                "dfid": row['dfid'],
+                "headline": d.get('headline', ''),
+                "sentiment": d.get('sentiment'),
+                "instruments_affected": d.get('instruments_affected', []),
+                "raw_score": d.get('raw_score'),
+            })
+
     # Generate report from loaded data
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
@@ -1053,36 +1058,24 @@ if __name__ == "__main__":
         print("Run a simulation first to create the database.")
         exit(1)
     
-    db = SimulationDatabase(db_path)
-    db.connect()
+    from dir_core.storage import sqlite_storage
+    bundle = sqlite_storage(str(db_path))
+    events = bundle.decision_audit.all_events_chronological()
     
     # If no simulation ID provided, try to get the most recent one
     simulation_id = args.simulation_id
+    sim_summary = {}
     if not simulation_id:
-        try:
-            result = db.conn.execute(
-                "SELECT simulation_id FROM simulations ORDER BY run_timestamp DESC LIMIT 1"
-            ).fetchone()
-            if result:
-                simulation_id = result[0]
-                print(f"Using most recent simulation: {simulation_id}")
-            else:
-                print("No simulations found in database.")
-                db.close()
-                exit(1)
-        except Exception as e:
-            print(f"Error querying database: {e}")
-            db.close()
+        for r in reversed(events):
+            if r.get("event") == "SIMULATION_START":
+                simulation_id = r.get("details", {}).get("simulation_id")
+                sim_summary = r.get("details", {})
+                break
+        if not simulation_id:
+            print("No simulations found in database.")
             exit(1)
+        print(f"Using most recent simulation: {simulation_id}")
     
-    sim_summary = db.get_simulation_summary(simulation_id)
-    if not sim_summary:
-        print(f"Simulation {simulation_id} not found in database.")
-        db.close()
-        exit(1)
-    
-    db.close()
-
     # Determine output path
     if args.output_path:
         output_path = args.output_path
@@ -1101,7 +1094,7 @@ if __name__ == "__main__":
         elapsed_seconds=sim_summary.get("elapsed_seconds", 0.0),
     )
     
-    print(f"✅ Report generated: {output_path}")
+    print(f"Report generated: {output_path}")
     print(f"\nOpening report in browser...")
     try:
         import webbrowser

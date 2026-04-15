@@ -165,7 +165,9 @@ def main() -> None:
     data_dir = sample_dir / "data"
     data_dir.mkdir(exist_ok=True)
     db_path = data_dir / "simulation_data.db"
-    recorder = SimulationRecorder(db_path=str(db_path))
+    from dir_core.storage import sqlite_storage
+    bundle = sqlite_storage(str(db_path))
+    recorder = SimulationRecorder(bundle=bundle)
     simulation_id = recorder.start_simulation(config)
     logger.info("Simulation ID: %s", simulation_id)
     logger.info("Database: %s", db_path)
@@ -427,20 +429,6 @@ def main() -> None:
     print(f"  Report: {report_path}")
     print(f"  Simulation ID: {simulation_id}")
     print()
-
-    # Run query_position_views.py for this simulation
-    print("Running position audit view...")
-    query_script = sample_dir / "query_position_views.py"
-    try:
-        subprocess.run(
-            [sys.executable, str(query_script), simulation_id],
-            check=True,
-            cwd=str(sample_dir),
-        )
-    except subprocess.CalledProcessError as e:
-        logger.error("Failed to run query_position_views.py: %s", e)
-    except Exception as e:
-        logger.error("Error running query_position_views.py: %s", e)
 
     # Open HTML report in browser
     print(f"\nOpening report in browser: {report_path}")

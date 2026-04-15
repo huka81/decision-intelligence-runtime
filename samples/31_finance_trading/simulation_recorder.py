@@ -5,24 +5,24 @@ Records all data needed to reconstruct the full decision lifecycle and
 generate charts with price quotes and decision points.
 
 Data is stored both in memory (for HTML report generation) and optionally
-in SQLite database (for persistent storage and analysis).
+in SQLite database (for persistent storage and analysis) via dir_core's
+DecisionAuditStorage.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-try:
-    from .simulation_database import SimulationDatabase
-except ImportError:
-    from simulation_database import SimulationDatabase
+from dir_core.storage import StorageBundle
 
 
 @dataclass
 class TickRecord:
     """Single tick (market observation) for chart data."""
-
     tick_index: int
     instrument: str
     price: float
@@ -35,7 +35,6 @@ class TickRecord:
 @dataclass
 class SimDecisionRecord:
     """Single decision event for report (agent proposal + DIM result)."""
-
     tick_index: int
     dfid: str
     parent_dfid: Optional[str]
@@ -51,14 +50,12 @@ class SimDecisionRecord:
     instrument: Optional[str]
     price: Optional[float]
     event_type: str  # "observation" | "news"
-    instruments_affected: List[str] = field(default_factory=list)  # For NEWS_QUALIFIED
+    instruments_affected: List[str] = field(default_factory=list)
 
 
-@dataclass
 @dataclass
 class PositionRecord:
-    """Position lifecycle: spawn from news with exposure tracking, decisions (HOLD/REDUCE/CLOSE)."""
-
+    """Position lifecycle: spawn from news with exposure tracking, decisions."""
     position_id: str
     instrument: str
     entry_tick: int
@@ -76,32 +73,46 @@ class PositionRecord:
 
 @dataclass
 class SimulationRecorder:
-    """Collects simulation data for HTML report generation and SQLite persistence."""
-
+    """Collects simulation data for HTML report generation and SQLite persistence via DIR canonical model."""
     ticks: List[TickRecord] = field(default_factory=list)
     decisions: List[SimDecisionRecord] = field(default_factory=list)
     positions: List[PositionRecord] = field(default_factory=list)
     news_events: List[Dict[str, Any]] = field(default_factory=list)
-    db_path: Optional[str] = None
-    db: Optional[SimulationDatabase] = field(default=None, init=False, repr=False)
-    
-    def __post_init__(self) -> None:
-        """Initialize database connection if db_path is provided."""
-        if self.db_path:
-            self.db = SimulationDatabase(self.db_path)
-            self.db.connect()
-    
+    bundle: Optional[StorageBundle] = field(default=None, repr=False)
+    simulation_id: str = field(default="no-db")
+
     def start_simulation(self, config: Dict[str, Any]) -> str:
         """Start a new simulation run and return simulation ID."""
-        if self.db:
-            return self.db.start_simulation(config)
-        return "no-db"
-    
+        if not self.bundle:
+            return "no-db"
+        timestamp = datetime.now(timezone.utc).isoformat()
+        config_str = json.dumps(config, sort_keys=True)
+        config_hash = hashlib.sha256(config_str.encode()).hexdigest()[:16]
+        self.simulation_id = f"sim_{timestamp.replace(':', '-').replace('.', '-')}_{config_hash[:8]}"
+
+        self.bundle.decision_audit.record(
+            self.simulation_id,
+            "SIMULATION_START",
+            details={
+                "simulation_id": self.simulation_id,
+                "config_hash": config_hash,
+                "simulation_ticks": config.get("simulation", {}).get("simulation_ticks"),
+            }
+        )
+        return self.simulation_id
+
     def complete_simulation(self, status: str = "completed", error_message: Optional[str] = None) -> None:
-        """Mark simulation as completed and close database connection."""
-        if self.db:
-            self.db.complete_simulation(status, error_message)
-            self.db.close()
+        """Mark simulation as completed in audit log."""
+        if self.bundle:
+            self.bundle.decision_audit.record(
+                self.simulation_id,
+                "SIMULATION_END",
+                details={
+                    "simulation_id": self.simulation_id,
+                    "status": status,
+                    "error_message": error_message,
+                }
+            )
 
     def record_tick(
         self,
@@ -109,7 +120,7 @@ class SimulationRecorder:
         payload: Dict[str, Any],
         dfid: str,
     ) -> None:
-        """Record one market tick (memory + database)."""
+        """Record one market tick."""
         tick = TickRecord(
             tick_index=tick_index,
             instrument=payload.get("instrument", ""),
@@ -121,16 +132,19 @@ class SimulationRecorder:
         )
         self.ticks.append(tick)
         
-        # Also save to database
-        if self.db:
-            self.db.insert_tick(
-                tick_index=tick.tick_index,
-                instrument=tick.instrument,
-                price=tick.price,
-                timestamp=tick.timestamp,
-                dfid=tick.dfid,
-                trend=tick.trend,
-                volatility=tick.volatility,
+        if self.bundle:
+            self.bundle.decision_audit.record(
+                dfid,
+                "MARKET_TICK",
+                details={
+                    "simulation_id": self.simulation_id,
+                    "tick_index": tick_index,
+                    "instrument": tick.instrument,
+                    "price": tick.price,
+                    "trend": tick.trend,
+                    "volatility": tick.volatility,
+                    "timestamp": tick.timestamp,
+                }
             )
 
     def record_decision(
@@ -141,7 +155,7 @@ class SimulationRecorder:
         dim_reason: str,
         event_type: str = "observation",
     ) -> None:
-        """Record a decision (winner proposal + DIM result) (memory + database)."""
+        """Record a decision."""
         params = getattr(proposal, "params", {}) or {}
         instruments_affected = params.get("instruments_affected", [])
         instrument = params.get("instrument")
@@ -168,25 +182,28 @@ class SimulationRecorder:
         )
         self.decisions.append(decision)
         
-        # Also save to database
-        if self.db:
-            self.db.insert_decision(
-                tick_index=decision.tick_index,
-                dfid=decision.dfid,
-                parent_dfid=decision.parent_dfid,
-                agent_id=decision.agent_id,
-                policy_kind=decision.policy_kind,
-                justification=decision.justification,
-                dim_result=decision.dim_result,
-                dim_reason=decision.dim_reason,
-                explain_narrative=decision.explain_narrative,
-                explain_signals=decision.explain_signals,
-                explain_risks=decision.explain_risks,
-                explain_opportunities=decision.explain_opportunities,
-                instrument=decision.instrument,
-                price=decision.price,
-                event_type=decision.event_type,
-                instruments_affected=decision.instruments_affected,
+        if self.bundle:
+            self.bundle.decision_audit.record(
+                decision.dfid,
+                "AGENT_DECISION",
+                details={
+                    "simulation_id": self.simulation_id,
+                    "tick_index": tick_index,
+                    "parent_dfid": decision.parent_dfid,
+                    "agent_id": decision.agent_id,
+                    "policy_kind": decision.policy_kind,
+                    "justification": decision.justification,
+                    "dim_result": decision.dim_result,
+                    "dim_reason": decision.dim_reason,
+                    "explain_narrative": decision.explain_narrative,
+                    "explain_signals": decision.explain_signals,
+                    "explain_risks": decision.explain_risks,
+                    "explain_opportunities": decision.explain_opportunities,
+                    "instrument": decision.instrument,
+                    "price": decision.price,
+                    "event_type": decision.event_type,
+                    "instruments_affected": decision.instruments_affected,
+                }
             )
 
     def record_position_spawn(
@@ -200,7 +217,6 @@ class SimulationRecorder:
         parent_dfid: Optional[str] = None,
         news_headline: Optional[str] = None,
     ) -> None:
-        """Record spawn of position agent with exposure tracking (memory + database)."""
         position = PositionRecord(
             position_id=position_id,
             instrument=instrument,
@@ -215,17 +231,20 @@ class SimulationRecorder:
         )
         self.positions.append(position)
         
-        # Also save to database
-        if self.db:
-            self.db.insert_position(
-                position_id=position.position_id,
-                instrument=position.instrument,
-                entry_tick=position.entry_tick,
-                entry_price=position.entry_price,
-                initial_exposure=position.initial_exposure,
-                quantity=position.quantity,
-                parent_dfid=position.parent_dfid,
-                news_headline=position.news_headline,
+        if self.bundle:
+            self.bundle.decision_audit.record(
+                parent_dfid or self.simulation_id,
+                "POSITION_SPAWNED",
+                details={
+                    "simulation_id": self.simulation_id,
+                    "position_id": position_id,
+                    "instrument": instrument,
+                    "entry_tick": entry_tick,
+                    "entry_price": entry_price,
+                    "initial_exposure": initial_exposure,
+                    "quantity": quantity,
+                    "news_headline": news_headline,
+                }
             )
 
     def record_position_decision(
@@ -236,27 +255,29 @@ class SimulationRecorder:
         price: float,
         justification: Optional[str] = None,
     ) -> None:
-        """Record a decision by a position/instrument manager agent (memory + database)."""
         event = {
             "tick_index": tick_index,
             "policy_kind": policy_kind,
             "price": price,
             "justification": justification,
         }
-        
         for pos in self.positions:
             if pos.position_id == position_id:
                 pos.lifecycle_events.append(event)
                 break
         
-        # Also save to database
-        if self.db:
-            self.db.insert_position_lifecycle_event(
-                position_id=position_id,
-                tick_index=tick_index,
-                policy_kind=policy_kind,
-                price=price,
-                justification=justification,
+        if self.bundle:
+            self.bundle.decision_audit.record(
+                self.simulation_id,
+                "POSITION_EVENT",
+                details={
+                    "simulation_id": self.simulation_id,
+                    "position_id": position_id,
+                    "tick_index": tick_index,
+                    "policy_kind": policy_kind,
+                    "price": price,
+                    "justification": justification,
+                }
             )
     
     def close_position(
@@ -266,7 +287,6 @@ class SimulationRecorder:
         close_price: float,
         close_reason: str,
     ) -> None:
-        """Mark position as closed (memory + database)."""
         for pos in self.positions:
             if pos.position_id == position_id:
                 pos.close_tick = close_tick
@@ -275,13 +295,17 @@ class SimulationRecorder:
                 pos.current_exposure = 0.0
                 break
         
-        # Also save to database
-        if self.db:
-            self.db.close_position(
-                position_id=position_id,
-                close_tick=close_tick,
-                close_price=close_price,
-                close_reason=close_reason,
+        if self.bundle:
+            self.bundle.decision_audit.record(
+                self.simulation_id,
+                "POSITION_CLOSED",
+                details={
+                    "simulation_id": self.simulation_id,
+                    "position_id": position_id,
+                    "close_tick": close_tick,
+                    "close_price": close_price,
+                    "close_reason": close_reason,
+                }
             )
     
     def update_position_exposure(
@@ -289,21 +313,23 @@ class SimulationRecorder:
         position_id: str,
         new_exposure: float,
     ) -> None:
-        """Update current exposure for a position (after REDUCE)."""
         for pos in self.positions:
             if pos.position_id == position_id:
                 pos.current_exposure = new_exposure
                 break
         
-        # Also save to database
-        if self.db:
-            self.db.update_position_exposure(
-                position_id=position_id,
-                new_exposure=new_exposure,
+        if self.bundle:
+            self.bundle.decision_audit.record(
+                self.simulation_id,
+                "POSITION_EXPOSURE_UPDATED",
+                details={
+                    "simulation_id": self.simulation_id,
+                    "position_id": position_id,
+                    "new_exposure": new_exposure,
+                }
             )
 
     def record_news(self, payload: Dict[str, Any], dfid: str) -> None:
-        """Record a news event for report context (memory + database)."""
         news_event = {
             "dfid": dfid,
             "headline": payload.get("headline", ""),
@@ -313,12 +339,12 @@ class SimulationRecorder:
         }
         self.news_events.append(news_event)
         
-        # Also save to database
-        if self.db:
-            self.db.insert_news_event(
-                dfid=dfid,
-                headline=news_event["headline"],
-                sentiment=news_event["sentiment"],
-                instruments_affected=news_event["instruments_affected"],
-                raw_score=news_event["raw_score"],
+        if self.bundle:
+            self.bundle.decision_audit.record(
+                dfid,
+                "NEWS_GENERATED",
+                details={
+                    "simulation_id": self.simulation_id,
+                    **news_event
+                }
             )

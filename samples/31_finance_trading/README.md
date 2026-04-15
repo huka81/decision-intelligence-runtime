@@ -678,8 +678,7 @@ flowchart TB
         LLM["llm_client\n(Ollama / Gemini / MockLLM)"]
         ROA["roa_agents\n(Instrument, Position, NewsScorer)"]
         Orch["orchestrator"]
-        Rec["simulation_recorder"]
-        DB["simulation_database\n(SQLite)"]
+        Rec["simulation_recorder\n(StorageBundle)"]
         Rep["report_generator\n(HTML + Charts)"]
     end
 
@@ -699,7 +698,7 @@ flowchart TB
     Run --> NGen
     Run --> Rec
     Run --> Rep
-    Rec --> DB
+    Rec --> DB["dir_core.storage"]
     Rep --> DB
     ROA --> LLM
     ROA --> Models
@@ -713,15 +712,13 @@ flowchart TB
 - **llm_client:** `OllamaClient` (sync HTTP to Ollama), `GeminiClient` (Google AI API), or `MockLLM`; interface `generate(prompt, system=None) -> str`.
 - **roa_agents:** ROA base (Explain → Policy → Self-Check → Proposal) and concrete agents (Instrument, Position, NewsScorer) using the LLM and config-driven contracts with `wake_up_threshold_pct`.
 - **orchestrator:** Registers agents with the bus (OBSERVATION by scope, NEWS global), **implements Wake-up Predicates for Signal Suppression (DIR Topologies §2.3)**, emits observations/news with DFID, collects proposals per DFID, arbitrates by priority_matrix, spawns position agents from template. Tracks suppressed signals for reporting.
-- **simulation_recorder:** Collects simulation data in memory and persists to SQLite database (simulation_data.db) in real-time during simulation run.
-- **simulation_database:** SQLite database manager with schema creation, data persistence methods (ticks, decisions, positions, news), and audit views for position lifecycle analysis.
-- **report_generator:** Generates interactive HTML reports **directly from SQLite database** with:
+- **simulation_recorder:** Collects simulation data in memory and persists to SQLite database via `dir_core` canonical `DecisionAuditStorage` in real-time during simulation run.
+- **report_generator:** Generates interactive HTML reports **directly from canonical decision audit events** with:
   - **Plotly charts:** Price lines with hover tooltips, visual markers (⭐ News, ▲ Position Opens, 🔷 Decisions)
   - **Position lifecycle cards:** Professional styling with gradients, P&L boxes, timeline events
   - **DFID hierarchy:** Expandable tree showing parent-child relationships
   - Reports can be regenerated for any completed simulation
-- **query_position_views.py:** Console utility for formatted position audit queries with boxes, emojis, and complete decision timelines.
-- **dir:** EventBus (scope-based dispatch), DIM (validate_proposal), models (ResponsibilityContract, PolicyProposal, etc.), QuoteGenerator, NewsGenerator.
+- **dir:** EventBus (scope-based dispatch), DIM (validate_proposal), models (ResponsibilityContract, PolicyProposal, etc.), QuoteGenerator, NewsGenerator, canonical StorageBundle.
 
 ---
 
