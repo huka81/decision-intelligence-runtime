@@ -12,6 +12,8 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from ..data_types import AgentRegistryStatus
+
 
 # ---------------------------------------------------------------------------
 # Agent Registry
@@ -67,7 +69,9 @@ class MemoryAgentRegistryStorage:
 
     def list_active_agents(self) -> List[str]:
         return [
-            aid for aid, rec in self._store.items() if rec.get("status") == "ACTIVE"
+            aid
+            for aid, rec in self._store.items()
+            if rec.get("status") == AgentRegistryStatus.ACTIVE
         ]
 
 

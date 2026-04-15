@@ -7,9 +7,10 @@ Human-in-the-Loop: request escalation, budget (token bucket), resolve.
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from enum import Enum
-from typing import Any, Dict, List, Literal, Optional
+from enum import StrEnum
+from typing import Any, Dict, List, Optional, Union
 
+from .data_types import EscalationSeverity, HumanDecision
 from .models import EscalationRequest, Policy, PolicyProposal
 from .storage.base import EscalationStorage
 from .storage.sqlite import SqliteEscalationStorage
@@ -17,21 +18,18 @@ from .storage.sqlite import SqliteEscalationStorage
 logger = logging.getLogger(__name__)
 
 
-class ImpactCategory(str, Enum):
+class ImpactCategory(StrEnum):
     """Impact level for escalation (DIR §9.4)."""
 
     LOW_IMPACT = "LOW_IMPACT"
     HIGH_IMPACT = "HIGH_IMPACT"
 
 
-class EscalationOutcome(str, Enum):
+class EscalationOutcome(StrEnum):
     """Result of request_escalation."""
 
     GRANTED = "GRANTED"
     BUDGET_EXHAUSTED = "BUDGET_EXHAUSTED"
-
-
-HumanDecision = Literal["OVERRIDE", "MODIFY", "ABORT"]
 
 
 class EscalationManager:
@@ -124,7 +122,7 @@ class EscalationManager:
         """
         impact = (
             ImpactCategory.HIGH_IMPACT
-            if escalation.severity in ("HIGH", "CRITICAL")
+            if escalation.severity in (EscalationSeverity.HIGH, EscalationSeverity.CRITICAL)
             else ImpactCategory.LOW_IMPACT
         )
         if escalation.original_policy is not None:
@@ -159,10 +157,11 @@ class EscalationManager:
     def resolve_escalation(
         self,
         dfid: str,
-        decision: HumanDecision,
+        decision: Union[HumanDecision, str],
         modified_proposal: Optional[PolicyProposal] = None,
     ) -> None:
         """Record human decision: OVERRIDE, MODIFY, or ABORT."""
+        resolved = HumanDecision(decision) if isinstance(decision, str) else decision
         now = datetime.now(timezone.utc)
         proposal_json = (
             modified_proposal.model_dump_json() if modified_proposal else None
@@ -170,7 +169,7 @@ class EscalationManager:
         self._storage.resolve_request(
             dfid=dfid,
             resolved_at=now.isoformat(),
-            decision=decision,
+            decision=resolved.value,
             proposal_json=proposal_json,
         )
 

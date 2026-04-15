@@ -7,7 +7,7 @@ Linear Lock Acquisition (alphabetical order) to prevent deadlocks.
 
 import logging
 import time
-from enum import Enum
+from enum import StrEnum
 from typing import Callable, Dict, Optional
 
 from .storage.base import ResourceLockStorage
@@ -16,7 +16,7 @@ from .storage.sqlite import SqliteResourceLockStorage
 logger = logging.getLogger(__name__)
 
 
-class LockResult(str, Enum):
+class LockResult(StrEnum):
     """Result of acquire attempt."""
 
     ACQUIRED = "ACQUIRED"

@@ -4,7 +4,7 @@ DecisionFlow lifecycle: CREATED -> ACTIVE -> VALIDATING -> ACCEPTED|ABORTED|ESCA
 DIR §4.3, §9. Persists transitions; resets IntentRetryGovernor on terminal states.
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from .storage.base import LifecycleStorage
 
 
-class FlowStatus(str, Enum):
+class FlowStatus(StrEnum):
     CREATED = "CREATED"
     ACTIVE = "ACTIVE"
     VALIDATING = "VALIDATING"

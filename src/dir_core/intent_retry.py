@@ -8,13 +8,14 @@ flow must be aborted with REASONING_EXHAUSTION to prevent feedback poisoning.
 import logging
 from typing import Dict, Optional
 
+from .data_types import DimReasonCode
 from .storage.base import IntentRetryStorage
 from .storage.memory import MemoryIntentRetryStorage
 from .storage.sqlite import SqliteIntentRetryStorage
 
 logger = logging.getLogger(__name__)
 
-REASONING_EXHAUSTION = "REASONING_EXHAUSTION"
+REASONING_EXHAUSTION = DimReasonCode.REASONING_EXHAUSTION
 
 
 class IntentRetryGovernor:

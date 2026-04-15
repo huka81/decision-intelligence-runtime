@@ -17,6 +17,8 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from ..data_types import AgentRegistryStatus
+
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 
@@ -153,7 +155,8 @@ class SqliteAgentRegistryStorage:
     def list_active_agents(self) -> List[str]:
         with _connect(self.db_path) as conn:
             cursor = conn.execute(
-                "SELECT agent_id FROM agent_registry WHERE status = 'ACTIVE'"
+                "SELECT agent_id FROM agent_registry WHERE status = ?",
+                (AgentRegistryStatus.ACTIVE,),
             )
             return [row[0] for row in cursor.fetchall()]
 

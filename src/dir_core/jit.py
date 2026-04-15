@@ -6,12 +6,11 @@ Does NOT re-evaluate reasoning — only compares snapshot vs live state.
 """
 
 import logging
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
+from .data_types import ValidationResult, ValidationVerdict
 
 logger = logging.getLogger(__name__)
-
-ValidationVerdict = Literal["ACCEPT", "REJECT"]
-ValidationResult = Tuple[ValidationVerdict, str]
 
 
 def verify_drift(
@@ -93,5 +92,5 @@ class JITStateVerifier:
             tolerance=tolerance,
         )
         if ok:
-            return "ACCEPT", "no state drift"
-        return "REJECT", reason
+            return ValidationVerdict.ACCEPT, "no state drift"
+        return ValidationVerdict.REJECT, reason

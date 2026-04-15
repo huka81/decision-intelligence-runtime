@@ -1,7 +1,8 @@
 """Tests for Intent Retry Governor (DIR §6.2)."""
 
+from dir_core.data_types import DimReasonCode, ValidationVerdict
 from dir_core.dim import validate_proposal
-from dir_core.intent_retry import REASONING_EXHAUSTION, IntentRetryGovernor
+from dir_core.intent_retry import IntentRetryGovernor
 from dir_core.models import PolicyProposal
 
 
@@ -38,16 +39,16 @@ def test_dim_integration_reasoning_exhaustion() -> None:
         )
 
     v1, r1 = validate_proposal(mk(), context, retry_governor=gov)
-    assert v1 == "REJECT"
+    assert v1 == ValidationVerdict.REJECT
     assert "Risk score" in r1
 
     v2, _ = validate_proposal(mk(), context, retry_governor=gov)
-    assert v2 == "REJECT"
+    assert v2 == ValidationVerdict.REJECT
 
     # Third: should_abort -> REASONING_EXHAUSTION
     v3, r3 = validate_proposal(mk(), context, retry_governor=gov)
-    assert v3 == "REJECT"
-    assert r3 == REASONING_EXHAUSTION
+    assert v3 == ValidationVerdict.REJECT
+    assert r3 == DimReasonCode.REASONING_EXHAUSTION
 
 
 def test_dim_no_governor_no_record() -> None:
@@ -57,6 +58,6 @@ def test_dim_no_governor_no_record() -> None:
     )
     context = {"state": {"risk_score": 0.9}}
     v, r = validate_proposal(proposal, context)
-    assert v == "REJECT"
+    assert v == ValidationVerdict.REJECT
     assert "Risk score" in r
 

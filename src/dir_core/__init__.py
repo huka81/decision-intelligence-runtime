@@ -24,13 +24,27 @@ Custom storage backend example::
 from .agent_registry import AgentRegistry, HandshakeResult
 from .arbitration import DEFAULT_PRIORITY_MATRIX, select_winner
 from .dim import validate_proposal
+from .data_types import (
+    AgentRegistryStatus,
+    ContractRole,
+    DecisionFlowStatus,
+    DecisionRecordOutcome,
+    DimReasonCode,
+    EscalationSeverity,
+    EventBusBackend,
+    EventType,
+    FlowTimelineEventType,
+    HandshakeRejectionReason,
+    HumanDecision,
+    ValidationResult,
+    ValidationVerdict,
+)
 from .context_store import ContextStore
 from .dfid import new_dfid, new_dfid_with_parent
 from .event_bus import (
     Event,
     EventBus,
     EventMetadata,
-    EventType,
     LoggingEventBus,
     create_event_bus,
 )
@@ -124,6 +138,18 @@ __all__ = [
     "DEFAULT_PRIORITY_MATRIX",
     # DIM (DIR ?6)
     "validate_proposal",
+    "ValidationVerdict",
+    "ValidationResult",
+    "DimReasonCode",
+    "ContractRole",
+    "DecisionRecordOutcome",
+    "EscalationSeverity",
+    "FlowTimelineEventType",
+    "DecisionFlowStatus",
+    "HumanDecision",
+    "AgentRegistryStatus",
+    "HandshakeRejectionReason",
+    "EventBusBackend",
     "new_dfid",
     "new_dfid_with_parent",
     "select_winner",

@@ -15,36 +15,11 @@ import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Protocol, Union
 
+from .data_types import EventBusBackend, EventType
+
 logger = logging.getLogger(__name__)
-
-
-class EventType(Enum):
-    """Canonical event types for EOAM lifecycle (DIR Topologies §2.4)."""
-
-    # Observation layer - triggers flows
-    OBSERVATION = "OBSERVATION"
-    MARKET_SIGNAL = "MARKET_SIGNAL"
-    NEWS = "NEWS"
-    RISK_ALERT = "RISK_ALERT"
-    
-    # Agent reasoning layer
-    POLICY_PROPOSAL = "POLICY_PROPOSAL"
-    ESCALATION = "ESCALATION"
-    
-    # Runtime validation layer
-    VALIDATION_RESULT = "VALIDATION_RESULT"
-    VALIDATION_REJECTED = "VALIDATION_REJECTED"
-    
-    # Execution layer
-    EXECUTION_INTENT = "EXECUTION_INTENT"
-    EXECUTION_RESULT = "EXECUTION_RESULT"
-    
-    # System events
-    AGENT_ACTIVATED = "AGENT_ACTIVATED"
-    FLOW_COMPLETED = "FLOW_COMPLETED"
 
 
 @dataclass
@@ -274,18 +249,22 @@ def create_event_bus(backend: Optional[str] = None, with_logging: bool = False) 
     Environment:
         EVENT_BUS_BACKEND: Override backend selection
     """
-    backend = backend or os.environ.get("EVENT_BUS_BACKEND", "memory")
-    
-    if backend == "memory":
+    raw = (backend or os.environ.get("EVENT_BUS_BACKEND", EventBusBackend.MEMORY)).strip().lower()
+    try:
+        backend_e = EventBusBackend(raw)
+    except ValueError as e:
+        raise ValueError(f"Unknown backend: {raw!r}") from e
+
+    if backend_e == EventBusBackend.MEMORY:
         bus = EventBus(name="InMemory")
-    elif backend == "kafka":
+    elif backend_e == EventBusBackend.KAFKA:
         # Future: return KafkaEventBus()
         raise NotImplementedError("Kafka backend not yet implemented")
-    elif backend == "pubsub":
+    elif backend_e == EventBusBackend.PUBSUB:
         # Future: return PubSubEventBus()
         raise NotImplementedError("PubSub backend not yet implemented")
     else:
-        raise ValueError(f"Unknown backend: {backend}")
+        raise ValueError(f"Unknown backend: {raw!r}")
     
     if with_logging:
         return LoggingEventBus(bus)

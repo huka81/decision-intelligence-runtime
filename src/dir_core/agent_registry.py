@@ -13,6 +13,7 @@ import warnings
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from .data_types import AgentRegistryStatus, HandshakeRejectionReason
 from .storage.base import AgentRegistryStorage
 from .storage.sqlite import SqliteAgentRegistryStorage
 
@@ -106,14 +107,14 @@ class AgentRegistry:
         if not _version_compatible(agent_version, self.supported_versions):
             return HandshakeResult(
                 accepted=False,
-                reason="VERSION_MISMATCH",
+                reason=HandshakeRejectionReason.VERSION_MISMATCH.value,
             )
         token = str(uuid.uuid4())
         self._storage.upsert_agent(
             agent_id=agent_id,
             contract_json=json.dumps(contract),
             priority=priority,
-            status="ACTIVE",
+            status=AgentRegistryStatus.ACTIVE,
             agent_version=agent_version,
             session_token=token,
         )
@@ -152,7 +153,7 @@ class AgentRegistry:
             agent_id=agent_id,
             contract_json=json.dumps(contract),
             priority=priority,
-            status="ACTIVE",
+            status=AgentRegistryStatus.ACTIVE,
             agent_version=None,
             session_token=None,
         )

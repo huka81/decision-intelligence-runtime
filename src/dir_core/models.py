@@ -12,13 +12,21 @@ Extended with:
 """
 
 from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Dict, List, Literal, Optional
+from enum import StrEnum
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
+from .data_types import (
+    ContractRole,
+    DecisionFlowStatus,
+    DecisionRecordOutcome,
+    EscalationSeverity,
+    FlowTimelineEventType,
+)
 
-class CompensationAction(str, Enum):
+
+class CompensationAction(StrEnum):
     """Deterministic Compensation Menu (DIR Topologies §6.4)."""
 
     REVERT = "REVERT"
@@ -41,7 +49,7 @@ class ResponsibilityContract(BaseModel):
     """ROA: scope, authority, mission, escalation (Manifesto §3.1)."""
 
     agent_id: str
-    role: Literal["STRATEGIST", "EXECUTOR", "MONITOR"] = "EXECUTOR"
+    role: ContractRole = ContractRole.EXECUTOR
     mission: str = ""
     authorized_instruments: List[str] = Field(default_factory=list)
     allowed_policy_types: List[str] = Field(default_factory=list)
@@ -123,7 +131,7 @@ class DecisionRecord(BaseModel):
     explain_summary: str = ""
     policy_action: str = ""
     policy_confidence: float = 0.0
-    outcome: Literal["ACCEPTED", "REJECTED", "ESCALATED", "PENDING"] = "PENDING"
+    outcome: DecisionRecordOutcome = DecisionRecordOutcome.PENDING
     outcome_reason: Optional[str] = None
 
 
@@ -161,7 +169,7 @@ class EscalationRequest(BaseModel):
     trigger: str = Field(description="What triggered escalation")
     context: Dict[str, Any] = Field(default_factory=dict)
     original_policy: Optional[Policy] = Field(default=None, description="Policy that couldn't be executed")
-    severity: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"] = "MEDIUM"
+    severity: EscalationSeverity = EscalationSeverity.MEDIUM
 
 
 # =============================================================================
@@ -275,20 +283,7 @@ class FlowEvent(BaseModel):
     """Single event in a DecisionFlow timeline."""
 
     timestamp: datetime = Field(default_factory=_utcnow)
-    event_type: Literal[
-        "FLOW_STARTED",
-        "CONTEXT_SNAPSHOT",
-        "EXPLAIN",
-        "POLICY",
-        "SELF_CHECK",
-        "PROPOSAL",
-        "VALIDATION",
-        "EXECUTION",
-        "ESCALATION",
-        "CHILD_FLOW_CREATED",
-        "FLOW_COMPLETED",
-        "FLOW_ABORTED",
-    ]
+    event_type: FlowTimelineEventType
     agent_id: Optional[str] = None
     summary: str = ""
     details: Dict[str, Any] = Field(default_factory=dict)
@@ -326,7 +321,7 @@ class DecisionFlow(BaseModel):
     timeline: List[FlowEvent] = Field(default_factory=list)
     
     # Outcome
-    status: Literal["IN_PROGRESS", "COMPLETED", "ESCALATED", "ABORTED"] = "IN_PROGRESS"
+    status: DecisionFlowStatus = DecisionFlowStatus.IN_PROGRESS
     outcome_summary: Optional[str] = None
     
     # Participating agents
@@ -336,15 +331,17 @@ class DecisionFlow(BaseModel):
     child_dfids: List[str] = Field(default_factory=list)
     
     def add_event(
-        self, 
-        event_type: str, 
-        summary: str, 
+        self,
+        event_type: Union[str, FlowTimelineEventType],
+        summary: str,
         agent_id: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None
+        details: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Add an event to the timeline."""
         event = FlowEvent(
-            event_type=event_type,
+            event_type=FlowTimelineEventType(event_type)
+            if isinstance(event_type, str)
+            else event_type,
             agent_id=agent_id,
             summary=summary,
             details=details or {}
@@ -356,76 +353,88 @@ class DecisionFlow(BaseModel):
     def set_context(self, snapshot: ContextSnapshot) -> None:
         """Bind context snapshot to this flow."""
         self.context_snapshot = snapshot
-        self.add_event("CONTEXT_SNAPSHOT", f"Context bound: {snapshot.snapshot_id}", details={"snapshot_id": snapshot.snapshot_id})
+        self.add_event(
+            FlowTimelineEventType.CONTEXT_SNAPSHOT,
+            f"Context bound: {snapshot.snapshot_id}",
+            details={"snapshot_id": snapshot.snapshot_id},
+        )
     
     def record_explain(self, result: ExplainResult) -> None:
         """Record an Explain stage result."""
         self.explain_results.append(result)
         self.add_event(
-            "EXPLAIN", 
+            FlowTimelineEventType.EXPLAIN,
             f"Explain: {len(result.identified_signals)} signals, {len(result.risks)} risks",
             agent_id=result.agent_id,
-            details={"narrative": result.narrative[:100] + "..." if len(result.narrative) > 100 else result.narrative}
+            details={
+                "narrative": result.narrative[:100] + "..."
+                if len(result.narrative) > 100
+                else result.narrative
+            },
         )
     
     def record_policy(self, policy: Policy) -> None:
         """Record a Policy formation."""
         self.policies.append(policy)
         self.add_event(
-            "POLICY",
+            FlowTimelineEventType.POLICY,
             f"Policy: {policy.proposed_action} (conf={policy.confidence:.2f})",
             agent_id=policy.agent_id,
-            details={"action": policy.proposed_action, "confidence": policy.confidence}
+            details={"action": policy.proposed_action, "confidence": policy.confidence},
         )
     
     def record_proposal(self, proposal: PolicyProposal) -> None:
         """Record a PolicyProposal emission."""
         self.proposals.append(proposal)
         self.add_event(
-            "PROPOSAL",
+            FlowTimelineEventType.PROPOSAL,
             f"Proposal: {proposal.policy_kind}",
             agent_id=proposal.agent_id,
-            details={"policy_kind": proposal.policy_kind, "confidence": proposal.confidence}
+            details={"policy_kind": proposal.policy_kind, "confidence": proposal.confidence},
         )
     
     def record_escalation(self, escalation: EscalationRequest) -> None:
         """Record an escalation event."""
         self.escalations.append(escalation)
         self.add_event(
-            "ESCALATION",
+            FlowTimelineEventType.ESCALATION,
             f"Escalated: {escalation.trigger} ({escalation.severity})",
             agent_id=escalation.from_agent_id,
-            details={"trigger": escalation.trigger, "severity": escalation.severity}
+            details={"trigger": escalation.trigger, "severity": str(escalation.severity)},
         )
-        self.status = "ESCALATED"
+        self.status = DecisionFlowStatus.ESCALATED
     
     def record_execution(self, intent: ExecutionIntent) -> None:
         """Record an execution intent."""
         self.execution_intents.append(intent)
         self.add_event(
-            "EXECUTION",
+            FlowTimelineEventType.EXECUTION,
             f"Executed: {intent.policy_kind}",
-            details={"idempotency_key": intent.idempotency_key}
+            details={"idempotency_key": intent.idempotency_key},
         )
     
     def complete(self, summary: str) -> None:
         """Mark flow as completed."""
         self.completed_at = _utcnow()
-        self.status = "COMPLETED"
+        self.status = DecisionFlowStatus.COMPLETED
         self.outcome_summary = summary
-        self.add_event("FLOW_COMPLETED", summary)
+        self.add_event(FlowTimelineEventType.FLOW_COMPLETED, summary)
     
     def abort(self, reason: str) -> None:
         """Mark flow as aborted."""
         self.completed_at = _utcnow()
-        self.status = "ABORTED"
+        self.status = DecisionFlowStatus.ABORTED
         self.outcome_summary = reason
-        self.add_event("FLOW_ABORTED", reason)
+        self.add_event(FlowTimelineEventType.FLOW_ABORTED, reason)
     
     def create_child_flow(self, child_dfid: str) -> None:
         """Record creation of a child flow."""
         self.child_dfids.append(child_dfid)
-        self.add_event("CHILD_FLOW_CREATED", f"Child flow: {child_dfid}", details={"child_dfid": child_dfid})
+        self.add_event(
+            FlowTimelineEventType.CHILD_FLOW_CREATED,
+            f"Child flow: {child_dfid}",
+            details={"child_dfid": child_dfid},
+        )
     
     def get_timeline_report(self) -> str:
         """Generate human-readable timeline report."""
@@ -445,7 +454,9 @@ class DecisionFlow(BaseModel):
         for i, event in enumerate(self.timeline, 1):
             time_str = event.timestamp.strftime("%H:%M:%S.%f")[:-3]
             agent_str = f" [{event.agent_id}]" if event.agent_id else ""
-            lines.append(f"  {i:2}. [{time_str}] {event.event_type}{agent_str}: {event.summary}")
+            lines.append(
+                f"  {i:2}. [{time_str}] {event.event_type.value}{agent_str}: {event.summary}"
+            )
         
         if self.outcome_summary:
             lines.append(f"\n--- Outcome ---")
