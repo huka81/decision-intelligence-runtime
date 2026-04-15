@@ -22,7 +22,7 @@ def test_ttl_no_valid_until_pass_through() -> None:
     proposal = _make_proposal()
     verdict, reason = validate_proposal(proposal, {})
     assert verdict == ValidationVerdict.ACCEPT
-    assert reason == "Validation passed"
+    assert reason == DimReasonCode.VALIDATION_PASSED
 
 
 def test_ttl_expired_valid_until() -> None:

@@ -36,6 +36,7 @@ from .data_types import (
     FlowTimelineEventType,
     HandshakeRejectionReason,
     HumanDecision,
+    ValidationReason,
     ValidationResult,
     ValidationVerdict,
 )
@@ -140,6 +141,7 @@ __all__ = [
     "validate_proposal",
     "ValidationVerdict",
     "ValidationResult",
+    "ValidationReason",
     "DimReasonCode",
     "ContractRole",
     "DecisionRecordOutcome",

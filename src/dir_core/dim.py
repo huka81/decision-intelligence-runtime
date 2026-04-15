@@ -1,7 +1,7 @@
 """
 Decision Integrity Module (DIM): schema + RBAC + state consistency.
 
-DIR §6. Validates PolicyProposal; returns ACCEPT/REJECT with reason.
+DIR §6. Validates PolicyProposal; returns ``ValidationVerdict`` with a reason (``str`` or ``DimReasonCode``).
 Ensures that only authorized agents can execute specific policies within safe bounds.
 """
 
@@ -42,9 +42,9 @@ def validate_proposal(
 
     # 0. Intent Retry Governor
     if retry_governor is not None and retry_governor.should_abort(proposal.dfid):
-        return ValidationVerdict.REJECT, DimReasonCode.REASONING_EXHAUSTION.value
+        return ValidationVerdict.REJECT, DimReasonCode.REASONING_EXHAUSTION
 
-    def _reject(reason: str) -> ValidationResult:
+    def _reject(reason: str | DimReasonCode) -> ValidationResult:
         if retry_governor is not None:
             retry_governor.record_rejection(proposal.dfid)
         return ValidationVerdict.REJECT, reason
@@ -58,7 +58,7 @@ def validate_proposal(
     # 2. TTL / Decision Validity Window
     valid_until = _resolve_valid_until(proposal)
     if valid_until is not None and now > valid_until:
-        return _reject(DimReasonCode.TTL_EXPIRED.value)
+        return _reject(DimReasonCode.TTL_EXPIRED)
 
     # 3. RBAC (Role-Based Access Control)
     if allowed_agents is not None:
@@ -99,13 +99,13 @@ def validate_proposal(
             if reason is not None:
                 return _reject(f"Custom validation failed: {reason}")
 
-    return ValidationVerdict.ACCEPT, "Validation passed"
+    return ValidationVerdict.ACCEPT, DimReasonCode.VALIDATION_PASSED
 
 
 def _record_rejection_on_fail(
     retry_governor: Optional["IntentRetryGovernor"],
     proposal: PolicyProposal,
-    verdict: ValidationVerdict | str,
+    verdict: ValidationVerdict,
 ) -> None:
     """Record rejection when DIM returns REJECT (for use by callers)."""
     if verdict == ValidationVerdict.REJECT and retry_governor is not None:

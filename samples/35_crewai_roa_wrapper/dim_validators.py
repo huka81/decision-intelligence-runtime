@@ -15,11 +15,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from dir_core import PolicyProposal
+from dir_core.data_types import DimReasonCode, ValidationReason, ValidationVerdict
 from dir_core.dim import validate_proposal
 
 from contracts import ClaimsContract
-
-ValidationVerdict = str  # "ACCEPT" | "REJECT" | "ESCALATE"
 
 
 def validate_claims_proposal(
@@ -27,7 +26,7 @@ def validate_claims_proposal(
     context: Dict[str, Any],
     contract: ClaimsContract,
     allowed_agents: Optional[list[str]] = None,
-) -> Tuple[ValidationVerdict, str]:
+) -> Tuple[ValidationVerdict, ValidationReason]:
     """
     Validate Claims proposal: base DIM + order + category + return window + amount.
 
@@ -52,17 +51,17 @@ def validate_claims_proposal(
     verdict, reason = validate_proposal(
         proposal, base_context, allowed_agents or []
     )
-    if verdict == "REJECT":
+    if verdict == ValidationVerdict.REJECT:
         return verdict, reason
 
     # Layer 2: Order existence
     order_id = proposal.params.get("order_id")
     if not order_id:
-        return "REJECT", "Missing order_id in proposal params"
+        return ValidationVerdict.REJECT, "Missing order_id in proposal params"
 
     orders = context.get("orders", {})
     if order_id not in orders:
-        return "REJECT", f"Order {order_id} not found in Context Store"
+        return ValidationVerdict.REJECT, f"Order {order_id} not found in Context Store"
 
     order = orders[order_id]
     category = order.get("category", "UNKNOWN")
@@ -70,7 +69,7 @@ def validate_claims_proposal(
     # Layer 3: Category boundary
     if category not in contract.allowed_refund_categories:
         return (
-            "REJECT",
+            ValidationVerdict.REJECT,
             f"Category '{category}' not in allowed_refund_categories "
             f"{contract.allowed_refund_categories}",
         )
@@ -78,7 +77,7 @@ def validate_claims_proposal(
     # Layer 4: Return window
     purchase_date_str = order.get("purchase_date")
     if not purchase_date_str:
-        return "REJECT", f"Order {order_id} missing purchase_date in Context Store"
+        return ValidationVerdict.REJECT, f"Order {order_id} missing purchase_date in Context Store"
 
     try:
         purchase_date = datetime.fromisoformat(
@@ -87,14 +86,14 @@ def validate_claims_proposal(
         if purchase_date.tzinfo is None:
             purchase_date = purchase_date.replace(tzinfo=timezone.utc)
     except (ValueError, TypeError):
-        return "REJECT", f"Invalid purchase_date format for order {order_id}"
+        return ValidationVerdict.REJECT, f"Invalid purchase_date format for order {order_id}"
 
     cutoff = datetime.now(timezone.utc) - timedelta(
         days=contract.return_window_days
     )
     if purchase_date < cutoff:
         return (
-            "REJECT",
+            ValidationVerdict.REJECT,
             f"Order {order_id} outside return window "
             f"(purchased {purchase_date_str}, limit {contract.return_window_days} days)",
         )
@@ -102,23 +101,23 @@ def validate_claims_proposal(
     # Layer 5: Amount - ACCEPT or ESCALATE
     amount = proposal.params.get("amount_eur") or proposal.params.get("amount_pln")
     if amount is None:
-        return "REJECT", "Missing amount_eur in proposal params"
+        return ValidationVerdict.REJECT, "Missing amount_eur in proposal params"
 
     try:
         amount_float = float(amount)
     except (TypeError, ValueError):
-        return "REJECT", "amount_eur must be numeric"
+        return ValidationVerdict.REJECT, "amount_eur must be numeric"
 
     if amount_float <= 0:
-        return "REJECT", "amount_eur must be positive"
+        return ValidationVerdict.REJECT, "amount_eur must be positive"
 
     if amount_float > contract.max_refund_without_escalation:
         return (
-            "ESCALATE",
+            ValidationVerdict.ESCALATE,
             f"Amount {amount_float} EUR exceeds "
             f"max_refund_without_escalation ({contract.max_refund_without_escalation} EUR). "
             "Human approval required.",
         )
 
-    return "ACCEPT", "Validation passed"
+    return ValidationVerdict.ACCEPT, DimReasonCode.VALIDATION_PASSED
 

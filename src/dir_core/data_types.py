@@ -1,7 +1,7 @@
 """Shared data types: validation verdicts, DIM reasons, models, registry, event bus."""
 
 from enum import StrEnum
-from typing import Tuple, TypeAlias
+from typing import Tuple, TypeAlias, Union
 
 
 class ValidationVerdict(StrEnum):
@@ -9,16 +9,19 @@ class ValidationVerdict(StrEnum):
 
     ACCEPT = "ACCEPT"
     REJECT = "REJECT"
-
-
-ValidationResult: TypeAlias = Tuple[ValidationVerdict, str]
+    ESCALATE = "ESCALATE"
 
 
 class DimReasonCode(StrEnum):
-    """Stable machine-readable DIM rejection reasons (subset; others remain free text)."""
+    """Stable machine-readable DIM reasons (subset; dynamic detail remains plain str)."""
 
     REASONING_EXHAUSTION = "REASONING_EXHAUSTION"
     TTL_EXPIRED = "TTL_EXPIRED"
+    VALIDATION_PASSED = "VALIDATION_PASSED"
+
+
+ValidationReason: TypeAlias = Union[str, DimReasonCode]
+ValidationResult: TypeAlias = Tuple[ValidationVerdict, ValidationReason]
 
 
 class ContractRole(StrEnum):

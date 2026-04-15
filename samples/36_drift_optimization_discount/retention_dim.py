@@ -4,13 +4,11 @@ Kernel Space: DIM wrapper for retention discounts (DIR generic gates + contract 
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
+from dir_core.data_types import DimReasonCode, ValidationResult, ValidationVerdict
 from dir_core.dim import validate_proposal
 from dir_core.models import PolicyProposal
-
-ValidationVerdict = Literal["ACCEPT", "REJECT"]
-ValidationResult = Tuple[ValidationVerdict, str]
 
 
 def validate_retention_proposal(
@@ -24,21 +22,21 @@ def validate_retention_proposal(
     then deterministic contract check on discount_offered.
     """
     verdict, reason = validate_proposal(proposal, context, allowed_agents)
-    if verdict == "REJECT":
+    if verdict == ValidationVerdict.REJECT:
         return verdict, reason
 
     raw = proposal.params.get("discount_offered")
     if raw is None:
-        return "REJECT", "Missing discount_offered in params"
+        return ValidationVerdict.REJECT, "Missing discount_offered in params"
     try:
         discount = float(raw)
     except (TypeError, ValueError):
-        return "REJECT", "Invalid discount_offered type"
+        return ValidationVerdict.REJECT, "Invalid discount_offered type"
 
     if discount < 0:
-        return "REJECT", "Negative discount_offered"
+        return ValidationVerdict.REJECT, "Negative discount_offered"
     if discount > max_discount_pct + 1e-9:
-        return "REJECT", f"DISCOUNT_EXCEEDS_CONTRACT max={max_discount_pct}"
+        return ValidationVerdict.REJECT, f"DISCOUNT_EXCEEDS_CONTRACT max={max_discount_pct}"
 
-    return "ACCEPT", "Validation passed"
+    return ValidationVerdict.ACCEPT, DimReasonCode.VALIDATION_PASSED
 

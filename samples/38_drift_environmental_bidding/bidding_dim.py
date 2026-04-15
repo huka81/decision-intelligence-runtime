@@ -4,13 +4,11 @@ Kernel Space: DIM wrapper for CPC bids (DIR generic gates + contract ceiling).
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
+from dir_core.data_types import DimReasonCode, ValidationResult, ValidationVerdict
 from dir_core.dim import validate_proposal
 from dir_core.models import PolicyProposal
-
-ValidationVerdict = Literal["ACCEPT", "REJECT"]
-ValidationResult = Tuple[ValidationVerdict, str]
 
 
 def validate_cpc_bid_proposal(
@@ -24,21 +22,21 @@ def validate_cpc_bid_proposal(
     DIM does not enforce LTV or ROI — only the CPC ceiling.
     """
     verdict, reason = validate_proposal(proposal, context, allowed_agents)
-    if verdict == "REJECT":
+    if verdict == ValidationVerdict.REJECT:
         return verdict, reason
 
     raw = proposal.params.get("cpc_bid_usd")
     if raw is None:
-        return "REJECT", "Missing cpc_bid_usd in params"
+        return ValidationVerdict.REJECT, "Missing cpc_bid_usd in params"
     try:
         amount = float(raw)
     except (TypeError, ValueError):
-        return "REJECT", "Invalid cpc_bid_usd type"
+        return ValidationVerdict.REJECT, "Invalid cpc_bid_usd type"
 
     if amount <= 0:
-        return "REJECT", "Non-positive cpc_bid_usd"
+        return ValidationVerdict.REJECT, "Non-positive cpc_bid_usd"
     if amount > max_cpc_usd + 1e-9:
-        return "REJECT", f"CPC_EXCEEDS_CONTRACT max={max_cpc_usd}"
+        return ValidationVerdict.REJECT, f"CPC_EXCEEDS_CONTRACT max={max_cpc_usd}"
 
-    return "ACCEPT", "Validation passed"
+    return ValidationVerdict.ACCEPT, DimReasonCode.VALIDATION_PASSED
 

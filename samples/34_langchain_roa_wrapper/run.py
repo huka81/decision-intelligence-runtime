@@ -34,6 +34,7 @@ if str(_SAMPLES) not in sys.path:
     sys.path.insert(0, str(_SAMPLES))
 
 from dir_core import PolicyProposal, new_dfid
+from dir_core.data_types import DimReasonCode, ValidationReason, ValidationVerdict
 from dir_core.dim import validate_proposal
 from dir_core.utils.logging_utils import log_with_dfid
 from shared.llm.clients import check_ollama
@@ -270,7 +271,7 @@ def validate_finops_proposal(
     context: Dict[str, Any],
     contract: FinOpsContract,
     allowed_agents: Optional[List[str]] = None,
-) -> Tuple[str, str]:
+) -> Tuple[ValidationVerdict, ValidationReason]:
     """
     Validate FinOps proposal: base DIM checks + environment boundary.
 
@@ -286,32 +287,32 @@ def validate_finops_proposal(
         allowed_agents: List of authorized agent IDs
 
     Returns:
-        Tuple of (verdict, reason) where verdict is "ACCEPT" or "REJECT"
+        Tuple of (``ValidationVerdict``, reason) where reason is ``str`` or ``DimReasonCode``.
     """
     # Layer 1: Base validation (schema, RBAC)
     base_context = {"state": context.get("state", {})}
     verdict, reason = validate_proposal(proposal, base_context, allowed_agents or [])
-    if verdict == "REJECT":
+    if verdict == ValidationVerdict.REJECT:
         return verdict, reason
 
     # Layer 2: Resource existence
     resource_id = proposal.params.get("resource_id")
     if not resource_id:
-        return "REJECT", "Missing resource_id in proposal params"
+        return ValidationVerdict.REJECT, "Missing resource_id in proposal params"
 
     instances = context.get("instances", {})
     if resource_id not in instances:
-        return "REJECT", f"Resource {resource_id} not found in Context Store"
+        return ValidationVerdict.REJECT, f"Resource {resource_id} not found in Context Store"
 
     # Layer 3: Environment boundary
     instance_env = instances[resource_id].get("environment", "UNKNOWN")
     if instance_env not in contract.allowed_environments:
         return (
-            "REJECT",
+            ValidationVerdict.REJECT,
             f"Instance {resource_id} is {instance_env}; agent allowed_environments={contract.allowed_environments}",
         )
 
-    return "ACCEPT", "Validation passed"
+    return ValidationVerdict.ACCEPT, DimReasonCode.VALIDATION_PASSED
 
 
 # -----------------------------------------------------------------------------
@@ -327,7 +328,7 @@ def run_scenario(
     contract: FinOpsContract,
     show_mission_demo: bool = False,
     trust_input_labels: bool = False,
-) -> Tuple[PolicyProposal, str, str]:
+) -> Tuple[PolicyProposal, ValidationVerdict, ValidationReason]:
     """Run a single scenario and return proposal + verdict."""
     dfid = new_dfid()
     log_with_dfid(logger, dfid, logging.INFO, "Starting scenario: %s", name)

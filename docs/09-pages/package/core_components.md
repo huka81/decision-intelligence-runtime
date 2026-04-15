@@ -13,7 +13,7 @@ The **Decision Integrity Module (DIM)** is the heart of `dir-core`. It acts as a
 
 - **Input**: A `PolicyProposal` (a **Claim** of what the agent wants to do).
 - **Processing**: The `validate_proposal` function checks the proposal against hardcoded rules.
-- **Output**: Returns an `(ACCEPT, Reason)` or `(REJECT, Reason)` tuple.
+- **Output**: Returns a ``ValidationResult``: ``(ValidationVerdict, ValidationReason)`` where ``ValidationReason`` is a human-readable ``str`` or a stable ``DimReasonCode`` (e.g. ``VALIDATION_PASSED``, ``TTL_EXPIRED``).
 
 ### Validation Layers in DIM
 1. **Schema Check**: Validates the payload against expected types (via Pydantic).

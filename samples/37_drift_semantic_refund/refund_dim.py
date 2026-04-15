@@ -4,13 +4,11 @@ Kernel Space: DIM wrapper for refunds (DIR generic gates + contract ceiling).
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
+from dir_core.data_types import DimReasonCode, ValidationResult, ValidationVerdict
 from dir_core.dim import validate_proposal
 from dir_core.models import PolicyProposal
-
-ValidationVerdict = Literal["ACCEPT", "REJECT"]
-ValidationResult = Tuple[ValidationVerdict, str]
 
 
 def validate_refund_proposal(
@@ -24,21 +22,21 @@ def validate_refund_proposal(
     DIM does not enforce the 48h semantic rule — only the financial cap.
     """
     verdict, reason = validate_proposal(proposal, context, allowed_agents)
-    if verdict == "REJECT":
+    if verdict == ValidationVerdict.REJECT:
         return verdict, reason
 
     raw = proposal.params.get("refund_amount_eur")
     if raw is None:
-        return "REJECT", "Missing refund_amount_eur in params"
+        return ValidationVerdict.REJECT, "Missing refund_amount_eur in params"
     try:
         amount = float(raw)
     except (TypeError, ValueError):
-        return "REJECT", "Invalid refund_amount_eur type"
+        return ValidationVerdict.REJECT, "Invalid refund_amount_eur type"
 
     if amount <= 0:
-        return "REJECT", "Non-positive refund_amount_eur"
+        return ValidationVerdict.REJECT, "Non-positive refund_amount_eur"
     if amount > max_refund_eur + 1e-9:
-        return "REJECT", f"REFUND_EXCEEDS_CONTRACT max={max_refund_eur}"
+        return ValidationVerdict.REJECT, f"REFUND_EXCEEDS_CONTRACT max={max_refund_eur}"
 
-    return "ACCEPT", "Validation passed"
+    return ValidationVerdict.ACCEPT, DimReasonCode.VALIDATION_PASSED
 
