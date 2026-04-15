@@ -1,8 +1,7 @@
 """
 Market simulation event models: QuoteTick, NewsEvent.
 
-Used by quote_generator and news_generator for EOAM live simulation.
-Payloads align with OBSERVATION/MARKET_SIGNAL and NEWS event types on the event bus.
+Part of mock_context: payloads align with OBSERVATION/MARKET_SIGNAL and NEWS on the event bus.
 """
 
 from datetime import datetime, timezone

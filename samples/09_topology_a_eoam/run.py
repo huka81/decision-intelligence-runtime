@@ -9,6 +9,8 @@ Run from repo root: python samples/09_topology_a_eoam/run.py
 Requires PYTHONPATH including workspace src/ (see .vscode/settings.json).
 """
 import logging
+import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from dir_core import (
@@ -22,7 +24,17 @@ from dir_core import (
 from dir_core.intent_retry import IntentRetryGovernor
 from dir_core.lifecycle import FlowStatus, transition
 from dir_core.utils.logging_utils import log_with_dfid
-from dir_core.utils.quote_generator import QuoteGenerator
+
+# QuoteGenerator lives with the finance trading sample (not in dir_core).
+_FINANCE_TRADING = Path(__file__).resolve().parent.parent / "31_finance_trading"
+if not _FINANCE_TRADING.is_dir():
+    raise RuntimeError(
+        f"Sample 09 needs QuoteGenerator from {_FINANCE_TRADING} (clone or restore that folder)."
+    )
+_p = str(_FINANCE_TRADING)
+if _p not in sys.path:
+    sys.path.insert(0, _p)
+from mock_context.quote_generator import QuoteGenerator  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

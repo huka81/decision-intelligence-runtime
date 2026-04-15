@@ -31,12 +31,11 @@ from dir_core import PolicyProposal, ResponsibilityContract, create_event_bus
 from dir_core.dim import validate_proposal
 from dir_core.utils.config_loader import load_yaml_config
 from dir_core.utils.logging_utils import log_with_dfid
-from dir_core.utils.news_generator import NewsGenerator
-from dir_core.utils.quote_generator import QuoteGenerator
 
 try:
     from dir_core.utils.llm_client import GeminiClient, OllamaClient
     from .llm_client import MockLLM
+    from .mock_context import NewsGenerator, QuoteGenerator
     from .orchestrator import EOAMOrchestrator
     from .roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
     from .simulation_recorder import SimulationRecorder
@@ -44,6 +43,7 @@ try:
 except ImportError:
     from dir_core.utils.llm_client import GeminiClient, OllamaClient
     from llm_client import MockLLM
+    from mock_context import NewsGenerator, QuoteGenerator
     from orchestrator import EOAMOrchestrator
     from roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
     from simulation_recorder import SimulationRecorder

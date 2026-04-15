@@ -1243,7 +1243,7 @@ See [Database Storage](#database-storage) section for complete schema and audit 
 
 ## Generators (dir)
 
-- **QuoteGenerator** (`dir.quote_generator`): One instrument; multiplicative random walk in price; `next_tick()` → `QuoteTick`, `to_payload()` for OBSERVATION. Optional seed for reproducibility.
-- **NewsGenerator** (`dir.news_generator`): Template-based headlines, sentiment, category; `score_news()` for raw_score; `news_payloads(max_events, sleep_between)` yields payloads with optional dfid. Optional seed for reproducibility.
+- **QuoteGenerator** (`mock_context/quote_generator.py`): One instrument; multiplicative random walk in price; `next_tick()` → `QuoteTick`, `to_payload()` for OBSERVATION. Optional seed for reproducibility.
+- **NewsGenerator** (`mock_context/news_generator.py`): Template-based headlines, sentiment, category; `score_news()` for raw_score; `news_payloads(max_events, sleep_between)` yields payloads with optional dfid. Optional seed for reproducibility.
 
 In production, news scoring could be LLM- or RAG-based; here it is rule-based for determinism and no API keys.
