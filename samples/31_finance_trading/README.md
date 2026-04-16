@@ -7,7 +7,9 @@
 - **Position managers** enforce strict risk limits and manage exits
 - **Full auditability** via hierarchical DFID tracking (news → position → decisions)
 
-At simulation end, an **interactive HTML report** is automatically generated and opened in browser with:
+At simulation end, an **interactive HTML report** is automatically generated and opened in the browser. The report is built from the **same canonical `StorageBundle`** used during the run (audit events plus optional repository summary), not from a parallel sample-specific database schema.
+
+The report includes:
 - **Interactive Plotly charts** showing price movements with hover tooltips revealing:
   - Tick details (price, trend, volatility, timestamp)
   - Decision details (LLM justification, explain narrative, DIM validation)
@@ -15,8 +17,6 @@ At simulation end, an **interactive HTML report** is automatically generated and
   - Position openings (▲ triangles) with entry details and P&L
 - **Position lifecycle cards** with professional styling showing complete audit trail
 - **DFID hierarchy** tracing every decision back to its trigger
-
-Additionally, a **position audit view** is automatically displayed in the console with formatted boxes and emojis showing the complete flow from news → position spawn → all lifecycle decisions.
 
 **DIR alignment:** DIR Topologies §2 (EOAM), §2.1–2.4 (scope-based choreography, DFID correlation, priority-based preemption, **Wake-up Predicates for Signal Suppression**). ROA Manifesto §3 (Responsibility Contract, mission), §4 (Explain → Policy → Self-Check → Proposal).
 
@@ -69,13 +69,8 @@ flowchart TB
 - **UC7:** The winner is validated by DIM (schema, RBAC, context); result is ACCEPT or REJECT.
 - **UC8:** If the result is ACCEPT and the winner's `policy_kind` is `NEWS_QUALIFIED`, the orchestrator spawns a new position manager agent (from the config template) for each affected instrument and registers it for future observations. `NEWS_QUALIFIED` creates a hierarchical DFID link (parent_dfid = news event DFID). **This is the exclusive entry point for opening positions.**
 - **UC9:** At simulation end:
-  - **Position audit view** automatically displays in console (formatted with boxes, emojis, complete decision timeline)
-  - **Interactive HTML report** automatically generates from SQLite database:
-    - Plotly charts with rich hover tooltips (tick details, LLM justifications, DIM validation)
-    - Visual markers: ⭐ News (blue stars), ▲ Position Open (green triangles), 🔷 Decisions (colored diamonds)
-    - Professional position lifecycle cards with gradient styling, P&L boxes, timeline events
-    - DFID hierarchy showing parent-child relationships
-  - Report auto-opens in default browser
+  - **Interactive HTML report** is generated from persisted **decision audit** rows (and optional repository context in the report), then opened in the default browser.
+  - **Console:** standard logging (including `Persistence: …`, decision-audit backend class name, and optional PostgreSQL filter hint). There is no separate console “position audit script”; use SQL against the canonical tables or the HTML report for a full lifecycle view.
 
 ---
 
@@ -122,7 +117,7 @@ This sample demonstrates a **news-driven trading strategy** where:
 - ✅ LLM-based reasoning (Ollama, Gemini, or Mock)
 - ✅ **Wake-up Predicates (DIR Topologies §2.3)** - Signal suppression to prevent Token Burn on minor price changes
 - ✅ **Interactive HTML reporting** - Charts with rich tooltips showing LLM reasoning and agent proposals
-- ✅ **Position audit trail** - Console and HTML views with complete lifecycle from news trigger to closure
+- ✅ **Position audit trail** - HTML report and SQL over `decision_audit_events` (complete lifecycle from news trigger to closure)
 
 ---
 
@@ -646,15 +641,20 @@ news_dfid_20260224_143530
        └── decision: CLOSE (tick 15)
 ```
 
-**Database queries:**
-```sql
-SELECT * FROM position_audit_aggregated 
-WHERE simulation_id = 'sim_2026-02-24...';
--- Shows: Entry from news, 4 decisions, -2.8% P&L, closed on drawdown
+**Database queries (canonical `decision_audit_events`):** filter on `detail_json` / `details.simulation_id`, not only on the `dfid` column (ticks and most events use the observation or news DFID in `dfid`; start/end rows use `simulation_id` as `dfid`).
 
-SELECT * FROM position_audit_detailed 
-WHERE position_id = 'position_btc_usd_20260224_143530';
--- Shows: Complete decision timeline with prices, justifications, P&L at each step
+```sql
+-- SQLite: rows for one simulation run
+SELECT id, dfid, event, timestamp, detail_json
+FROM decision_audit_events
+WHERE json_extract(detail_json, '$.simulation_id') = 'sim_2026-02-24T14-35-22-123456+00-00_a3f2c1d0'
+ORDER BY id;
+
+-- PostgreSQL: same filter
+SELECT id, dfid, event, timestamp, detail_json
+FROM decision_audit_events
+WHERE detail_json->>'simulation_id' = 'sim_2026-02-24T14-35-22-123456+00-00_a3f2c1d0'
+ORDER BY id;
 ```
 
 **Key Observations:**
@@ -678,7 +678,8 @@ flowchart TB
         LLM["llm_client\n(Ollama / Gemini / MockLLM)"]
         ROA["roa_agents\n(Instrument, Position, NewsScorer)"]
         Orch["orchestrator"]
-        Rec["simulation_audit\n(decision_audit)"]
+        Kern["dir_kernel_wiring\n(registry + context persist)"]
+        Rec["simulation_audit\n(decision_audit_events)"]
         Rep["report_generator\n(HTML + Charts)"]
     end
 
@@ -696,9 +697,11 @@ flowchart TB
     Run --> Orch
     Run --> QGen
     Run --> NGen
+    Run --> Kern
     Run --> Rec
     Run --> Rep
-    Rec --> DB["dir_core.storage"]
+    Kern --> DB["dir_core.storage\n(StorageBundle)"]
+    Rec --> DB
     Rep --> DB
     ROA --> LLM
     ROA --> Models
@@ -708,11 +711,12 @@ flowchart TB
 ```
 
 - **config.yaml:** Simulation parameters (instruments, ticks, news interval, seeds, threshold), priority_matrix, and agent definitions (type, mission, contract, priority).
-- **run.py:** Loads config, builds EventBus, LLM, agents from config, registers them with the orchestrator, runs the tick loop and news loop; calls DIM and spawn. **At completion:** runs position audit view in console, generates HTML report from database, auto-opens in browser.
+- **run.py:** Loads config via `setup_environment` (LLM + **StorageBundle**), builds `AgentRegistry` / `ContextStore`, handshakes agents (`dir_kernel_wiring`), builds EventBus and orchestrator, runs tick and news loops, DIM, spawn; persists simulation timeline through **`simulation_audit`** and optional **`flow_transitions`**. **At completion:** writes `SIMULATION_END` to audit, logs audit row count, generates HTML report from the same bundle, opens browser.
 - **llm_client:** `OllamaClient` (sync HTTP to Ollama), `GeminiClient` (Google AI API), or `MockLLM`; interface `generate(prompt, system=None) -> str`.
 - **roa_agents:** ROA base (Explain → Policy → Self-Check → Proposal) and concrete agents (Instrument, Position, NewsScorer) using the LLM and config-driven contracts with `wake_up_threshold_pct`.
 - **orchestrator:** Registers agents with the bus (OBSERVATION by scope, NEWS global), **implements Wake-up Predicates for Signal Suppression (DIR Topologies §2.3)**, emits observations/news with DFID, collects proposals per DFID, arbitrates by priority_matrix, spawns position agents from template. Tracks suppressed signals for reporting.
-- **simulation_audit:** Writes simulation events only through `StorageBundle.decision_audit` during the run—no parallel in-memory collector. The HTML report hydrates chart and lifecycle views from the persisted audit stream.
+- **dir_kernel_wiring:** Handshake for config agents and spawned position agents (`agent_registry`); **`persist_roa_cycle_record`** appends ROA Explain/Policy steps to **`context_session`** and summary to **`context_state`** when `SimulationKernelContext` is wired.
+- **simulation_audit:** Single writer for market/decision/position/news timeline rows in **`decision_audit_events`** (`start_simulation_audit`, `record_market_tick`, `record_agent_decision`, …). **`hydrate_report_state_from_audit`** rebuilds report structures from `all_events_chronological()` (no duplicate in-run collector).
 - **report_generator:** Generates interactive HTML reports **directly from canonical decision audit events** with:
   - **Plotly charts:** Price lines with hover tooltips, visual markers (⭐ News, ▲ Position Opens, 🔷 Decisions)
   - **Position lifecycle cards:** Professional styling with gradients, P&L boxes, timeline events
@@ -798,6 +802,17 @@ All simulation and agent configuration lives in **`config.yaml`** - no hardcoded
 Same convention as `samples/35_crewai_roa_wrapper/config.yaml`.
 
 ```yaml
+# Persistence (optional; defaults depend on bootstrap — see samples/shared/bootstrap.py)
+database:
+  provider: "sqlite"
+  db_path: "data/simulation_data.db"
+  # provider: "postgres"
+  # host: "localhost"
+  # port: 5432
+  # dbname: "dir_quickstart"
+  # user: "dir_user"
+  # password: "…"
+
 simulation:
   instruments: ["BTC-USD", "ETH-USD"]
   simulation_ticks: 64
@@ -862,210 +877,359 @@ agents:
 | **priority_matrix** | Maps `policy_kind` to numeric priority (lower = higher). Used by the orchestrator to choose the winning proposal. **Note:** `OPEN_POSITION` removed - positions opened exclusively via `NEWS_QUALIFIED`. |
 | **llm_defaults** | Optional LLM configuration. Supports three providers: <br>• **Ollama** (local): `model`, `base_url` <br>• **Gemini** (cloud): `provider: "gemini"`, `model` (e.g. `"gemini-1.5-flash"`), `api_key` (optional, uses env var if not set) <br>• **Mock** (testing): `provider: "mock"` or env `USE_MOCK_LLM=1` <br>If `provider` is omitted, auto-detects from model name ("gemini-*" → Gemini, else → Ollama). |
 | **agents** | List of agent definitions: `agent_id`, `type` (instrument \| news_scorer \| position), `scope`, `mission`, `contract` (role, authorized_instruments, allowed_policy_types, escalate_on_uncertainty, max_drawdown_limit, **wake_up_threshold_pct**, parent_agent_id), `priority`. <br><br>**Agent types:**<br>• **instrument** (MONITOR role): Observe market signals for one instrument, provide risk alerts. Cannot open positions. Default `wake_up_threshold_pct: 0.5%`.<br>• **news_scorer** (STRATEGIST role): Exclusive entry point. Emits NEWS_QUALIFIED when score ≥ threshold to spawn positions.<br>• **position** (EXECUTOR role): Template for dynamically spawned position managers. Opened only by NEWS_QUALIFIED trigger. Default `wake_up_threshold_pct: 0.3%` (more sensitive). <br><br>**Wake-up Predicates (DIR Topologies §2.3):**<br>• `wake_up_threshold_pct` (default: 0.5): Minimum price change percentage to invoke agent. Prevents "Token Burn" on minor signals. |
+| **database** | Persistence for the whole sample: `provider`: `sqlite` \| `postgres` \| `memory` (see `samples/shared/bootstrap.py`). SQLite: `db_path` — if relative, it is resolved against the **directory containing `config.yaml`** (so `data/simulation_data.db` becomes `samples/31_finance_trading/data/simulation_data.db` regardless of shell CWD). PostgreSQL: `host`, `port`, `dbname`, `user`, `password`; requires `pip install psycopg2-binary` and a reachable server (same pattern as `samples/08_custom_repo_psql/`). Optional env overrides: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`. |
 
 ---
 
-## Database Storage
+## Database Storage (canonical repository)
 
-All simulation data is automatically saved to the persistent database via the `dir-core` canonical **`StorageBundle`** (specifically `DecisionAuditStorage`).
+The sample does **not** maintain a finance-specific SQL schema (no `simulations`, `ticks`, `positions`, or custom views). All durable state goes through **`dir_core.storage.StorageBundle`** produced by **`setup_environment(config, …)`** in `samples/shared/bootstrap.py`:
 
-You can configure the database provider in `config.yaml`:
+| `database.provider` | Implementation | Where the schema lives |
+|----------------------|----------------|-------------------------|
+| `sqlite` (default in examples) | `dir_core.storage.sqlite_storage(db_path)` | DDL: `src/dir_core/storage/schema.sql` (applied automatically) |
+| `postgres` | `samples/shared/storage/pg_repo.py` — `connect`, `apply_schema`, `build_repository` | DDL: `samples/shared/storage/pg_schema.sql` |
+| `memory` | `dir_core.storage.memory_storage()` | In-process only |
 
-```yaml
-database:
-  # provider: "postgres"
-  # host: "localhost"
-  # dbname: "dir_quickstart"
-  # user: "dir_user"
-  # password: "dir_pass"
-  provider: "sqlite"
-  db_path: "data/simulation_data.db"
-```
+At startup, `run.py` builds **`AgentRegistry`** and **`ContextStore`** on the same bundle, then wires ROA persistence through **`dir_kernel_wiring.py`** (handshake + optional ROA step logging). Market simulation and reporting use **`simulation_audit.py`**, which appends rows only via **`bundle.decision_audit.record(...)`** (`DecisionAuditStorage` protocol).
 
-If you switch to `postgres`, ensure you have PostgreSQL running and the `psycopg2-binary` package installed (just like in `samples/08_custom_repo_psql/`).
+### Tables this sample writes to
 
-### Canonical Audit Events
+The canonical model defines more tables than this sample touches. **Written during a normal run:**
 
-Instead of custom tables, all events are stored in the canonical `decision_audit_events` table. The `event` column categorizes the records, and `detail_json` contains the payload:
-- `SIMULATION_START`, `SIMULATION_END`
-- `MARKET_TICK`
-- `AGENT_DECISION` (includes DIM results and justifications)
-- `POSITION_SPAWNED`, `POSITION_EVENT`, `POSITION_CLOSED`, `POSITION_EXPOSURE_UPDATED`
-- `NEWS_GENERATED`
+| Table | Role in DIR | What the sample writes |
+|-------|-------------|-------------------------|
+| **`agent_registry`** | §2.3 Agent Registry | One row per agent after a successful **handshake**: all static agents from `config.yaml` (instrument, news_scorer), and each **dynamically spawned** position agent (`register_config_agents`, `register_spawned_position_agent` in `dir_kernel_wiring.py`). Stores `contract` JSON, `priority`, `status`, `session_token`, timestamps. |
+| **`context_session`** | §8 Context — per DFID | For each observation/news DFID where an agent completes an ROA internal cycle, **`persist_roa_cycle_record`** merges into `context_session.data` JSON: `roa_internal_steps` (append-only list of Explain/Policy/Self-Check records) and `simulation_id`. |
+| **`context_state`** | §8 Context — per agent | **`persist_roa_cycle_record`** updates long-lived JSON per `agent_id`: `simulation_id`, `last_dfid`, `last_policy_action`, `last_outcome`. |
+| **`decision_audit_events`** | Observability / audit | **Primary simulation log.** Each call in `simulation_audit.py` inserts one row: `dfid`, `event`, `timestamp`, optional `step_id`/`state`, and **`detail_json`** (SQLite) / **`detail_json` JSONB** (Postgres) with a **`simulation_id` field inside the JSON** so all rows for one run can be filtered together. |
+| **`flow_transitions`** | §4.3 Lifecycle log | **`bundle.lifecycle.record_transition(dfid, from_status, to_status)`** on position spawn and on position close: this sample uses the three string fields as *labels* (for example `POSITION_SPAWN` / agent id, or agent id / `RETIRED`), not necessarily strict lifecycle enum values. |
 
-The HTML report generator (`report_generator.py`) reads directly from this canonical event log.
-FROM ticks
-WHERE simulation_id = 'sim_2026-02-23T...'
-GROUP BY instrument;
+**Present in the bundle but not used by this sample in the default path:** `idempotency_cache`, `saga_dirty_state`, `resource_locks`, `intent_retry`, `escalation_budget`, `escalation_requests`. They exist for other DIR flows and future extensions.
 
--- All decisions for a specific instrument
-SELECT tick_index, agent_id, policy_kind, dim_result, justification
-FROM decisions
-WHERE simulation_id = 'sim_2026-02-23T...' AND instrument = 'BTC-USD'
-ORDER BY tick_index;
+### `decision_audit_events` — event types and payloads
 
--- Position lifecycle
-SELECT p.position_id, p.instrument, p.entry_tick, p.entry_price,
-       e.tick_index, e.policy_kind, e.price
-FROM positions p
-LEFT JOIN position_lifecycle_events e ON p.position_id = e.position_id
-WHERE p.simulation_id = 'sim_2026-02-23T...'
-ORDER BY p.position_id, e.tick_index;
+Implementation: `simulation_audit.py`. Column **`dfid`** is usually the **decision-flow id** for that step (observation UUID, news UUID, or `simulation_id` for run-level rows). **`simulation_id` is duplicated inside `detail_json`** for every event so you can query one run without assuming `dfid` prefix.
 
--- News-triggered positions (hierarchical DFID)
-SELECT p.position_id, p.instrument, p.entry_price, p.news_headline,
-       n.headline, n.sentiment
-FROM positions p
-JOIN news_events n ON p.parent_dfid = n.dfid
-WHERE p.simulation_id = 'sim_2026-02-23T...';
-```
+| `event` value | Typical `dfid` column | Main fields inside `detail_json` |
+|---------------|----------------------|----------------------------------|
+| `SIMULATION_START` | `simulation_id` | `simulation_id`, `config_hash`, `simulation_ticks` |
+| `SIMULATION_END` | `simulation_id` | `simulation_id`, `status`, `error_message` |
+| `MARKET_TICK` | Observation DFID | `simulation_id`, `tick_index`, `instrument`, `price`, `trend`, `volatility`, `timestamp` |
+| `NEWS_GENERATED` | News DFID | `simulation_id`, `headline`, `sentiment`, `instruments_affected`, `raw_score`, … |
+| `AGENT_DECISION` | Proposal DFID | `simulation_id`, `tick_index`, `agent_id`, `policy_kind`, DIM fields, explain fields, `event_type` (`observation` \| `news`), instruments, etc. |
+| `POSITION_SPAWNED` | Parent news DFID if present, else `simulation_id` | `simulation_id`, `position_id`, `instrument`, `entry_tick`, `entry_price`, `initial_exposure`, `quantity`, `news_headline` |
+| `POSITION_EVENT` | `simulation_id` | `simulation_id`, `position_id`, `tick_index`, `policy_kind`, `price`, `justification` |
+| `POSITION_EXPOSURE_UPDATED` | `simulation_id` | `simulation_id`, `position_id`, `new_exposure` |
+| `POSITION_CLOSED` | `simulation_id` | `simulation_id`, `position_id`, `close_tick`, `close_price`, `close_reason` |
 
-You can query the database directly using `sqlite3` command-line tool or any SQLite client:
+**Important for ad-hoc SQL:** filtering **`WHERE dfid LIKE 'sim_%'`** usually returns only **start/end** rows, because tick and decision rows use UUID DFIDs. Prefer:
 
-```bash
-sqlite3 samples/31_finance_trading/data/simulation_data.db "SELECT * FROM simulations;"
-```
-
-### Position Audit Views
-
-The database includes two pre-built views for **complete position auditability**, showing the full flow from news trigger → instrument agent spawn → all decisions:
-
-#### `position_audit_aggregated`
-
-One row per position with aggregated decision summary:
-
-- **News trigger**: headline, sentiment, score, agent, justification
-- **Position details**: entry tick, entry price
-- **Decision statistics**: total count, type breakdown (HOLD/REDUCE/CLOSE), price range
-- **Timeline**: All decisions in chronological order (separated by newlines)
-- **P&L**: Potential profit/loss if position was closed
-
-Query example:
 ```sql
-SELECT * FROM position_audit_aggregated 
-WHERE simulation_id = 'sim_2026-02-23T...'
-ORDER BY entry_tick;
+-- SQLite
+SELECT id, dfid, event, timestamp, detail_json
+FROM decision_audit_events
+WHERE json_extract(detail_json, '$.simulation_id') = '<your_simulation_id>'
+ORDER BY id;
+
+-- PostgreSQL
+SELECT id, dfid, event, timestamp, detail_json
+FROM decision_audit_events
+WHERE detail_json->>'simulation_id' = '<your_simulation_id>'
+ORDER BY id;
 ```
 
-#### `position_audit_detailed`
+Below, replace `:sim_id` / `'<your_simulation_id>'` with the value printed at the end of a run (or read from the first row where `event = 'SIMULATION_START'`).
 
-One row per decision with full details:
+### SQL: selecting business entities (parse JSON into columns)
 
-- **News trigger**: Same as aggregated view
-- **Each decision**: tick, type, price, justification, P&L from entry
+In SQLite, `decision_audit_events.detail_json` is JSON text; in PostgreSQL it is **`JSONB`**, so extraction uses `json_extract(...)` vs `detail_json->>'key'`.
 
-Query example:
+#### Simulation runs (start / end)
+
 ```sql
-SELECT * FROM position_audit_detailed 
-WHERE simulation_id = 'sim_2026-02-23T...' AND instrument = 'BTC-USD'
-ORDER BY entry_tick, decision_tick;
+-- SQLite
+SELECT id, dfid, event, timestamp,
+       json_extract(detail_json, '$.simulation_id') AS simulation_id,
+       json_extract(detail_json, '$.config_hash')   AS config_hash,
+       json_extract(detail_json, '$.status')        AS end_status,
+       json_extract(detail_json, '$.error_message') AS error_message
+FROM decision_audit_events
+WHERE event IN ('SIMULATION_START', 'SIMULATION_END')
+ORDER BY id DESC
+LIMIT 20;
+
+-- PostgreSQL
+SELECT id, dfid, event, timestamp,
+       detail_json->>'simulation_id' AS simulation_id,
+       detail_json->>'config_hash'   AS config_hash,
+       detail_json->>'status'        AS end_status,
+       detail_json->>'error_message' AS error_message
+FROM decision_audit_events
+WHERE event IN ('SIMULATION_START', 'SIMULATION_END')
+ORDER BY id DESC
+LIMIT 20;
 ```
 
-**Key features:**
-- `simulation_id` is a filterable column (not hardcoded in view)
-- Decisions timeline uses newlines for readability
-- Hierarchical DFID tracking (news → position spawn)
-- Automatic P&L calculation
+#### Market ticks
 
-### Position Audit Query Script
+```sql
+-- SQLite
+SELECT id, dfid AS observation_dfid, timestamp,
+       json_extract(detail_json, '$.tick_index')   AS tick_index,
+       json_extract(detail_json, '$.instrument')   AS instrument,
+       json_extract(detail_json, '$.price')        AS price,
+       json_extract(detail_json, '$.trend')        AS trend,
+       json_extract(detail_json, '$.volatility')   AS volatility,
+       json_extract(detail_json, '$.timestamp')    AS quote_timestamp
+FROM decision_audit_events
+WHERE event = 'MARKET_TICK'
+  AND json_extract(detail_json, '$.simulation_id') = '<your_simulation_id>'
+ORDER BY id;
 
-Convenient Python script for querying audit views with formatted output:
+-- PostgreSQL
+SELECT id, dfid AS observation_dfid, timestamp,
+       (detail_json->>'tick_index')::int     AS tick_index,
+       detail_json->>'instrument'            AS instrument,
+       (detail_json->>'price')::numeric      AS price,
+       detail_json->>'trend'                 AS trend,
+       (detail_json->>'volatility')::float   AS volatility,
+       detail_json->>'timestamp'             AS quote_timestamp
+FROM decision_audit_events
+WHERE event = 'MARKET_TICK'
+  AND detail_json->>'simulation_id' = '<your_simulation_id>'
+ORDER BY id;
+```
+
+#### News events
+
+```sql
+-- SQLite
+SELECT id, dfid AS news_dfid, timestamp,
+       json_extract(detail_json, '$.headline')              AS headline,
+       json_extract(detail_json, '$.sentiment')             AS sentiment,
+       json_extract(detail_json, '$.raw_score')             AS raw_score,
+       json_extract(detail_json, '$.instruments_affected') AS instruments_affected_json
+FROM decision_audit_events
+WHERE event = 'NEWS_GENERATED'
+  AND json_extract(detail_json, '$.simulation_id') = '<your_simulation_id>';
+
+-- PostgreSQL
+SELECT id, dfid AS news_dfid, timestamp,
+       detail_json->>'headline'              AS headline,
+       detail_json->>'sentiment'             AS sentiment,
+       (detail_json->>'raw_score')::float    AS raw_score,
+       detail_json->'instruments_affected'  AS instruments_affected_json
+FROM decision_audit_events
+WHERE event = 'NEWS_GENERATED'
+  AND detail_json->>'simulation_id' = '<your_simulation_id>';
+```
+
+#### Agent decisions (proposal + DIM)
+
+```sql
+-- SQLite
+SELECT id, dfid AS proposal_dfid, timestamp,
+       json_extract(detail_json, '$.tick_index')     AS tick_index,
+       json_extract(detail_json, '$.agent_id')      AS agent_id,
+       json_extract(detail_json, '$.policy_kind')   AS policy_kind,
+       json_extract(detail_json, '$.dim_result')    AS dim_result,
+       json_extract(detail_json, '$.dim_reason')    AS dim_reason,
+       json_extract(detail_json, '$.event_type')    AS event_type,
+       json_extract(detail_json, '$.instrument')    AS instrument,
+       json_extract(detail_json, '$.justification') AS justification
+FROM decision_audit_events
+WHERE event = 'AGENT_DECISION'
+  AND json_extract(detail_json, '$.simulation_id') = '<your_simulation_id>'
+ORDER BY id;
+
+-- PostgreSQL
+SELECT id, dfid AS proposal_dfid, timestamp,
+       (detail_json->>'tick_index')::int  AS tick_index,
+       detail_json->>'agent_id'          AS agent_id,
+       detail_json->>'policy_kind'       AS policy_kind,
+       detail_json->>'dim_result'         AS dim_result,
+       detail_json->>'dim_reason'         AS dim_reason,
+       detail_json->>'event_type'         AS event_type,
+       detail_json->>'instrument'         AS instrument,
+       detail_json->>'justification'      AS justification
+FROM decision_audit_events
+WHERE event = 'AGENT_DECISION'
+  AND detail_json->>'simulation_id' = '<your_simulation_id>'
+ORDER BY id;
+```
+
+#### Positions (spawn, events, close)
+
+```sql
+-- SQLite — spawns
+SELECT id, timestamp,
+       json_extract(detail_json, '$.position_id')      AS position_id,
+       json_extract(detail_json, '$.instrument')     AS instrument,
+       json_extract(detail_json, '$.entry_tick')     AS entry_tick,
+       json_extract(detail_json, '$.entry_price')   AS entry_price,
+       json_extract(detail_json, '$.initial_exposure') AS initial_exposure,
+       json_extract(detail_json, '$.quantity')       AS quantity,
+       json_extract(detail_json, '$.news_headline') AS news_headline
+FROM decision_audit_events
+WHERE event = 'POSITION_SPAWNED'
+  AND json_extract(detail_json, '$.simulation_id') = '<your_simulation_id>';
+
+-- SQLite — position decisions (HOLD, REDUCE, …)
+SELECT id, timestamp,
+       json_extract(detail_json, '$.position_id')   AS position_id,
+       json_extract(detail_json, '$.tick_index')    AS tick_index,
+       json_extract(detail_json, '$.policy_kind')   AS policy_kind,
+       json_extract(detail_json, '$.price')         AS price,
+       json_extract(detail_json, '$.justification') AS justification
+FROM decision_audit_events
+WHERE event = 'POSITION_EVENT'
+  AND json_extract(detail_json, '$.simulation_id') = '<your_simulation_id>'
+ORDER BY id;
+
+-- SQLite — closes
+SELECT id, timestamp,
+       json_extract(detail_json, '$.position_id')    AS position_id,
+       json_extract(detail_json, '$.close_tick')    AS close_tick,
+       json_extract(detail_json, '$.close_price')   AS close_price,
+       json_extract(detail_json, '$.close_reason')  AS close_reason
+FROM decision_audit_events
+WHERE event = 'POSITION_CLOSED'
+  AND json_extract(detail_json, '$.simulation_id') = '<your_simulation_id>';
+
+-- PostgreSQL — same idea (spawns)
+SELECT id, timestamp,
+       detail_json->>'position_id'      AS position_id,
+       detail_json->>'instrument'      AS instrument,
+       (detail_json->>'entry_tick')::int        AS entry_tick,
+       (detail_json->>'entry_price')::numeric   AS entry_price,
+       (detail_json->>'initial_exposure')::numeric AS initial_exposure,
+       (detail_json->>'quantity')::numeric      AS quantity,
+       detail_json->>'news_headline'   AS news_headline
+FROM decision_audit_events
+WHERE event = 'POSITION_SPAWNED'
+  AND detail_json->>'simulation_id' = '<your_simulation_id>';
+```
+
+#### Registered agents (`contract` JSON)
+
+```sql
+-- SQLite
+SELECT agent_id, priority, status, registered_at,
+       json_extract(contract, '$.role')                    AS role,
+       json_extract(contract, '$.mission')                 AS mission,
+       json_extract(contract, '$.allowed_policy_types')    AS allowed_policy_types_json,
+       json_extract(contract, '$.authorized_instruments') AS authorized_instruments_json
+FROM agent_registry
+ORDER BY agent_id;
+
+-- PostgreSQL
+SELECT agent_id, priority, status, registered_at,
+       contract->>'role'                 AS role,
+       contract->>'mission'              AS mission,
+       contract->'allowed_policy_types'  AS allowed_policy_types_json,
+       contract->'authorized_instruments' AS authorized_instruments_json
+FROM agent_registry
+ORDER BY agent_id;
+```
+
+#### Session context per DFID — `context_session.data`
+
+```sql
+-- SQLite (skrót: DFID + simulation_id z payloadu + długość JSON)
+SELECT dfid, updated_at,
+       json_extract(data, '$.simulation_id') AS simulation_id,
+       length(data) AS context_json_bytes
+FROM context_session
+ORDER BY updated_at DESC
+LIMIT 50;
+
+-- PostgreSQL
+SELECT dfid, updated_at,
+       data->>'simulation_id' AS simulation_id,
+       length(data::text)     AS context_json_chars
+FROM context_session
+ORDER BY updated_at DESC
+LIMIT 50;
+```
+
+#### Per-agent state — `context_state.data`
+
+```sql
+-- SQLite
+SELECT agent_id, version, updated_at,
+       json_extract(data, '$.simulation_id')       AS simulation_id,
+       json_extract(data, '$.last_dfid')           AS last_dfid,
+       json_extract(data, '$.last_policy_action')  AS last_policy_action,
+       json_extract(data, '$.last_outcome')        AS last_outcome
+FROM context_state
+ORDER BY updated_at DESC
+LIMIT 50;
+
+-- PostgreSQL
+SELECT agent_id, version, updated_at,
+       data->>'simulation_id'      AS simulation_id,
+       data->>'last_dfid'          AS last_dfid,
+       data->>'last_policy_action' AS last_policy_action,
+       data->>'last_outcome'       AS last_outcome
+FROM context_state
+ORDER BY updated_at DESC
+LIMIT 50;
+```
+
+#### Lifecycle transitions (`flow_transitions` — plain columns)
+
+```sql
+SELECT id, dfid, from_status, to_status, created_at
+FROM flow_transitions
+ORDER BY id DESC
+LIMIT 100;
+```
+
+**SQLite CLI:** point `sqlite3` at the file from `database.db_path` in `config.yaml`, for example  
+`sqlite3 samples/31_finance_trading/data/simulation_data.db "SELECT …"`.
+
+After a successful run, `run.py` may log a **row count** and (on PostgreSQL) a sample `SELECT` using `detail_json->>'simulation_id'`.
+
+### HTML report pipeline
+
+`report_generator.generate_html_report(simulation_id, bundle, output_path, …)` loads **`bundle.decision_audit.all_events_chronological()`**, then **`hydrate_report_state_from_audit`** (`simulation_audit.py`) rebuilds ticks, decisions, positions, and news for charts and tables. The report can also include a **repository-oriented** section built from the same `StorageBundle` (see `_build_repository_business_html` in `report_generator.py`).
+
+### Regenerating HTML reports
+
+Use the **same** persistence settings as the run (read `config.yaml` again and call `setup_environment`, or open the SQLite file with `sqlite_storage` if you intentionally use a file-only path). The public API passes a **`StorageBundle`**, not a bare file path:
 
 ```bash
-# List all simulations
-python samples/31_finance_trading/query_position_views.py list
+# From sample directory: uses config.yaml → same DB provider as simulation
+python report_generator.py --simulation-id '<simulation_id>'
 
-# Show aggregated audit for one simulation
-python samples/31_finance_trading/query_position_views.py <simulation_id>
-
-# Show detailed audit (one row per decision)
-python samples/31_finance_trading/query_position_views.py <simulation_id> --detailed
-
-# Show all simulations (aggregated)
-python samples/31_finance_trading/query_position_views.py all
-
-# Show all simulations (detailed)
-python samples/31_finance_trading/query_position_views.py all --detailed
+# Or rely on auto-pick of the latest SIMULATION_START in that database
+python report_generator.py
 ```
 
-**Output includes:**
-- Full news trigger context (headline, sentiment, score)
-- News agent's justification for spawning position
-- Complete decision timeline with prices
-- P&L calculation at each decision point
-- Aggregated statistics (HOLD/REDUCE/CLOSE counts)
-
-**Example output:**
-```
-Position ID: pos_BTC-USD_20260223_143022
-  Instrument: BTC-USD
-  Entry: Tick 5, Price $65432.10
-
-  📰 NEWS TRIGGER:
-     Headline: Federal Reserve signals rate hike concerns
-     Sentiment: bearish, Score: 0.85
-     Agent: news_scorer
-     Justification: High-impact monetary policy news affecting all crypto...
-
-  📍 TIMELINE:
-     T6: HOLD @$65401.23
-     T7: HOLD @$65389.45
-     T8: REDUCE @$65201.89
-     T9: CLOSE @$64987.12
-
-  📊 DECISIONS SUMMARY:
-     Total: 4
-     HOLD: 2, REDUCE: 1, CLOSE: 1
-     Price range: $64987.12 - $65401.23 (avg $65244.97)
-     P&L: -0.68%
-```
-
-### Query Helper Script
-
-A convenience script is provided for common queries:
-
-```bash
-# List recent simulations
-python samples/31_finance_trading/query_simulations.py list
-
-# Show detailed summary for a specific simulation
-python samples/31_finance_trading/query_simulations.py summary <simulation_id>
-
-# Show all decisions
-python samples/31_finance_trading/query_simulations.py decisions <simulation_id>
-
-# Show price evolution
-python samples/31_finance_trading/query_simulations.py prices <simulation_id>
-```
-
-### Regenerating HTML Reports
-
-Since reports are generated **directly from the database**, you can regenerate them at any time for any completed simulation:
+Programmatic example:
 
 ```python
-# Example: Regenerate report for specific simulation
 from pathlib import Path
+import yaml
+from shared.bootstrap import setup_environment
 from report_generator import generate_html_report
 
-simulation_id = "sim_2026-02-24T14:35:22.123Z_a3f2c1"
-db_path = Path("samples/31_finance_trading/data/simulation_data.db")
-output_path = Path("samples/31_finance_trading/results/regenerated_report.html")
+sample_dir = Path("samples/31_finance_trading")
+config = yaml.safe_load((sample_dir / "config.yaml").read_text(encoding="utf-8"))
+env = setup_environment(config, config_path=str(sample_dir / "config.yaml"))
 
 generate_html_report(
-    simulation_id=simulation_id,
-    db_path=str(db_path),
-    output_path=output_path,
-    simulation_ticks=50,  # From simulation summary
+    simulation_id="sim_2026-02-24T14-35-22-123456+00-00_a3f2c1d0",
+    bundle=env.repository,
+    output_path=sample_dir / "results" / "regenerated_report.html",
+    simulation_ticks=50,
     news_count=4,
     elapsed_seconds=15.2,
 )
 ```
 
-**Use cases for report regeneration:**
-- Regenerate with updated visualization styles
-- Create multiple report formats from the same data
-- Share reports without sharing in-memory simulation state
-- Archive reports for compliance and auditing
+**Use cases for report regeneration:** refresh styling, archive compliance copies, or render the same `simulation_id` after connecting to a copy of the database.
 
 ---
 
@@ -1110,7 +1274,7 @@ INFO [DFID:obs_BTC-USD_20260224_143531] position_btc_usd: proposing ADJUST_STOP 
 INFO [DFID:obs_BTC-USD_20260224_143531] DIM: ACCEPT Position management authorized
 ```
 
-**Final Summary:**
+**Final Summary (illustrative):**
 ```
 ======================================================================
 [SUMMARY] EOAM Live Simulation
@@ -1119,38 +1283,25 @@ INFO [DFID:obs_BTC-USD_20260224_143531] DIM: ACCEPT Position management authoriz
   Position agents spawned: 3
   Bus events: 152
   Signal suppression: 127 signals suppressed by Wake-up Predicates
-  Simulation ID: sim_2026-02-24T14:35:22.123Z_a3f2c1
+  Simulation ID: sim_2026-02-24T14-35-22-123456+00-00_a3f2c1d0
 
-Running position audit view...
+INFO Persistence: SQLite path=data/simulation_data.db
+INFO Decision audit backend: SqliteDecisionAuditStorage
+INFO Decision audit rows for this simulation_id: 184 (...)
 
-════════════════════════════════════════════════════════════════════════════════════════════════════════
-  POSITION LIFECYCLE REPORT
-  Simulation: sim_2026-02-24T14:35:22.123Z_a3f2c1
-════════════════════════════════════════════════════════════════════════════════════════════════════════
-[Position audit output - formatted with boxes, emojis, and detailed decision timelines...]
-
-✅ Report generated: D:\...\results\simulation_report_sim_2026-02-24T14-35.html
+Report: .../results/simulation_report_2026-02-24_1435_50ticks.html
 Opening report in browser...
-======================================================================
 ```
 
-**Post-Simulation Actions (Automatic):**
-1. **Position Audit View:** `query_position_views.py <simulation_id>` runs automatically in console, displaying complete position lifecycle with:
-   - ✅/⏳ Status badges, entry/exit prices
-   - 📰 News trigger with headline and sentiment
-   - 📊 Complete decision timeline with prices and justifications
-   - P&L calculations
-2. **HTML Report:** Automatically generated and opened in default browser with:
-   - Interactive Plotly charts with rich tooltips
-   - Visual markers: ⭐ News, ▲ Position Open, 🔷 Decisions
-   - Professional styled position lifecycle cards
-   - Complete DFID hierarchy
-3. **Database:** All data persisted in `simulation_data.db` for further analysis
+**Post-simulation actions (automatic):**
+
+1. **Audit completion:** `SIMULATION_END` is written to **`decision_audit_events`** (with `simulation_id` inside `detail_json`). Logs may include audit row count and a sample SQL filter for PostgreSQL.
+2. **HTML report:** `report_generator.generate_html_report` is called with the **same `StorageBundle`** as the run; charts and lifecycle cards are rebuilt from **`hydrate_report_state_from_audit`**.
 
 ### Database & Reports
 
-- **Database:** `./data/simulation_data.db` - SQLite database with all simulation data. A unique simulation_id is generated for each run. **All data is persisted immediately as simulation runs.**
-- **HTML Report:** `./results/simulation_report_<simulation_id>.html` - **Generated from database, not in-memory data**, containing:
+- **Repository:** whatever `config.yaml` → `setup_environment` selected (**SQLite file**, **PostgreSQL**, or **memory**). Trading timeline rows live in **`decision_audit_events`**; agent contracts and ROA context live in **`agent_registry`**, **`context_session`**, **`context_state`**; optional spawn/retire markers in **`flow_transitions`**. See [Database Storage (canonical repository)](#database-storage-canonical-repository).
+- **HTML Report:** `./results/simulation_report_<date>_<ticks>ticks.html` (filename pattern from `run.py`) — **generated from persisted audit (+ bundle summary in the report)**, containing:
   - **Summary box:** Gradient-styled card with ticks, news events, elapsed time, decisions, positions, **signal suppression statistics**.
   - **Interactive price charts (Plotly):** One chart per instrument with:
     - **Price line** (cyan) with hover tooltips showing: tick index, price, timestamp, trend, volatility, DFID
@@ -1171,7 +1322,7 @@ Opening report in browser...
     - **Visual separation:** News markers offset +3% above price, Position markers offset -3% below price to prevent overlap
   - **DFID hierarchy tree:** Expandable section showing parent (news) → child (position manager) links.
   - **Decision details:** Expandable table with DFID, agent, policy_kind, DIM result, justification, explain narrative.
-  - **Position lifecycle cards:** Inspired by `query_position_views.py` format, styled with:
+  - **Position lifecycle cards:** Console-style lifecycle layout (status, news trigger, timeline), styled with:
     - **Status badges:** Green "✅ CLOSED" or blue "⏳ OPEN" with colored borders
     - **Position header:** Position ID, instrument badge
     - **Structured sections:**
@@ -1188,36 +1339,26 @@ Opening report in browser...
 - **Clear hierarchy:** Icons (📊, 📰, 📈, 🏁) for visual scanning
 - **Accessibility:** High contrast, readable fonts, proper spacing
 
-**Report Generation:**
-- Reports are generated **directly from SQLite database** for any simulation
-- This ensures consistency and allows regenerating reports after simulation completes
-- Data integrity: What's in the database = What's in the report (no in-memory state dependency)
-- **Filename format:** `simulation_report_<simulation_id>.html` (e.g., `simulation_report_sim_2026-02-24T14-35.html`)
+**Report generation:**
 
-**Automatic Post-Simulation Actions:**
-1. **Position Audit View:** Automatically runs `query_position_views.py <simulation_id>` to display complete position lifecycle with news triggers in console
-2. **HTML Report:** Automatically generated and opened in your default browser
-3. **Database:** All data persisted in `simulation_data.db` for further analysis
+- Reports are generated from **`bundle.decision_audit.all_events_chronological()`** (same connection or file as the simulation when you reuse `setup_environment`).
+- Regenerating after the run uses the same canonical tables; there is no separate “simulations” header table.
+- **Filename pattern (from `run.py`):** `simulation_report_<UTC-date>_<tick_count>ticks.html` under `./results/`.
 
-**Manual Report Generation:**
+**Manual report generation (from sample directory):**
+
 ```bash
-# Generate report for specific simulation
-python samples/31_finance_trading/report_generator.py --simulation-id <simulation_id>
-
-# Or use most recent simulation (auto-detected)
-python samples/31_finance_trading/report_generator.py
+cd samples/31_finance_trading
+python report_generator.py --simulation-id "<simulation_id>"
+# or omit --simulation-id to pick the latest SIMULATION_START in the configured database
+python report_generator.py
 ```
 
-**Manual Query:**
-```bash
-python samples/31_finance_trading/query_position_views.py <simulation_id>
-```
-
-See [Database Storage](#database-storage) section for complete schema and audit views documentation.
+**Manual inspection:** use `sqlite3` / `psql` against **`decision_audit_events`** with `detail_json` / `json_extract` / `->>` filters as in [Database Storage (canonical repository)](#database-storage-canonical-repository).
 
 ### Key Metrics to Observe
 
-- **News-Driven Entry:** All positions spawn only when `news_scorer` emits NEWS_QUALIFIED (score ≥ 0.6).
+- **News-Driven Entry:** All positions spawn only when `news_scorer` emits NEWS_QUALIFIED (score ≥ `news_score_threshold` from `config.yaml`, often 0.50).
 - **Separation of Concerns:** Instrument agents (MONITOR) never open positions; only news_scorer (STRATEGIST) can trigger position spawning.
 - **Hierarchical DFID:** Every position decision traces back to its parent news event via `parent_dfid`.
 - **Risk Management:** Position agents (EXECUTOR) independently manage risk but cannot override their own entry threshold - only `news_scorer` decides when markets are ready.
@@ -1227,7 +1368,7 @@ See [Database Storage](#database-storage) section for complete schema and audit 
 
 ## Generators (dir)
 
-- **QuoteGenerator** (`mock_context/quote_generator.py`): One instrument; multiplicative random walk in price; `next_tick()` → `QuoteTick`, `to_payload()` for OBSERVATION. Optional seed for reproducibility.
-- **NewsGenerator** (`mock_context/news_generator.py`): Template-based headlines, sentiment, category; `score_news()` for raw_score; `news_payloads(max_events, sleep_between)` yields payloads with optional dfid. Optional seed for reproducibility.
+- **QuoteGenerator** (`generators/quote_generator.py`): One instrument; multiplicative random walk in price; `next_tick()` → `QuoteTick`, `to_payload()` for OBSERVATION. Optional seed for reproducibility.
+- **NewsGenerator** (`generators/news_generator.py`): Template-based headlines, sentiment, category; `score_news()` for raw_score; `news_payloads(max_events, sleep_between)` yields payloads with optional dfid. Optional seed for reproducibility.
 
 In production, news scoring could be LLM- or RAG-based; here it is rule-based for determinism and no API keys.

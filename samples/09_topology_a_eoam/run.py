@@ -34,7 +34,7 @@ if not _FINANCE_TRADING.is_dir():
 _p = str(_FINANCE_TRADING)
 if _p not in sys.path:
     sys.path.insert(0, _p)
-from mock_context.quote_generator import QuoteGenerator  # noqa: E402
+from generators.quote_generator import QuoteGenerator  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

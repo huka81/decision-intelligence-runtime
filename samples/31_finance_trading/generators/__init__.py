@@ -1,5 +1,5 @@
 """
-Synthetic market context for the finance trading sample.
+Synthetic market generators for the finance trading sample.
 
 Quote ticks, news, and event-bus payloads for EOAM demos.
 """

@@ -9,15 +9,22 @@ Generates report from database (persistent storage) instead of in-memory data.
 
 from __future__ import annotations
 
+import json
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
-from simulation_audit import (
-    SimulationReportState,
-    hydrate_report_state_from_audit,
-)
-
+try:
+    from simulation_audit import (
+        SimulationReportState,
+        hydrate_report_state_from_audit,
+    )
+except ImportError:
+    from .simulation_audit import (
+        SimulationReportState,
+        hydrate_report_state_from_audit,
+    )
 
 from dir_core.storage import StorageBundle
 
@@ -39,6 +46,302 @@ def _section(title: str, content: str, expanded: bool = True) -> str:
         <summary><strong>{_escape(title)}</strong></summary>
         <div class="section-content">{content}</div>
     </details>"""
+
+
+def _related_dfids(state: SimulationReportState) -> Set[str]:
+    """DFIDs tied to this simulation (ticks, decisions, news, position parents)."""
+    s: Set[str] = set()
+    for t in state.ticks:
+        if t.dfid:
+            s.add(t.dfid)
+    for d in state.decisions:
+        if d.dfid:
+            s.add(d.dfid)
+    for n in state.news_events:
+        df = n.get("dfid")
+        if df:
+            s.add(str(df))
+    for p in state.positions:
+        if p.parent_dfid:
+            s.add(p.parent_dfid)
+    return s
+
+
+def _agent_ids_for_run(state: SimulationReportState) -> List[str]:
+    """Agent IDs that participate in audit + spawned position agents."""
+    ids: Set[str] = {d.agent_id for d in state.decisions if d.agent_id}
+    for p in state.positions:
+        if p.position_id:
+            ids.add(f"position_{p.position_id}")
+    return sorted(ids)
+
+
+def _fetch_flow_transitions(bundle: StorageBundle, allow_dfids: Set[str]) -> List[Dict[str, Any]]:
+    """Read flow_transitions for DFIDs in this run (memory / PostgreSQL / SQLite)."""
+    if not allow_dfids:
+        return []
+    ls = bundle.lifecycle
+    mem_fn = getattr(ls, "get_transitions", None)
+    if callable(mem_fn):
+        rows: List[Dict[str, Any]] = []
+        raw_transitions: Any = mem_fn()
+        for t in raw_transitions:
+            if t.get("dfid") in allow_dfids:
+                rows.append(dict(t))
+        rows.sort(key=lambda x: str(x.get("created_at", "")))
+        return rows
+    conn = getattr(ls, "_conn", None)
+    flat = list(allow_dfids)[:400]
+    if conn is not None and flat:
+        placeholders = ",".join(["%s"] * len(flat))
+        sql = (
+            "SELECT id, dfid, from_status, to_status, created_at::text "
+            "FROM flow_transitions WHERE dfid IN (" + placeholders + ") ORDER BY id ASC"
+        )
+        with conn.cursor() as cur:
+            cur.execute(sql, flat)
+            raw = cur.fetchall()
+        return [
+            {
+                "id": r[0],
+                "dfid": r[1],
+                "from_status": r[2] or "",
+                "to_status": r[3],
+                "created_at": str(r[4]) if r[4] is not None else "",
+            }
+            for r in raw
+        ]
+    db_path = getattr(ls, "db_path", None)
+    if db_path and flat:
+        placeholders = ",".join("?" * len(flat))
+        sql = (
+            "SELECT id, dfid, from_status, to_status, created_at "
+            "FROM flow_transitions WHERE dfid IN (" + placeholders + ") ORDER BY id ASC"
+        )
+        with sqlite3.connect(db_path) as c:
+            cur = c.execute(sql, flat)
+            raw = cur.fetchall()
+        return [
+            {
+                "id": r[0],
+                "dfid": r[1],
+                "from_status": r[2] or "",
+                "to_status": r[3],
+                "created_at": str(r[4]) if r[4] is not None else "",
+            }
+            for r in raw
+        ]
+    return []
+
+
+def _gather_registry_rows(bundle: StorageBundle, agent_ids: List[str]) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for aid in agent_ids:
+        rec = bundle.agent_registry.get_agent(aid)
+        if not rec:
+            continue
+        c = rec.get("contract") or {}
+        mission = str(c.get("mission") or "")
+        rows.append(
+            {
+                "agent_id": aid,
+                "status": rec.get("status", ""),
+                "priority": rec.get("priority", 0),
+                "role": str(c.get("role", "")),
+                "instruments": ", ".join(c.get("authorized_instruments") or []),
+                "mission_excerpt": mission[:160] + ("…" if len(mission) > 160 else ""),
+            }
+        )
+    return rows
+
+
+def _gather_session_snapshots(
+    bundle: StorageBundle,
+    simulation_id: str,
+    dfids: Set[str],
+    *,
+    limit: int = 100,
+) -> List[Dict[str, Any]]:
+    """Context Store session rows tagged with this simulation_id."""
+    out: List[Dict[str, Any]] = []
+    for i, dfid in enumerate(sorted(dfids)):
+        if i >= limit:
+            break
+        raw = bundle.context.get_session(dfid)
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if data.get("simulation_id") != simulation_id:
+            continue
+        steps = data.get("roa_internal_steps") or []
+        last = steps[-1] if steps else {}
+        out.append(
+            {
+                "dfid": dfid,
+                "roa_steps": len(steps),
+                "last_policy": str(last.get("policy_action", "—")),
+                "last_outcome": str(last.get("outcome", "—")),
+            }
+        )
+    return out
+
+
+def _gather_agent_state_snapshots(
+    bundle: StorageBundle,
+    simulation_id: str,
+    agent_ids: List[str],
+) -> List[Dict[str, Any]]:
+    """Context Store per-agent state for this simulation."""
+    out: List[Dict[str, Any]] = []
+    for aid in agent_ids:
+        raw = bundle.context.get_state(aid)
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if data.get("simulation_id") != simulation_id:
+            continue
+        out.append(
+            {
+                "agent_id": aid,
+                "last_dfid": str(data.get("last_dfid", "—")),
+                "last_policy": str(data.get("last_policy_action", "—")),
+                "last_outcome": str(data.get("last_outcome", "—")),
+            }
+        )
+    return out
+
+
+def _transition_business_note(from_s: str, to_s: str) -> str:
+    """Short business reading of a lifecycle row (sample-specific conventions)."""
+    if from_s == "POSITION_SPAWN" and to_s.startswith("position_"):
+        return "News flow spawned a dedicated position agent (capital at risk)."
+    if to_s == "RETIRED":
+        return "Position agent removed from active mesh after close (registry RETIRED)."
+    if from_s == "NEWS_QUALIFIED" or "NEWS" in from_s.upper():
+        return "Orchestration linked to news-qualified decision flow."
+    return "Kernel lifecycle transition (audit trail)."
+
+
+def _build_repository_business_html(
+    bundle: StorageBundle,
+    simulation_id: str,
+    state: SimulationReportState,
+) -> str:
+    """HTML: registry, lifecycle, context session/state — data from the same StorageBundle as the run."""
+    dfids = _related_dfids(state) | {simulation_id}
+    agent_ids = _agent_ids_for_run(state)
+    registry_rows = _gather_registry_rows(bundle, agent_ids)
+    transitions = _fetch_flow_transitions(bundle, dfids)
+    sessions = _gather_session_snapshots(bundle, simulation_id, dfids)
+    states = _gather_agent_state_snapshots(bundle, simulation_id, agent_ids)
+
+    intro = """
+    <p class="meta">
+        This section binds the <strong>trading narrative</strong> to DIR kernel artefacts persisted alongside
+        decision audit: <em>who</em> was authorised in the Agent Registry, <em>which flows</em> recorded lifecycle
+        transitions (spawn / retire), and <em>what</em> the Context Store captured per DFID and per agent state
+        (ROA Explain→Policy outcomes for compliance and post-trade review).
+    </p>
+    """
+
+    if not registry_rows and not transitions and not sessions and not states:
+        return intro + (
+            "<p><em>No Agent Registry / Context / lifecycle rows for agents in this run "
+            "(e.g. in-memory bundle cleared, or kernel persistence not used for this execution).</em></p>"
+        )
+
+    blocks: List[str] = [intro]
+
+    if registry_rows:
+        rows_html = "".join(
+            f"""<tr>
+            <td><code>{_escape(str(r["agent_id"]))}</code></td>
+            <td>{_escape(str(r["status"]))}</td>
+            <td>{r["priority"]}</td>
+            <td>{_escape(r["role"])}</td>
+            <td>{_escape(r["instruments"])}</td>
+            <td>{_escape(r["mission_excerpt"])}</td>
+        </tr>"""
+            for r in registry_rows
+        )
+        blocks.append(
+            f"""
+        <h3>Agent Registry — authority &amp; mission (DIR §2.3)</h3>
+        <p class="meta">Registered agents participating in this simulation snapshot (contract + runtime status).</p>
+        <table class="data-table">
+            <tr><th>Agent</th><th>Status</th><th>Priority</th><th>Role</th><th>Instruments</th><th>Mission (excerpt)</th></tr>
+            {rows_html}
+        </table>"""
+        )
+
+    if transitions:
+        tr_html = "".join(
+            f"""<tr>
+            <td>{_escape(str(t.get("created_at", "")))}</td>
+            <td><code>{_escape(str(t.get("dfid", "")))}</code></td>
+            <td>{_escape(str(t.get("from_status", "")))}</td>
+            <td>{_escape(str(t.get("to_status", "")))}</td>
+            <td>{_escape(_transition_business_note(str(t.get("from_status", "")), str(t.get("to_status", ""))))}</td>
+        </tr>"""
+            for t in transitions
+        )
+        blocks.append(
+            f"""
+        <h3>Flow lifecycle — orchestration (DIR §4.3)</h3>
+        <p class="meta">Append-only transitions for DFIDs tied to this run (spawn of position agents, retire on close).</p>
+        <table class="data-table">
+            <tr><th>Time</th><th>Flow / DFID</th><th>From</th><th>To</th><th>Business note</th></tr>
+            {tr_html}
+        </table>"""
+        )
+
+    if sessions:
+        s_html = "".join(
+            f"""<tr>
+            <td><code>{_escape(s["dfid"])}</code></td>
+            <td>{s["roa_steps"]}</td>
+            <td>{_escape(s["last_policy"])}</td>
+            <td>{_escape(s["last_outcome"])}</td>
+        </tr>"""
+            for s in sessions
+        )
+        blocks.append(
+            f"""
+        <h3>Context Store — session (per DFID)</h3>
+        <p class="meta">ROA internal steps persisted for each market/news decision flow (Explain→Policy outcome count).</p>
+        <table class="data-table">
+            <tr><th>DFID</th><th>ROA steps</th><th>Last policy</th><th>Last outcome</th></tr>
+            {s_html}
+        </table>"""
+        )
+
+    if states:
+        st_html = "".join(
+            f"""<tr>
+            <td><code>{_escape(st["agent_id"])}</code></td>
+            <td><code>{_escape(st["last_dfid"])}</code></td>
+            <td>{_escape(st["last_policy"])}</td>
+            <td>{_escape(st["last_outcome"])}</td>
+        </tr>"""
+            for st in states
+        )
+        blocks.append(
+            f"""
+        <h3>Context Store — agent state (authoritative slice)</h3>
+        <p class="meta">Latest kernel-written state per agent for this simulation (ties agents to last DFID and policy outcome).</p>
+        <table class="data-table">
+            <tr><th>Agent</th><th>Last DFID</th><th>Last policy</th><th>Last outcome</th></tr>
+            {st_html}
+        </table>"""
+        )
+
+    return "\n".join(blocks)
 
 
 def _build_chart_html(state: SimulationReportState) -> str:
@@ -264,7 +567,7 @@ def _build_chart_html(state: SimulationReportState) -> str:
                 if pos.parent_dfid:
                     hover_text += f"<br><b>Parent DFID:</b> {pos.parent_dfid}"
                 
-                if pos.close_tick is not None:
+                if pos.close_tick is not None and pos.close_price is not None:
                     pnl_usd = pos.quantity * (pos.close_price - pos.entry_price)
                     pnl_percent = ((pos.close_price - pos.entry_price) / pos.entry_price) * 100
                     pnl_sign = "+" if pnl_usd >= 0 else ""
@@ -510,6 +813,12 @@ def generate_html_report(
     """
     events = bundle.decision_audit.all_events_chronological()
     state = hydrate_report_state_from_audit(events, simulation_id)
+    audit_event_count = sum(
+        1
+        for e in events
+        if (e.get("details") or {}).get("simulation_id") == simulation_id
+    )
+    repository_html = _build_repository_business_html(bundle, simulation_id, state)
 
     # Generate report from loaded data
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -939,7 +1248,10 @@ def generate_html_report(
         <p><strong>Elapsed:</strong> {elapsed_seconds:.1f}s</p>
         <p><strong>Decisions:</strong> {len(state.decisions)}</p>
         <p><strong>Positions:</strong> {len(state.positions)}</p>
+        <p><strong>Audit events (this simulation_id):</strong> {audit_event_count}</p>
     </div>
+
+    {_section("🏛 Operating model & persisted kernel (DIR)", repository_html)}
 
     <h2>📈 Price Charts with Decision Points</h2>
     <p class="meta">Hover over price line to see tick details. Hover over decision markers to see LLM justification and agent proposal.</p>
@@ -981,19 +1293,20 @@ if __name__ == "__main__":
     cli_db_path = args.db_path if args.db_path.is_absolute() else sample_dir / args.db_path
 
     from shared.config import load_yaml_config
-    from shared.bootstrap import normalize_database_provider, open_storage_bundle
+    from shared.bootstrap import (
+        normalize_database_provider,
+        open_storage_bundle,
+        resolve_sqlite_db_path_relative_to_config,
+    )
 
     if config_path.exists():
         config = load_yaml_config(config_path)
-        db_cfg = config.get("database") or {}
+        db_cfg = resolve_sqlite_db_path_relative_to_config(
+            config.get("database") or {}, str(config_path)
+        )
         db_provider = normalize_database_provider(db_cfg.get("provider", "memory"))
         if db_provider == "sqlite":
-            cfg_sqlite = db_cfg.get("db_path", "data/simulation_data.db")
-            sqlite_path = (
-                Path(cfg_sqlite)
-                if Path(cfg_sqlite).is_absolute()
-                else sample_dir / cfg_sqlite
-            )
+            sqlite_path = Path(db_cfg.get("db_path", "data/simulation_data.db"))
             if not sqlite_path.exists():
                 print(f"SQLite database not found: {sqlite_path}")
                 print("Run a simulation first to create the database.")

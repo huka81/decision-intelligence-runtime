@@ -44,7 +44,7 @@ from dir_core.utils.logging_utils import log_with_dfid
 try:
     from shared.llm.clients import GeminiClient, OllamaClient, MockLLMClient
     from shared.bootstrap import database_connection_summary, setup_environment
-    from .mock_context import NewsGenerator, QuoteGenerator
+    from .generators import NewsGenerator, QuoteGenerator
     from .orchestrator import EOAMOrchestrator
     from .roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
     from .dir_kernel_wiring import (
@@ -68,7 +68,7 @@ try:
 except ImportError:
     from shared.llm.clients import GeminiClient, OllamaClient, MockLLMClient
     from shared.bootstrap import database_connection_summary, setup_environment
-    from mock_context import NewsGenerator, QuoteGenerator
+    from generators import NewsGenerator, QuoteGenerator
     from orchestrator import EOAMOrchestrator
     from roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
     from dir_kernel_wiring import (

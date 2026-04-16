@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 from dir_core.storage import StorageBundle, sqlite_storage, memory_storage
@@ -32,6 +33,27 @@ def normalize_database_provider(raw: object) -> str:
     if s in ("postgresql", "psql", "pg"):
         return "postgres"
     return s
+
+
+def resolve_sqlite_db_path_relative_to_config(
+    database_cfg: Dict[str, Any],
+    config_path: Optional[str],
+) -> Dict[str, Any]:
+    """If SQLite and ``db_path`` is relative, anchor it to the config file's directory.
+
+    Avoids creating ``data/*.db`` under the process CWD when users run
+    ``python path/to/sample/run.py`` from the repository root.
+    """
+    cfg = dict(database_cfg)
+    if not config_path or normalize_database_provider(cfg.get("provider", "memory")) != "sqlite":
+        return cfg
+    raw = cfg.get("db_path", "data/app.db")
+    path = Path(raw)
+    if path.is_absolute():
+        return cfg
+    base = Path(config_path).resolve().parent
+    cfg["db_path"] = str((base / path).resolve())
+    return cfg
 
 
 def open_storage_bundle(database_cfg: Dict[str, Any]) -> StorageBundle:
@@ -79,9 +101,9 @@ def open_storage_bundle(database_cfg: Dict[str, Any]) -> StorageBundle:
 
     if db_provider == "sqlite":
         db_path = database_cfg.get("db_path", "data/app.db")
-        dir_name = os.path.dirname(db_path)
-        if dir_name:
-            os.makedirs(dir_name, exist_ok=True)
+        parent = Path(db_path).parent
+        if str(parent) not in (".", ""):
+            parent.mkdir(parents=True, exist_ok=True)
         repository = sqlite_storage(db_path)
         logger.info("Using SQLite repository at %s.", db_path)
         return repository
@@ -163,6 +185,9 @@ def setup_environment(
         raise ValueError(f"Unknown LLM provider: {provider}")
 
     # 2. Build Storage (PostgreSQL via pg_repo.build_repository, SQLite via sqlite_storage)
+    db_section = config.get("database")
+    if isinstance(db_section, dict) and config_path:
+        config["database"] = resolve_sqlite_db_path_relative_to_config(db_section, config_path)
     repository = open_storage_bundle(config.get("database") or {})
 
     # 3. Build Contract Provider

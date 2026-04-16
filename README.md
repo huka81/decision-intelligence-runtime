@@ -152,7 +152,7 @@ decision-intelligence-runtime/
 │   └── dir_core/             # Core DIR/ROA components (per docs spec)
 │       # DFID, EventBus, DIM, Context Store, models, arbitration, PCI, etc.
 │       └── utils/            # Supporting utilities for samples
-│           # logging_utils, config_loader, llm_client (synthetic market: samples/31_finance_trading/mock_context/)
+│           # logging_utils, config_loader, llm_client (synthetic market: samples/31_finance_trading/generators/)
 ├── samples/                  # Reference implementations (01–11 mechanics, 31+ use cases)
 │   ├── README.md             # Sample catalog and run instructions
 │   ├── 00_quick_start/ … 08_custom_repo_psql/ … 11_topology_c_dl_pci/
