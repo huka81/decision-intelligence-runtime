@@ -1,232 +1,380 @@
 #!/usr/bin/env python3
 """
-32_fraud_gate - Real-Time Fraud Gate (Topology B SDS).
+32_fraud_gate — YAML-driven payment fraud gate with ROA, DIM, and JIT drift checks.
 
-DIR Topologies §3: Sovereign Decision Stream. Demonstrates:
-- Constrained Decoding (Straightjacket Grammar via Pydantic)
-- JIT State Drift validation
-- Drift-attack scenario: Agent proposes ALLOW, Runtime rejects STATE_DRIFT_ERROR
+Topology: classic + ``scenarios.yaml`` (Sample Development Guide §2).
+Mechanisms: AgentRegistry handshake, ContextStore, ROA (Explain -> Policy -> Self-Check),
+DIM ``validate_proposal`` with ``verify_drift``, IdempotencyGuard (AuditStore),
+``decision_audit_events`` via StorageBundle.
 
-Configuration: config.yaml (llm_defaults, agent, jit_validator, scenarios).
-Uses real LLM (Ollama/Gemma) by default. Set USE_MOCK_LLM=1 for tests without server.
+External dependencies used only for demos live under ``mocks/`` (risk store, LLM
+strategy, fake PSP). Run from repo root: ``python samples/32_fraud_gate/run.py``.
 """
 
-import hashlib
-import json
+from __future__ import annotations
+
 import logging
-import os
 import sys
+import time
 from pathlib import Path
+from typing import Any, Dict, cast
+import webbrowser
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
 _SAMPLES = _REPO_ROOT / "samples"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
 if str(_SAMPLES) not in sys.path:
     sys.path.insert(0, str(_SAMPLES))
 
-from dir_core import new_dfid
-from shared.llm.clients import OllamaClient, check_ollama
+_SAMPLE_DIR = Path(__file__).resolve().parent
+if str(_SAMPLE_DIR) not in sys.path:
+    sys.path.insert(0, str(_SAMPLE_DIR))
 
 try:
-    from .agent import FraudGuardAgent
-    from .config_loader import load_config
-    from .execution_engine import execute
-    from .jit_validator import validate
-    from .llm_client import MockLLM
-    from .risk_cache import RiskCache
-    from .schemas import TransactionContext
+    import __init__  # noqa: F401
 except ImportError:
-    from agent import FraudGuardAgent
-    from config_loader import load_config
-    from execution_engine import execute
-    from jit_validator import validate
-    from llm_client import MockLLM
-    from risk_cache import RiskCache
-    from schemas import TransactionContext
+    pass
+
+from dir_core import (
+    AgentRegistry,
+    ContextStore,
+    new_dfid,
+    validate_proposal,
+)
+from dir_core.data_types import ValidationVerdict
+from dir_core.storage import AuditStore
+from dir_core.utils.logging_utils import log_with_dfid
+
+from shared.bootstrap import (
+    Environment,
+    build_llm_from_config,
+    configured_live_llm_is_reachable,
+    database_connection_summary,
+    setup_environment,
+)
+from shared.config import load_yaml_config
+
+from agent import run_fraud_roa_cycle
+from dim import dim_validators
+from report_generator import write_fraud_gate_html_report
+from schemas import (
+    ScenarioConfig,
+    TransactionContext,
+    fallback_rules_from_config,
+    global_max_limit_from_config,
+    load_scenarios,
+)
+from telemetry import (
+    record_agent_decision,
+    record_simulation_end,
+    record_simulation_start,
+)
+from mocks import (
+    InMemoryRiskStore,
+    execute_mock_allow_settlement,
+    live_risk_rows_from_store,
+    log_mock_gateway_non_allow,
+    make_mock_strategy,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Demo banner - what this example demonstrates
-# ---------------------------------------------------------------------------
-BANNER = """
-================================================================================
-32_fraud_gate - SDS Fraud Gate (DIR Topologies §3: Sovereign Decision Stream)
-================================================================================
 
-What this example demonstrates:
-  1. LLM (Gemma) evaluates the transaction and returns: ALLOW | BLOCK | CHALLENGE
-  2. JIT Validator (Kernel Space) checks: schema, hard limit, STATE DRIFT
-  3. Drift Attack: Agent sees user as "clean" -> ALLOW.
-     T+50ms external system flags account as "compromised".
-     JIT detects state change and REJECT (STATE_DRIFT_ERROR).
-
-Pipeline: Transaction -> Agent (LLM) -> DecisionAtom -> JIT -> Execute (ALLOW only)
-================================================================================
-"""
+def _llm_backend_label(llm: Any) -> str:
+    name = type(llm).__name__
+    if name == "MockLLMClient":
+        return "Mock"
+    if name == "OllamaClient":
+        model = getattr(llm, "model", "") or ""
+        base = getattr(llm, "base_url", "") or ""
+        return f"Ollama model={model} base_url={base}"
+    if name == "GeminiClient":
+        return f"Gemini model={getattr(llm, 'model', '')}"
+    return name
 
 
-def _build_llm(cfg):
-    """Build LLM client from config. MockLLM if USE_MOCK_LLM=1 or provider=mock."""
-    fallback_rules = cfg.agent.fallback_rules
-    if os.getenv("USE_MOCK_LLM", "").strip() in ("1", "true", "yes"):
-        logger.info("Using MockLLM (USE_MOCK_LLM=1)")
-        return MockLLM(fallback_rules=fallback_rules)
-    if cfg.llm is None:
-        logger.info("Using MockLLM (no llm_defaults in config)")
-        return MockLLM(fallback_rules=fallback_rules)
-    llm_cfg = cfg.llm
-    model = llm_cfg.effective_model()
-    base_url = llm_cfg.effective_base_url()
-    logger.info("Using Ollama: model=%s base_url=%s", model, base_url)
-    return OllamaClient(model=model, base_url=base_url, timeout=60)
-
-
-def _check_ollama(cfg) -> bool:
-    """Verify Ollama is reachable. Returns False if not (caller may fall back to MockLLM)."""
-    if cfg.llm is None:
-        return True
-    if os.getenv("USE_MOCK_LLM", "").strip() in ("1", "true", "yes"):
-        return True
-    base_url = cfg.llm.effective_base_url()
-    model = cfg.llm.effective_model()
-    if not check_ollama(base_url, model):
-        logger.warning(
-            "Ollama not reachable at %s or model '%s' not found. Use MockLLM. (ollama serve && ollama pull %s)",
-            base_url, model, model,
-        )
-        return False
-    return True
-
-
-def _snapshot_id(ctx: TransactionContext) -> str:
-    """Generate snapshot ID from transaction context (hash of frozen state)."""
-    content = json.dumps(ctx.model_dump(), sort_keys=True)
-    return hashlib.sha256(content.encode()).hexdigest()[:16]
-
-
-def run_transaction(
-    tx_id: str,
-    ctx: TransactionContext,
-    agent: FraudGuardAgent,
-    risk_cache: RiskCache,
-    snapshot_user_state: dict,
+def _run_one_scenario(
+    *,
+    scenario: ScenarioConfig,
+    env: Environment,
+    store: ContextStore,
+    audit: AuditStore,
+    rules: Any,
+    contract: Any,
+    agent_id: str,
     global_max_limit: float,
-    scenario_label: str = "",
+    simulation_id: str,
 ) -> None:
-    """Process one transaction through the SDS pipeline."""
+    risk_store = InMemoryRiskStore()
+    for user_id, state in scenario.snapshot.items():
+        risk_store.set(
+            user_id,
+            cast(Any, state.get("status", "clean")),
+            float(state.get("risk_score", 0.0)),
+        )
+
+    tx = TransactionContext(**scenario.context)
+    uid = tx.user_id
+    snap_row = scenario.snapshot.get(uid, {})
+    snapshot_status = str(snap_row.get("status")) if snap_row else None
+
     dfid = new_dfid()
-    snapshot_id = _snapshot_id(ctx)
-    dfid_short = dfid[:8]
+    log_with_dfid(
+        logger,
+        dfid,
+        logging.INFO,
+        "Scenario=%s tx_id=%s user=%s amount=%s",
+        scenario.label,
+        scenario.tx_id,
+        uid,
+        tx.amount,
+    )
+    store.update_session(
+        dfid,
+        {
+            "transaction": tx.model_dump(),
+            "scenario_label": scenario.label,
+            "tx_id": scenario.tx_id,
+            "simulation_id": simulation_id,
+        },
+    )
+    working = store.compile_working_context(agent_id, dfid)
 
-    logger.info("")
-    logger.info("--- %s ---", scenario_label or tx_id)
-    logger.info("[INPUT] tx_id=%s user=%s amount=$%.2f country=%s device=%s velocity_24h=%d",
-                tx_id, ctx.user_id, ctx.amount, ctx.geo_country, ctx.device_id, ctx.velocity_24h)
-
-    # 1. Agent decides (sees snapshot state)
-    logger.info("[STEP 1] Agent (LLM) evaluates transaction...")
-    atom = agent.decide(ctx, dfid=dfid, snapshot_id=snapshot_id)
-    logger.info("[AGENT] action=%s reason_code=%s risk_score=%.2f",
-                atom.action, atom.reason_code, atom.risk_score)
-
-    # 2. JIT validation
-    logger.info("[STEP 2] JIT Validator: schema, hard_limit, state_drift...")
-    verdict, reason = validate(atom, risk_cache, snapshot_user_state, global_max_limit=global_max_limit)
-
-    if verdict == "REJECT":
-        logger.warning("[JIT] REJECT: %s", reason)
-        logger.info("[RESULT] Transaction NOT executed (JIT rejected)")
+    roa = run_fraud_roa_cycle(
+        env.llm,
+        contract,
+        tx,
+        snapshot_status,
+        dfid,
+        agent_id,
+        rules,
+    )
+    proposal = roa.proposal
+    contract_role = str(contract.role)
+    allowed_types = list(contract.allowed_policy_types or [])
+    audit_common: Dict[str, Any] = {
+        "simulation_id": simulation_id,
+        "agent_id": agent_id,
+        "scenario_label": scenario.label,
+        "tx_id": scenario.tx_id,
+        "amount": float(tx.amount),
+        "user_id": uid,
+        "geo_country": tx.geo_country,
+        "device_id": tx.device_id,
+        "velocity_24h": int(tx.velocity_24h),
+        "contract_role": contract_role,
+        "contract_allowed_policy_types": allowed_types,
+        "explain_narrative": roa.explain_narrative,
+        "explain_signals": roa.explain_signals,
+        "explain_risks": roa.explain_risks,
+        "explain_opportunities": roa.explain_opportunities,
+        "policy_proposed_action": roa.policy_proposed_action,
+        "policy_reason_code": roa.policy_reason_code,
+        "policy_risk_score": roa.policy_risk_score,
+        "policy_stage_confidence": roa.policy_confidence,
+        "self_check_passed": roa.self_check_passed,
+        "self_check_reason": roa.self_check_reason,
+        "drift_attack": scenario.drift_attack,
+    }
+    if proposal is None:
+        log_with_dfid(logger, dfid, logging.WARNING, "Self-check failed; no proposal for scenario %s", scenario.label)
+        record_agent_decision(
+            audit,
+            dfid,
+            policy_kind="NONE",
+            verdict="REJECT",
+            reason="SELF_CHECK_FAILED",
+            confidence=0.0,
+            justification=roa.policy_justification,
+            **audit_common,
+        )
+        if scenario.expected != "REJECT":
+            log_with_dfid(
+                logger,
+                dfid,
+                logging.ERROR,
+                "Scenario expected %s but self-check emitted no proposal",
+                scenario.expected,
+            )
         return
 
-    logger.info("[JIT] ACCEPT: %s", reason)
+    if scenario.drift_attack:
+        log_with_dfid(logger, dfid, logging.INFO, "Simulating post-decision risk flag (TOCTOU) for user=%s", uid)
+        risk_store.flag_compromised(uid, risk_score=1.0)
 
-    # 3. Execute (only for ALLOW)
-    logger.info("[STEP 3] Execution...")
-    if atom.action == "ALLOW":
-        execute(atom, tx_id)
-        logger.info("[RESULT] Transaction EXECUTED (ALLOW)")
-    else:
-        logger.info("PaymentGateway: %s tx_id=%s (blocked - no execution)", atom.action, tx_id)
-        logger.info("[RESULT] Transaction BLOCKED (agent: %s)", atom.action)
+    dim_context: Dict[str, Any] = {
+        "meta": working.get("meta", {}),
+        "snapshot_user": dict(scenario.snapshot),
+        "live_risk": live_risk_rows_from_store(risk_store, scenario.snapshot),
+        "global_max_limit": global_max_limit,
+    }
+
+    verdict, reason = validate_proposal(
+        proposal,
+        dim_context,
+        allowed_agents=[agent_id],
+        contract=contract.model_dump(),
+        custom_validators=dim_validators(),
+    )
+    log_with_dfid(logger, dfid, logging.INFO, "DIM: %s %s", verdict, reason)
+
+    record_agent_decision(
+        audit,
+        dfid,
+        policy_kind=proposal.policy_kind,
+        verdict=str(verdict),
+        reason=str(reason),
+        confidence=proposal.confidence,
+        justification=proposal.justification or "",
+        **audit_common,
+    )
+
+    exp = scenario.expected.upper()
+    got = str(verdict)
+    if exp != got:
+        log_with_dfid(
+            logger,
+            dfid,
+            logging.ERROR,
+            "Scenario %s: expected DIM verdict %s, got %s (%s)",
+            scenario.label,
+            exp,
+            got,
+            reason,
+        )
+
+    if verdict != ValidationVerdict.ACCEPT:
+        log_with_dfid(
+            logger,
+            dfid,
+            logging.INFO,
+            "No payment execution (DIM verdict=%s)", verdict
+        )
+        return
+
+    if proposal.policy_kind == "ALLOW":
+        execute_mock_allow_settlement(
+            logger,
+            audit,
+            dfid,
+            simulation_id=simulation_id,
+            tx_id=scenario.tx_id,
+            user_id=uid,
+            amount=float(proposal.params.get("amount", 0.0)),
+        )
+        return
+
+    log_mock_gateway_non_allow(logger, dfid, proposal.policy_kind, scenario.tx_id)
 
 
 def main() -> None:
-    print(BANNER, flush=True)
-    cfg = load_config()
-    ollama_ok = _check_ollama(cfg)
-    if ollama_ok:
-        llm = _build_llm(cfg)
-    else:
-        llm = MockLLM(fallback_rules=cfg.agent.fallback_rules)
-        if cfg.llm:
-            logger.info("Falling back to MockLLM (Ollama not available)")
-    risk_cache = RiskCache()
-    agent = FraudGuardAgent(
-        agent_id=cfg.agent.agent_id,
-        risk_cache=risk_cache,
-        llm=llm,
-        fallback_rules=cfg.agent.fallback_rules,
-        mission=cfg.agent.mission,
+    sample_dir = Path(__file__).resolve().parent
+    config_path = sample_dir / "config.yaml"
+    config = load_yaml_config(config_path)
+    simulation_id = str((config.get("simulation") or {}).get("run_id", "fraud_gate_demo"))
+    rules = fallback_rules_from_config(config)
+    global_max_limit = global_max_limit_from_config(config)
+    mock_strategy = make_mock_strategy(rules)
+
+    env = setup_environment(
+        config,
+        mock_llm_strategy=mock_strategy,
+        config_path=str(config_path),
     )
+    if not configured_live_llm_is_reachable(config):
+        env = Environment(
+            llm=build_llm_from_config(config, mock_llm_strategy=mock_strategy, force_mock=True),
+            repository=env.repository,
+            contracts=env.contracts,
+        )
 
-    for scenario in cfg.scenarios:
-        # Populate risk cache from snapshot
-        for user_id, state in scenario.snapshot.items():
-            risk_cache.set(
-                user_id,
-                state.get("status", "clean"),
-                float(state.get("risk_score", 0.0)),
+    bundle = env.repository
+    contracts = env.contracts
+    logger.info("Persistence: %s", database_connection_summary(config))
+
+    registry = AgentRegistry(storage=bundle.agent_registry)
+    store = ContextStore(storage=bundle.context)
+    audit = AuditStore(bundle.decision_audit, bundle.idempotency)
+
+    scenarios_path = sample_dir / "scenarios.yaml"
+    scenarios = load_scenarios(scenarios_path)
+
+    agents_cfg = config.get("agents") or []
+    if not agents_cfg:
+        logger.error("config.yaml must define at least one agent under agents:")
+        return
+    agent_id = str(agents_cfg[0].get("agent_id", "fraud_guard_v1"))
+
+    contract = contracts.get_contract(agent_id)
+    priority = int(agents_cfg[0].get("priority", 10))
+    hr = registry.handshake(
+        agent_id,
+        contract.model_dump(),
+        agent_version=str(config.get("agent_version", "1.0.0")),
+        priority=priority,
+    )
+    if not hr.accepted:
+        logger.error("Handshake rejected: %s", hr.reason)
+        return
+
+    t0 = time.perf_counter()
+    run_status = "ok"
+    try:
+        record_simulation_start(
+            audit,
+            simulation_id,
+            llm_backend=_llm_backend_label(env.llm),
+        )
+        for scenario in scenarios:
+            _run_one_scenario(
+                scenario=scenario,
+                env=env,
+                store=store,
+                audit=audit,
+                rules=rules,
+                contract=contract,
+                agent_id=agent_id,
+                global_max_limit=global_max_limit,
+                simulation_id=simulation_id,
             )
+        record_simulation_end(audit, simulation_id, status="ok")
+    except Exception as exc:
+        run_status = "error"
+        record_simulation_end(audit, simulation_id, status="error", error_message=str(exc))
+        report_path = write_fraud_gate_html_report(
+            bundle=bundle,
+            simulation_id=simulation_id,
+            sample_dir=sample_dir,
+            config=config,
+            scenario_count=len(scenarios),
+            elapsed_sec=time.perf_counter() - t0,
+            run_status=run_status,
+        )
+        logger.info("Report: %s", report_path)
+        raise
 
-        ctx = TransactionContext(**scenario.context)
-        snapshot = scenario.snapshot
+    report_path = write_fraud_gate_html_report(
+        bundle=bundle,
+        simulation_id=simulation_id,
+        sample_dir=sample_dir,
+        config=config,
+        scenario_count=len(scenarios),
+        elapsed_sec=time.perf_counter() - t0,
+        run_status=run_status,
+    )
+    logger.info("SUMMARY: finished %d scenarios (simulation_id=%s)", len(scenarios), simulation_id)
+    logger.info("Report: %s", report_path)
 
-        if scenario.drift_attack:
-            # Drift attack: agent decides first, then we flag user
-            logger.info("")
-            logger.info("--- %s ---", scenario.label)
-            logger.info("[INPUT] tx_id=%s user=%s amount=$%.2f country=%s device=%s",
-                       scenario.tx_id, ctx.user_id, ctx.amount, ctx.geo_country, ctx.device_id)
-            logger.info("[SCENARIO] Agent sees snapshot: user=clean. Decides. Then T+50ms: external system flags account as COMPROMISED.")
-
-            dfid = new_dfid()
-            snapshot_id = _snapshot_id(ctx)
-            logger.info("[STEP 1] Agent (LLM) evaluates transaction (sees user=clean)...")
-            atom = agent.decide(ctx, dfid=dfid, snapshot_id=snapshot_id)
-            logger.info("[AGENT] action=%s reason_code=%s", atom.action, atom.reason_code)
-
-            logger.info("[STEP 2] Simulating T+50ms: external system flags user=%s as COMPROMISED", ctx.user_id)
-            risk_cache.flag_compromised(ctx.user_id, risk_score=1.0)
-
-            logger.info("[STEP 2] JIT Validator: checking state drift (snapshot vs current)...")
-            verdict, reason = validate(atom, risk_cache, snapshot, global_max_limit=cfg.global_max_limit)
-            if verdict == "REJECT":
-                logger.warning("[JIT] REJECT: %s", reason)
-                logger.info("[RESULT] Transaction NOT executed - JIT detected STATE_DRIFT (user status changed clean->compromised)")
-            else:
-                execute(atom, scenario.tx_id)
-        else:
-            run_transaction(
-                scenario.tx_id,
-                ctx,
-                agent,
-                risk_cache,
-                snapshot,
-                cfg.global_max_limit,
-                scenario_label=scenario.label,
-            )
-
-    # Summary
-    print("\n" + "=" * 70, flush=True)
-    print("SUMMARY - what this example verified:", flush=True)
-    print("=" * 70, flush=True)
-    print("  1. Legit:         Agent ALLOW  -> JIT ACCEPT  -> transaction EXECUTED", flush=True)
-    print("  2. Obvious Fraud: Agent BLOCK  -> JIT ACCEPT  -> transaction BLOCKED (agent)", flush=True)
-    print("  3. Drift Attack:  Agent ALLOW  -> JIT REJECT  -> STATE_DRIFT_ERROR (Runtime defended)", flush=True)
-    print("=" * 70, flush=True)
+    # Open HTML report in browser
+    print(f"\nOpening report in browser: {report_path}")
+    try:
+        webbrowser.open(str(report_path.resolve()))
+    except Exception as e:
+        logger.error("Failed to open report in browser: %s", e)
 
 
 if __name__ == "__main__":
     main()
-
