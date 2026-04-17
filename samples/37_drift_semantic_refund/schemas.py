@@ -1,10 +1,11 @@
-"""Pydantic models for semantic refund drift sample (contract + runtime config)."""
+"""Pydantic models and config loading for the semantic refund drift sample."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict, List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RefundContract(BaseModel):
@@ -14,7 +15,8 @@ class RefundContract(BaseModel):
 
 
 class SamplePaths(BaseModel):
-    database: str = "data/refund_audit.sqlite"
+    """Paths relative to the sample directory."""
+
     inputs_file: str = "data/support_tickets.json"
 
 
@@ -28,9 +30,16 @@ class AgentConfig(BaseModel):
 
 
 class SimulationConfig(BaseModel):
-    """First N tickets: simulated agent follows delay rule; later tickets allow empathy drift."""
+    model_config = ConfigDict(extra="ignore")
 
-    normal_phase_iterations: int = Field(20, ge=0, description="Iterations where agent only refunds if delay > threshold")
+    run_id: str = Field(
+        "run_37_semantic_refund_01",
+        description="Correlation id for telemetry (simulation_id on audit rows).",
+    )
+    seeds: Dict[str, int] = Field(default_factory=dict)
+    normal_phase_iterations: int = Field(
+        20, ge=0, description="Iterations where agent only refunds if delay > threshold"
+    )
     simulation_seed: int = Field(37, description="Seed for tie-breaking / jitter")
     emotional_keywords: List[str] = Field(
         default_factory=lambda: ["ruined", "lawyer", "scandal", "wedding"],
@@ -61,6 +70,8 @@ class RegistryConfig(BaseModel):
 
 
 class RefundSampleConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     paths: SamplePaths = Field(default_factory=SamplePaths)
     agent: AgentConfig = Field(default_factory=AgentConfig)
     contract: RefundContract = Field(default_factory=RefundContract)
@@ -69,12 +80,65 @@ class RefundSampleConfig(BaseModel):
     monitor: MonitorConfig = Field(default_factory=MonitorConfig)
     registry: RegistryConfig = Field(default_factory=RegistryConfig)
 
-    def handshake_contract_dict(self) -> Dict[str, Any]:
-        return {
-            "role": self.agent.role,
-            "mission": self.agent.mission,
-            "allowed_policy_types": self.agent.allowed_policy_types,
-            "max_refund_eur": self.contract.max_refund_eur,
-            "min_delay_hours_for_refund": self.monitor.min_delay_hours_for_refund,
-            "sample": "37_drift_semantic_refund",
-        }
+
+def merge_agent_from_agents_list(raw: Dict[str, Any]) -> Dict[str, Any]:
+    if raw.get("agent"):
+        return raw
+    agents = raw.get("agents") or []
+    if not agents:
+        return raw
+    row = agents[0]
+    aid = row.get("agent_id")
+    if not aid:
+        return raw
+    c = dict(row.get("contract") or {})
+    merged = dict(raw)
+    merged["agent"] = {
+        "agent_id": aid,
+        "agent_version": row.get("agent_version", "1.0.0"),
+        "priority": int(row.get("priority", 0)),
+        "mission": str(row.get("mission", "")),
+        "role": str(c.get("role", "EXECUTOR")),
+        "allowed_policy_types": list(c.get("allowed_policy_types", ["REFUND"])),
+    }
+    return merged
+
+
+def load_refund_sample_config(raw: Dict[str, Any]) -> RefundSampleConfig:
+    return RefundSampleConfig.model_validate(merge_agent_from_agents_list(raw))
+
+
+def load_refund_full_config(
+    sample_dir: Path,
+    *,
+    config_filename: str = "config.yaml",
+) -> Dict[str, Any]:
+    from shared.config import load_yaml_config
+
+    config_path = sample_dir / config_filename
+    return load_yaml_config(config_path)
+
+
+def load_refund_sample_config_bundle(
+    sample_dir: Path,
+    *,
+    config_filename: str = "config.yaml",
+) -> RefundSampleConfig:
+    merged = load_refund_full_config(sample_dir, config_filename=config_filename)
+    return load_refund_sample_config(merged)
+
+
+__all__ = [
+    "AgentConfig",
+    "DimConfig",
+    "MonitorConfig",
+    "RegistryConfig",
+    "RefundContract",
+    "RefundSampleConfig",
+    "SamplePaths",
+    "SimulationConfig",
+    "load_refund_sample_config",
+    "load_refund_full_config",
+    "load_refund_sample_config_bundle",
+    "merge_agent_from_agents_list",
+]

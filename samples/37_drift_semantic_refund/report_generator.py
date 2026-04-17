@@ -1,29 +1,43 @@
 """
 HTML report: semantic violation rate, DIM refund cap, suspension, ticket history.
+
+Data source: ``StorageBundle.decision_audit`` (regenerable offline via ``__main__``).
 """
 
 from __future__ import annotations
 
+import argparse
 import html
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from audit_store import AuditStore
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+_SAMPLES = _REPO_ROOT / "samples"
+_SAMPLE_DIR = Path(__file__).resolve().parent
+for _p in (_SRC, _SAMPLES, _SAMPLE_DIR):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
-from pipeline import SimulationResult, rolling_violation_series
+from dir_core import AgentRegistry
+from dir_core.storage import StorageBundle
+
+from pipeline import SimulationResult, SimulationStep, rolling_violation_series
 
 
 def _esc(s: Any) -> str:
     return html.escape(str(s), quote=True)
 
 
-def _new_report_path(sample_dir: Path) -> Path:
+def _new_report_path(sample_dir: Path, slug: str = "semantic_refund") -> Path:
     results_dir = sample_dir / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M")
-    return results_dir / f"simulation_report_{stamp}.html"
+    suffix = f"_{slug}" if slug else ""
+    return results_dir / f"report_{stamp}{suffix}.html"
 
 
 def _format_y_tick_pct(v: float) -> str:
@@ -54,10 +68,6 @@ def _svg_refund_and_violation_charts(
     width: int = 900,
     height: int = 560,
 ) -> str:
-    """
-    Top panel: every executed refund amount (always populated).
-    Bottom panel: rolling violation rate; left region shaded until ``window`` refunds exist.
-    """
     if not refund_eur or len(refund_eur) != len(violation_rates):
         return '<p class="muted">No executed refunds to plot.</p>'
     n = len(refund_eur)
@@ -65,7 +75,6 @@ def _svg_refund_and_violation_charts(
     rates_defined = [v for v in violation_rates if v is not None]
     thr_pct = threshold * 100.0
 
-    # Layout: title band, top chart, divider, bottom chart, shared x-axis
     pad_l, pad_r = 58.0, 24.0
     left = pad_l
     right = float(width - pad_r)
@@ -107,7 +116,6 @@ def _svg_refund_and_violation_charts(
         f'font-size="15" font-weight="600">Figure 1 — Executed refunds and compliance monitor</text>',
         f'<text x="{width / 2:.0f}" y="40" text-anchor="middle" fill="var(--muted)" '
         f'font-size="11">Horizontal axis: refund execution order (1 = first refund in this run)</text>',
-        # --- Top: EUR ---
         f'<text x="{left:.0f}" y="{y_top0 - 6:.0f}" text-anchor="start" fill="var(--fg)" '
         f'font-size="12" font-weight="600">A. Refund amount per execution (DIM ceiling: '
         f'{max_refund_eur:.0f} EUR)</text>',
@@ -116,7 +124,6 @@ def _svg_refund_and_violation_charts(
         f'<line x1="{left}" y1="{y_top0}" x2="{left}" y2="{y_top1}" '
         'stroke="var(--muted)" stroke-width="1" opacity="0.5"/>',
     ]
-    # DIM cap line (top panel)
     y_cap = y_eur(max_refund_eur)
     if y_top0 <= y_cap <= y_top1:
         parts.append(
@@ -145,10 +152,9 @@ def _svg_refund_and_violation_charts(
         x0 = xc - bar_w / 2
         parts.append(
             f'<rect x="{x0:.1f}" y="{min(y0, y1):.1f}" width="{bar_w:.1f}" '
-            f'height="{abs(y1 - y0):.1f}" fill="#58a6ff" opacity="0.85" rx="1"/>'
+            f'height="{abs(y1 - y0):.1f}" fill="var(--info)" opacity="0.85" rx="1"/>'
         )
 
-    # --- Bottom: violation % ---
     parts.extend(
         [
             f'<text x="{left:.0f}" y="{y_bot0 - 8:.0f}" text-anchor="start" fill="var(--fg)" '
@@ -175,7 +181,7 @@ def _svg_refund_and_violation_charts(
             f'height="{h_bot:.1f}" fill="#30363d" opacity="0.45"/>'
             f'<text x="{cx_w:.0f}" y="{cy_w - 6:.0f}" text-anchor="middle" '
             f'fill="var(--muted)" font-size="10">Warm-up</text>'
-            f'<text x="{cx_w:.0f}" y="{cy_w + 8:.0f}" text-anchor="middle" '
+            f'<text x="{cx_w:.0f}" y="{cy_w + 8:.1f}" text-anchor="middle" '
             f'fill="var(--muted)" font-size="10">(&lt; {window} refunds)</text>'
         )
 
@@ -183,8 +189,8 @@ def _svg_refund_and_violation_charts(
         y_thr = y_pct(thr_pct)
         parts.append(
             f'<line x1="{left}" y1="{y_thr:.1f}" x2="{right}" y2="{y_thr:.1f}" '
-            'stroke="#d29922" stroke-width="1.35" stroke-dasharray="5 4" opacity="0.92"/>'
-            f'<text x="{right - 4:.1f}" y="{y_thr - 5:.1f}" text-anchor="end" fill="#d29922" '
+            'stroke="var(--warn)" stroke-width="1.35" stroke-dasharray="5 4" opacity="0.92"/>'
+            f'<text x="{right - 4:.1f}" y="{y_thr - 5:.1f}" text-anchor="end" fill="var(--warn)" '
             f'font-size="10" font-weight="500">Suspend if rate &gt; {thr_pct:.0f}%</text>'
         )
 
@@ -228,17 +234,17 @@ def _svg_refund_and_violation_charts(
         sx = x_for(suspension_idx)
         parts.append(
             f'<line x1="{sx:.1f}" y1="{y_top0}" x2="{sx:.1f}" y2="{y_bot1}" '
-            'stroke="#f85149" stroke-width="2" stroke-dasharray="5 4" opacity="0.9"/>'
+            'stroke="var(--reject)" stroke-width="2" stroke-dasharray="5 4" opacity="0.9"/>'
         )
         parts.append(
             f'<text x="{min(sx + 8, right - 80):.1f}" y="{y_top0 + 12:.1f}" text-anchor="start" '
-            f'fill="#f85149" font-size="11" font-weight="700">Run stopped — agent suspended</text>'
+            f'fill="var(--reject)" font-size="11" font-weight="700">Run stopped — agent suspended</text>'
         )
         susp_v = pct_series[suspension_idx]
         if susp_v is not None:
             sy = y_pct(susp_v)
             parts.append(
-                f'<circle cx="{sx:.1f}" cy="{sy:.1f}" r="6" fill="#f85149" stroke="var(--bg)" '
+                f'<circle cx="{sx:.1f}" cy="{sy:.1f}" r="6" fill="var(--reject)" stroke="var(--bg)" '
                 'stroke-width="2"/>'
             )
 
@@ -258,22 +264,149 @@ def _legend_block(window: int, threshold_pct: float) -> str:
     """
 
 
+def _latest_simulation_id(bundle: StorageBundle) -> Optional[str]:
+    for row in reversed(bundle.decision_audit.all_events_chronological()):
+        if row.get("event") != "SIMULATION_START":
+            continue
+        details = row.get("details") or {}
+        sid = details.get("simulation_id")
+        if isinstance(sid, str) and sid:
+            return sid
+    return None
+
+
+def hydrate_simulation_result(
+    events: List[Dict[str, Any]],
+    simulation_id: str,
+) -> SimulationResult:
+    """Rebuild :class:`SimulationResult` from ``decision_audit`` rows (offline report)."""
+    filtered = [
+        e
+        for e in events
+        if (e.get("details") or {}).get("simulation_id") == simulation_id
+        and e.get("event") not in ("SIMULATION_START", "SIMULATION_END")
+    ]
+    by_dfid: Dict[str, Dict[str, Any]] = {}
+    order: List[str] = []
+    for e in filtered:
+        dfid = str(e.get("dfid") or "")
+        if not dfid:
+            continue
+        if dfid not in by_dfid:
+            by_dfid[dfid] = {}
+            order.append(dfid)
+        acc = by_dfid[dfid]
+        d = e.get("details") or {}
+        et = e.get("event") or ""
+        if et == "CONTEXT_COMPILED":
+            acc["input_ref"] = str(d.get("input_ref", ""))
+            acc["delay_hours"] = float(d.get("delay_hours", 0.0))
+            acc["order_ref"] = str(d.get("order_ref", ""))
+            acc["channel"] = str(d.get("channel", ""))
+            acc["subject"] = str(d.get("subject", ""))
+            acc["message_preview"] = str(d.get("message_preview", ""))
+        elif et == "NO_REFUND_PROPOSAL":
+            acc["dim_verdict"] = "—"
+            acc["dim_reason"] = str(d.get("reason", "No proposal"))
+        elif et == "POLICY_PROPOSAL":
+            acc["refund_amount_eur"] = float(d.get("refund_amount_eur", 0.0))
+        elif et == "DIM_VALIDATION":
+            acc["dim_verdict"] = str(e.get("state") or "")
+            acc["dim_reason"] = str(d.get("reason", ""))
+        elif et == "REFUND_EXECUTED":
+            acc["executed"] = True
+            acc["refund_amount_eur"] = float(
+                d.get("refund_amount_eur", acc.get("refund_amount_eur", 0.0))
+            )
+            acc["delay_hours"] = float(d.get("delay_hours", acc.get("delay_hours", 0.0)))
+        elif et == "MONITOR_TICK" and d.get("violation_rate") is not None:
+            acc["violation_rate_after"] = float(d["violation_rate"])
+
+    steps: List[SimulationStep] = []
+    for i, dfid in enumerate(order):
+        a = by_dfid[dfid]
+        steps.append(
+            SimulationStep(
+                iteration=i,
+                dfid=dfid,
+                input_ref=str(a.get("input_ref", "")),
+                order_ref=str(a.get("order_ref", "")),
+                channel=str(a.get("channel", "")),
+                delay_hours=float(a.get("delay_hours", 0.0)),
+                subject=str(a.get("subject", "")),
+                message_preview=str(a.get("message_preview", "")),
+                refund_amount_eur=a.get("refund_amount_eur"),
+                dim_verdict=str(a.get("dim_verdict", "")),
+                dim_reason=str(a.get("dim_reason", "")),
+                executed=bool(a.get("executed")),
+                violation_rate_after=a.get("violation_rate_after"),
+                console_note="",
+            )
+        )
+
+    total_inputs = len(steps)
+    for e in events:
+        if e.get("event") != "SIMULATION_START":
+            continue
+        d = e.get("details") or {}
+        if d.get("simulation_id") != simulation_id:
+            continue
+        ti = d.get("total_inputs")
+        if isinstance(ti, int):
+            total_inputs = ti
+        break
+
+    stopped = "replay"
+    for e in reversed(events):
+        if e.get("event") != "SIMULATION_END":
+            continue
+        d = e.get("details") or {}
+        if d.get("simulation_id") != simulation_id:
+            continue
+        stopped = str(d.get("stopped_reason") or d.get("status") or "replay")
+        break
+
+    suspension_decision_number: Optional[int] = None
+    for e in filtered:
+        if e.get("event") != "AGENT_SUSPENDED":
+            continue
+        susp_dfid = str(e.get("dfid") or "")
+        if susp_dfid in order:
+            suspension_decision_number = order.index(susp_dfid) + 1
+        break
+
+    return SimulationResult(
+        steps=steps,
+        stopped_reason=stopped,
+        total_inputs=total_inputs,
+        suspension_decision_number=suspension_decision_number,
+    )
+
+
 def generate_report(
     sample_dir: Path,
-    audit: AuditStore,
-    sim: SimulationResult,
+    bundle: StorageBundle,
     *,
+    simulation_id: str,
     window: int,
     agent_id: str,
-    registry_status: Optional[tuple],
+    registry_status: Optional[tuple] = None,
     max_refund_eur: float,
     violation_threshold: float,
     min_delay_hours: float,
     normal_phase_iterations: int,
+    llm_backend: str = "Mock",
+    slug: str = "",
 ) -> Path:
-    out = _new_report_path(sample_dir)
+    """Build HTML from ``decision_audit.all_events_chronological()`` (§17.3)."""
+    events = bundle.decision_audit.all_events_chronological()
+    sim = hydrate_simulation_result(events, simulation_id)
+    slug_use = slug or "semantic_refund"
+    out = _new_report_path(sample_dir, slug=slug_use)
+
     ma_series = rolling_violation_series(
-        audit,
+        bundle,
+        simulation_id,
         window,
         min_delay_hours_exclusive=min_delay_hours,
     )
@@ -294,12 +427,10 @@ def generate_report(
         if s.refund_amount_eur is not None
     ]
     if len(refund_amounts) != len(ma_aligned):
-        refund_amounts = [
-            float(s.refund_amount_eur or 0.0) for s in exec_steps
-        ]
+        refund_amounts = [float(s.refund_amount_eur or 0.0) for s in exec_steps]
 
     chart_main = (
-        '<figure class="chart-wrap">'
+        '<figure class="chart-wrap" aria-label="Refund amounts and rolling violation rate">'
         + _svg_refund_and_violation_charts(
             refund_amounts,
             ma_aligned,
@@ -333,16 +464,14 @@ def generate_report(
        satisfied. After that phase, the same agent model may refund shorter delays when messages
        contain configured emotional triggers. Those refunds still pass DIM, but they are
        <strong>semantic violations</strong> (refund issued while delay ≤ {min_delay_hours:.0f}h).</p>
-    <p><strong>ComplianceMonitor:</strong> After each executed refund, SQLite telemetry joins
-       <code>execution_log</code> to <code>context_snapshots</code> on <code>dfid</code> and
-       computes the share of the last <strong>{window}</strong> refunds that violated the delay
-       rule. If that share exceeds <strong>{thr_pct:.0f}%</strong>, the agent is moved to
-       <code>SUSPENDED</code> with reason <code>SEMANTIC_RULE_VIOLATION_DRIFT</code>.</p>
+    <p><strong>ComplianceMonitor:</strong> After each executed refund, canonical telemetry rows
+       (<code>REFUND_EXECUTED</code> in <code>decision_audit_events</code>) carry
+       <code>delay_hours</code>. The monitor computes the share of the last <strong>{window}</strong>
+       refunds that violated the delay rule. If that share exceeds <strong>{thr_pct:.0f}%</strong>, the
+       agent is moved to <code>SUSPENDED</code> with reason <code>SEMANTIC_RULE_VIOLATION_DRIFT</code>.</p>
     <p><strong>How to read Figure 1:</strong> Panel A shows every refund the runtime actually
-       executed (so you see activity from the first refund onward). Panel B shows the rolling
-       violation rate; the shaded <em>warm-up</em> region is expected — the rate is undefined
-       until at least {window} refunds exist. The table column “Viol. rate” uses “—” for the same
-       warm-up period.</p>
+       executed. Panel B shows the rolling violation rate; the shaded <em>warm-up</em> region is expected
+       — the rate is undefined until at least {window} refunds exist.</p>
   </div>
 """
 
@@ -351,10 +480,15 @@ def generate_report(
         vr = s.violation_rate_after
         vr_s = f"{vr * 100:.1f}%" if vr is not None else "—"
         ref_s = f"{s.refund_amount_eur:.0f}" if s.refund_amount_eur is not None else "—"
+        dim_badge = (
+            "ok" if s.dim_verdict == "ACCEPT" else (
+                "reject" if s.dim_verdict == "REJECT" else "muted"
+            )
+        )
         rows_html.append(
             "<tr>"
             f"<td>{s.iteration + 1}</td>"
-            f"<td><code>{_esc(s.dfid[:8])}...</code></td>"
+            f'<td><code title="{_esc(s.dfid)}">{_esc(s.dfid[:8])}...</code></td>'
             f"<td>{_esc(s.input_ref)}</td>"
             f"<td><code>{_esc(s.order_ref)}</code></td>"
             f"<td>{_esc(s.channel)}</td>"
@@ -362,7 +496,7 @@ def generate_report(
             f"<td>{_esc(s.subject)}</td>"
             f'<td class="reason" title="{_esc(s.message_preview)}">{_esc(s.message_preview)}</td>'
             f"<td>{ref_s}</td>"
-            f"<td>{_esc(s.dim_verdict)}</td>"
+            f'<td><span class="badge {dim_badge}">{_esc(s.dim_verdict)}</span></td>'
             f"<td>{'yes' if s.executed else 'no'}</td>"
             f"<td>{vr_s}</td>"
             f"<td>{_esc(s.console_note or '')}</td>"
@@ -371,9 +505,13 @@ def generate_report(
 
     status_s = "—"
     reason_s = "—"
-    if registry_status:
-        status_s = _esc(registry_status[0])
-        reason_s = _esc(registry_status[1] or "")
+    rs = registry_status
+    if rs is None:
+        reg = AgentRegistry(storage=bundle.agent_registry, supported_versions="1.x")
+        rs = reg.get_agent_status(agent_id)
+    if rs:
+        status_s = _esc(rs[0])
+        reason_s = _esc(rs[1] or "")
 
     if sim.suspension_decision_number is not None:
         susp_block = (
@@ -393,19 +531,39 @@ def generate_report(
             "</div>"
         )
 
-    monitor_rows = audit.list_monitor_events()
+    monitor_rows = [
+        e
+        for e in events
+        if (e.get("details") or {}).get("simulation_id") == simulation_id
+        and str(e.get("event") or "") in ("MONITOR_TICK", "AGENT_SUSPENDED")
+    ]
     mon_lines = []
     for ev in monitor_rows[-12:]:
-        det = json.dumps(ev["details"], sort_keys=True, default=str)
+        det = json.dumps(ev.get("details") or {}, sort_keys=True, default=str)
         mon_lines.append(
-            f"<li><code>{_esc(ev['event'])}</code> {_esc(ev['state'])} "
+            f"<li><code>{_esc(ev.get('event'))}</code> {_esc(ev.get('state'))} "
             f"— {_esc(det)}</li>"
         )
     mon_section = (
-        "<h2>Monitor events (tail)</h2><ul class=\"muted\">"
+        '<h2>Monitor events (tail)</h2><ul class="muted">'
         + ("".join(mon_lines) if mon_lines else "<li>None</li>")
         + "</ul>"
     )
+
+    n_events_run = sum(
+        1
+        for e in events
+        if (e.get("details") or {}).get("simulation_id") == simulation_id
+    )
+    summary_panel = f"""
+  <div class="panel summary">
+    <h2>Run summary</h2>
+    <p class="muted">Sample 37 — classic — {_esc(datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))}
+       — LLM backend: {_esc(llm_backend)}</p>
+    <p><code>simulation_id</code>: {_esc(simulation_id)}</p>
+    <p>Telemetry rows (this run): {n_events_run} — steps in table: {len(sim.steps)}</p>
+  </div>
+"""
 
     doc = f"""<!DOCTYPE html>
 <html lang="en">
@@ -417,12 +575,11 @@ def generate_report(
       --bg: #0f1419;
       --fg: #e6edf3;
       --muted: #8b949e;
-      --line: #58a6ff;
-      --line2: #a371f7;
       --border: #30363d;
+      --ok: #3fb950;
+      --reject: #f85149;
       --warn: #d29922;
-      --cap: #6e7681;
-      --suspend: #f85149;
+      --info: #58a6ff;
     }}
     body {{
       font-family: system-ui, sans-serif;
@@ -432,9 +589,12 @@ def generate_report(
       padding: 2rem;
       line-height: 1.5;
     }}
-    main {{ max-width: 1180px; margin: 0 auto; }}
+    main {{ max-width: 1200px; margin: 0 auto; }}
     h1 {{ font-size: 1.35rem; }}
     h2 {{ font-size: 1.05rem; margin-top: 1.5rem; }}
+    .badge.ok {{ color: var(--ok); font-weight: 600; }}
+    .badge.reject {{ color: var(--reject); font-weight: 600; }}
+    .badge.muted {{ color: var(--muted); }}
     .muted {{ color: var(--muted); }}
     table {{
       width: 100%;
@@ -489,8 +649,8 @@ def generate_report(
       border-bottom: 3px solid;
       flex-shrink: 0;
     }}
-    .swatch.line-warn {{ border-color: #d29922; border-style: dashed; width: 1.6rem; }}
-    .swatch.line-suspend {{ border-color: #f85149; border-style: dashed; width: 1.6rem; }}
+    .swatch.line-warn {{ border-color: var(--warn); border-style: dashed; width: 1.6rem; }}
+    .swatch.line-suspend {{ border-color: var(--reject); border-style: dashed; width: 1.6rem; }}
     .swatch.line-purple {{ border-color: #a371f7; width: 1.6rem; }}
     .panel {{
       background: #161b22;
@@ -499,7 +659,7 @@ def generate_report(
       padding: 1rem 1.25rem;
       margin: 1rem 0;
     }}
-    .panel.susp {{ border-color: var(--suspend); }}
+    .panel.susp {{ border-color: var(--reject); }}
     .panel.experiment h2 {{ margin-top: 0; }}
     .panel.experiment p {{ margin: 0.65rem 0 0 0; }}
     .panel.experiment p:first-of-type {{ margin-top: 0; }}
@@ -508,7 +668,7 @@ def generate_report(
       height: 0.65rem;
       border: none;
       border-radius: 2px;
-      background: #58a6ff;
+      background: var(--info);
       border-bottom: none;
     }}
     .swatch.zone-warm {{
@@ -525,8 +685,9 @@ def generate_report(
 <body>
 <main>
   <h1>Sample 37 — Semantic drift (shipping refunds)</h1>
-  <p class="muted">Run summary: simulation stopped with reason <strong>{_esc(sim.stopped_reason)}</strong>.
-     Support tickets processed: {len(sim.steps)} / {sim.total_inputs}.</p>
+  {summary_panel}
+  <p class="muted">Run outcome: <strong>{_esc(sim.stopped_reason)}</strong>.
+     Support tickets processed as steps: {len(sim.steps)} / {sim.total_inputs}.</p>
 
   {experiment_block}
 
@@ -544,16 +705,15 @@ def generate_report(
   {susp_block}
 
   <h2>Figure 1 — Refunds and rolling violation rate</h2>
-  <p class="muted">Use panel A to see that refunds occur from execution 1 onward. Use panel B for the
-     monitor metric; the grey warm-up band is normal until {window} refunds have been executed.</p>
+  <p class="muted">Panel A: executed refund amounts. Panel B: rolling semantic violation rate.</p>
   {chart_main}
 
   {mon_section}
 
   <h2>Ticket-level trace</h2>
-  <p class="muted">Source: <code>data/support_tickets.json</code> (helpdesk-style export). Column
+  <p class="muted">Source: <code>data/support_tickets.json</code>. Column
      <strong>Viol. rate</strong> shows the rolling violation share after each executed refund;
-     em dash (—) means fewer than {window} refunds yet (same warm-up as panel B).</p>
+     em dash (—) means fewer than {window} refunds yet.</p>
   <table>
     <thead>
       <tr>
@@ -574,14 +734,70 @@ def generate_report(
     return out
 
 
-def build_report_payload_for_tests(
-    audit: AuditStore,
-    window: int,
-    min_delay_hours: float,
-) -> Dict[str, Any]:
-    return {
-        "execution_count": audit.execution_count(),
-        "violation_series_tail": rolling_violation_series(
-            audit, window, min_delay_hours_exclusive=min_delay_hours
-        )[-5:],
-    }
+if __name__ == "__main__":
+    from shared.bootstrap import setup_environment
+
+    from mocks import make_mock_strategy
+    from schemas import (  # type: ignore[attr-defined]
+        load_refund_full_config,
+        load_refund_sample_config_bundle,
+    )
+
+    ap = argparse.ArgumentParser(description="Regenerate HTML report from canonical audit.")
+    ap.add_argument(
+        "--simulation-id",
+        default=None,
+        help="Telemetry simulation_id (default: latest SIMULATION_START in DB)",
+    )
+    ap.add_argument("--output-path", default=None, type=Path, help="Optional output HTML path")
+    args = ap.parse_args()
+
+    sample_dir = Path(__file__).resolve().parent
+    config_path = sample_dir / "config.yaml"
+    config = load_refund_full_config(sample_dir)
+    cfg = load_refund_sample_config_bundle(sample_dir)
+
+    env = setup_environment(
+        config,
+        mock_llm_strategy=make_mock_strategy(seed=cfg.simulation.simulation_seed),
+        config_path=str(config_path),
+    )
+    bundle = env.repository
+    resolved = args.simulation_id or _latest_simulation_id(bundle) or cfg.simulation.run_id
+
+    events = bundle.decision_audit.all_events_chronological()
+    if not any(
+        (e.get("details") or {}).get("simulation_id") == resolved
+        for e in events
+        if e.get("event") == "CONTEXT_COMPILED"
+    ):
+        print(
+            f"No audit rows for simulation_id={resolved}; run run.py first.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    agent_id = cfg.agent.agent_id
+    st = AgentRegistry(
+        storage=bundle.agent_registry,
+        supported_versions=cfg.registry.supported_versions,
+    ).get_agent_status(agent_id)
+    out = generate_report(
+        sample_dir,
+        bundle,
+        simulation_id=resolved,
+        window=cfg.monitor.window_size,
+        agent_id=agent_id,
+        registry_status=st,
+        max_refund_eur=cfg.contract.max_refund_eur,
+        violation_threshold=cfg.monitor.violation_rate_threshold,
+        min_delay_hours=cfg.monitor.min_delay_hours_for_refund,
+        normal_phase_iterations=cfg.simulation.normal_phase_iterations,
+        llm_backend="offline",
+    )
+    if args.output_path:
+        args.output_path.parent.mkdir(parents=True, exist_ok=True)
+        args.output_path.write_text(out.read_text(encoding="utf-8"), encoding="utf-8")
+        print(args.output_path)
+    else:
+        print(out)

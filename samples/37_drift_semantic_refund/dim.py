@@ -1,10 +1,10 @@
 """
-Kernel Space: DIM wrapper for refunds (DIR generic gates + contract ceiling).
+Kernel Space: DIM wrapper for refunds (generic validate_proposal + contract ceiling).
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from dir_core.data_types import DimReasonCode, ValidationResult, ValidationVerdict
 from dir_core.dim import validate_proposal
@@ -16,12 +16,16 @@ def validate_refund_proposal(
     context: Dict[str, Any],
     allowed_agents: Optional[List[str]],
     max_refund_eur: float,
+    *,
+    kernel_contract: Optional[Dict[str, Any]] = None,
 ) -> ValidationResult:
     """
-    Gate stack: dir.dim.validate_proposal, then deterministic contract check on refund_amount_eur.
-    DIM does not enforce the 48h semantic rule — only the financial cap.
+    Gate stack: ``validate_proposal`` (schema, TTL, RBAC, contract boundaries when provided),
+    then deterministic check on ``refund_amount_eur`` vs ``max_refund_eur``.
     """
-    verdict, reason = validate_proposal(proposal, context, allowed_agents)
+    verdict, reason = validate_proposal(
+        proposal, context, allowed_agents, contract=kernel_contract
+    )
     if verdict == ValidationVerdict.REJECT:
         return verdict, reason
 
@@ -40,3 +44,7 @@ def validate_refund_proposal(
 
     return ValidationVerdict.ACCEPT, DimReasonCode.VALIDATION_PASSED
 
+
+def dim_validators() -> List:
+    """Reserved for ``custom_validators=`` injection; refund gates live in ``validate_refund_proposal``."""
+    return []

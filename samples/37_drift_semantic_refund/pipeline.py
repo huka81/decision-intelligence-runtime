@@ -1,5 +1,5 @@
 """
-Orchestrator: ingest support tickets, ContextStore, ContextSnapshot audit, simulated agent, DIM, ComplianceMonitor.
+Orchestrator: ingest support tickets, ContextStore, simulated agent, DIM, ComplianceMonitor.
 """
 
 from __future__ import annotations
@@ -10,20 +10,28 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from dir_core import ContextStore, PolicyProposal, new_dfid
+from dir_core import ContextStore, PolicyProposal, idempotency_key, new_dfid
 from dir_core.agent_registry import AgentRegistry
+from dir_core.data_types import ValidationVerdict
 from dir_core.models import ContextSnapshot
+from dir_core.storage import StorageBundle
+from dir_core.utils.logging_utils import log_with_dfid
 
-from audit_store import AuditStore
 from compliance_monitor import ComplianceMonitor
-from models import RefundSampleConfig
-from refund_dim import validate_refund_proposal
+from dim import validate_refund_proposal
+from schemas import RefundSampleConfig
+from telemetry import (
+    record_dim_validation,
+    record_no_refund_proposal,
+    record_policy_proposal,
+    record_refund_context_compiled,
+    record_refund_executed,
+)
 
 logger = logging.getLogger(__name__)
 
 
 def load_support_ticket_rows(path: Path) -> List[Dict[str, Any]]:
-    """Load tickets from JSON array or ``{ \"tickets\": [...] }`` (same pattern as Sample 36)."""
     raw = path.read_text(encoding="utf-8").strip()
     data = json.loads(raw)
     if isinstance(data, list):
@@ -84,10 +92,6 @@ def simulated_refund_eur(
     ticket: TicketRecord,
     cfg: RefundSampleConfig,
 ) -> Optional[float]:
-    """
-    User Space simulation: after normal_phase_iterations, empathy bias can issue refunds
-    under the delay threshold when emotional keywords appear.
-    """
     dh = ticket.delay_hours
     threshold = cfg.monitor.min_delay_hours_for_refund
     compliant = dh > threshold + 1e-9
@@ -103,6 +107,10 @@ def simulated_refund_eur(
     if emotional:
         return float(cfg.simulation.refund_amount_drift_eur)
     return None
+
+
+def _verdict_str(verdict: ValidationVerdict) -> str:
+    return verdict.value if hasattr(verdict, "value") else str(verdict)
 
 
 @dataclass
@@ -135,10 +143,12 @@ def run_simulation(
     cfg: RefundSampleConfig,
     *,
     sample_dir: Path,
-    audit: AuditStore,
+    bundle: StorageBundle,
     context_store: ContextStore,
     monitor: ComplianceMonitor,
     agent_registry: AgentRegistry,
+    simulation_id: str,
+    kernel_contract: Dict[str, Any],
 ) -> SimulationResult:
     tickets = load_all_tickets(sample_dir, cfg.paths.inputs_file)
     n = len(tickets)
@@ -161,8 +171,6 @@ def run_simulation(
         ref = ticket.ticket_id
         refund_eur = simulated_refund_eur(i, ticket, cfg)
 
-        audit.insert_decision_flow(dfid, agent_id, input_ref=ref)
-
         snap_data: dict[str, Any] = {
             "ticket_id": ref,
             "delay_hours": ticket.delay_hours,
@@ -173,17 +181,6 @@ def run_simulation(
             "compiled_for": agent_id,
         }
         snapshot = ContextSnapshot.create(dfid, snap_data, source="context_compiler")
-        audit.insert_context_snapshot(
-            dfid,
-            snapshot.snapshot_id,
-            ticket.delay_hours,
-            details={
-                "subject": ticket.subject,
-                "ticket_id": ref,
-                "order_ref": ticket.order_ref,
-                "channel": ticket.channel,
-            },
-        )
 
         context_store.update_session(
             dfid,
@@ -202,27 +199,27 @@ def run_simulation(
             },
         )
 
-        audit.record(
+        preview = ticket.body.replace("\n", " ").strip()[:120]
+        record_refund_context_compiled(
+            bundle,
             dfid,
-            "CONTEXT_COMPILED",
-            state="READY",
-            details={
-                "input_ref": ref,
-                "delay_hours": ticket.delay_hours,
-                "snapshot_id": snapshot.snapshot_id,
-            },
+            simulation_id,
+            input_ref=ref,
+            delay_hours=ticket.delay_hours,
+            snapshot_id=snapshot.snapshot_id,
+            order_ref=ticket.order_ref,
+            channel=ticket.channel,
+            subject=ticket.subject,
+            message_preview=preview,
         )
 
-        preview = ticket.body.replace("\n", " ").strip()[:120]
-
         if refund_eur is None:
-            audit.record(
+            record_no_refund_proposal(
+                bundle,
                 dfid,
-                "NO_REFUND_PROPOSAL",
-                state="SKIPPED",
-                details={"reason": "Simulated agent declined refund for this ticket"},
+                simulation_id,
+                reason="Simulated agent declined refund for this ticket",
             )
-            audit.complete_flow(dfid, status="COMPLETED")
             result.steps.append(
                 SimulationStep(
                     iteration=i,
@@ -254,14 +251,12 @@ def run_simulation(
             ),
         )
 
-        audit.record(
+        record_policy_proposal(
+            bundle,
             dfid,
-            "POLICY_PROPOSAL",
-            state="EMITTED",
-            details={
-                "refund_amount_eur": refund_eur,
-                "policy_kind": proposal.policy_kind,
-            },
+            simulation_id,
+            refund_amount_eur=float(refund_eur),
+            policy_kind=proposal.policy_kind,
         )
 
         verdict, reason = validate_refund_proposal(
@@ -269,13 +264,16 @@ def run_simulation(
             ctx_dim,
             cfg.dim.allowed_agents or [agent_id],
             max_refund,
+            kernel_contract=kernel_contract,
         )
+        v_str = _verdict_str(verdict)
 
-        audit.record(
+        record_dim_validation(
+            bundle,
             dfid,
-            "DIM_VALIDATION",
-            state=verdict,
-            details={"reason": reason},
+            simulation_id,
+            verdict=v_str,
+            reason=str(reason),
         )
 
         step = SimulationStep(
@@ -288,29 +286,43 @@ def run_simulation(
             subject=ticket.subject,
             message_preview=preview,
             refund_amount_eur=refund_eur,
-            dim_verdict=verdict,
-            dim_reason=reason,
+            dim_verdict=v_str,
+            dim_reason=str(reason),
             executed=False,
         )
 
-        if verdict != "ACCEPT":
-            audit.complete_flow(dfid, status="ABORTED")
+        if verdict != ValidationVerdict.ACCEPT:
             step.console_note = "DIM_REJECT"
             result.steps.append(step)
             continue
 
-        exec_details = {
-            "policy_kind": proposal.policy_kind,
-            "proposal": proposal.model_dump(mode="json"),
-        }
-        audit.insert_execution(dfid, refund_eur, details=exec_details)
-        audit.record(
+        ikey = idempotency_key(
             dfid,
-            "EXECUTION_LOGGED",
-            state="COMPLETED",
-            details={"refund_amount_eur": refund_eur},
+            "refund_execute",
+            {"eur": float(refund_eur), "ticket": ref},
         )
-        audit.complete_flow(dfid, status="COMPLETED")
+        if bundle.idempotency.get(ikey) is not None:
+            step.console_note = "idempotency_skip"
+            result.steps.append(step)
+            continue
+
+        bundle.idempotency.set(
+            ikey,
+            {"dfid": dfid, "refund_amount_eur": float(refund_eur)},
+        )
+
+        record_refund_executed(
+            bundle,
+            dfid,
+            simulation_id,
+            refund_amount_eur=float(refund_eur),
+            delay_hours=ticket.delay_hours,
+            ticket_id=ref,
+            order_ref=ticket.order_ref,
+            channel=ticket.channel,
+            policy_kind=proposal.policy_kind,
+            proposal_dump=proposal.model_dump(mode="json"),
+        )
         step.executed = True
 
         stop, vrate = monitor.evaluate_after_execution(dfid)
@@ -323,9 +335,16 @@ def run_simulation(
                 if vrate is None
                 else f" Semantic violation rate {vrate * 100:.1f}% — Monitor OK."
             )
-            print(
-                f"[decision {i + 1}/{n}] delay={ticket.delay_hours:.0f}h refund={refund_eur:.0f} EUR "
-                f"- DIM Accepts -{m_note}"
+            log_with_dfid(
+                logger,
+                dfid,
+                logging.INFO,
+                "decision %s/%s delay=%.0fh refund=%.0f EUR - DIM Accepts -%s",
+                i + 1,
+                n,
+                ticket.delay_hours,
+                refund_eur,
+                m_note,
             )
             step.console_note = "early_sample"
 
@@ -335,9 +354,17 @@ def run_simulation(
             and ticket.delay_hours <= cfg.monitor.min_delay_hours_for_refund + 1e-9
         ):
             logged_late = True
-            print(
-                f"[decision {i + 1}/{n}] delay={ticket.delay_hours:.0f}h refund={refund_eur:.0f} EUR "
-                f"- DIM Accepts (under {max_refund:.0f} EUR cap only; 48h semantic rule not enforced by DIM)."
+            log_with_dfid(
+                logger,
+                dfid,
+                logging.INFO,
+                "decision %s/%s delay=%.0fh refund=%.0f EUR - DIM Accepts "
+                "(under %.0f EUR cap only; 48h semantic rule not enforced by DIM).",
+                i + 1,
+                n,
+                ticket.delay_hours,
+                refund_eur,
+                max_refund,
             )
             step.console_note = "late_sample"
 
@@ -346,8 +373,13 @@ def run_simulation(
         if stop:
             result.stopped_reason = "semantic_compliance_monitor"
             result.suspension_decision_number = i + 1
-            print(
-                f"Agent state transition: {agent_id} -> SUSPENDED (reason={cfg.monitor.suspension_reason})"
+            log_with_dfid(
+                logger,
+                dfid,
+                logging.WARNING,
+                "Agent state transition: %s -> SUSPENDED (reason=%s)",
+                agent_id,
+                cfg.monitor.suspension_reason,
             )
             break
 
@@ -358,26 +390,30 @@ def run_simulation(
 
 
 def rolling_violation_series(
-    audit: AuditStore,
+    bundle: StorageBundle,
+    simulation_id: str,
     window: int,
     *,
     min_delay_hours_exclusive: float,
 ) -> List[Optional[float]]:
-    """Rolling violation rate after each execution row (None until window full)."""
-    rows = audit.list_executions_chronological()
+    delays: List[float] = []
+    for row in bundle.decision_audit.all_events_chronological():
+        if row.get("event") != "REFUND_EXECUTED":
+            continue
+        d = row.get("details") or {}
+        if d.get("simulation_id") != simulation_id:
+            continue
+        delays.append(float(d.get("delay_hours", 0.0)))
+
     series: List[Optional[float]] = []
-    for k in range(len(rows)):
+    for k in range(len(delays)):
         if k + 1 < window:
             series.append(None)
             continue
-        # Mirror global last-window semantics on prefix 0..k of chronological rows.
         lo = k + 1 - window
-        sub = rows[lo:k + 1]
+        sub = delays[lo : k + 1]
         viol = sum(
-            1
-            for r in sub
-            if float(r["delay_hours"]) <= min_delay_hours_exclusive + 1e-9
+            1 for dh in sub if float(dh) <= min_delay_hours_exclusive + 1e-9
         )
         series.append(viol / float(window))
     return series
-
