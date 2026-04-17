@@ -1,41 +1,26 @@
-"""Pydantic models for environmental (market) bidding drift sample."""
+"""Domain config and helpers for the environmental bidding drift sample."""
 
 from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-
-class BiddingContract(BaseModel):
-    """Responsibility boundary: hard ceiling on CPC (DIM-enforced)."""
-
-    max_cpc_usd: float = Field(gt=0.0, le=100.0)
+from dir_core import ResponsibilityContract
 
 
 class SamplePaths(BaseModel):
-    database: str = "data/bidding_audit.sqlite"
     inputs_file: str = "data/market_conditions.json"
-
-
-class AgentConfig(BaseModel):
-    agent_id: str = "BiddingAgent"
-    agent_version: str = "1.0.0"
-    role: str = "EXECUTOR"
-    mission: str = ""
-    priority: int = 10
-    allowed_policy_types: List[str] = Field(
-        default_factory=lambda: ["cpc_bid"],
-    )
 
 
 class SimulationConfig(BaseModel):
     """
-    Fixture generation metadata — documents how data/market_conditions.json
-    was produced. Fields other than ``bid_margin_above_market`` are not used at
-    runtime; the pipeline reads the pre-generated JSON directly.
+    ``run_id`` and ``seeds`` group telemetry; other fields document fixture generation
+    for ``data/market_conditions.json`` (not read at runtime).
     """
 
+    run_id: str = "bidding_drift_38"
+    seeds: Dict[str, int] = Field(default_factory=lambda: {"market": 38})
     normal_phase_iterations: int = Field(30, ge=0)
     market_cpc_start: float = Field(1.20, gt=0.0)
     market_cpc_end: float = Field(1.98, gt=0.0)
@@ -63,20 +48,17 @@ class RegistryConfig(BaseModel):
 
 
 class BiddingSampleConfig(BaseModel):
+    """Typed slices of ``config.yaml`` (extras such as ``database`` are ignored here)."""
+
+    model_config = ConfigDict(extra="ignore")
+
     paths: SamplePaths = Field(default_factory=SamplePaths)
-    agent: AgentConfig = Field(default_factory=AgentConfig)
-    contract: BiddingContract = Field(default_factory=BiddingContract)
     simulation: SimulationConfig = Field(default_factory=SimulationConfig)
     dim: DimConfig = Field(default_factory=DimConfig)
     monitor: MonitorConfig = Field(default_factory=MonitorConfig)
     registry: RegistryConfig = Field(default_factory=RegistryConfig)
 
-    def handshake_contract_dict(self) -> Dict[str, Any]:
-        return {
-            "role": self.agent.role,
-            "mission": self.agent.mission,
-            "allowed_policy_types": self.agent.allowed_policy_types,
-            "max_cpc_usd": self.contract.max_cpc_usd,
-            "ltv_usd": self.monitor.ltv_usd,
-            "sample": "38_drift_environmental_bidding",
-        }
+
+def max_cpc_ceiling_usd(contract: ResponsibilityContract) -> float:
+    """In this sample, ``max_drawdown_limit`` encodes the DIM-enforced CPC ceiling (USD)."""
+    return float(contract.max_drawdown_limit)

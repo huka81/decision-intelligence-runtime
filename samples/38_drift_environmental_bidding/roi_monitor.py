@@ -1,5 +1,7 @@
 """
 BusinessROIMonitor: rolling average CPC vs LTV; consecutive negative ROI streak → suspension.
+
+Reads execution facts from ``decision_audit`` (``CPC_BID_EXECUTED``) for the run's ``simulation_id``.
 """
 
 from __future__ import annotations
@@ -7,10 +9,17 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Optional, Tuple
 
+from dir_core.storage import StorageBundle
+from dir_core.utils.logging_utils import log_with_dfid
+
+from telemetry import (
+    record_agent_suspended,
+    record_monitor_tick,
+    rolling_cpc_stats,
+)
+
 if TYPE_CHECKING:
     from dir_core.agent_registry import AgentRegistry
-
-    from audit_store import AuditStore
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +27,19 @@ logger = logging.getLogger(__name__)
 class BusinessROIMonitor:
     def __init__(
         self,
-        audit: "AuditStore",
+        bundle: StorageBundle,
         registry: "AgentRegistry",
         *,
+        simulation_id: str,
         agent_id: str,
         window_size: int,
         ltv_usd: float,
         negative_roi_consecutive_cycles: int,
         suspension_reason: str,
     ) -> None:
-        self._audit = audit
+        self._bundle = bundle
         self._registry = registry
+        self._simulation_id = simulation_id
         self._agent_id = agent_id
         self._window = window_size
         self._ltv = float(ltv_usd)
@@ -37,20 +48,7 @@ class BusinessROIMonitor:
         self._consecutive_negative = 0
 
     def evaluate_after_execution(self, last_dfid: str) -> Tuple[bool, Optional[float]]:
-        """
-        After a successful bid execution, recompute rolling avg CPC vs LTV.
-
-        Queries execution_log JOIN market_snapshots on dfid to obtain both the
-        average bid (actual spend) and the average market floor (kernel-space fact),
-        proving that bids legitimately tracked the market while still breaching LTV.
-
-        Returns:
-            (should_stop, rolling_avg_cpc_bid or None if window not full)
-        """
-        if self._audit.execution_count() < self._window:
-            return False, None
-
-        stats = self._audit.rolling_cpc_stats(self._window)
+        stats = rolling_cpc_stats(self._bundle, self._simulation_id, self._window)
         if stats is None:
             return False, None
 
@@ -59,9 +57,10 @@ class BusinessROIMonitor:
 
         if roi < 0:
             self._consecutive_negative += 1
-            self._audit.record(
+            record_monitor_tick(
+                self._bundle,
                 last_dfid,
-                "MONITOR_TICK",
+                self._simulation_id,
                 state="ALERT",
                 details={
                     "avg_cpc_bid_usd": round(avg_cpc, 4),
@@ -73,21 +72,26 @@ class BusinessROIMonitor:
                     "window_size": self._window,
                 },
             )
-            print(
-                f"ROI negative for {self._consecutive_negative} consecutive cycles "
-                f"(avg bid: {avg_cpc:.2f} USD, avg market floor: {avg_market:.2f} USD, "
-                f"LTV: {self._ltv:.2f} USD)"
+            log_with_dfid(
+                logger,
+                last_dfid,
+                logging.WARNING,
+                "ROI negative for %s consecutive cycles (avg bid %.2f USD, avg market floor %.2f USD, LTV %.2f USD)",
+                self._consecutive_negative,
+                avg_cpc,
+                avg_market,
+                self._ltv,
             )
 
             if self._consecutive_negative >= self._need_consecutive:
                 self._registry.set_agent_status(self._agent_id, "SUSPENDED", self._reason)
-                self._audit.record(
+                record_agent_suspended(
+                    self._bundle,
                     last_dfid,
-                    "AGENT_SUSPENDED",
-                    state="SUSPENDED",
+                    self._simulation_id,
+                    agent_id=self._agent_id,
+                    reason=self._reason,
                     details={
-                        "agent_id": self._agent_id,
-                        "reason": self._reason,
                         "avg_cpc_bid_usd": round(avg_cpc, 4),
                         "avg_market_cpc_to_win_usd": round(avg_market, 4),
                         "ltv_usd": self._ltv,
@@ -98,15 +102,16 @@ class BusinessROIMonitor:
                     "Agent actions are no longer profitable due to market drift. Suspending agent."
                 )
                 logger.warning(msg)
-                print(msg)
+                log_with_dfid(logger, last_dfid, logging.WARNING, "%s", msg)
                 return True, avg_cpc
 
             return False, avg_cpc
 
         self._consecutive_negative = 0
-        self._audit.record(
+        record_monitor_tick(
+            self._bundle,
             last_dfid,
-            "MONITOR_TICK",
+            self._simulation_id,
             state="OK",
             details={
                 "avg_cpc_bid_usd": round(avg_cpc, 4),
@@ -118,4 +123,3 @@ class BusinessROIMonitor:
             },
         )
         return False, avg_cpc
-

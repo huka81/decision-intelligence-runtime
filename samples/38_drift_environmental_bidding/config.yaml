@@ -1,28 +1,30 @@
-paths:
-  database: data/bidding_audit.sqlite
-  inputs_file: data/market_conditions.json
+# --- Persistence (canonical StorageBundle) ---
+database:
+  provider: sqlite
+  db_path: data/bidding_audit.sqlite
 
-agent:
-  agent_id: BiddingAgent
-  agent_version: "1.0.0"
-  role: EXECUTOR
-  mission: "Maintain top 3 ad placement for key search terms without exceeding the contract CPC ceiling."
-  priority: 10
-  allowed_policy_types:
-    - cpc_bid
+# --- LLM (mock; this sample uses deterministic simulated ROA, not live LLM) ---
+llm_defaults:
+  provider: mock
+  model: mock-bidding
+  timeout: 60
 
-contract:
-  max_cpc_usd: 2.00
+contracts:
+  provider: yaml
 
 simulation:
-  # Fixture generation metadata — documents how data/market_conditions.json was produced.
-  # These fields are not used at runtime; the pipeline reads the pre-generated JSON directly.
+  run_id: bidding_drift_38
+  seeds:
+    market: 38
   normal_phase_iterations: 30
   market_cpc_start: 1.20
   market_cpc_end: 1.98
   market_cpc_noise_pp: 0.02
   simulation_seed: 38
   bid_margin_above_market: 0.02
+
+paths:
+  inputs_file: data/market_conditions.json
 
 dim:
   allowed_agents:
@@ -38,3 +40,18 @@ monitor:
 
 registry:
   supported_versions: "1.x"
+
+agents:
+  - agent_id: BiddingAgent
+    agent_version: "1.0.0"
+    priority: 10
+    contract:
+      role: EXECUTOR
+      mission: "Maintain top 3 ad placement for key search terms without exceeding the contract CPC ceiling."
+      authorized_instruments: []
+      allowed_policy_types:
+        - cpc_bid
+      escalate_on_uncertainty: 0.5
+      max_drawdown_limit: 2.00
+      wake_up_threshold_pct: 0.5
+      parent_agent_id: null

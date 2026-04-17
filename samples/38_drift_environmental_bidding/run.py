@@ -2,10 +2,10 @@
 """
 38_drift_environmental_bidding — Environmental drift (market bidding vs LTV).
 
-Run from repo root:
-  python samples/38_drift_environmental_bidding/run.py
+Topology: B — SDS (snapshot-bound flows, JIT market drift check in DIM extras).
+Mechanisms: DIM, AgentRegistry, ContextStore, verify_drift, idempotency_key, decision_audit telemetry.
 
-Requires: pip install -e .  and  pip install pyyaml
+Run from repo root: python samples/38_drift_environmental_bidding/run.py
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ import os
 import sys
 import webbrowser
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC = _REPO_ROOT / "src"
@@ -24,17 +25,15 @@ if str(_SRC) not in sys.path:
 if str(_SAMPLES) not in sys.path:
     sys.path.insert(0, str(_SAMPLES))
 
-from dir_core import ContextStore
-from dir_core.agent_registry import AgentRegistry
-from shared.config import load_yaml_config
+from dir_core import AgentRegistry, ContextStore, new_dfid
 
-from shared.contracts.provider import YamlContractProvider
-
-from audit_store import AuditStore
-from models import BiddingSampleConfig
 from pipeline import run_simulation
 from report_generator import generate_report
 from roi_monitor import BusinessROIMonitor
+from schemas import BiddingSampleConfig
+from shared.bootstrap import database_connection_summary, setup_environment
+from shared.config import load_yaml_config
+from telemetry import record_simulation_end
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -43,83 +42,108 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def mock_strategy(prompt: str, system: Optional[str] = None) -> str:
+    """Deterministic LLM output when ``llm_defaults.provider=mock`` (this sample is non-LLM)."""
+    return (
+        '{"policy_kind": "cpc_bid", "params": {"cpc_bid_usd": 1.0}, '
+        '"justification": "Mock deterministic default.", "confidence": 0.94}'
+    )
+
+
+def _first_agent_block(config: Dict[str, Any]) -> Dict[str, Any]:
+    agents = config.get("agents") or []
+    if not agents:
+        raise ValueError("config.yaml must define at least one entry under agents:")
+    return agents[0]
+
+
 def main() -> None:
     sample_dir = Path(__file__).resolve().parent
-    raw = load_yaml_config(sample_dir / "config.yaml")
-    cfg = BiddingSampleConfig.model_validate(raw)
+    config_path = sample_dir / "config.yaml"
+    config = load_yaml_config(config_path)
+    cfg = BiddingSampleConfig.model_validate(config)
 
-    contract_provider = YamlContractProvider(str(sample_dir / "config.yaml"))
-    
-    try:
-        loaded_contract = contract_provider.get_contract(cfg.agent.agent_id)
-        # Bidding uses max_bid_usd limit.
-        cfg.contract.max_bid_usd = getattr(loaded_contract, "max_drawdown_limit", cfg.contract.max_bid_usd) * 100 # Adjust scaling 
-        logger.info(f"Loaded contract from provider: max_bid_usd={cfg.contract.max_bid_usd}")
-    except Exception as e:
-        logger.warning(f"Could not load contract via provider, using config default: {e}")
+    env = setup_environment(
+        config,
+        mock_llm_strategy=mock_strategy,
+        config_path=str(config_path),
+    )
+    bundle = env.repository
+    contracts = env.contracts
+    logger.info("Persistence: %s", database_connection_summary(config))
 
-    (sample_dir / "data").mkdir(parents=True, exist_ok=True)
-    db_path = sample_dir / cfg.paths.database
-    if db_path.exists():
-        db_path.unlink()
-
-    audit = AuditStore(db_path)
     registry = AgentRegistry(
-        str(db_path), supported_versions=cfg.registry.supported_versions
+        storage=bundle.agent_registry,
+        supported_versions=cfg.registry.supported_versions,
     )
-    context_store = ContextStore(str(db_path))
+    context_store = ContextStore(storage=bundle.context)
 
-    hs = registry.handshake(
-        cfg.agent.agent_id,
-        cfg.handshake_contract_dict(),
-        cfg.agent.agent_version,
-        cfg.agent.priority,
+    ab = _first_agent_block(config)
+    agent_id = str(ab["agent_id"])
+    rc = contracts.get_contract(agent_id)
+
+    hr = registry.handshake(
+        agent_id,
+        rc.model_dump(),
+        agent_version=str(ab.get("agent_version", "1.0.0")),
+        priority=int(ab.get("priority", 10)),
     )
-    if not hs.accepted:
-        raise SystemExit(f"Handshake failed: {hs.reason}")
+    if not hr.accepted:
+        logger.error("Handshake rejected: %s", hr.reason)
+        raise SystemExit(1)
 
+    sim_id = cfg.simulation.run_id
     monitor = BusinessROIMonitor(
-        audit,
+        bundle,
         registry,
-        agent_id=cfg.agent.agent_id,
+        simulation_id=sim_id,
+        agent_id=agent_id,
         window_size=cfg.monitor.window_size,
         ltv_usd=cfg.monitor.ltv_usd,
         negative_roi_consecutive_cycles=cfg.monitor.negative_roi_consecutive_cycles,
         suspension_reason=cfg.monitor.suspension_reason,
     )
 
-    print("=" * 64)
-    print("Sample 38 - Environmental drift (bidding vs LTV)")
-    print("=" * 64)
-    print(f"Inputs: {sample_dir / cfg.paths.inputs_file}")
-    print(f"Database: {sample_dir / cfg.paths.database}")
-    print()
+    logger.info("Sample 38 - Environmental drift (bidding vs LTV)")
+    logger.info("Inputs: %s", sample_dir / cfg.paths.inputs_file)
 
-    sim = run_simulation(
-        cfg,
-        sample_dir=sample_dir,
-        audit=audit,
-        context_store=context_store,
-        monitor=monitor,
-        agent_registry=registry,
-    )
+    try:
+        sim = run_simulation(
+            cfg,
+            sample_dir=sample_dir,
+            bundle=bundle,
+            context_store=context_store,
+            monitor=monitor,
+            agent_registry=registry,
+            rc=rc,
+            agent_id=agent_id,
+            simulation_id=sim_id,
+        )
+    except Exception as e:
+        record_simulation_end(
+            bundle,
+            sim_id,
+            status="error",
+            stopped_reason="exception",
+            details={"error_message": str(e)},
+        )
+        raise
 
-    st = registry.get_agent_status(cfg.agent.agent_id)
+    st = registry.get_agent_status(agent_id)
     report_path = generate_report(
         sample_dir,
-        audit,
+        bundle,
         sim,
         cfg=cfg,
+        simulation_id=sim_id,
         registry_status=st,
     )
 
-    print()
-    print(f"Stopped: {sim.stopped_reason}")
-    print(f"HTML report: {report_path}")
-    audit.close()
-    webbrowser.open(report_path.resolve().as_uri())
+    logger.info("Stopped: %s", sim.stopped_reason)
+    logger.info("HTML report: %s", report_path)
+    if os.environ.get("OPEN_REPORT", "1").strip().lower() in ("1", "true", "yes"):
+        webbrowser.open(report_path.resolve().as_uri())
 
 
 if __name__ == "__main__":
     main()
-
