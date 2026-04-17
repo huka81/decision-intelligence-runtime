@@ -15,6 +15,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import webbrowser
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC = _REPO_ROOT / "src"
@@ -265,6 +266,7 @@ def main() -> None:
         run_status="ok",
     )
     logger.info("Wrote HTML report: %s", report_path)
+    webbrowser.open(report_path.resolve().as_uri())
 
     logger.info("=" * 70)
     logger.info("SUMMARY — LangChain ROA wrapper / FinOps")

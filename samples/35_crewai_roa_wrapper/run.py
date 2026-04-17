@@ -1,524 +1,279 @@
 #!/usr/bin/env python3
 """
-35_crewai_roa_wrapper - Real CrewAI Crew + local Ollama + DIR Kernel.
+35_crewai_roa_wrapper — CrewAI crew as ROA User Space with DIM gate (claims refunds).
 
-Demonstrates:
-- Natural language intake: claim_text → LLM extracts structured claim (realistic use case)
-- Real CrewAI Crew (Claims Analyst + Decision Maker) powered by local Ollama
-- "The Wall" pattern: User Space (LLM reasoning) vs Kernel Space (deterministic DIM)
-- Submit_Policy_Proposal as structured JSON output (output_json, no tool-calling)
-- All configuration (LLM, agent contract, context store, scenarios) in config.yaml
+Topology: classic. Mechanisms: AgentRegistry, ContextStore, validate_proposal (DIM + claims rules),
+idempotency_key, StorageBundle telemetry, scenario batch from scenarios.yaml.
 
-Why structured output instead of tool-calling?
-  Gemma3 (and many local models) do not support OpenAI-style function calling.
-  The Decision Maker's task uses output_json=RefundProposalOutput, which instructs
-  CrewAI to extract validated JSON from the LLM response without function calls.
-  The boundary ("The Wall") still holds: LLM writes a Claim, DIM validates it
-  deterministically before any Fact (execution) occurs.
-
-Requirements:
-    pip install -e ".[crewai]"
-    ollama serve
-    ollama pull gemma3:4b       # or whatever model is set in config.yaml
-
-Run from repo root:
-    python samples/35_crewai_roa_wrapper/run.py
-
-Config:
-    samples/35_crewai_roa_wrapper/config.yaml   (LLM, agent, context, scenarios)
-
-Env var overrides (same as 31_finance_trading):
-    OLLAMA_MODEL      overrides llm_defaults.model
-    OLLAMA_BASE_URL   overrides llm_defaults.base_url
-
-ROA Manifesto §4-5, §10 (Boxed Intelligence), DIR Architectural Pattern §6.
+Run from repo root: python samples/35_crewai_roa_wrapper/run.py
 """
 from __future__ import annotations
 
-import json
 import logging
-import re
+import os
 import sys
+import time
+import webbrowser
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC = _REPO_ROOT / "src"
 _SAMPLES = _REPO_ROOT / "samples"
+_SAMPLE_DIR = Path(__file__).resolve().parent
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 if str(_SAMPLES) not in sys.path:
     sys.path.insert(0, str(_SAMPLES))
+if str(_SAMPLE_DIR) not in sys.path:
+    sys.path.insert(0, str(_SAMPLE_DIR))
 
-from pydantic import BaseModel, Field
-
-from crewai import Agent, Crew, LLM, Process, Task
-
-from dir_core import PolicyProposal, new_dfid
+from dir_core import AgentRegistry, ContextStore, idempotency_key, new_dfid
+from dir_core.data_types import ValidationVerdict
 from dir_core.utils.logging_utils import log_with_dfid
-from shared.llm.clients import check_ollama
-
+from shared.bootstrap import (
+    Environment,
+    build_llm_from_config,
+    configured_live_llm_is_reachable,
+    database_connection_summary,
+    setup_environment,
+)
+from shared.config import load_yaml_config
+from agent import resolve_scenario_claim, run_claims_roa_cycle
 from contracts import ClaimsContract
-from config_loader import AppConfig, LlmConfig, ScenarioConfig, load_config
-from dim_validators import validate_claims_proposal
+from dim import validate_claims_proposal
+from mocks import make_mock_strategy
+from schemas import CrewConfig, load_scenarios, orders_from_config, registry_claims_contract_payload
+from report_generator import write_crewai_claims_html_report
+from telemetry import (
+    record_agent_decision,
+    record_claims_refund_execution,
+    record_claims_self_check_failed,
+    record_simulation_end,
+    record_simulation_start,
+)
 
-logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Ollama health check
-# ---------------------------------------------------------------------------
+def _use_crew_ollama(config: Dict[str, Any]) -> bool:
+    if os.environ.get("USE_MOCK_LLM", "").strip().lower() in ("1", "true", "yes"):
+        return False
+    ld = config.get("llm_defaults") or {}
+    if str(ld.get("provider", "")).strip().lower() == "mock":
+        return False
+    return configured_live_llm_is_reachable(config)
 
 
-def _check_ollama(llm_cfg: LlmConfig) -> None:
-    """Verify Ollama is reachable and the requested model is available."""
-    base_url = llm_cfg.effective_base_url()
-    model = llm_cfg.effective_model()
-    if not check_ollama(base_url, model):
-        print()
-        print(f"[ERROR] Ollama not reachable at {base_url} or model '{model}' not found.")
-        print()
-        print("  Start Ollama:    ollama serve")
-        print(f"  Pull the model:  ollama pull {model}")
-        print()
-        print("  Or set env:  OLLAMA_BASE_URL=http://localhost:11434")
-        print(f"               OLLAMA_MODEL={model}")
-        print()
+def _llm_backend_label(use_crew_llm: bool, config: Dict[str, Any]) -> str:
+    if not use_crew_llm:
+        return "Mock (deterministic Crew bypass)"
+    ld = dict(config.get("llm_defaults") or {})
+    return f"CrewAI→Ollama model={ld.get('model', '')} base_url={ld.get('base_url', '')}"
 
 
-# ---------------------------------------------------------------------------
-# LLM factory
-# ---------------------------------------------------------------------------
-
-
-def _make_llm(llm_cfg: LlmConfig) -> LLM:
-    """
-    Create a CrewAI LLM pointing to local Ollama via OpenAI-compatible API.
-
-    provider="openai" forces the native OpenAI SDK with a custom base_url,
-    bypassing the LiteLLM fallback (which may not be installed).
-    Ollama exposes an OpenAI-compatible API at /v1 — no cloud key needed.
-    """
-    return LLM(
-        model=llm_cfg.effective_model(),
-        provider="openai",
-        base_url=llm_cfg.effective_base_url().rstrip("/") + "/v1",
-        api_key="ollama",
-        temperature=llm_cfg.temperature,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Structured output schema (Submit_Policy_Proposal equivalent)
-# ---------------------------------------------------------------------------
-
-
-class RefundProposalOutput(BaseModel):
-    """
-    Structured output for the Decision Maker's task.
-
-    Represents the "Submit_Policy_Proposal" in JSON form.
-    CrewAI's output_json extracts and validates this from the LLM response
-    without requiring function-calling support from the model.
-    """
-
-    action: str = Field(
-        description="Always 'REFUND'. The DIR Kernel decides ACCEPT/REJECT/ESCALATE."
-    )
-    order_id: str = Field(description="Order ID from the claim.")
-    amount_eur: float = Field(description="Refund amount in EUR.")
-    category: str = Field(description="Product category from the claim.")
-    reason: str = Field(description="Brief justification for the refund proposal.")
-
-
-class ClaimExtractionOutput(BaseModel):
-    """
-    Structured output for natural language claim intake.
-
-    LLM extracts these fields from free-form customer text.
-    Used when scenario has claim_text instead of claim (dict).
-    """
-
-    order_id: str = Field(description="Order ID mentioned in the text (e.g. ord_001).")
-    amount_eur: float = Field(description="Refund amount in EUR.")
-    category: str = Field(
-        description="Product category: electronics, clothing, home, or other."
-    )
-    reason: str = Field(description="Brief reason for the refund claim.")
-    purchase_date: Optional[str] = Field(
-        default=None,
-        description="Purchase date in ISO format if mentioned, else null.",
-    )
-
-
-# ---------------------------------------------------------------------------
-# Natural language claim intake
-# ---------------------------------------------------------------------------
-
-
-def extract_claim_from_text(claim_text: str, llm: LLM) -> Dict[str, Any]:
-    """
-    Extract structured claim from natural language using a single LLM call.
-
-    Realistic use case: customer writes "I bought ord_001 for 299 EUR, defective product"
-    instead of filling a JSON form. LLM extracts order_id, amount, category, reason.
-    """
-    extractor = Agent(
-        role="Claim Extractor",
-        goal="Extract structured refund claim data from customer text.",
-        backstory=(
-            "You extract order_id, amount_eur, category, reason from customer messages. "
-            "Use order IDs like ord_001, ord_002. Categories: electronics, clothing, home. "
-            "If purchase date is mentioned, use ISO format (YYYY-MM-DD or full ISO)."
-        ),
-        llm=llm,
-        verbose=False,
-    )
-    task = Task(
-        description=(
-            f"Extract refund claim from this customer message:\n\n{claim_text}\n\n"
-            "Output a JSON object with: order_id, amount_eur, category, reason, purchase_date (optional)."
-        ),
-        expected_output="JSON with order_id, amount_eur, category, reason",
-        output_json=ClaimExtractionOutput,
-        agent=extractor,
-    )
-    crew = Crew(agents=[extractor], tasks=[task], verbose=False)
-    result = crew.kickoff()
-    data: Optional[Dict[str, Any]] = getattr(result, "json_dict", None)
-    if not data:
-        raw = getattr(result, "raw", "") or ""
-        for attempt in [raw.strip(), *re.findall(r"\{[^{}]{10,}\}", raw, re.DOTALL)]:
-            try:
-                parsed = json.loads(attempt)
-                if "order_id" in parsed and ("amount_eur" in parsed or "amount_pln" in parsed):
-                    data = parsed
-                    break
-            except (json.JSONDecodeError, TypeError):
-                continue
-        if not data:
-            raise RuntimeError(f"Could not extract claim from: {claim_text[:200]}")
-    # Normalize to claim dict (add purchase_date if present)
-    amt = data.get("amount_eur") or data.get("amount_pln", 0)
-    claim = {
-        "order_id": str(data.get("order_id", "")),
-        "amount_eur": float(amt),
-        "category": str(data.get("category", "")),
-        "reason": str(data.get("reason", "")),
-    }
-    if data.get("purchase_date"):
-        claim["purchase_date"] = str(data["purchase_date"])
-    return claim
-
-
-# ---------------------------------------------------------------------------
-# Fallback JSON parser (small models may skip structured output)
-# ---------------------------------------------------------------------------
-
-
-def _extract_proposal_from_text(text: str) -> Optional[Dict[str, Any]]:
-    """Try to parse a RefundProposalOutput dict from raw LLM text."""
-    def _valid(d: dict) -> bool:
-        return "action" in d and "order_id" in d and ("amount_eur" in d or "amount_pln" in d)
-
-    for attempt in [text.strip(), *re.findall(r"\{[^{}]{10,}\}", text, re.DOTALL)]:
-        try:
-            data = json.loads(attempt)
-            if _valid(data):
-                if "amount_eur" not in data and "amount_pln" in data:
-                    data["amount_eur"] = data["amount_pln"]
-                return data
-        except (json.JSONDecodeError, TypeError):
-            continue
-
-    block = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if block:
-        try:
-            data = json.loads(block.group(1))
-            if _valid(data):
-                if "amount_eur" not in data and "amount_pln" in data:
-                    data["amount_eur"] = data["amount_pln"]
-                return data
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    return None
-
-
-# ---------------------------------------------------------------------------
-# CrewAI ROA Wrapper
-# ---------------------------------------------------------------------------
-
-
-class CrewAIROAWrapper:
-    """
-    Wraps a real CrewAI Crew in an ROA interface.
-
-    USER SPACE (probabilistic, Ollama LLM):
-      Claims Analyst   → text eligibility analysis (no tools)
-      Decision Maker   → structured JSON output via output_json Task
-
-    THE WALL (Claim → PolicyProposal)
-
-    KERNEL SPACE (deterministic):
-      DIM validate_claims_proposal() → ACCEPT | REJECT | ESCALATE
-
-    Configuration comes entirely from config.yaml via AppConfig.
-    """
-
-    def __init__(self, cfg: AppConfig) -> None:
-        self.contract: ClaimsContract = cfg.contract
-        self.crew_cfg = cfg.crew
-        self._llm: LLM = _make_llm(cfg.llm)
-
-    def _boundaries_text(self) -> str:
-        c = self.contract
-        return (
-            f"- Allowed refund categories: {c.allowed_refund_categories}\n"
-            f"- Return window: {c.return_window_days} days from purchase\n"
-            f"- Max refund without escalation: {c.max_refund_without_escalation} EUR\n"
-            f"- Allowed actions: {c.allowed_policy_types}"
-        )
-
-    def run(self, dfid: str, claim: Dict[str, Any]) -> PolicyProposal:
-        """
-        Run the Crew on one claim. Returns PolicyProposal (Claim, not Fact).
-
-        Flow:
-          Analyst       → text eligibility summary
-          Decision Maker → RefundProposalOutput JSON (output_json)
-          wrapper        → PolicyProposal → DIM
-        """
-        claim_str = json.dumps(claim, indent=2)
-        boundaries = self._boundaries_text()
-        mission = self.contract.mission
-
-        # ---- Agent 1: Claims Analyst (text reasoning) ---------------------
-        analyst = Agent(
-            role=self.crew_cfg.analyst_role,
-            goal=self.crew_cfg.analyst_goal,
-            backstory=(
-                f"You are a senior claims analyst.\n"
-                f"Mission: {mission}\n\n"
-                f"Authority boundaries:\n{boundaries}\n\n"
-                "Analyze only. Do not make decisions. Pass findings to Decision Maker."
-            ),
-            llm=self._llm,
-            verbose=False,
-        )
-
-        # ---- Agent 2: Decision Maker (structured JSON output) -------------
-        decision_maker = Agent(
-            role=self.crew_cfg.decision_maker_role,
-            goal=self.crew_cfg.decision_maker_goal,
-            backstory=(
-                f"You make refund proposals.\n"
-                f"Mission: {mission}\n\n"
-                f"Authority boundaries:\n{boundaries}\n\n"
-                "RULES:\n"
-                "- Always set action to 'REFUND'.\n"
-                "- Copy order_id, amount_eur, category exactly from the claim.\n"
-                "- The DIM Kernel decides ACCEPT/REJECT/ESCALATE — you only propose.\n"
-                "- Output ONLY valid JSON, nothing else."
-            ),
-            llm=self._llm,
-            verbose=False,
-        )
-
-        # ---- Task 1: Analyze ----------------------------------------------
-        analyze_task = Task(
-            description=(
-                f"Analyze this customer refund claim:\n\n{claim_str}\n\n"
-                f"Check against boundaries:\n{boundaries}\n\n"
-                "Summarize briefly:\n"
-                "  1. Is the category allowed?\n"
-                "  2. Is the purchase within the return window?\n"
-                "  3. How does the amount compare to the escalation limit?\n"
-                "  4. Your recommendation for the Decision Maker."
-            ),
-            expected_output=(
-                "Concise eligibility assessment: category OK/NOK, "
-                "return window OK/NOK, amount vs limit, recommendation."
-            ),
-            agent=analyst,
-        )
-
-        # ---- Task 2: Produce structured proposal (The Wall crossing) ------
-        decide_task = Task(
-            description=(
-                "Based on the analyst's assessment, produce a refund proposal.\n\n"
-                "Output a JSON object with these exact fields:\n"
-                "  action     : always the string 'REFUND'\n"
-                "  order_id   : from the claim\n"
-                "  amount_eur : from the claim (numeric)\n"
-                "  category   : from the claim\n"
-                "  reason     : one sentence justification\n\n"
-                f"Claim data:\n{claim_str}\n\n"
-                "Return ONLY the JSON object. No explanation, no markdown, just JSON."
-            ),
-            expected_output=(
-                'A JSON object: {"action":"REFUND","order_id":"...",'
-                '"amount_eur":0.0,"category":"...","reason":"..."}'
-            ),
-            output_json=RefundProposalOutput,
-            agent=decision_maker,
-        )
-
-        crew = Crew(
-            agents=[analyst, decision_maker],
-            tasks=[analyze_task, decide_task],
-            process=Process.sequential,
-            verbose=True,
-        )
-
-        log_with_dfid(
-            logger, dfid, logging.INFO,
-            "[%s] Crew starting for order %s",
-            self.contract.agent_id, claim.get("order_id"),
-        )
-
-        result = crew.kickoff()
-
-        # --- Extract proposal (The Wall: Claim → PolicyProposal) -----------
-        # getattr used for type-checker compatibility with CrewOutput|CrewStreamingOutput
-        data: Optional[Dict[str, Any]] = getattr(result, "json_dict", None)
-
-        if not data:
-            raw_text: str = getattr(result, "raw", "") or ""
-            data = _extract_proposal_from_text(raw_text)
-            if data:
-                print("  [note] Parsed JSON from raw output (output_json skipped).")
-            else:
-                raise RuntimeError(
-                    "Crew output contains no parseable refund proposal.\n"
-                    f"Raw: {raw_text[:400]}"
-                )
-
-        proposal = PolicyProposal(
-            dfid=dfid,
-            agent_id=self.contract.agent_id,
-            policy_kind=str(data.get("action", "UNKNOWN")).upper(),
-            params={
-                "order_id": data.get("order_id"),
-                "amount_eur": data.get("amount_eur") or data.get("amount_pln"),
-                "category": data.get("category"),
-                "reason": data.get("reason", ""),
-            },
-            confidence=0.9,
-            justification=str(data.get("reason", "")),
-        )
-
-        log_with_dfid(
-            logger, dfid, logging.INFO,
-            "[%s] Proposal: %s %s",
-            self.contract.agent_id, proposal.policy_kind, proposal.params.get("order_id"),
-        )
-        return proposal
-
-
-# ---------------------------------------------------------------------------
-# Scenario runner
-# ---------------------------------------------------------------------------
-
-
-def run_scenario(
-    scenario: ScenarioConfig,
-    wrapper: CrewAIROAWrapper,
-    context_store: Dict[str, Any],
-    contract: ClaimsContract,
-    llm: Optional[LLM] = None,
-) -> Tuple[PolicyProposal, str, str]:
-    """Run one scenario: Crew → proposal → DIM → verdict."""
-    if scenario.claim_text and llm:
-        claim = extract_claim_from_text(scenario.claim_text, llm)
-        print(f"\n{'=' * 70}")
-        print(f"[{scenario.label}]")
-        print(f"  Input (NL): {scenario.claim_text[:80]}{'...' if len(scenario.claim_text) > 80 else ''}")
-        print(
-            f"  Extracted: order={claim.get('order_id')}  "
-            f"amount={claim.get('amount_eur') or claim.get('amount_pln')} EUR  "
-            f"cat={claim.get('category')}"
-        )
-        print("=" * 70)
-    else:
-        claim = scenario.claim or {}
-        print(f"\n{'=' * 70}")
-        print(f"[{scenario.label}]")
-        print(
-        f"  Claim: order={claim.get('order_id')}  "
-        f"amount={claim.get('amount_eur') or claim.get('amount_pln')} EUR  "
-        f"cat={claim.get('category')}"
-        )
-        print("=" * 70)
-
-    dfid = new_dfid()
-    proposal = wrapper.run(dfid, claim)
-
-    verdict, reason = validate_claims_proposal(
-        proposal, context_store, contract, allowed_agents=[contract.agent_id]
-    )
-
-    print(f"\n  --> Proposal : {proposal.policy_kind} "
-          f"{proposal.params.get('order_id')} "
-          f"{proposal.params.get('amount_eur') or proposal.params.get('amount_pln')} EUR")
-    print(f"  --> DIM      : {verdict}")
-    print(f"  --> Reason   : {reason}")
-
-    return proposal, verdict, reason
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+def _effective_llm_settings(config: Dict[str, Any]) -> Tuple[str, str, float]:
+    ld = dict(config.get("llm_defaults") or {})
+    model = os.getenv("OLLAMA_MODEL", str(ld.get("model", "gemma3:4b")))
+    base = os.getenv("OLLAMA_BASE_URL", str(ld.get("base_url", "http://localhost:11434")))
+    temp = float(ld.get("temperature", 0.2))
+    return model, base, temp
 
 
 def main() -> None:
-    # Load config from YAML (agent contract, LLM, context store, scenarios)
-    cfg = load_config()
+    sample_dir = Path(__file__).resolve().parent
+    config_path = sample_dir / "config.yaml"
+    config = load_yaml_config(config_path)
+    scenarios = load_scenarios()
+    simulation_id = str((config.get("simulation") or {}).get("run_id", "crewai_claims_run"))
+    mock_strategy = make_mock_strategy()
 
-    _check_ollama(cfg.llm)
+    env = setup_environment(
+        config,
+        mock_llm_strategy=mock_strategy,
+        config_path=str(config_path),
+    )
+    use_crew_llm = _use_crew_ollama(config)
+    if not use_crew_llm:
+        env = Environment(
+            llm=build_llm_from_config(config, mock_llm_strategy=mock_strategy, force_mock=True),
+            repository=env.repository,
+            contracts=env.contracts,
+        )
 
-    print("=" * 70)
-    print("35_crewai_roa_wrapper  -  CrewAI + Ollama + DIR Kernel")
-    print("=" * 70)
-    print(f"  Config : config.yaml")
-    print(f"  LLM    : {cfg.llm.effective_model()} @ {cfg.llm.effective_base_url()}")
-    print(f"  Agent  : {cfg.contract.agent_id}")
-    print(f"  Crew   : Claims Analyst -> Decision Maker (sequential, output_json)")
-    print(f"  DIM    : 5-layer validation (RBAC, order, window, category, amount)")
-    print(f"  Scenarios: {len(cfg.scenarios)}")
+    bundle = env.repository
+    contracts = env.contracts
+    logger.info("Persistence: %s", database_connection_summary(config))
 
-    wrapper = CrewAIROAWrapper(cfg)
-    llm = _make_llm(cfg.llm)
+    agent_rows: List[Dict[str, Any]] = list(config.get("agents") or [])
+    if not agent_rows:
+        logger.error("config.yaml must define agents[0]")
+        return
+    agent_row = agent_rows[0]
+    agent_id = str(agent_row["agent_id"])
+    priority = int(agent_row.get("priority", 10))
+    agent_version = str(agent_row.get("version", config.get("agent_version", "1.0.0")))
+
+    rc = contracts.get_contract(agent_id)
+    claims_contract = ClaimsContract.from_agent_row(agent_row, rc)
+    crew_cfg = CrewConfig.from_dict(agent_row.get("crew", {}))
+    dim_contract = registry_claims_contract_payload(config, contracts, agent_id)
+
+    registry = AgentRegistry(storage=bundle.agent_registry)
+    store = ContextStore(storage=bundle.context)
+
+    reg_payload = dim_contract
+    hr = registry.handshake(agent_id, reg_payload, agent_version=agent_version, priority=priority)
+    if not hr.accepted:
+        logger.error("Handshake rejected: %s", hr.reason)
+        return
+
+    llm_model, llm_base, temperature = _effective_llm_settings(config)
+
+    orders = orders_from_config(config)
+    dim_ctx: Dict[str, Any] = {"state": {}, "orders": orders}
+
+    record_simulation_start(bundle, simulation_id, llm_backend=_llm_backend_label(use_crew_llm, config))
 
     results: List[Tuple[str, str, str]] = []
-    for scenario in cfg.scenarios:
-        try:
-            _, verdict, _ = run_scenario(
-                scenario, wrapper, cfg.context_store, cfg.contract, llm=llm
+    t0 = time.perf_counter()
+    try:
+        for scenario in scenarios:
+            dfid = new_dfid()
+            log_with_dfid(logger, dfid, logging.INFO, "Scenario: %s", scenario.label)
+
+            claim = resolve_scenario_claim(
+                scenario.claim,
+                scenario.claim_text,
+                use_crew_llm=use_crew_llm,
+                llm_model=llm_model,
+                llm_base_url=llm_base,
+                temperature=temperature,
+                logger=logger,
+                dfid=dfid,
             )
-            ok = "[OK]" if verdict == scenario.expected else "[X] UNEXPECTED"
-            results.append((scenario.label, verdict, ok))
-        except Exception as exc:
-            print(f"\n  [ERROR] {exc}")
-            results.append((scenario.label, "ERROR", "[X]"))
+            store.update_session(
+                dfid,
+                {
+                    "claim": claim,
+                    "scenario_label": scenario.label,
+                },
+            )
+            store.compile_working_context(agent_id, dfid)
 
-    print("\n" + "=" * 70)
-    print("[SUMMARY]")
-    print("=" * 70)
-    for label, verdict, ok in results:
-        print(f"  {ok}  {verdict:10s}  {label}")
+            proposal, roa_err, roa_meta = run_claims_roa_cycle(
+                dfid=dfid,
+                claim=claim,
+                claims_contract=claims_contract,
+                crew_cfg=crew_cfg,
+                use_crew_llm=use_crew_llm,
+                llm_model=llm_model,
+                llm_base_url=llm_base,
+                temperature=temperature,
+                logger=logger,
+            )
+            explain = str((roa_meta or {}).get("explain_narrative", ""))
 
-    print()
-    print("  KEY INSIGHT:")
-    print("  - NL intake: claim_text -> LLM extracts order_id, amount, category (realistic).")
-    print("  - Gemma3 (CrewAI) reasons about claims in User Space (probabilistic).")
-    print("  - DIM validates proposals in Kernel Space (deterministic).")
-    print("  - output_json replaces tool-calling for models without function support.")
-    print("  - All configuration lives in config.yaml - no hardcoded values in code.")
+            if proposal is None:
+                log_with_dfid(logger, dfid, logging.WARNING, "ROA: %s", roa_err)
+                record_claims_self_check_failed(
+                    bundle,
+                    dfid,
+                    simulation_id,
+                    agent_id=agent_id,
+                    reason=str(roa_err or "unknown"),
+                    scenario_label=scenario.label,
+                    explain_narrative=explain,
+                )
+                results.append((scenario.label, "SELF_CHECK_FAILED", ""))
+                continue
+
+            verdict, reason = validate_claims_proposal(
+                proposal,
+                dim_ctx,
+                claims_contract,
+                dim_contract,
+                allowed_agents=[agent_id],
+            )
+            log_with_dfid(logger, dfid, logging.INFO, "DIM: %s %s", verdict, reason)
+
+            executed = False
+            if verdict == ValidationVerdict.ACCEPT:
+                oid = str(proposal.params.get("order_id", ""))
+                ikey = idempotency_key(
+                    dfid,
+                    "claims_refund_execute",
+                    {"order_id": oid, "amount_eur": proposal.params.get("amount_eur")},
+                )
+                if bundle.idempotency.get(ikey) is None:
+                    bundle.idempotency.set(ikey, {"dfid": dfid, "status": "recorded"})
+                    record_claims_refund_execution(
+                        bundle,
+                        dfid,
+                        simulation_id,
+                        agent_id=agent_id,
+                        policy_kind=proposal.policy_kind,
+                        order_id=oid,
+                        idempotency_key_value=ikey,
+                        amount_eur=float(proposal.params.get("amount_eur") or 0.0),
+                    )
+                    executed = True
+                else:
+                    log_with_dfid(logger, dfid, logging.INFO, "Idempotency hit for execution key")
+
+            role_s = str(getattr(rc.role, "value", rc.role))
+            record_agent_decision(
+                bundle,
+                dfid,
+                simulation_id,
+                agent_id=agent_id,
+                policy_kind=proposal.policy_kind,
+                verdict=str(verdict),
+                reason=str(reason),
+                confidence=proposal.confidence,
+                justification=str(proposal.justification or ""),
+                scenario_label=scenario.label,
+                executed=executed,
+                order_id=str(proposal.params.get("order_id", "")),
+                explain_narrative=explain,
+                self_check_passed=True,
+                self_check_reason="",
+                contract_role=role_s,
+                contract_allowed_policy_types=list(rc.allowed_policy_types),
+                amount_eur=float(proposal.params.get("amount_eur") or 0.0),
+            )
+
+            results.append((scenario.label, str(verdict), scenario.expected))
+
+        record_simulation_end(bundle, simulation_id, status="ok")
+    except Exception as e:
+        record_simulation_end(bundle, simulation_id, status="error", error_message=str(e))
+        raise
+
+    elapsed = time.perf_counter() - t0
+    logger.info("SUMMARY / 35_crewai_roa_wrapper (simulation_id=%s, %.2fs)", simulation_id, elapsed)
+    for label, verdict, expected in results:
+        if verdict == "SELF_CHECK_FAILED":
+            ok = ""
+        else:
+            ok = "OK" if verdict == expected else "UNEXPECTED"
+        short = (label[:56] + "…") if len(label) > 56 else label
+        logger.info("  [%s] %s expected=%s %s", ok or "FAIL", verdict, expected, short)
+    logger.info("=" * 70)
+
+    report_path = write_crewai_claims_html_report(
+        bundle,
+        simulation_id=simulation_id,
+        sample_dir=sample_dir,
+        config=config,
+        scenario_yaml_count=len(scenarios),
+        elapsed_sec=elapsed,
+        run_status="ok",
+    )
+    logger.info("Wrote HTML report: %s", report_path)
+    webbrowser.open(report_path.resolve().as_uri())
 
 
 if __name__ == "__main__":
     main()
-

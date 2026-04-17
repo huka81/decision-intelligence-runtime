@@ -49,7 +49,7 @@ Przykłady typu biznesowy use case, łączące mechanizmy w pełne scenariusze.
 | # | Sample | Primary Topology | Domain | Description |
 |---|---|---|---|---|
 | 31 | [31_finance_trading](31_finance_trading/) | [Topology A](../docs/03-topologies/DIR_Topologies.md) | Finance/trading | Market quotes, news, parallel agents, dynamic position spawning. |
-| 32 | [32_fraud_gate](32_fraud_gate/) | [Topology B](../docs/03-topologies/DIR_Topologies.md) | Fraud detection | Real-time payment fraud gate; constrained decoding, JIT state drift, drift-attack demo. |
+| 32 | [32_fraud_gate](32_fraud_gate/) | Classic + `scenarios.yaml` | Fraud detection | ROA fraud analyst, DIM, `verify_drift` JIT validators, YAML-driven scenarios, idempotent mock settlement. |
 | 33 | [33_insurance_underwriting](33_insurance_underwriting/) | [Topology C](../docs/03-topologies/DIR_Topologies.md) | Insurance underwriting | Risk evaluation with cryptographic Proof-Carrying Intents (PCI). |
 | 34 | [34_langchain_roa_wrapper](34_langchain_roa_wrapper/) | ROA + DIR | **FinOps** | LangChain ReAct → ROA. Cloud cost management. Verifies mission injection blocks PROD termination. |
 | 35 | [35_crewai_roa_wrapper](35_crewai_roa_wrapper/) | ROA + DIR | **Customer claims/refunds** | CrewAI Crew → ROA. E-commerce refunds (EUR). Verifies ACCEPT/ESCALATE/REJECT by category, return window, amount; NL intake. |

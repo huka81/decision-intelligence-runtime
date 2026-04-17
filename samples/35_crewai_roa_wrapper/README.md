@@ -1,8 +1,29 @@
 # 35 - CrewAI ROA Wrapper
 
-**Goal:** Demonstrate that **Task-Oriented Agents (CrewAI) and Mission-Oriented Agents (ROA) can coexist**. Wrap a real CrewAI Crew in an ROA interface, producing structured JSON output (`output_json`) and converting it to DIR `PolicyProposal` (Claim) instead of direct execution (Fact). Prove the pattern with a **Customer Claims Agent** use case where the DIR Kernel rejects/escalates refund proposals based on return window, amount limits, and category boundaries.
+**Goal:** Demonstrate that **Task-Oriented Agents (CrewAI) and Mission-Oriented Agents (ROA) can coexist**. Wrap a real CrewAI Crew in an ROA interface, producing structured JSON output (`output_json`) and converting it to DIR `PolicyProposal` (Claim) instead of direct execution (Fact). Prove the pattern with a **Customer Claims Agent** use case where the DIR Kernel rejects or escalates refund proposals based on return window, amount limits, and category boundaries.
 
-**DIR Alignment:** ROA Manifesto §4-5 (Explain → Policy → Proposal; User Space vs. Kernel Space), §10 (Boxed Intelligence), DIR Architectural Pattern §6 (Decision Integrity Module)
+**Topology:** classic (wrapper). **Mechanisms:** `AgentRegistry.handshake`, `ContextStore` sessions, `validate_proposal` from `dir_core` plus claims-specific rules in `dim.py`, `idempotency_key` on ACCEPT execution, `StorageBundle.decision_audit` via `telemetry.py`, scenario batch from `scenarios.yaml` (`schemas.load_scenarios`).
+
+**DIR alignment:** ROA Manifesto §4–5 (Explain → Policy → Self-Check → Proposal; User Space vs. Kernel Space), §10 (Boxed Intelligence), DIR Architectural Pattern §6 (Decision Integrity Module).
+
+## Use cases
+
+```mermaid
+flowchart TB
+    subgraph Actors[" "]
+        C[Customer / intake channel]
+        O[Operator / batch runner]
+    end
+    subgraph System["DIR sample 35"]
+        R[run.py scenario loop]
+        A[agent: CrewAI or mock ROA]
+        D[DIM + StorageBundle telemetry]
+    end
+    C -->|claim text or structured claim| R
+    O -->|runs python samples/35.../run.py| R
+    R --> A
+    A -->|PolicyProposal| D
+```
 
 ---
 
@@ -52,7 +73,7 @@ flowchart TB
     WALL{{"`THE WALL<br/>Claim to PolicyProposal`"}}
 
     subgraph KS["KERNEL SPACE - Deterministic - DIR"]
-        DIM["`validate_claims_proposal()<br/>L1: Schema + RBAC<br/>L2: Order existence<br/>L3: Category boundary<br/>L4: Return window<br/>L5: Amount limit`"]
+        DIM["`dir_core.validate_proposal + dim.py<br/>L1: Schema + RBAC + contract<br/>L2: Order existence<br/>L3: Category boundary<br/>L4: Return window<br/>L5: Amount limit`"]
         ACCEPT["ACCEPT"]
         ESC["`ESCALATE<br/>human review`"]
         REJ["REJECT"]
@@ -74,42 +95,44 @@ flowchart TB
     style REJ fill:#ffcdd2,stroke:#c62828,color:#b71c1c
 ```
 
-### Diagram 2 - Execution Flow: end-to-end sequence for a single claim
+## Execution flow
+
+### Diagram 2 — end-to-end sequence for a single claim
 
 ```mermaid
 sequenceDiagram
     actor Caller as run.py
     participant CFG as config.yaml
-    participant Wrapper as CrewAIROAWrapper
+    participant Agent as agent.run_claims_roa_cycle
     participant Analyst as Claims Analyst (CrewAI / Gemma3)
     participant DM as Decision Maker (CrewAI / Gemma3)
     participant DIM as DIM Validator (Kernel Space)
     participant CS as Context Store (config.yaml)
 
-    Caller ->> CFG: load_config()
-    CFG -->> Wrapper: AppConfig(contract, llm, context_store, scenarios)
+    Caller ->> CFG: load_yaml_config + load_scenarios()
+    CFG -->> Caller: agents, context_store, scenarios.yaml rows
 
-    loop for each scenario in config.yaml (6 scenarios: A-F)
-        Note over Caller, Wrapper: For E, F: extract_claim_from_text() runs first, then claim → run()
-        Caller ->> Wrapper: run(dfid, claim)
+    loop for each scenario (6 rows in scenarios.yaml)
+        Note over Caller, Agent: E,F: NL intake via extract_claim (Crew or mock regex)
+        Caller ->> Agent: run_claims_roa_cycle(dfid, claim, ...)
 
         rect rgb(255, 253, 231)
-            Note over Wrapper, DM: USER SPACE - probabilistic
+            Note over Agent, DM: USER SPACE - probabilistic
 
-            Wrapper ->> Analyst: Task: analyze claim eligibility
+            Agent ->> Analyst: Task: analyze claim eligibility
             Analyst ->> Analyst: Gemma3 reasoning
             Analyst -->> DM: eligibility summary (text)
 
             DM ->> DM: Gemma3 reasoning (output_json)
-            DM -->> Wrapper: RefundProposalOutput JSON
+            DM -->> Agent: RefundProposalOutput JSON
         end
 
-        Note over Wrapper, DIM: THE WALL - Claim to PolicyProposal
+        Note over Agent, DIM: THE WALL - Claim to PolicyProposal
 
         rect rgb(232, 245, 233)
             Note over DIM, CS: KERNEL SPACE - deterministic
 
-            Wrapper ->> DIM: validate_claims_proposal(proposal, context_store, contract)
+            Caller ->> DIM: validate_claims_proposal(proposal, dim_ctx, contract, dim_contract)
             DIM ->> CS: lookup order (purchase_date, category)
             CS -->> DIM: order record
 
@@ -136,7 +159,7 @@ config:
   layout: elk
 ---
 flowchart TD
-    subgraph SCENARIOS["config.yaml - scenarios"]
+    subgraph SCENARIOS["scenarios.yaml"]
         SA["`A - claim dict<br/>ord_001 - 299.99 EUR`"]
         SB["`B - claim dict<br/>ord_002 - 1200 EUR`"]
         SC["`C - claim dict<br/>ord_005 - 500 EUR`"]
@@ -160,7 +183,7 @@ flowchart TD
     WALL{{"THE WALL"}}
     PROP --> WALL
 
-    subgraph DIM_KS["DIM - Kernel Space - validate_claims_proposal"]
+    subgraph DIM_KS["DIM - Kernel Space - validate_claims_proposal + dir_core"]
         L1["L1 Schema + RBAC - pass"]
         L2["L2 Order exists - pass"]
         L3{"`L3 Category<br/>in allowed list?`"}
@@ -241,76 +264,120 @@ In production, customers write free-form text in English (e.g. *"I bought ord_00
 
 ---
 
+## Layout (Sample Guide §3)
+
+| File | Role |
+|------|------|
+| `run.py` | Bootstrap, handshake, `ContextStore`, scenario loop, DIM, telemetry, idempotent execution |
+| `config.yaml` | `database`, `llm_defaults`, `simulation`, `agents[]`, `context_store` |
+| `scenarios.yaml` | Scenario rows with `context.claim` or `context.claim_text` and `expected` |
+| `schemas.py` | `load_scenarios`, `parse_llm_json`, `CrewConfig`, contract payload helper |
+| `contracts.py` | `ClaimsContract` built from YAML + `ResponsibilityContract` |
+| `agent.py` | CrewAI Explain→Policy path, mock deterministic path, Self-Check, `PolicyProposal` |
+| `dim.py` | `validate_claims_proposal` (wraps `dir_core.validate_proposal` + claims rules) |
+| `telemetry.py` | `SIMULATION_*`, `AGENT_DECISION`, `CLAIM_REFUND_EXECUTED`, self-check failures |
+| `mocks/llm_mock_strategy.py` | `make_mock_strategy` for `setup_environment` when mock is selected |
+
 ## Configuration
 
-All agent configuration lives in **`config.yaml`** - no hardcoded values in code.
-Same convention as `samples/31_finance_trading/config.yaml`.
+Runtime settings are split between **`config.yaml`** (persistence, LLM defaults, agents, authoritative `context_store`) and **`scenarios.yaml`** (batch inputs and expected DIM verdicts). `context_store.orders[*].purchase_date` must fall within `claims_bounds.return_window_days` of the wall-clock date you run against, or ACCEPT scenarios will see REJECT from the return-window rule.
 
 ```yaml
+database:
+  provider: sqlite
+  db_path: "data/crewai_roa.db"
+
 llm_defaults:
   model: "gemma3:4b"
   base_url: "http://localhost:11434"
   temperature: 0.2
 
-agent:
-  agent_id: "claims_agent_v1"
-  mission: "Process customer claims fairly, within policy boundaries..."
-  contract:
-    role: EXECUTOR
-    allowed_refund_categories: [electronics, clothing, home]
-    max_refund_without_escalation: 500.0   # EUR
-    return_window_days: 14
-    allowed_policy_types: [REFUND, REPLACE, ESCALATE]
+simulation:
+  run_id: "crewai_claims_batch_001"
+
+agents:
+  - agent_id: "claims_agent_v1"
+    contract:
+      role: EXECUTOR
+      authorized_instruments: [electronics, clothing, home]
+      allowed_policy_types: [REFUND, REPLACE, ESCALATE]
+      escalate_on_uncertainty: 0.7
+      max_drawdown_limit: 0.05
+      wake_up_threshold_pct: 0.5
+      parent_agent_id: null
+    claims_bounds:
+      max_refund_without_escalation: 500.0
+      return_window_days: 14
 
 context_store:
   orders:
-    ord_001: { purchase_date: "2026-02-20T10:00:00Z", category: electronics, amount: 299.99 }
-    ...
-
-scenarios:
-  - label: "SCENARIO A - Valid: within window & limit"
-    claim: { order_id: ord_001, amount_eur: 299.99, ... }
-    expected: ACCEPT
-
-  - label: "SCENARIO E - NL intake: valid claim"
-    claim_text: "I bought ord_001 for 299.99 EUR, defective product..."
-    expected: ACCEPT
+    ord_001: { purchase_date: "...", category: electronics, amount: 299.99 }
 ```
 
 | Section | Purpose |
 |---------|---------|
-| `llm_defaults` | LLM model and Ollama endpoint |
-| `agent.contract` | Responsibility Contract - authority boundaries enforced by DIM |
-| `context_store` | Authoritative order data - source of truth for DIM, invisible to LLM |
-| `scenarios` | Test cases: `claim` (dict) or `claim_text` (natural language: LLM extracts first) |
+| `database` | SQLite path anchored next to `config.yaml` via `setup_environment` |
+| `llm_defaults` | Default Ollama endpoint; overridden by `OLLAMA_*` env vars when set |
+| `simulation.run_id` | `simulation_id` in every telemetry `details` payload |
+| `agents[].contract` | Canonical `ResponsibilityContract` fields for `YamlContractProvider` |
+| `agents[].claims_bounds` | Claims-only limits read into `ClaimsContract` |
+| `context_store` | Authoritative orders for DIM (not injected into the Crew prompt) |
 
-## How to Run
+## How to run
 
-Running `run.py` loads `config.yaml` and executes **all 6 scenarios** (A–F) in sequence. Each scenario is run through: claim (or claim_text → extraction) → Crew → DIM validation. The final summary reports ✓/✗ per scenario against the expected verdict.
+### Mock (no network, no Ollama, no CrewAI LLM calls)
+
+Deterministic claim→proposal path and regex NL extraction for scenarios E–F.
 
 ```bash
-# 1. Install dependencies (from repo root)
-pip install -e ".[crewai]"
-
-# 2. Start Ollama and pull the model (configured in config.yaml)
-ollama serve
-ollama pull gemma3:4b
-
-# 3. Run (from repo root)
+pip install -e .
+$env:PYTHONPATH="src;samples"; $env:USE_MOCK_LLM="1"   # PowerShell
 python samples/35_crewai_roa_wrapper/run.py
 ```
 
-**No cloud API key needed** - uses local Ollama (same as `samples/31_finance_trading`).
+### Ollama + CrewAI (full User Space)
 
-**Env var overrides** (same convention as sample 31):
 ```bash
-# PowerShell
-$env:OLLAMA_BASE_URL = "http://localhost:11434"   # overrides llm_defaults.base_url
-$env:OLLAMA_MODEL    = "llama3.2"                 # overrides llm_defaults.model
+pip install -e ".[crewai]"
+ollama serve
+ollama pull gemma3:4b
+$env:PYTHONPATH="src;samples"
+python samples/35_crewai_roa_wrapper/run.py
+```
 
-# cmd
-set OLLAMA_BASE_URL=http://localhost:11434
-set OLLAMA_MODEL=llama3.2
+Unset `USE_MOCK_LLM` (or set it to `0`) so `configured_live_llm_is_reachable` can succeed; otherwise the sample stays on the mock path.
+
+### Gemini
+
+This sample wires **CrewAI** to the OpenAI-compatible **Ollama** endpoint. Gemini is not configured here; use mock or Ollama as above.
+
+**Env var overrides** (Ollama):
+
+```powershell
+$env:OLLAMA_BASE_URL = "http://localhost:11434"
+$env:OLLAMA_MODEL    = "gemma3:4b"
+```
+
+## Database storage
+
+Events are written only through `bundle.decision_audit` (see `telemetry.py`). Typical `event` values for this sample: `SIMULATION_START`, `SIMULATION_END`, `AGENT_DECISION`, `CLAIM_REFUND_EXECUTED`, `CLAIMS_SELF_CHECK_FAILED`.
+
+Group a run by `simulation_id` stored inside JSON `details` (Sample Guide §9.4):
+
+```sql
+-- SQLite
+SELECT dfid, event, detail_json
+FROM decision_audit_events
+WHERE json_extract(detail_json, '$.simulation_id') = 'crewai_claims_batch_001'
+ORDER BY id;
+```
+
+```sql
+-- PostgreSQL
+SELECT dfid, event, detail_json
+FROM decision_audit_events
+WHERE detail_json->>'simulation_id' = 'crewai_claims_batch_001'
+ORDER BY id;
 ```
 
 **Why `provider="openai"`?**
@@ -364,9 +431,30 @@ proposal = PolicyProposal(..., params=data)
 | `ClaimExtractionOutput` | Pydantic schema for NL extraction output |
 | `RefundProposalOutput` | Pydantic schema for `output_json` - structured proposal from Decision Maker |
 | `_extract_proposal_from_text()` | Fallback: parses JSON from raw LLM output when `output_json` parse fails |
-| `CrewAIROAWrapper` | Builds Crew per call, runs `kickoff()`, extracts `PolicyProposal` from JSON |
-| `validate_claims_proposal()` | 5-layer DIM: schema → RBAC → order → category → return window → amount |
+| `agent.CrewAIROAWrapper` | Builds Crew per call, runs `kickoff()`, returns policy dict for Self-Check |
+| `agent.run_claims_roa_cycle` | Mock or Crew path, Self-Check, emits `PolicyProposal` |
+| `dim.validate_claims_proposal` | `dir_core.validate_proposal` then order, category, window, amount |
+| `report_generator.py` | Dark-theme HTML audit report (Sample Guide §17) from `decision_audit` only |
 | Context Store | Authoritative order data (source of truth for DIM, not for the agent) |
+
+---
+
+## HTML report
+
+After a successful batch run, `run.py` writes
+`results/report_<UTC>_<N>scenarios.html` and opens it in the default browser. The report
+is self-contained (embedded CSS), uses only `bundle.decision_audit.all_events_chronological()`
+plus registry and context snapshots, and follows §17 section order (summary, authored prose,
+empty-state Section 3 charts, trace table, ROA blocks, authoritative orders table, kernel artefacts).
+
+Regenerate without re-running the simulation:
+
+```bash
+$env:PYTHONPATH="src;samples"
+python samples/35_crewai_roa_wrapper/report_generator.py
+python samples/35_crewai_roa_wrapper/report_generator.py --simulation-id crewai_claims_batch_001
+python samples/35_crewai_roa_wrapper/report_generator.py --output-path samples/35_crewai_roa_wrapper/results/custom.html
+```
 
 ---
 

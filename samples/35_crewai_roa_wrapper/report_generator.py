@@ -1,5 +1,5 @@
 """
-HTML audit report for ``34_langchain_roa_wrapper`` (Sample Development Guide §17).
+HTML audit report for ``35_crewai_roa_wrapper`` (Sample Development Guide §17).
 
 Data source: ``bundle.decision_audit.all_events_chronological()`` plus AgentRegistry
 and ContextStore. Regenerate offline: ``python report_generator.py``.
@@ -35,7 +35,7 @@ from dir_core.storage import StorageBundle
 from shared.bootstrap import materialize_storage_bundle, normalize_database_provider
 from shared.config import load_yaml_config
 
-from schemas import FinOpsScenario, load_scenarios
+from schemas import ClaimsScenario, load_scenarios
 
 
 def _esc(s: Any) -> str:
@@ -109,27 +109,34 @@ def _read_flow_transitions_ro(db_path: str) -> List[Dict[str, Any]]:
         conn.close()
 
 
-def _finops_section2_prose(config: Dict[str, Any]) -> str:
+def _claims_section2_prose(config: Dict[str, Any]) -> str:
     agents = config.get("agents") or []
     c0 = (agents[0].get("contract") or {}) if agents else {}
-    envs = c0.get("allowed_environments", ["DEV", "STG"])
+    bounds = (agents[0].get("claims_bounds") or {}) if agents else {}
+    cats = c0.get("authorized_instruments", [])
     pol = c0.get("allowed_policy_types", [])
+    max_ref = bounds.get("max_refund_without_escalation", 500)
+    win = bounds.get("return_window_days", 14)
     esc = c0.get("escalate_on_uncertainty", 0.7)
     sim = config.get("simulation") or {}
     run_id = sim.get("run_id", "")
     return f"""
-<p>This sample demonstrates a <strong>classic</strong> DIR topology with an external
-<strong>LangChain</strong> agent in User Space. The agent must emit a
-<code>PolicyProposal</code> (Claim) through ROA stages Explain → Policy → deterministic
-Self-Check before any kernel execution. The Decision Integrity Module (<code>validate_proposal</code>)
-plus FinOps <code>custom_validators</code> enforce resource existence and authoritative
-<code>context_store</code> environment labels — not LLM-invented tags.</p>
-<p>Hard-coded thresholds referenced from <code>config.yaml</code> for this narrative:
-<code>allowed_environments = {_esc(envs)}</code>,
+<p>This sample demonstrates a <strong>classic</strong> DIR topology with a
+<strong>CrewAI</strong> crew in User Space (or a deterministic mock path when Ollama is
+unavailable or <code>USE_MOCK_LLM=1</code>). The crew must cross
+<strong>The Wall</strong> as a structured <code>PolicyProposal</code> after ROA stages
+Explain (Analyst) → Policy (Decision Maker JSON) → deterministic Self-Check. Kernel Space
+runs <code>dir_core.validate_proposal</code> plus claims-specific checks in
+<code>dim.validate_claims_proposal</code> against authoritative <code>context_store.orders</code>.</p>
+<p>Thresholds from <code>config.yaml</code> for this narrative:
+<code>max_refund_without_escalation = {_esc(max_ref)} EUR</code>,
+<code>return_window_days = {_esc(win)}</code>,
+<code>authorized_instruments (refund categories) = {_esc(cats)}</code>,
 <code>allowed_policy_types = {_esc(pol)}</code>,
-<code>escalate_on_uncertainty = {_esc(esc)}</code> (policies below this confidence never become proposals),
+<code>escalate_on_uncertainty = {_esc(esc)}</code> (Self-Check requires confidence at or above this),
 and <code>simulation.run_id = {_esc(run_id)}</code> for telemetry grouping.</p>
-<p>Sections 4–5 reconstruct the audit trail from canonical <code>decision_audit_events</code> only.</p>
+<p>Sections 3–5 are derived only from canonical <code>decision_audit_events</code> in the
+selected simulation window.</p>
 """
 
 
@@ -137,14 +144,14 @@ def _ordered_trace_events(run_ev: Sequence[Dict[str, Any]]) -> List[Dict[str, An
     out: List[Dict[str, Any]] = []
     for e in run_ev:
         ev = str(e.get("event", ""))
-        if ev in ("AGENT_DECISION", "FINOPS_SELF_CHECK_FAILED"):
+        if ev in ("AGENT_DECISION", "CLAIMS_SELF_CHECK_FAILED"):
             out.append({"kind": ev, "event": e})
     return out
 
 
 def _trace_verdict(e: Dict[str, Any]) -> str:
     d = e.get("details") or {}
-    if e.get("event") == "FINOPS_SELF_CHECK_FAILED":
+    if e.get("event") == "CLAIMS_SELF_CHECK_FAILED":
         return "SELF_CHECK_FAILED"
     return str(d.get("verdict", ""))
 
@@ -168,11 +175,14 @@ def _trace_table_rows(
         exp = expected_by_label.get(label, "")
         verdict = _trace_verdict(ev)
         vcls = "badge-ok" if verdict == "ACCEPT" else "badge-reject"
+        if verdict == "ESCALATE":
+            vcls = "badge-warn"
         if verdict == "SELF_CHECK_FAILED":
             vcls = "badge-warn"
         match = _expected_match(verdict, exp) if exp else False
         mcls = "badge-ok" if match else "badge-warn"
-        rid = str(d.get("resource_id", ""))
+        oid = str(d.get("order_id", ""))
+        amt = d.get("amount_eur", "")
         pk = str(d.get("policy_kind", "")) if ev.get("event") == "AGENT_DECISION" else "—"
         executed = bool(d.get("executed", False)) if ev.get("event") == "AGENT_DECISION" else False
         if executed or dfid in exec_by_dfid:
@@ -181,11 +191,12 @@ def _trace_table_rows(
         justification = str(d.get("justification", ""))
         reason = str(d.get("reason", ""))
         rows.append(
-            f"<tr>"
+            "<tr>"
             f"<td>{idx}</td>"
             f"<td><code title=\"{_esc(dfid)}\">{_esc(dfid_short)}</code></td>"
             f"<td>{_esc(label)}</td>"
-            f"<td><code>{_esc(rid)}</code></td>"
+            f"<td><code>{_esc(oid)}</code></td>"
+            f"<td>{_esc(amt)}</td>"
             f"<td>{_esc(pk)}</td>"
             f"<td><span class=\"{vcls}\">{_esc(verdict)}</span></td>"
             f"<td>{_esc('yes' if executed else 'no')}</td>"
@@ -193,13 +204,13 @@ def _trace_table_rows(
             f"(expected {_esc(exp)})</td>"
             f"<td><details><summary>Reasoning</summary><div class=\"details-body\">"
             f"<p><strong>Explain narrative:</strong> {_esc(narrative or '(not recorded)')}</p>"
-            f"<p><strong>Justification / policy reason:</strong> {_esc(justification or reason)}</p>"
+            f"<p><strong>Justification:</strong> {_esc(justification or '(n/a)')}</p>"
             f"<p><strong>DIM / self-check reason:</strong> {_esc(reason)}</p>"
             f"</div></details></td>"
             f"</tr>"
         )
     if not rows:
-        return "<tr><td colspan='9' class='muted'>No AGENT_DECISION or FINOPS_SELF_CHECK_FAILED.</td></tr>"
+        return "<tr><td colspan='10' class='muted'>No AGENT_DECISION or CLAIMS_SELF_CHECK_FAILED.</td></tr>"
     return "".join(rows)
 
 
@@ -213,15 +224,12 @@ def _roa_block(ev: Dict[str, Any], *, executed: bool, exec_note: str) -> str:
     allowed = d.get("contract_allowed_policy_types") or []
     allowed_s = json.dumps(allowed, default=str)
     narrative = str(d.get("explain_narrative", "")) or "(not recorded)"
-    signals = d.get("explain_signals") or []
-    risks = d.get("explain_risks") or []
-    opps = d.get("explain_opportunities") or []
     sc_pass = bool(d.get("self_check_passed", True))
     sc_reas = str(d.get("self_check_reason", ""))
     pk = str(d.get("policy_kind", "")) if evname == "AGENT_DECISION" else "(no proposal)"
     conf = d.get("confidence", "")
     reason_dim = str(d.get("reason", ""))
-    sc_line = _esc(sc_reas if evname != "FINOPS_SELF_CHECK_FAILED" else reason_dim)
+    sc_line = _esc(sc_reas if evname != "CLAIMS_SELF_CHECK_FAILED" else reason_dim)
     inner = f"""
 <pre class="roa-pre">
 DFID: {_esc(dfid)}
@@ -229,9 +237,9 @@ Agent: {_esc(agent_id)}  Role: {_esc(role)}  Event: {_esc(evname)}
 
 [EXPLAIN]
   Narrative:   {_esc(narrative)}
-  Signals:     {_esc(signals)}
-  Risks:       {_esc(risks)}
-  Opportunities: {_esc(opps)}
+  Signals:     (not recorded)
+  Risks:       (not recorded)
+  Opportunities: (not recorded)
 
 [POLICY]
   Proposed action:  {_esc(pk)}
@@ -261,7 +269,7 @@ Agent: {_esc(agent_id)}  Role: {_esc(role)}  Event: {_esc(evname)}
 """
 
 
-def _kernel_section(
+def _kernel_claims_section(
     bundle: StorageBundle,
     config: Dict[str, Any],
     dfids: List[str],
@@ -337,22 +345,21 @@ def _kernel_section(
     ctx_rows = []
     for dfid in dfids[:80]:
         sess = store.get_session(dfid)
-        idle = sess.get("idle_resources") if isinstance(sess, dict) else {}
-        inst = idle.get("instances", []) if isinstance(idle, dict) else []
-        n_inst = len(inst) if isinstance(inst, list) else 0
+        claim = sess.get("claim") if isinstance(sess, dict) else {}
+        oid = claim.get("order_id", "") if isinstance(claim, dict) else ""
         ctx_rows.append(
             "<tr>"
             f"<td><code>{_esc(dfid)}</code></td>"
             f"<td>{len(sess) if isinstance(sess, dict) else 0}</td>"
             f"<td>{_esc(sess.get('scenario_label', ''))}</td>"
-            f"<td>{n_inst}</td>"
-            f"<td>{_esc(sess.get('trust_input_labels', ''))}</td>"
+            f"<td><code>{_esc(oid)}</code></td>"
+            f"<td>{_esc(claim.get('amount_eur', '')) if isinstance(claim, dict) else ''}</td>"
             "</tr>"
         )
     ctx_html = (
         "<table class='data'><thead><tr>"
         "<th>dfid</th><th>session keys</th><th>scenario_label</th>"
-        "<th>idle instance count</th><th>trust_input_labels</th>"
+        "<th>claim order_id</th><th>claim amount_eur</th>"
         "</tr></thead><tbody>"
         + ("".join(ctx_rows) if ctx_rows else "<tr><td colspan='5' class='muted'>(none)</td></tr>")
         + "</tbody></table>"
@@ -373,7 +380,31 @@ def _kernel_section(
 """
 
 
-def write_finops_langchain_html_report(
+def _section6_orders_from_config(config: Dict[str, Any]) -> str:
+    orders = (config.get("context_store") or {}).get("orders") or {}
+    if not orders:
+        return '<p class="muted">No context_store.orders in config.</p>'
+    rows = []
+    for oid, meta in orders.items():
+        rows.append(
+            "<tr>"
+            f"<td><code>{_esc(oid)}</code></td>"
+            f"<td>{_esc(meta.get('purchase_date', ''))}</td>"
+            f"<td>{_esc(meta.get('category', ''))}</td>"
+            f"<td>{_esc(meta.get('amount', ''))}</td>"
+            "</tr>"
+        )
+    return (
+        "<p>Authoritative order records DIM reads (not shown to the Crew in User Space).</p>"
+        "<table class='data'><thead><tr>"
+        "<th>order_id</th><th>purchase_date</th><th>category</th><th>amount</th>"
+        "</tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table>"
+    )
+
+
+def write_crewai_claims_html_report(
     bundle: StorageBundle,
     *,
     simulation_id: str,
@@ -403,14 +434,14 @@ def write_finops_langchain_html_report(
     counts = Counter(str(e.get("event", "")) for e in run_ev)
     trace = _ordered_trace_events(run_ev)
     scenarios_path = sample_dir / "scenarios.yaml"
-    scenarios: List[FinOpsScenario] = (
+    scenarios: List[ClaimsScenario] = (
         load_scenarios(scenarios_path) if scenarios_path.is_file() else []
     )
     expected_by_label = {s.label: s.expected for s in scenarios}
 
     exec_by_dfid: Dict[str, Dict[str, Any]] = {}
     for e in run_ev:
-        if e.get("event") == "FINOPS_EXECUTION":
+        if e.get("event") == "CLAIM_REFUND_EXECUTED":
             exec_by_dfid[str(e.get("dfid", ""))] = e
 
     trace_rows_html = _trace_table_rows(trace, expected_by_label, exec_by_dfid)
@@ -425,12 +456,13 @@ def write_finops_langchain_html_report(
         if ex:
             xd = ex.get("details") or {}
             note = (
-                f"Dry-run FINOPS_EXECUTION resource_id={xd.get('resource_id')} "
-                f"idempotency_key={str(xd.get('idempotency_key', ''))[:16]}…"
+                f"Dry-run CLAIM_REFUND_EXECUTED order_id={xd.get('order_id')} "
+                f"amount_eur={xd.get('amount_eur')} "
+                f"idempotency_key={str(xd.get('idempotency_key', ''))[:20]}…"
             )
         else:
             if str(d.get("verdict", "")).upper() == "ACCEPT" and d.get("executed"):
-                note = "Dry-run execution recorded (see FINOPS_EXECUTION)."
+                note = "Dry-run execution recorded (see CLAIM_REFUND_EXECUTED)."
             else:
                 note = "blocked — no execution"
         roa_blocks.append(_roa_block(ev, executed=did_exec, exec_note=note))
@@ -442,7 +474,7 @@ def write_finops_langchain_html_report(
     if not agent_fb and decisions_only:
         agent_fb = str((decisions_only[0].get("details") or {}).get("agent_id", ""))
 
-    kernel = _kernel_section(
+    kernel = _kernel_claims_section(
         bundle,
         config,
         [str(e.get("dfid", "")) for e in decisions_only],
@@ -501,14 +533,15 @@ table.data th { background: #161b22; }
 details { margin: 0.75rem 0; }
 summary { cursor: pointer; color: var(--info); }
 .muted { color: var(--muted); }
-figcaption { font-size: 0.85rem; margin-top: 0.5rem; }
+figcaption { font-size: 0.85rem; margin-top: 0.5rem; color: var(--muted); }
 """
 
-    section2 = _finops_section2_prose(config)
-    section6 = """
-<p class="muted">This batch sample does not track persistent FinOps entities across scenarios.
-Each row is an independent decision flow; use Sections 4–5 for traces.</p>
-"""
+    section2 = _claims_section2_prose(config)
+    section3 = (
+        '<p class="muted">No charts in this report — Section 4 trace table and '
+        "Section 5 ROA reconstructions provide the audit view (Sample Guide §17.4).</p>"
+    )
+    section6 = _section6_orders_from_config(config)
 
     n_decisions = sum(1 for e in run_ev if e.get("event") == "AGENT_DECISION")
 
@@ -516,12 +549,12 @@ Each row is an independent decision flow; use Sections 4–5 for traces.</p>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>34_langchain_roa_wrapper — audit report</title>
+  <title>35_crewai_roa_wrapper — audit report</title>
   <style>{css}</style>
 </head>
 <body>
 <div class="wrap">
-  <h1>34_langchain_roa_wrapper — classic + LangChain ROA</h1>
+  <h1>35_crewai_roa_wrapper — classic + CrewAI ROA</h1>
   <p class="meta">Generated (UTC): <code>{_esc(start_ts)}</code> — Run status:
   <strong>{_esc(run_status)}</strong>
   {f' — SIMULATION_END: {_esc(sim_end_status)}' if sim_end_status else ''}</p>
@@ -543,13 +576,13 @@ Each row is an independent decision flow; use Sections 4–5 for traces.</p>
   {section2}
 
   <h2>Section 3 — Charts</h2>
-  <p class="muted">No charts for this sample — Section 4 table and Section 5 traces carry the audit view.</p>
+  {section3}
 
   <h2>Section 4 — Per-scenario trace</h2>
   <table class="data">
     <thead>
       <tr>
-        <th>#</th><th>DFID</th><th>Scenario</th><th>resource_id</th><th>policy_kind</th>
+        <th>#</th><th>DFID</th><th>Scenario</th><th>order_id</th><th>amount_eur</th><th>policy_kind</th>
         <th>DIM</th><th>Executed</th><th>vs expected</th><th>Details</th>
       </tr>
     </thead>
@@ -561,7 +594,7 @@ Each row is an independent decision flow; use Sections 4–5 for traces.</p>
   <h2>Section 5 — ROA decision cycle reconstruction</h2>
   {"".join(roa_blocks) if roa_blocks else "<p class='muted'>No trace rows.</p>"}
 
-  <h2>Section 6 — Entity lifecycle</h2>
+  <h2>Section 6 — Entity lifecycle (authoritative orders)</h2>
   {section6}
 
   <h2>Section 7 — Kernel artefacts</h2>
@@ -583,7 +616,7 @@ def _load_bundle_for_cli(config_path: Path) -> Tuple[StorageBundle, Dict[str, An
 def main() -> None:
     sample_dir = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(
-        description="Regenerate 34_langchain_roa_wrapper HTML report from audit storage.",
+        description="Regenerate 35_crewai_roa_wrapper HTML report from audit storage.",
     )
     parser.add_argument(
         "--simulation-id",
@@ -613,7 +646,7 @@ def main() -> None:
     )
     end_status = str((end_ev.get("details") or {}).get("status", "")) if end_ev else "regenerated"
     t0 = time.perf_counter()
-    path = write_finops_langchain_html_report(
+    path = write_crewai_claims_html_report(
         bundle,
         simulation_id=sim_id,
         sample_dir=sample_dir,

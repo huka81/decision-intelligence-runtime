@@ -130,6 +130,145 @@ def database_connection_summary(config: Dict[str, Any]) -> str:
     return "In-memory storage"
 
 
+def _default_eoam_mock_strategy() -> Callable[[str, Optional[str]], str]:
+    """Placeholder policy JSON for EOAM samples when no mock strategy is injected."""
+
+    def strategy(prompt: str, sys: Optional[str] = None) -> str:
+        return (
+            '{"policy_kind": "HOLD", "params": {}, '
+            '"justification": "Mock default", "confidence": 0.8}'
+        )
+
+    return strategy
+
+
+def materialize_storage_bundle(
+    config: Dict[str, Any],
+    config_path: Optional[str] = None,
+) -> StorageBundle:
+    """Resolve relative SQLite paths (if applicable) and open a :class:`StorageBundle`.
+
+    Mutates ``config["database"]`` in place when paths are anchored — same rule as
+    :func:`setup_environment`. Use this from composition roots (e.g. samples) so
+    persistence stays an externally wired adapter.
+    """
+    db_section = config.get("database")
+    if isinstance(db_section, dict) and config_path:
+        config["database"] = resolve_sqlite_db_path_relative_to_config(db_section, config_path)
+    return open_storage_bundle(config.get("database") or {})
+
+
+def build_llm_from_config(
+    config: Dict[str, Any],
+    mock_llm_strategy: Optional[Callable[[str, Optional[str]], str]] = None,
+    *,
+    force_mock: bool = False,
+    empty_llm_defaults_implies_mock: bool = False,
+) -> LLMClient:
+    """Build a :class:`~dir_core.utils.llm_client.LLMClient` from ``config["llm_defaults"]``.
+
+    Shared by :func:`setup_environment` and samples that attach the LLM as a port
+    (e.g. ``32_fraud_gate``) without pulling Ollama/Gemini construction into domain code.
+
+    Args:
+        config: Full YAML dict (must include ``llm_defaults`` unless *empty* branch).
+        mock_llm_strategy: Injected mock ``generate`` behavior when mock path is used.
+        force_mock: When True, use ``MockLLMClient`` even if YAML names a live provider
+            (e.g. Ollama unreachable — caller decides after :func:`configured_live_llm_is_reachable`).
+        empty_llm_defaults_implies_mock: Fraud sample: missing/empty ``llm_defaults`` means
+            deterministic mock (requires ``mock_llm_strategy``).
+    """
+    raw_ld = config.get("llm_defaults")
+    llm_defaults: Dict[str, Any] = raw_ld if isinstance(raw_ld, dict) else {}
+
+    if empty_llm_defaults_implies_mock:
+        if mock_llm_strategy is None:
+            raise ValueError(
+                "empty_llm_defaults_implies_mock=True requires mock_llm_strategy"
+            )
+        logger.info("Using MockLLMClient (no llm_defaults in config).")
+        return MockLLMClient(strategy=mock_llm_strategy)
+
+    use_mock_env = os.environ.get("USE_MOCK_LLM", "").strip().lower() in ("1", "true", "yes")
+    provider = str(llm_defaults.get("provider", "")).strip().lower()
+    model = str(llm_defaults.get("model", "llama3.2"))
+
+    if not provider:
+        if model.lower().startswith("gemini"):
+            provider = "gemini"
+        else:
+            provider = "ollama"
+
+    if force_mock or use_mock_env or provider == "mock":
+        strat = mock_llm_strategy or _default_eoam_mock_strategy()
+        logger.info("Using MockLLMClient.")
+        return MockLLMClient(strategy=strat)
+
+    if provider == "gemini":
+        api_key = llm_defaults.get("api_key")
+        timeout = int(llm_defaults.get("timeout", 60))
+        llm = GeminiClient(model=model, api_key=api_key, timeout=timeout)
+        logger.info("Using GeminiClient (model: %s)", llm.model)
+        return llm
+
+    if provider == "ollama":
+        base_url = os.getenv(
+            "OLLAMA_BASE_URL",
+            llm_defaults.get("base_url", "http://localhost:11434"),
+        )
+        model_resolved = os.getenv("OLLAMA_MODEL", model)
+        timeout = int(llm_defaults.get("timeout", 60))
+        llm = OllamaClient(model=model_resolved, base_url=base_url, timeout=timeout)
+        logger.info("Using OllamaClient (model: %s, url: %s)", llm.model, llm.base_url)
+        return llm
+
+    raise ValueError(f"Unknown LLM provider: {provider}")
+
+
+def configured_live_llm_is_reachable(config: Dict[str, Any]) -> bool:
+    """Return False when YAML selects Gemini/Ollama but keys or Ollama are not usable.
+
+    Callers may then pass ``force_mock=True`` to :func:`build_llm_from_config`.
+    Returns True when mock is intended, ``llm_defaults`` is empty, or live checks pass.
+    """
+    if os.environ.get("USE_MOCK_LLM", "").strip().lower() in ("1", "true", "yes"):
+        return True
+    raw_ld = config.get("llm_defaults")
+    llm_defaults: Dict[str, Any] = raw_ld if isinstance(raw_ld, dict) else {}
+    if not llm_defaults:
+        return True
+    provider = str(llm_defaults.get("provider", "")).strip().lower()
+    model = str(llm_defaults.get("model", "llama3.2"))
+    if not provider:
+        provider = "gemini" if model.lower().startswith("gemini") else "ollama"
+    if provider == "mock":
+        return True
+    if provider == "gemini":
+        if llm_defaults.get("api_key") or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"):
+            return True
+        logger.warning(
+            "Gemini selected but no API key (api_key / GOOGLE_API_KEY / GEMINI_API_KEY)."
+        )
+        return False
+    if provider == "ollama":
+        base_url = os.getenv(
+            "OLLAMA_BASE_URL",
+            llm_defaults.get("base_url", "http://localhost:11434"),
+        )
+        model_resolved = os.getenv("OLLAMA_MODEL", model)
+        if not check_ollama(base_url, model_resolved):
+            logger.warning(
+                "Ollama not reachable at %s or model '%s' not found. "
+                "(ollama serve && ollama pull %s)",
+                base_url,
+                model_resolved,
+                model_resolved,
+            )
+            return False
+        return True
+    return True
+
+
 @dataclass
 class Environment:
     llm: LLMClient
@@ -149,46 +288,13 @@ def setup_environment(
     2. Storage: Reads config["database"]["provider"]. Fallback to memory.
        Supported providers: "postgres", "sqlite", "memory"
     """
-    
-    # 1. Build LLM
-    use_mock_env = os.environ.get("USE_MOCK_LLM", "").strip().lower() in ("1", "true", "yes")
-    llm_defaults = config.get("llm_defaults", {})
-    provider = llm_defaults.get("provider", "").lower()
-    model = llm_defaults.get("model", "llama3.2")
-    
-    if not provider:
-        if model.startswith("gemini"):
-            provider = "gemini"
-        else:
-            provider = "ollama"
-
-    if use_mock_env or provider == "mock":
-        if mock_llm_strategy is None:
-            # Default mock strategy if none provided
-            def default_mock(prompt: str, sys: Optional[str]) -> str:
-                return '{"policy_kind": "HOLD", "params": {}, "justification": "Mock default", "confidence": 0.8}'
-            mock_llm_strategy = default_mock
-            
-        llm = MockLLMClient(strategy=mock_llm_strategy)
-        logger.info("Using MockLLMClient.")
-    elif provider == "gemini":
-        api_key = llm_defaults.get("api_key")
-        timeout = llm_defaults.get("timeout", 60)
-        llm = GeminiClient(model=model, api_key=api_key, timeout=timeout)
-        logger.info(f"Using GeminiClient (model: {llm.model})")
-    elif provider == "ollama":
-        base_url = llm_defaults.get("base_url", "http://localhost:11434")
-        timeout = llm_defaults.get("timeout", 60)
-        llm = OllamaClient(model=model, base_url=base_url, timeout=timeout)
-        logger.info(f"Using OllamaClient (model: {llm.model}, url: {llm.base_url})")
-    else:
-        raise ValueError(f"Unknown LLM provider: {provider}")
-
-    # 2. Build Storage (PostgreSQL via pg_repo.build_repository, SQLite via sqlite_storage)
-    db_section = config.get("database")
-    if isinstance(db_section, dict) and config_path:
-        config["database"] = resolve_sqlite_db_path_relative_to_config(db_section, config_path)
-    repository = open_storage_bundle(config.get("database") or {})
+    llm = build_llm_from_config(
+        config,
+        mock_llm_strategy,
+        force_mock=False,
+        empty_llm_defaults_implies_mock=False,
+    )
+    repository = materialize_storage_bundle(config, config_path)
 
     # 3. Build Contract Provider
     contracts_config = config.get("contracts", {})

@@ -1,22 +1,12 @@
-"""
-35_crewai_roa_wrapper - DIM validation for Claims proposals.
+"""Claims DIM: ``dir_core.validate_proposal`` plus order, category, window, and amount rules."""
 
-Validates PolicyProposal against:
-1. Base DIM (schema, RBAC)
-2. Order existence in Context Store
-3. Category in allowed_refund_categories
-4. Return window (purchase_date + return_window_days)
-5. Amount <= max_refund_without_escalation (ACCEPT) or ESCALATE
-
-DIR Alignment: DIR Architectural Pattern §6 (Decision Integrity Module)
-"""
+from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from dir_core import PolicyProposal
+from dir_core import PolicyProposal, validate_proposal as dim_validate_proposal
 from dir_core.data_types import DimReasonCode, ValidationReason, ValidationVerdict
-from dir_core.dim import validate_proposal
 
 from contracts import ClaimsContract
 
@@ -25,36 +15,20 @@ def validate_claims_proposal(
     proposal: PolicyProposal,
     context: Dict[str, Any],
     contract: ClaimsContract,
-    allowed_agents: Optional[list[str]] = None,
+    dim_contract_dict: Dict[str, Any],
+    allowed_agents: Optional[List[str]] = None,
 ) -> Tuple[ValidationVerdict, ValidationReason]:
-    """
-    Validate Claims proposal: base DIM + order + category + return window + amount.
-
-    Validation layers:
-    1. Base DIM validation (schema, RBAC)
-    2. Order existence in Context Store
-    3. Category in allowed_refund_categories
-    4. Return window check (within return_window_days)
-    5. Amount: <= max -> ACCEPT; > max -> ESCALATE (HITL)
-
-    Args:
-        proposal: PolicyProposal with params: order_id, amount_eur, category, reason
-        context: Must contain {"orders": {"ord_123": {"purchase_date": "...", "category": "..."}}}
-        contract: ClaimsContract with boundaries
-        allowed_agents: List of authorized agent IDs
-
-    Returns:
-        Tuple of (verdict, reason)
-    """
-    # Layer 1: Base validation
-    base_context = {"state": context.get("state", {})}
-    verdict, reason = validate_proposal(
-        proposal, base_context, allowed_agents or []
+    agents = allowed_agents if allowed_agents is not None else [contract.agent_id]
+    base_ctx: Dict[str, Any] = {"state": context.get("state", {}), "orders": context.get("orders", {})}
+    verdict, reason = dim_validate_proposal(
+        proposal,
+        base_ctx,
+        allowed_agents=agents,
+        contract=dim_contract_dict,
     )
     if verdict == ValidationVerdict.REJECT:
         return verdict, reason
 
-    # Layer 2: Order existence
     order_id = proposal.params.get("order_id")
     if not order_id:
         return ValidationVerdict.REJECT, "Missing order_id in proposal params"
@@ -66,7 +40,6 @@ def validate_claims_proposal(
     order = orders[order_id]
     category = order.get("category", "UNKNOWN")
 
-    # Layer 3: Category boundary
     if category not in contract.allowed_refund_categories:
         return (
             ValidationVerdict.REJECT,
@@ -74,23 +47,18 @@ def validate_claims_proposal(
             f"{contract.allowed_refund_categories}",
         )
 
-    # Layer 4: Return window
     purchase_date_str = order.get("purchase_date")
     if not purchase_date_str:
         return ValidationVerdict.REJECT, f"Order {order_id} missing purchase_date in Context Store"
 
     try:
-        purchase_date = datetime.fromisoformat(
-            purchase_date_str.replace("Z", "+00:00")
-        )
+        purchase_date = datetime.fromisoformat(str(purchase_date_str).replace("Z", "+00:00"))
         if purchase_date.tzinfo is None:
             purchase_date = purchase_date.replace(tzinfo=timezone.utc)
     except (ValueError, TypeError):
         return ValidationVerdict.REJECT, f"Invalid purchase_date format for order {order_id}"
 
-    cutoff = datetime.now(timezone.utc) - timedelta(
-        days=contract.return_window_days
-    )
+    cutoff = datetime.now(timezone.utc) - timedelta(days=contract.return_window_days)
     if purchase_date < cutoff:
         return (
             ValidationVerdict.REJECT,
@@ -98,7 +66,6 @@ def validate_claims_proposal(
             f"(purchased {purchase_date_str}, limit {contract.return_window_days} days)",
         )
 
-    # Layer 5: Amount - ACCEPT or ESCALATE
     amount = proposal.params.get("amount_eur") or proposal.params.get("amount_pln")
     if amount is None:
         return ValidationVerdict.REJECT, "Missing amount_eur in proposal params"
@@ -120,4 +87,3 @@ def validate_claims_proposal(
         )
 
     return ValidationVerdict.ACCEPT, DimReasonCode.VALIDATION_PASSED
-
