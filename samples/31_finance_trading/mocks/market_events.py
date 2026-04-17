@@ -1,7 +1,7 @@
 """
 Market simulation event models: QuoteTick, NewsEvent.
 
-Part of generators: payloads align with OBSERVATION/MARKET_SIGNAL and NEWS on the event bus.
+Part of mocks: payloads align with OBSERVATION/MARKET_SIGNAL and NEWS on the event bus.
 """
 
 from datetime import datetime, timezone

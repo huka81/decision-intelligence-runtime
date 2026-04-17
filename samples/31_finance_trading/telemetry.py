@@ -1,9 +1,9 @@
 """
-Finance trading sample — simulation events via canonical DecisionAuditStorage.
+Finance trading sample — telemetry helpers for ``bundle.decision_audit``.
 
-All runtime persistence goes through ``bundle.decision_audit`` on a
-:class:`dir_core.storage.StorageBundle` (from ``sqlite_storage``,
-``build_repository``, etc.). No parallel in-memory collector during the run.
+Thin wrappers around :meth:`StorageBundle.decision_audit.record` plus report
+hydration from ``all_events_chronological()``. No parallel in-memory collector
+during the run.
 
 Rows land in ``decision_audit_events``. Column ``dfid`` is the flow id (often a
 UUID for ticks); ``simulation_id`` is stored inside ``detail_json`` / ``details``.

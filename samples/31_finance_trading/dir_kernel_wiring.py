@@ -13,9 +13,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from dir_core import ResponsibilityContract
-from dir_core.agent_registry import AgentRegistry
-from dir_core.context_store import ContextStore
+from dir_core import AgentRegistry, ContextStore, ResponsibilityContract
 from dir_core.models import DecisionRecord
 
 from shared.contracts.provider import ContractProvider

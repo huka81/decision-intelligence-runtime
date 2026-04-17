@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
 """
-31_finance_trading - Topology A (EOAM) with full ROA agents backed by LLM (Ollama, Gemini, or Mock).
+31_finance_trading — EOAM trading simulation with config-driven ROA agents and LLM.
 
-- Missions and Responsibility Contracts from config.yaml (ROA Manifesto §3)
-- Explain → Policy → Self-Check → Proposal lifecycle via LLM (§4)
-- Event bus, scope-based subscription, priority arbitration, DIM, dynamic PositionAgents (§2 EOAM)
+Topology: A — EOAM. Mechanisms: EventBus, priority arbitration, DIM, AgentRegistry,
+ContextStore, decision audit telemetry, dynamic position agents.
 
 Run from repo root: python samples/31_finance_trading/run.py
-Requires: pip install -e .  and  pip install pyyaml
-LLM Options:
-  - Ollama: run locally (ollama serve, ollama pull llama3.2)
-  - Gemini: set GOOGLE_API_KEY or GEMINI_API_KEY env var (or use .env file)
-  - Mock: use MockLLM (env USE_MOCK_LLM=1) for testing without LLM
+LLM: Ollama, Gemini (API key env), or Mock (USE_MOCK_LLM=1).
 """
 from __future__ import annotations
 
@@ -34,25 +29,29 @@ if str(_SAMPLES) not in sys.path:
 
 import __init__  # noqa: F401 - loads .env via package __init__.py
 
-from dir_core import PolicyProposal, ResponsibilityContract, create_event_bus
-from dir_core.agent_registry import AgentRegistry
-from dir_core.context_store import ContextStore
-from dir_core.dim import validate_proposal
-from shared.config import load_yaml_config
+from dir_core import (
+    AgentRegistry,
+    ContextStore,
+    PolicyProposal,
+    ResponsibilityContract,
+    create_event_bus,
+    validate_proposal,
+)
 from dir_core.utils.logging_utils import log_with_dfid
+from shared.bootstrap import database_connection_summary, setup_environment
+from shared.config import load_yaml_config
 
 try:
-    from shared.llm.clients import GeminiClient, OllamaClient, MockLLMClient
-    from shared.bootstrap import database_connection_summary, setup_environment
-    from .generators import NewsGenerator, QuoteGenerator
-    from .orchestrator import EOAMOrchestrator
-    from .roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
     from .dir_kernel_wiring import (
         SimulationKernelContext,
         register_config_agents,
         register_spawned_position_agent,
     )
-    from .simulation_audit import (
+    from .mocks import NewsGenerator, QuoteGenerator, make_mock_strategy
+    from .orchestrator import EOAMOrchestrator
+    from .report_generator import generate_html_report
+    from .roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
+    from .telemetry import (
         complete_simulation_audit,
         count_decision_audit_rows_for_simulation,
         record_agent_decision,
@@ -64,19 +63,17 @@ try:
         record_position_spawned,
         start_simulation_audit,
     )
-    from .report_generator import generate_html_report
 except ImportError:
-    from shared.llm.clients import GeminiClient, OllamaClient, MockLLMClient
-    from shared.bootstrap import database_connection_summary, setup_environment
-    from generators import NewsGenerator, QuoteGenerator
-    from orchestrator import EOAMOrchestrator
-    from roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
     from dir_kernel_wiring import (
         SimulationKernelContext,
         register_config_agents,
         register_spawned_position_agent,
     )
-    from simulation_audit import (
+    from mocks import NewsGenerator, QuoteGenerator, make_mock_strategy
+    from orchestrator import EOAMOrchestrator
+    from report_generator import generate_html_report
+    from roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
+    from telemetry import (
         complete_simulation_audit,
         count_decision_audit_rows_for_simulation,
         record_agent_decision,
@@ -88,19 +85,9 @@ except ImportError:
         record_position_spawned,
         start_simulation_audit,
     )
-    from report_generator import generate_html_report
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
-
-
-def mock_strategy(prompt: str, sys_prompt: str | None = None) -> str:
-    prompt_lower = prompt.lower()
-    if "choose one action" in prompt_lower or "output action" in prompt_lower or "action, justification" in prompt_lower:
-        return 'ACTION: HOLD\nJUSTIFICATION: Mock policy per mission.\nCONFIDENCE: 0.8'
-    if "narrative" in prompt_lower or "signals:" in prompt_lower or "risks:" in prompt_lower or "opportunities:" in prompt_lower:
-        return 'Narrative: Market context observed. SIGNALS: price_update, trend. RISKS: volatility. OPPORTUNITIES: trend continuation. '
-    return 'ACTION: HOLD\nJUSTIFICATION: Mock policy per mission.\nCONFIDENCE: 0.8'
 
 
 def build_agents(
@@ -154,7 +141,11 @@ def main() -> None:
     config_path = sample_dir / "config.yaml"
     config = load_yaml_config(config_path)
 
-    env = setup_environment(config, mock_llm_strategy=mock_strategy, config_path=str(config_path))
+    env = setup_environment(
+        config,
+        mock_llm_strategy=make_mock_strategy(),
+        config_path=str(config_path),
+    )
     llm = env.llm
 
     kernel_ctx = SimulationKernelContext()
@@ -193,7 +184,7 @@ def main() -> None:
     for agent in news_agents:
         orch.register_news_agent(agent)
 
-    generators: List[QuoteGenerator] = []
+    quote_generators: List[QuoteGenerator] = []
     for i, inst in enumerate(instruments):
         gen = QuoteGenerator(
             instrument=inst,
@@ -202,7 +193,7 @@ def main() -> None:
             seed=quote_seed + i,
             tick_interval_sec=0,
         )
-        generators.append(gen)
+        quote_generators.append(gen)
 
     news_gen = NewsGenerator(
         instruments=instruments,
@@ -246,7 +237,7 @@ def main() -> None:
                     break
 
             inst_index = tick_count % len(instruments)
-            quote_gen = generators[inst_index]
+            quote_gen = quote_generators[inst_index]
             tick_payload = quote_gen.next_tick().to_payload()
             scope = tick_payload["instrument"]
             last_prices[scope] = tick_payload.get("price", last_prices.get(scope, 1000.0))
@@ -532,7 +523,7 @@ def main() -> None:
     results_dir = sample_dir / "results"
     results_dir.mkdir(exist_ok=True)
     report_date = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M")
-    report_path = results_dir / f"simulation_report_{report_date}_{tick_count}ticks.html"
+    report_path = results_dir / f"report_{report_date}_{tick_count}ticks.html"
     generate_html_report(
         simulation_id=simulation_id,
         bundle=env.repository,

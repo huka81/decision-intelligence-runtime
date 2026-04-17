@@ -679,7 +679,7 @@ flowchart TB
         ROA["roa_agents\n(Instrument, Position, NewsScorer)"]
         Orch["orchestrator"]
         Kern["dir_kernel_wiring\n(registry + context persist)"]
-        Rec["simulation_audit\n(decision_audit_events)"]
+        Rec["telemetry\n(decision_audit_events)"]
         Rep["report_generator\n(HTML + Charts)"]
     end
 
@@ -711,12 +711,12 @@ flowchart TB
 ```
 
 - **config.yaml:** Simulation parameters (instruments, ticks, news interval, seeds, threshold), priority_matrix, and agent definitions (type, mission, contract, priority).
-- **run.py:** Loads config via `setup_environment` (LLM + **StorageBundle**), builds `AgentRegistry` / `ContextStore`, handshakes agents (`dir_kernel_wiring`), builds EventBus and orchestrator, runs tick and news loops, DIM, spawn; persists simulation timeline through **`simulation_audit`** and optional **`flow_transitions`**. **At completion:** writes `SIMULATION_END` to audit, logs audit row count, generates HTML report from the same bundle, opens browser.
+- **run.py:** Loads config via `setup_environment` (LLM + **StorageBundle**), builds `AgentRegistry` / `ContextStore`, handshakes agents (`dir_kernel_wiring`), builds EventBus and orchestrator, runs tick and news loops, DIM, spawn; persists simulation timeline through **`telemetry`** and optional **`flow_transitions`**. **At completion:** writes `SIMULATION_END` to audit, logs audit row count, generates HTML report from the same bundle, opens browser.
 - **llm_client:** `OllamaClient` (sync HTTP to Ollama), `GeminiClient` (Google AI API), or `MockLLM`; interface `generate(prompt, system=None) -> str`.
 - **roa_agents:** ROA base (Explain → Policy → Self-Check → Proposal) and concrete agents (Instrument, Position, NewsScorer) using the LLM and config-driven contracts with `wake_up_threshold_pct`.
 - **orchestrator:** Registers agents with the bus (OBSERVATION by scope, NEWS global), **implements Wake-up Predicates for Signal Suppression (DIR Topologies §2.3)**, emits observations/news with DFID, collects proposals per DFID, arbitrates by priority_matrix, spawns position agents from template. Tracks suppressed signals for reporting.
 - **dir_kernel_wiring:** Handshake for config agents and spawned position agents (`agent_registry`); **`persist_roa_cycle_record`** appends ROA Explain/Policy steps to **`context_session`** and summary to **`context_state`** when `SimulationKernelContext` is wired.
-- **simulation_audit:** Single writer for market/decision/position/news timeline rows in **`decision_audit_events`** (`start_simulation_audit`, `record_market_tick`, `record_agent_decision`, …). **`hydrate_report_state_from_audit`** rebuilds report structures from `all_events_chronological()` (no duplicate in-run collector).
+- **telemetry:** Single writer for market/decision/position/news timeline rows in **`decision_audit_events`** (`start_simulation_audit`, `record_market_tick`, `record_agent_decision`, …). **`hydrate_report_state_from_audit`** rebuilds report structures from `all_events_chronological()` (no duplicate in-run collector).
 - **report_generator:** Generates interactive HTML reports **directly from canonical decision audit events** with:
   - **Plotly charts:** Price lines with hover tooltips, visual markers (⭐ News, ▲ Position Opens, 🔷 Decisions)
   - **Position lifecycle cards:** Professional styling with gradients, P&L boxes, timeline events
@@ -792,7 +792,7 @@ export USE_MOCK_LLM=1
 python samples/31_finance_trading/run.py
 ```
 
-**Report:** The HTML report (`simulation_report.html`) requires `plotly` for charts; it is included in the `eoam` extra.
+**Report:** The HTML report (`report_*.html`) requires `plotly` for charts; it is included in the `eoam` extra.
 
 ---
 
@@ -891,7 +891,7 @@ The sample does **not** maintain a finance-specific SQL schema (no `simulations`
 | `postgres` | `samples/shared/storage/pg_repo.py` — `connect`, `apply_schema`, `build_repository` | DDL: `samples/shared/storage/pg_schema.sql` |
 | `memory` | `dir_core.storage.memory_storage()` | In-process only |
 
-At startup, `run.py` builds **`AgentRegistry`** and **`ContextStore`** on the same bundle, then wires ROA persistence through **`dir_kernel_wiring.py`** (handshake + optional ROA step logging). Market simulation and reporting use **`simulation_audit.py`**, which appends rows only via **`bundle.decision_audit.record(...)`** (`DecisionAuditStorage` protocol).
+At startup, `run.py` builds **`AgentRegistry`** and **`ContextStore`** on the same bundle, then wires ROA persistence through **`dir_kernel_wiring.py`** (handshake + optional ROA step logging). Market simulation and reporting use **`telemetry.py`**, which appends rows only via **`bundle.decision_audit.record(...)`** (`DecisionAuditStorage` protocol).
 
 ### Tables this sample writes to
 
@@ -902,14 +902,14 @@ The canonical model defines more tables than this sample touches. **Written duri
 | **`agent_registry`** | §2.3 Agent Registry | One row per agent after a successful **handshake**: all static agents from `config.yaml` (instrument, news_scorer), and each **dynamically spawned** position agent (`register_config_agents`, `register_spawned_position_agent` in `dir_kernel_wiring.py`). Stores `contract` JSON, `priority`, `status`, `session_token`, timestamps. |
 | **`context_session`** | §8 Context — per DFID | For each observation/news DFID where an agent completes an ROA internal cycle, **`persist_roa_cycle_record`** merges into `context_session.data` JSON: `roa_internal_steps` (append-only list of Explain/Policy/Self-Check records) and `simulation_id`. |
 | **`context_state`** | §8 Context — per agent | **`persist_roa_cycle_record`** updates long-lived JSON per `agent_id`: `simulation_id`, `last_dfid`, `last_policy_action`, `last_outcome`. |
-| **`decision_audit_events`** | Observability / audit | **Primary simulation log.** Each call in `simulation_audit.py` inserts one row: `dfid`, `event`, `timestamp`, optional `step_id`/`state`, and **`detail_json`** (SQLite) / **`detail_json` JSONB** (Postgres) with a **`simulation_id` field inside the JSON** so all rows for one run can be filtered together. |
+| **`decision_audit_events`** | Observability / audit | **Primary simulation log.** Each call in `telemetry.py` inserts one row: `dfid`, `event`, `timestamp`, optional `step_id`/`state`, and **`detail_json`** (SQLite) / **`detail_json` JSONB** (Postgres) with a **`simulation_id` field inside the JSON** so all rows for one run can be filtered together. |
 | **`flow_transitions`** | §4.3 Lifecycle log | **`bundle.lifecycle.record_transition(dfid, from_status, to_status)`** on position spawn and on position close: this sample uses the three string fields as *labels* (for example `POSITION_SPAWN` / agent id, or agent id / `RETIRED`), not necessarily strict lifecycle enum values. |
 
 **Present in the bundle but not used by this sample in the default path:** `idempotency_cache`, `saga_dirty_state`, `resource_locks`, `intent_retry`, `escalation_budget`, `escalation_requests`. They exist for other DIR flows and future extensions.
 
 ### `decision_audit_events` — event types and payloads
 
-Implementation: `simulation_audit.py`. Column **`dfid`** is usually the **decision-flow id** for that step (observation UUID, news UUID, or `simulation_id` for run-level rows). **`simulation_id` is duplicated inside `detail_json`** for every event so you can query one run without assuming `dfid` prefix.
+Implementation: `telemetry.py`. Column **`dfid`** is usually the **decision-flow id** for that step (observation UUID, news UUID, or `simulation_id` for run-level rows). **`simulation_id` is duplicated inside `detail_json`** for every event so you can query one run without assuming `dfid` prefix.
 
 | `event` value | Typical `dfid` column | Main fields inside `detail_json` |
 |---------------|----------------------|----------------------------------|
@@ -1193,7 +1193,7 @@ After a successful run, `run.py` may log a **row count** and (on PostgreSQL) a s
 
 ### HTML report pipeline
 
-`report_generator.generate_html_report(simulation_id, bundle, output_path, …)` loads **`bundle.decision_audit.all_events_chronological()`**, then **`hydrate_report_state_from_audit`** (`simulation_audit.py`) rebuilds ticks, decisions, positions, and news for charts and tables. The report can also include a **repository-oriented** section built from the same `StorageBundle` (see `_build_repository_business_html` in `report_generator.py`).
+`report_generator.generate_html_report(simulation_id, bundle, output_path, …)` loads **`bundle.decision_audit.all_events_chronological()`**, then **`hydrate_report_state_from_audit`** (`telemetry.py`) rebuilds ticks, decisions, positions, and news for charts and tables. The report can also include a **repository-oriented** section built from the same `StorageBundle` (see `_build_repository_business_html` in `report_generator.py`).
 
 ### Regenerating HTML reports
 
@@ -1289,7 +1289,7 @@ INFO Persistence: SQLite path=data/simulation_data.db
 INFO Decision audit backend: SqliteDecisionAuditStorage
 INFO Decision audit rows for this simulation_id: 184 (...)
 
-Report: .../results/simulation_report_2026-02-24_1435_50ticks.html
+Report: .../results/report_2026-02-24_1435_50ticks.html
 Opening report in browser...
 ```
 
@@ -1301,7 +1301,7 @@ Opening report in browser...
 ### Database & Reports
 
 - **Repository:** whatever `config.yaml` → `setup_environment` selected (**SQLite file**, **PostgreSQL**, or **memory**). Trading timeline rows live in **`decision_audit_events`**; agent contracts and ROA context live in **`agent_registry`**, **`context_session`**, **`context_state`**; optional spawn/retire markers in **`flow_transitions`**. See [Database Storage (canonical repository)](#database-storage-canonical-repository).
-- **HTML Report:** `./results/simulation_report_<date>_<ticks>ticks.html` (filename pattern from `run.py`) — **generated from persisted audit (+ bundle summary in the report)**, containing:
+- **HTML Report:** `./results/report_<date>_<ticks>ticks.html` (filename pattern from `run.py`) — **generated from persisted audit (+ bundle summary in the report)**, containing:
   - **Summary box:** Gradient-styled card with ticks, news events, elapsed time, decisions, positions, **signal suppression statistics**.
   - **Interactive price charts (Plotly):** One chart per instrument with:
     - **Price line** (cyan) with hover tooltips showing: tick index, price, timestamp, trend, volatility, DFID
@@ -1343,7 +1343,7 @@ Opening report in browser...
 
 - Reports are generated from **`bundle.decision_audit.all_events_chronological()`** (same connection or file as the simulation when you reuse `setup_environment`).
 - Regenerating after the run uses the same canonical tables; there is no separate “simulations” header table.
-- **Filename pattern (from `run.py`):** `simulation_report_<UTC-date>_<tick_count>ticks.html` under `./results/`.
+- **Filename pattern (from `run.py`):** `report_<UTC-date>_<tick_count>ticks.html` under `./results/`.
 
 **Manual report generation (from sample directory):**
 
@@ -1368,7 +1368,7 @@ python report_generator.py
 
 ## Generators (dir)
 
-- **QuoteGenerator** (`generators/quote_generator.py`): One instrument; multiplicative random walk in price; `next_tick()` → `QuoteTick`, `to_payload()` for OBSERVATION. Optional seed for reproducibility.
-- **NewsGenerator** (`generators/news_generator.py`): Template-based headlines, sentiment, category; `score_news()` for raw_score; `news_payloads(max_events, sleep_between)` yields payloads with optional dfid. Optional seed for reproducibility.
+- **QuoteGenerator** (`mocks/quote_generator.py`): One instrument; multiplicative random walk in price; `next_tick()` → `QuoteTick`, `to_payload()` for OBSERVATION. Optional seed for reproducibility.
+- **NewsGenerator** (`mocks/news_generator.py`): Template-based headlines, sentiment, category; `score_news()` for raw_score; `news_payloads(max_events, sleep_between)` yields payloads with optional dfid. Optional seed for reproducibility.
 
 In production, news scoring could be LLM- or RAG-based; here it is rule-based for determinism and no API keys.

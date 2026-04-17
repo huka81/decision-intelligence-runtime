@@ -16,12 +16,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 try:
-    from simulation_audit import (
+    from telemetry import (
         SimulationReportState,
         hydrate_report_state_from_audit,
     )
 except ImportError:
-    from .simulation_audit import (
+    from .telemetry import (
         SimulationReportState,
         hydrate_report_state_from_audit,
     )
@@ -1344,7 +1344,7 @@ if __name__ == "__main__":
         sample_dir = Path(__file__).resolve().parent
         results_dir = sample_dir / "results"
         results_dir.mkdir(exist_ok=True)
-        output_path = results_dir / f"simulation_report_{simulation_id}.html"
+        output_path = results_dir / f"report_{simulation_id}.html"
     
     generate_html_report(
         simulation_id=simulation_id,
