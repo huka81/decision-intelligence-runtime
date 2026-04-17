@@ -2,10 +2,10 @@
 """
 36_drift_optimization_discount — Optimization drift (reward hacking) in retention discounts.
 
-Run from repo root:
-  python samples/36_drift_optimization_discount/run.py
+Topology: classic. Mechanisms: AgentRegistry, ContextStore, ROA (Explain → Policy → Self-Check),
+validate_proposal + retention DIM, IdempotencyGuard, StorageBundle telemetry, PerformanceMonitor.
 
-Requires: pip install -e .  and  pip install pyyaml
+Run from repo root: python samples/36_drift_optimization_discount/run.py
 """
 
 from __future__ import annotations
@@ -14,28 +14,36 @@ import logging
 import os
 import sys
 import time
-from pathlib import Path
 import webbrowser
+from pathlib import Path
+from typing import Any, Dict
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC = _REPO_ROOT / "src"
 _SAMPLES = _REPO_ROOT / "samples"
+_SAMPLE_DIR = Path(__file__).resolve().parent
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 if str(_SAMPLES) not in sys.path:
     sys.path.insert(0, str(_SAMPLES))
+if str(_SAMPLE_DIR) not in sys.path:
+    sys.path.insert(0, str(_SAMPLE_DIR))
 
-from dir_core import ContextStore
-from dir_core.agent_registry import AgentRegistry
-from shared.config import load_yaml_config
-
-from shared.contracts.provider import YamlContractProvider
-
-from audit_store import AuditStore
-from models import RetentionSampleConfig
+from dir_core import AgentRegistry, ContextStore
+from shared.bootstrap import (
+    configured_live_llm_is_reachable,
+    database_connection_summary,
+    setup_environment,
+)
+from mocks import make_mock_strategy
 from performance_monitor import PerformanceMonitor
-from pipeline import run_simulation
+from pipeline import load_cancellation_inputs, run_simulation
 from report_generator import generate_report
+from schemas import (  # type: ignore[attr-defined]
+    load_retention_full_config,
+    load_retention_sample_config_bundle,
+)
+from telemetry import record_simulation_end, record_simulation_start
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -45,7 +53,6 @@ logger = logging.getLogger(__name__)
 
 
 def _unlink_retry(path: Path, *, attempts: int = 10, delay_s: float = 0.15) -> None:
-    """Windows may keep SQLite files briefly locked; retry avoids flaky run_all failures."""
     last_err: OSError | None = None
     for _ in range(attempts):
         try:
@@ -59,26 +66,70 @@ def _unlink_retry(path: Path, *, attempts: int = 10, delay_s: float = 0.15) -> N
     raise last_err
 
 
+def _llm_backend_label(llm: Any) -> str:
+    name = type(llm).__name__
+    if name == "MockLLMClient":
+        return "Mock"
+    if name == "OllamaClient":
+        return f"Ollama model={getattr(llm, 'model', '')} base_url={getattr(llm, 'base_url', '')}"
+    if name == "GeminiClient":
+        return f"Gemini model={getattr(llm, 'model', '')}"
+    return name
+
+
+def registry_handshake_payload(
+    config: Dict[str, Any],
+    contracts: Any,
+    agent_id: str,
+    *,
+    max_discount_pct: float,
+) -> Dict[str, Any]:
+    rc = contracts.get_contract(agent_id)
+    payload = rc.model_dump()
+    payload["max_discount_pct"] = max_discount_pct
+    payload["sample"] = "36_drift_optimization_discount"
+    row = next(
+        (a for a in (config.get("agents") or []) if a.get("agent_id") == agent_id),
+        None,
+    )
+    if row and row.get("mission"):
+        payload["mission"] = row["mission"]
+    return payload
+
+
 def main() -> None:
     sample_dir = Path(__file__).resolve().parent
-    raw = load_yaml_config(sample_dir / "config.yaml")
-    cfg = RetentionSampleConfig.model_validate(raw)
+    config_path = sample_dir / "config.yaml"
+    config = load_retention_full_config(sample_dir)
+    cfg = load_retention_sample_config_bundle(sample_dir)
+
+    seeds = cfg.simulation.seeds or {}
+    if seeds.get("retention") is not None:
+        cfg = cfg.model_copy(
+            update={
+                "simulation": cfg.simulation.model_copy(
+                    update={"simulation_seed": int(seeds["retention"])}
+                )
+            }
+        )
+
+    simulation_id = cfg.simulation.run_id
 
     (sample_dir / "data").mkdir(parents=True, exist_ok=True)
-    # Deterministic demo: reset DB each run (see README). Remove legacy triple-file layout if present.
-    primary_db = sample_dir / cfg.paths.database
+    db_rel = (config.get("database") or {}).get("db_path", "data/retention_drift.sqlite")
+    primary_db = (sample_dir / Path(str(db_rel))).resolve()
     if primary_db.exists():
         try:
             _unlink_retry(primary_db)
         except PermissionError:
-            alt_rel = f"data/retention_drift_run_{os.getpid()}.sqlite"
+            alt = sample_dir / f"data/retention_drift_run_{os.getpid()}.sqlite"
             logger.warning(
                 "Could not remove locked database %s; using %s for this run.",
                 primary_db.name,
-                alt_rel,
+                alt.name,
             )
-            cfg = cfg.model_copy(
-                update={"paths": cfg.paths.model_copy(update={"database": alt_rel})}
+            config.setdefault("database", {})["db_path"] = str(
+                alt.relative_to(sample_dir).as_posix()
             )
 
     legacy_audit = sample_dir / "data/retention_audit.sqlite"
@@ -86,80 +137,124 @@ def main() -> None:
         try:
             _unlink_retry(legacy_audit)
         except PermissionError:
-            logger.warning(
-                "Could not remove legacy audit database %s; continuing.",
-                legacy_audit.name,
-            )
+            logger.warning("Could not remove legacy audit database %s.", legacy_audit.name)
 
-    contract_provider = YamlContractProvider(str(sample_dir / "config.yaml"))
-    
-    try:
-        loaded_contract = contract_provider.get_contract(cfg.agent.agent_id)
-        # Assuming YamlContractProvider returns ResponsibilityContract, 
-        # we update the RetentionContract specific values
-        cfg.contract.max_discount_pct = getattr(loaded_contract, "max_drawdown_limit", cfg.contract.max_discount_pct) * 100 # Adjust scaling if needed
-        logger.info(f"Loaded contract from provider: max_discount_pct={cfg.contract.max_discount_pct}")
-    except Exception as e:
-        logger.warning(f"Could not load contract via provider, using config default: {e}")
+    mock_strategy = make_mock_strategy()
+    if not configured_live_llm_is_reachable(config):
+        config.setdefault("llm_defaults", {})["provider"] = "mock"
+    env = setup_environment(
+        config,
+        mock_llm_strategy=mock_strategy,
+        config_path=str(config_path),
+    )
 
-    db_path = str(sample_dir / cfg.paths.database)
-    audit = AuditStore(sample_dir / cfg.paths.database)
-    registry = AgentRegistry(db_path, supported_versions=cfg.registry.supported_versions)
-    context_store = ContextStore(db_path)
+    llm = env.llm
+    bundle = env.repository
+    contracts = env.contracts
+    logger.info("Persistence: %s", database_connection_summary(config))
 
+    registry = AgentRegistry(
+        storage=bundle.agent_registry,
+        supported_versions=cfg.registry.supported_versions,
+    )
+    store = ContextStore(storage=bundle.context)
+
+    agent_id = cfg.agent.agent_id
+    rc = contracts.get_contract(agent_id)
     hs = registry.handshake(
-        cfg.agent.agent_id,
-        cfg.handshake_contract_dict(),
+        agent_id,
+        registry_handshake_payload(
+            config,
+            contracts,
+            agent_id,
+            max_discount_pct=cfg.contract.max_discount_pct,
+        ),
         cfg.agent.agent_version,
         cfg.agent.priority,
     )
     if not hs.accepted:
-        raise SystemExit(f"Handshake failed: {hs.reason}")
+        logger.error("Handshake rejected: %s", hs.reason)
+        raise SystemExit(1)
 
     monitor = PerformanceMonitor(
-        audit,
+        bundle,
         registry,
-        agent_id=cfg.agent.agent_id,
+        simulation_id=simulation_id,
+        agent_id=agent_id,
         window_size=cfg.monitor.window_size,
         avg_threshold_pct=cfg.monitor.avg_threshold_pct,
         suspension_reason=cfg.monitor.suspension_reason,
     )
 
-    print("=" * 64)
-    print("Sample 36 - Optimization drift (retention discounts)")
-    print("=" * 64)
-    print(f"Inputs: {sample_dir / cfg.paths.inputs_file}")
-    print(f"Database: {sample_dir / cfg.paths.database}")
-    print()
+    logger.info("=" * 64)
+    logger.info("Sample 36 - Optimization drift (retention discounts)")
+    logger.info("=" * 64)
+    logger.info("Inputs: %s", sample_dir / cfg.paths.inputs_file)
+    logger.info("Simulation id: %s", simulation_id)
+    logger.info("")
 
-    sim = run_simulation(
-        cfg,
-        sample_dir=sample_dir,
-        audit=audit,
-        context_store=context_store,
-        monitor=monitor,
-        agent_registry=registry,
+    n_inputs = len(load_cancellation_inputs(sample_dir / cfg.paths.inputs_file))
+    record_simulation_start(
+        bundle,
+        simulation_id,
+        simulation_id,
+        extra={
+            "sample": "36_drift_optimization_discount",
+            "agent_id": agent_id,
+            "total_inputs": n_inputs,
+        },
     )
+    status = "ok"
+    err_msg = ""
+    sim = None
+    try:
+        sim = run_simulation(
+            cfg,
+            sample_dir=sample_dir,
+            bundle=bundle,
+            context_store=store,
+            monitor=monitor,
+            agent_registry=registry,
+            llm=llm,
+            rc=rc,
+            simulation_id=simulation_id,
+        )
+    except Exception as e:
+        status = "error"
+        err_msg = str(e)
+        raise
+    finally:
+        end_extra: Dict[str, Any] = {}
+        if err_msg:
+            end_extra["error_message"] = err_msg
+        if sim is not None:
+            end_extra["stopped_reason"] = sim.stopped_reason
+        record_simulation_end(
+            bundle,
+            simulation_id,
+            simulation_id,
+            status=status,
+            extra=end_extra or None,
+        )
 
-    st = registry.get_agent_status(cfg.agent.agent_id)
+    assert sim is not None
+
     report_path = generate_report(
         sample_dir,
-        audit,
-        sim,
+        bundle,
+        simulation_id=simulation_id,
         window=cfg.monitor.window_size,
-        agent_id=cfg.agent.agent_id,
-        registry_status=st,
+        agent_id=agent_id,
         max_discount_pct=cfg.contract.max_discount_pct,
         threshold_pct=cfg.monitor.avg_threshold_pct,
+        llm_backend=_llm_backend_label(llm),
     )
 
-    print()
-    print(f"Stopped: {sim.stopped_reason}")
-    print(f"HTML report: {report_path}")
-    audit.close()
+    logger.info("")
+    logger.info("Stopped: %s", sim.stopped_reason)
+    logger.info("HTML report: %s", report_path)
     webbrowser.open(report_path.resolve().as_uri())
 
 
 if __name__ == "__main__":
     main()
-

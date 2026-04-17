@@ -1,28 +1,55 @@
 """
-Orchestrator: ingest cancellations, ContextStore session, simulated agent, DIM, audit, monitor.
+Orchestrator: ingest cancellations, ContextStore session, ROA (Explain → Policy → Self-Check),
+DIM, canonical telemetry, profitability monitor.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-from dir_core import ContextStore, PolicyProposal, new_dfid
+from dir_core import ContextStore, PolicyProposal, idempotency_key, new_dfid
 from dir_core.agent_registry import AgentRegistry
+from dir_core.data_types import ValidationVerdict
+from dir_core.models import ResponsibilityContract
+from dir_core.storage import StorageBundle
+from dir_core.utils.llm_client import LLMClient
+from dir_core.utils.logging_utils import log_with_dfid
 
-from audit_store import AuditStore
-from models import RetentionSampleConfig
+from dim import validate_retention_proposal
 from performance_monitor import PerformanceMonitor
-from retention_dim import validate_retention_proposal
+from schemas import RetentionSampleConfig  # type: ignore[attr-defined]
+from telemetry import (
+    record_agent_decision_summary,
+    record_context_compiled,
+    record_dim_validation,
+    record_policy_proposal,
+    record_retention_executed,
+)
 
 logger = logging.getLogger(__name__)
 
 
+def parse_llm_json(raw: str) -> Optional[Dict[str, Any]]:
+    text = raw.strip()
+    if "```" in text:
+        m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+        if m:
+            text = m.group(1).strip()
+    m = re.search(r"\{[\s\S]*\}", text)
+    if m:
+        text = m.group(0)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return None
+
+
 def _stable_unit_noise(iteration: int, seed: int) -> float:
-    """Deterministic value in [-1, 1] for reproducible runs."""
     h = hash((seed, iteration, 0x9E3779B9)) & 0x7FFFFFFF
     return (h / 0x7FFFFFFF) * 2.0 - 1.0
 
@@ -32,12 +59,6 @@ def simulated_discount_pct(
     total: int,
     cfg: RetentionSampleConfig,
 ) -> float:
-    """
-    Phase 1 (index < normal_phase_iterations): discount ~N(mean, small spread) — healthy margin band.
-    Phase 2: slow upward creep (t**exponent) + slow jitter + faster offer-level volatility.
-    A single executed offer may be above the rolling average for many steps; suspension uses
-    only the window mean vs monitor threshold (DIM still enforces max_discount_pct).
-    """
     sim = cfg.simulation
     max_disc = float(cfg.contract.max_discount_pct)
     k = sim.normal_phase_iterations
@@ -89,6 +110,67 @@ def load_cancellation_inputs(path: Path) -> List[Dict[str, Any]]:
     return out
 
 
+def run_retention_roa_cycle(
+    llm: LLMClient,
+    rc: ResponsibilityContract,
+    *,
+    row: Dict[str, Any],
+    iteration: int,
+    total: int,
+    dfid: str,
+    discount_hint: float,
+    agent_id: str,
+) -> Tuple[Optional[PolicyProposal], str, str]:
+    """Explain → Policy → Self-Check; returns ``(proposal_or_none, narrative, fail_reason)``."""
+    mission = rc.mission or "Retain subscribers who request cancellation."
+    explain_prompt = (
+        f"PHASE=explain\nDFID={dfid}\nITER={iteration + 1}/{total}\n"
+        f"DISCOUNT_HINT={discount_hint:.6f}\nINPUT_JSON={json.dumps(row, default=str)}"
+    )
+    explain_raw = llm.generate(explain_prompt, system=mission)
+    ex_obj = parse_llm_json(explain_raw) or {}
+    narrative = str(ex_obj.get("narrative") or explain_raw.strip()[:800])
+
+    policy_prompt = (
+        f"PHASE=policy\nDFID={dfid}\nITER={iteration + 1}/{total}\n"
+        f"DISCOUNT_HINT={discount_hint:.6f}\nEXPLAIN_JSON={json.dumps(ex_obj, default=str)}"
+    )
+    policy_raw = llm.generate(policy_prompt, system=mission)
+    pol = parse_llm_json(policy_raw)
+    if not pol:
+        return None, narrative, "policy_json_parse_failed"
+
+    policy_kind = str(pol.get("policy_kind") or "")
+    params = pol.get("params") if isinstance(pol.get("params"), dict) else {}
+    try:
+        confidence = float(pol.get("confidence", 0.0))
+    except (TypeError, ValueError):
+        confidence = 0.0
+    justification = str(pol.get("justification") or "")
+
+    allowed = list(rc.allowed_policy_types or [])
+    if policy_kind not in allowed:
+        return None, narrative, "self_check_policy_kind"
+    if confidence < float(rc.escalate_on_uncertainty):
+        return None, narrative, "self_check_confidence"
+
+    raw_disc = params.get("discount_offered", discount_hint)
+    try:
+        discount_f = float(raw_disc)
+    except (TypeError, ValueError):
+        return None, narrative, "self_check_discount_type"
+
+    proposal = PolicyProposal(
+        dfid=dfid,
+        agent_id=agent_id,
+        policy_kind=policy_kind,
+        params={"discount_offered": discount_f},
+        confidence=confidence,
+        justification=justification,
+    )
+    return proposal, narrative, ""
+
+
 @dataclass
 class SimulationStep:
     iteration: int
@@ -103,6 +185,8 @@ class SimulationStep:
     executed: bool
     moving_avg_after: Optional[float] = None
     console_note: str = ""
+    explain_narrative: str = ""
+    justification: str = ""
 
 
 @dataclass
@@ -113,14 +197,21 @@ class SimulationResult:
     suspension_decision_number: Optional[int] = None
 
 
+def _verdict_str(verdict: Any) -> str:
+    return verdict.value if hasattr(verdict, "value") else str(verdict)
+
+
 def run_simulation(
     cfg: RetentionSampleConfig,
     *,
     sample_dir: Path,
-    audit: AuditStore,
+    bundle: StorageBundle,
     context_store: ContextStore,
     monitor: PerformanceMonitor,
     agent_registry: AgentRegistry,
+    llm: LLMClient,
+    rc: ResponsibilityContract,
+    simulation_id: str,
 ) -> SimulationResult:
     inputs_path = sample_dir / cfg.paths.inputs_file
     if not inputs_path.exists():
@@ -130,9 +221,10 @@ def run_simulation(
     n = len(rows)
     result = SimulationResult(total_inputs=n)
 
-    ctx_dim = {"state": dict(cfg.dim.context_state)}
+    ctx_dim: Dict[str, Any] = {"state": dict(cfg.dim.context_state)}
     agent_id = cfg.agent.agent_id
     max_disc = cfg.contract.max_discount_pct
+    kernel_contract = rc.model_dump()
 
     logged_early = False
     logged_late = False
@@ -154,52 +246,45 @@ def run_simulation(
         )
         channel = str(row.get("channel", ""))
 
-        audit.insert_decision_flow(dfid, agent_id, input_ref=ref)
+        discount_hint = simulated_discount_pct(i, n, cfg)
+
         context_store.update_session(
             dfid,
             {
                 "cancellation": row,
-                "compiled_for": "RetentionAgent",
+                "compiled_for": agent_id,
             },
         )
 
-        discount = simulated_discount_pct(i, n, cfg)
+        sess = context_store.get_session(dfid) or {}
+        record_context_compiled(
+            bundle,
+            dfid,
+            simulation_id,
+            input_ref=ref,
+            session_keys=list(sess.keys()),
+            plan=plan,
+            channel=channel,
+            user_reason=user_reason,
+        )
 
-        proposal = PolicyProposal(
+        proposal, narrative, roa_fail = run_retention_roa_cycle(
+            llm,
+            rc,
+            row=row,
+            iteration=i,
+            total=n,
             dfid=dfid,
+            discount_hint=discount_hint,
             agent_id=agent_id,
-            policy_kind="retention_discount",
-            params={"discount_offered": discount},
-            confidence=0.95,
-            justification=f"Simulated retention offer (iteration {i + 1}/{n}) to reduce churn.",
         )
 
-        audit.record(
-            dfid,
-            "CONTEXT_COMPILED",
-            state="READY",
-            details={"input_ref": ref, "session_keys": list(context_store.get_session(dfid).keys())},
-        )
-        audit.record(
-            dfid,
-            "POLICY_PROPOSAL",
-            state="EMITTED",
-            details={"discount_offered": discount, "policy_kind": proposal.policy_kind},
-        )
-
-        verdict, reason = validate_retention_proposal(
-            proposal,
-            ctx_dim,
-            cfg.dim.allowed_agents or [agent_id],
-            max_disc,
-        )
-
-        audit.record(
-            dfid,
-            "DIM_VALIDATION",
-            state=verdict,
-            details={"reason": reason},
-        )
+        discount_for_step = discount_hint
+        if proposal is not None:
+            try:
+                discount_for_step = float(proposal.params.get("discount_offered", discount_hint))
+            except (TypeError, ValueError):
+                discount_for_step = discount_hint
 
         step = SimulationStep(
             iteration=i,
@@ -208,51 +293,144 @@ def run_simulation(
             plan=plan,
             user_reason=user_reason,
             channel=channel,
-            discount_offered=discount,
-            dim_verdict=verdict,
-            dim_reason=reason,
+            discount_offered=discount_for_step,
+            dim_verdict="",
+            dim_reason="",
             executed=False,
+            explain_narrative=narrative,
+            justification=(proposal.justification if proposal else ""),
         )
 
-        if verdict != "ACCEPT":
-            audit.complete_flow(dfid, status="ABORTED")
+        if proposal is None:
+            step.dim_verdict = "ROA_FAIL"
+            step.dim_reason = roa_fail
+            log_with_dfid(
+                logger,
+                dfid,
+                logging.WARNING,
+                "ROA self-check failed: %s",
+                roa_fail,
+            )
+            record_agent_decision_summary(
+                bundle,
+                dfid,
+                simulation_id,
+                agent_id=agent_id,
+                policy_kind="",
+                verdict="ROA_FAIL",
+                reason=roa_fail,
+                confidence=0.0,
+                justification="",
+                explain_narrative=narrative,
+            )
+            result.steps.append(step)
+            continue
+
+        record_policy_proposal(
+            bundle,
+            dfid,
+            simulation_id,
+            discount_offered=float(proposal.params.get("discount_offered", 0.0)),
+            policy_kind=proposal.policy_kind,
+        )
+
+        verdict, reason = validate_retention_proposal(
+            proposal,
+            ctx_dim,
+            cfg.dim.allowed_agents or [agent_id],
+            max_disc,
+            kernel_contract=kernel_contract,
+        )
+        v_str = _verdict_str(verdict)
+        step.dim_verdict = v_str
+        step.dim_reason = str(reason)
+
+        record_dim_validation(
+            bundle,
+            dfid,
+            simulation_id,
+            verdict=v_str,
+            reason=str(reason),
+        )
+
+        record_agent_decision_summary(
+            bundle,
+            dfid,
+            simulation_id,
+            agent_id=agent_id,
+            policy_kind=proposal.policy_kind,
+            verdict=v_str,
+            reason=str(reason),
+            confidence=proposal.confidence,
+            justification=proposal.justification,
+            explain_narrative=narrative,
+        )
+
+        if verdict != ValidationVerdict.ACCEPT:
             step.console_note = "DIM_REJECT"
             result.steps.append(step)
             continue
 
-        exec_details = {
-            "policy_kind": proposal.policy_kind,
-            "proposal": proposal.model_dump(mode="json"),
-        }
-        audit.insert_execution(dfid, discount, details=exec_details)
-        audit.record(
+        ikey = idempotency_key(
             dfid,
-            "EXECUTION_LOGGED",
-            state="COMPLETED",
-            details={"discount_offered": discount},
+            "retention_discount_apply",
+            {"discount": float(discount_for_step)},
         )
-        audit.complete_flow(dfid, status="COMPLETED")
+        if bundle.idempotency.get(ikey) is not None:
+            step.console_note = "idempotency_skip"
+            result.steps.append(step)
+            continue
+
+        bundle.idempotency.set(
+            ikey,
+            {"dfid": dfid, "discount_offered": float(discount_for_step)},
+        )
+
+        record_retention_executed(
+            bundle,
+            dfid,
+            simulation_id,
+            discount_offered=float(discount_for_step),
+            policy_kind=proposal.policy_kind,
+            proposal_dump=proposal.model_dump(mode="json"),
+        )
         step.executed = True
 
         stop, mavg = monitor.evaluate_after_execution(dfid)
         step.moving_avg_after = mavg
 
-        # Console narrative (representative early / late / pre-suspend)
         if not logged_early and i == 0:
             logged_early = True
-            m_note = " Monitor OK (window not full)." if mavg is None else f" Moving avg {mavg:.1f}% - Monitor OK."
-            print(
-                f"[decision {i + 1}/{n}] discount={discount:.1f}% - DIM Accepts -{m_note}"
+            m_note = (
+                " Monitor OK (window not full)."
+                if mavg is None
+                else f" Moving avg {mavg:.1f}% - Monitor OK."
+            )
+            log_with_dfid(
+                logger,
+                dfid,
+                logging.INFO,
+                "decision %s/%s discount=%.1f%% - DIM Accepts -%s",
+                i + 1,
+                n,
+                discount_for_step,
+                m_note,
             )
             step.console_note = "early_sample"
 
-        # Before the monitor fires, show upward creep (run ends when rolling avg trips threshold).
-        if not logged_late and discount >= 10.5:
+        if not logged_late and discount_for_step >= 10.5:
             logged_late = True
-            print(
-                f"[decision {i + 1}/{n}] discount={discount:.1f}% - DIM Accepts "
-                f"(under {max_disc:.0f}% cap only; profitability not enforced by DIM). "
-                f"Trajectory would reach ~{cfg.simulation.drift_discount_end:.1f}% by iteration {n}."
+            log_with_dfid(
+                logger,
+                dfid,
+                logging.INFO,
+                "decision %s/%s discount=%.1f%% - DIM Accepts (under %.0f%% cap only; "
+                "profitability not enforced by DIM). Trajectory approaches ~%.1f%% by end.",
+                i + 1,
+                n,
+                discount_for_step,
+                max_disc,
+                cfg.simulation.drift_discount_end,
             )
             step.console_note = "late_sample"
 
@@ -261,10 +439,13 @@ def run_simulation(
         if stop:
             result.stopped_reason = "profitability_drift_monitor"
             result.suspension_decision_number = i + 1
-            if mavg is not None:
-                print(f"Alert: Moving average discount is {mavg:.2f}%. Suspending agent.")
-            print(
-                f"Agent state transition: {agent_id} -> SUSPENDED (reason={cfg.monitor.suspension_reason})"
+            log_with_dfid(
+                logger,
+                dfid,
+                logging.WARNING,
+                "Agent state transition: %s -> SUSPENDED (reason=%s)",
+                agent_id,
+                cfg.monitor.suspension_reason,
             )
             break
 
@@ -274,16 +455,15 @@ def run_simulation(
     return result
 
 
-def moving_average_series(audit: AuditStore, window: int) -> List[Optional[float]]:
-    """For charting: rolling avg after each execution row (None until window full)."""
-    rows = audit.list_executions_chronological()
+def moving_average_series(discounts: List[float], window: int) -> List[Optional[float]]:
+    """Rolling average after each executed discount index (``None`` until window full)."""
     series: List[Optional[float]] = []
-    for k in range(len(rows)):
+    for k in range(len(discounts)):
         if k + 1 < window:
             series.append(None)
             continue
-        slice_rows = rows[k + 1 - window : k + 1]
-        avg = sum(r["discount_offered"] for r in slice_rows) / window
+        start = k + 1 - window
+        slice_rows = discounts[start:k + 1]
+        avg = sum(slice_rows) / window
         series.append(avg)
     return series
-

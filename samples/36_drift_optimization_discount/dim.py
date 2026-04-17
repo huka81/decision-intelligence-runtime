@@ -1,10 +1,10 @@
 """
-Kernel Space: DIM wrapper for retention discounts (DIR generic gates + contract ceiling).
+Kernel Space: DIM wrapper for retention discounts (generic validate_proposal + contract ceiling).
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from dir_core.data_types import DimReasonCode, ValidationResult, ValidationVerdict
 from dir_core.dim import validate_proposal
@@ -16,12 +16,16 @@ def validate_retention_proposal(
     context: Dict[str, Any],
     allowed_agents: Optional[List[str]],
     max_discount_pct: float,
+    *,
+    kernel_contract: Optional[Dict[str, Any]] = None,
 ) -> ValidationResult:
     """
-    Gate stack: dir.dim.validate_proposal (schema, TTL, RBAC, sample context state),
-    then deterministic contract check on discount_offered.
+    Gate stack: ``validate_proposal`` (schema, TTL, RBAC, contract boundaries when provided),
+    then deterministic check on ``discount_offered`` vs ``max_discount_pct``.
     """
-    verdict, reason = validate_proposal(proposal, context, allowed_agents)
+    verdict, reason = validate_proposal(
+        proposal, context, allowed_agents, contract=kernel_contract
+    )
     if verdict == ValidationVerdict.REJECT:
         return verdict, reason
 
@@ -40,3 +44,7 @@ def validate_retention_proposal(
 
     return ValidationVerdict.ACCEPT, DimReasonCode.VALIDATION_PASSED
 
+
+def dim_validators() -> List:
+    """Reserved for ``extra_validators=`` injection; retention gates live in ``validate_retention_proposal``."""
+    return []
