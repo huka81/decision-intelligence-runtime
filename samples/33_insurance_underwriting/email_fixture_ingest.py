@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from models import ClientApplication
+from schemas import ClientApplication
 
 
 @dataclass

@@ -9,7 +9,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -50,6 +49,7 @@ class PolicyBindingClient:
         self,
         dfid: str,
         *,
+        simulation_id: str,
         total_insured_value: float,
         premium: float,
         industry: str,
@@ -67,6 +67,7 @@ class PolicyBindingClient:
             step_id=BIND_STEP_ID,
             state="EXECUTING",
             details={
+                "simulation_id": simulation_id,
                 "idempotency_key_prefix": ikey[:16],
                 "total_insured_value": total_insured_value,
                 "premium": premium,
@@ -86,6 +87,7 @@ class PolicyBindingClient:
                 step_id=BIND_STEP_ID,
                 state="CLOSED",
                 details={
+                    "simulation_id": simulation_id,
                     "cached": True,
                     "policy_ref": cached.get("policy_ref"),
                 },
@@ -103,7 +105,9 @@ class PolicyBindingClient:
                 message="Idempotent replay - returned prior bind result.",
             )
 
-        policy_ref = f"POL-{uuid.uuid4().hex[:12].upper()}"
+        policy_ref = (
+            f"POL-{hashlib.sha256(f'{dfid}:{BIND_STEP_ID}'.encode()).hexdigest()[:12].upper()}"
+        )
         result_body = {"policy_ref": policy_ref, "status": "BOUND"}
         self._audit.save_idempotent_result(ikey, dfid, result_body)
 
@@ -112,7 +116,11 @@ class PolicyBindingClient:
             "BIND_SUCCEEDED",
             step_id=BIND_STEP_ID,
             state="CLOSED",
-            details={"cached": False, "policy_ref": policy_ref},
+            details={
+                "simulation_id": simulation_id,
+                "cached": False,
+                "policy_ref": policy_ref,
+            },
         )
         log_new = (
             '{"dfid":"%s","event":"BIND_SUCCEEDED",'

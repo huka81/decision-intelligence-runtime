@@ -18,7 +18,7 @@ from dir_core.pci import (
     proposal_params_for_hash,
 )
 
-from models import PolicyProposal
+from schemas import PolicyProposal
 
 logger = logging.getLogger(__name__)
 

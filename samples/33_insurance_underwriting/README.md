@@ -8,9 +8,9 @@
 
 **Configuration:** Underwriting rules, LLM, agent contract, and **`email_processing`** (gates, paths, FX stub) live in **`config.yaml`**, same convention as `samples/31_finance_trading` and `samples/32_fraud_gate`.
 
-**Bindable TiV ceiling (`max_tiv`):** `run.py` and `pipeline.py` build `UnderwritingContract` with `max_tiv` from **`agents[0].contract.max_tiv`**, then **`underwriting.max_tiv`**, then code default **`2_000_000`**. The committed sample uses **3,000,000** on the agent contract (see `config.yaml`).
+**Bindable TiV ceiling (`max_tiv`):** `run.py` and `orchestrator.py` build `UnderwritingContract` with `max_tiv` from **`agents[0].contract.max_tiv`**, then **`underwriting.max_tiv`**, then code default **`2_000_000`**. The committed sample uses **3,000,000** on the agent contract (see `config.yaml`).
 
-**What `run.py` does:** loads every matching `*.md` under `emails/`, runs the pipeline (audit SQLite + HTML report under `results/`), and opens the new report in the browser.
+**What `run.py` does:** bootstraps LLM and canonical `StorageBundle` via `samples.shared.bootstrap.setup_environment`, performs `AgentRegistry.handshake`, loads every matching `*.md` under `emails/`, runs the email orchestrator (SQLite under `database.db_path` + HTML report under `results/`), and opens the new report in the browser.
 
 ---
 
@@ -29,7 +29,7 @@ Each markdown fixture is one **DecisionFlow** with its own **DFID**, from ingest
    - **Only** TiV above `max_tiv` → **`AUTHORITY_CEILING`** (**`ESCALATED`**, not bound).
 5. If gates pass → **Explain → Policy → Self-Check → PCI** → **DIM** → **ledger** → **mock bind** → **`BOUND` / `POLICY_BOUND`**.
 
-Structured JSON log lines use `dfid`, `event`, `timestamp` (DIR-minified LG-2). Audit DB default: `data/underwriting_audit.sqlite`.
+Decision-path logs use `log_with_dfid` where a DFID exists. Telemetry rows include **`simulation_id`** (from `simulation.run_id` in `config.yaml`) for run grouping. Default SQLite path: `data/underwriting.dir.sqlite` (see `database` in `config.yaml`). Override with **`UNDERWRITING_AUDIT_DB`** (sets `database.db_path` before bootstrap).
 
 ### London Market–style fixtures (included, **fictional** names & URLs)
 
@@ -73,7 +73,7 @@ set UNDERWRITING_AUDIT_DB=D:\tmp\uw_audit.sqlite
 python samples/33_insurance_underwriting/run.py
 ```
 
-Each run appends DFID-tagged rows to SQLite, prints a per-email timeline to the console, and writes a **new** report under **`results/simulation_report_YYYY-MM-DD_HHMM.html`** (UTC).
+Each run appends DFID-tagged rows to SQLite, logs a per-email timeline, and writes a **new** report under **`results/report_YYYY-MM-DD_HHMM_emails.html`** (UTC).
 
 ---
 
@@ -82,48 +82,61 @@ Each run appends DFID-tagged rows to SQLite, prints a per-email timeline to the 
 All underwriting rules, LLM, agent, and **`email_processing`** live in **`config.yaml`**. The block below matches the sample layout (comments may differ slightly in the repo file).
 
 ```yaml
+database:
+  provider: sqlite
+  db_path: "data/underwriting.dir.sqlite"
+
+simulation:
+  run_id: "uw_email_batch_001"
+
 underwriting:
-  max_tiv: 2000000   # fallback if agent.contract.max_tiv omitted
+  max_tiv: 2000000
   prohibited_industries: ["Fireworks", "CryptoMining"]
 
 llm_defaults:
   model: "gemma3:4b"
   base_url: "http://localhost:11434"
+  timeout: 60
 
 email_processing:
   emails_dir: "emails"
-  audit_db: "data/underwriting_audit.sqlite"
   currency_fx_to_usd: { GBP: 1.0, USD: 1.0, EUR: 1.0 }
   prohibited_territories: ["syrian arab republic", "syria", "damascus"]
-  injection_patterns: []   # optional pre-LLM substring scan; default empty
+  injection_patterns: []
 
 agents:
   - agent_id: "underwriter_agent"
     version: "1.0.0"
-    created_by: "compliance@example.com"
-    created_at: "2025-02-17T10:00:00Z"
-    mission: |
-      You are an insurance underwriter...
+    priority: 10
     contract:
       role: EXECUTOR
-      max_tiv: 3000000        # authoritative delegated ceiling in this sample
-      prohibited_industries: ["Fireworks", "CryptoMining"]
+      mission: "You are an insurance underwriter..."
+      authorized_instruments: []
+      allowed_policy_types: ["BIND", "DECLINE"]
       escalate_on_uncertainty: 0.65
+      max_drawdown_limit: 0.05
+      wake_up_threshold_pct: 0.5
+      parent_agent_id: null
+      max_tiv: 3000000
+      prohibited_industries: ["Fireworks", "CryptoMining"]
 ```
 
 | Section | Purpose |
 |---------|---------|
-| **underwriting** | `max_tiv`, `prohibited_industries` - defaults for contract |
-| **llm_defaults** | `model`, `base_url` - Ollama (same as 31, 32). Set `USE_MOCK_LLM=1` for tests without Ollama. |
-| **agents** | `agent_id`, `mission`, `contract`, **audit fields** (`version`, `created_by`, `created_at`) |
-| **email_processing** | `emails_dir`, `audit_db`, `currency_fx_to_usd`, `prohibited_territories`, `injection_patterns` |
+| **database** | Canonical `StorageBundle` SQLite path (anchored to `config.yaml` directory) |
+| **simulation** | `run_id` — propagated as `simulation_id` on audit rows |
+| **contracts** | Optional — defaults to the same YAML path passed to ``setup_environment`` |
+| **underwriting** | `max_tiv`, `prohibited_industries` — defaults when building domain contract helpers |
+| **llm_defaults** | Ollama or mock (`USE_MOCK_LLM=1`, or unreachable live LLM falls back to mock) |
+| **agents** | DIR `ResponsibilityContract` fields under `contract`, plus underwriting `max_tiv` |
+| **email_processing** | `emails_dir`, `currency_fx_to_usd`, `prohibited_territories`, `injection_patterns` |
 
 ### email_processing (default path)
 
 | Key | Purpose |
 |-----|---------|
 | `emails_dir` | Subfolder of the sample with markdown email fixtures |
-| `audit_db` | Path to SQLite file (relative to this sample folder), e.g. `data/underwriting_audit.sqlite`; append-only `decision_events` + idempotency keys for bind |
+| *(persistence)* | Use **`database.db_path`** — canonical `decision_audit_events` and idempotency tables |
 | `currency_fx_to_usd` | Rates for **MockLLM** / helpers when turning table TiV into USD (demo uses `1.0` for GBP fixtures) |
 | `prohibited_territories` | Case-insensitive substrings vs **agent-extracted** territories **after** extraction. If both territory and `max_tiv` fail, the kernel returns **`CONTRACT_VIOLATION`**; territory-only → **`PROHIBITED_TERRITORY`**. |
 | `injection_patterns` | Optional substrings for **ABORTED** (`PROMPT_INJECTION`) before any LLM call; default config leaves this empty so injection is handled by extraction contract + kernel |
@@ -140,7 +153,7 @@ agents:
 
 ### Diagram 1: System overview
 
-**`emails/*.md`** is ingested by **`pipeline.py`** (contract and gates from **`config.yaml`**).
+**`emails/*.md`** is ingested by **`orchestrator.py`** (contract and gates from **`config.yaml`**).
 
 ```mermaid
 ---
@@ -150,9 +163,9 @@ config:
 flowchart TB
     CFG["config.yaml"]
 
-    subgraph DEF["Email pipeline"]
+    subgraph DEF["Email orchestrator"]
         MD["emails/*.md"]
-        PL["pipeline.py — ingest, gates, extract, ROA, DIM, bind"]
+        PL["orchestrator.py — ingest, gates, extract, ROA, DIM, bind"]
         MD --> PL
     end
 
@@ -191,7 +204,7 @@ If a post-extraction gate fails, the flow stops **before** Explain / Policy / PC
 
 ```mermaid
 sequenceDiagram
-    participant P as pipeline
+    participant P as orchestrator
     participant A as ROAUnderwriterAgent
     participant D as DIM
     participant L as DecisionLedger
@@ -255,7 +268,7 @@ The DIM **recalculates** this using authoritative Registry and ContextStore data
 
 ## HTML report
 
-Each run writes **`results/simulation_report_YYYY-MM-DD_HHMM.html`** (UTC): per-email rendered markdown body, processing timeline (ingest → gates → extraction → ROA if any → DIM → bind), outcome and `reason_code`.
+Each run writes **`results/report_YYYY-MM-DD_HHMM_emails.html`** (UTC): per-email rendered markdown body, processing timeline (ingest → gates → extraction → ROA if any → DIM → bind), outcome and `reason_code`.
 
 Install **`markdown`** (or `pip install -e ".[samples]"`) so pipe tables and bold render cleanly instead of a plain `<pre>` fallback.
 
@@ -265,33 +278,35 @@ Install **`markdown`** (or `pip install -e ".[samples]"`) so pipe tables and bol
 
 ```
 samples/33_insurance_underwriting/
-├── README.md               # This file
-├── config.yaml             # Underwriting rules, LLM, agents, email_processing
-├── run.py                  # Entry: email pipeline, console + HTML report
-├── pipeline.py             # Orchestrator: DFID, gates, ROA, DIM, mock bind, audit
-├── email_fixture_ingest.py # Load `.md` fixtures → coarse ClientApplication
-├── gates.py                # Kernel hard gates (injection, territory, authority ceiling)
-├── policy_binding.py       # Mock bind API (post-ledger)
-├── emails/                 # `*.md` fixtures (EXT … broker submissions)
-├── data/                   # Runtime data (created on first run)
-│   └── underwriting_audit.sqlite  # Generated audit DB (path overridable via env / config)
-├── results/                # Generated HTML reports (one file per run)
-│   └── simulation_report_*.html
-├── report_generator.py     # HTML email audit report (`generate_email_report`)
-├── models.py               # Pydantic: UnderwritingContract, ClientApplication, PolicyProposal, ProofCarryingIntent
-├── kernel.py               # AgentRegistry, ContextStore, DecisionLedger, DecisionIntegrityModule
-├── llm_client.py           # OllamaClient, MockLLM
-└── roa_underwriter_agent.py # ROA agent: Explain → Policy → Self-Check → PCI
+├── README.md
+├── __init__.py
+├── config.yaml             # database, simulation, contracts, LLM, agents, email_processing
+├── run.py                  # Bootstrap, handshake, orchestrator, report
+├── orchestrator.py         # DFID per email, gates, ROA, DIM, mock bind, telemetry
+├── telemetry.py            # SIMULATION_START/END and underwriting audit helpers
+├── agent.py                # ROAUnderwriterAgent: Explain → Policy → Self-Check → PCI
+├── schemas.py              # UnderwritingContract, ClientApplication, PolicyProposal
+├── email_fixture_ingest.py
+├── gates.py
+├── kernel.py               # DecisionIntegrityModule, PCI helpers
+├── policy_binding.py
+├── mocks/
+│   ├── __init__.py
+│   └── llm_mock_strategy.py
+├── emails/
+├── data/                   # gitignored — SQLite from database.db_path
+├── results/                # gitignored — report_*.html
+└── report_generator.py
 ```
 
 ---
 
 ## Expected console output
 
-- `Digital Underwriter - Email pipeline (Topology C + mock bind)`
+- `Digital Underwriter — email orchestrator (Topology C + mock bind)`
 - For each processed file: a **`[Email] …`** section with `DFID`, step timeline, then **`Final: BOUND (POLICY_BOUND)`** / **`ESCALATED (AUTHORITY_CEILING)`** / **`REJECTED (...)`**
-- `Summary`: ledger count (verified binds only), audit DB path, path to **`results/simulation_report_*.html`**
-- With `USE_MOCK_LLM=1`: `Using MockLLM (no Ollama required)` and `Contract loaded: ...`
+- `Summary`: ledger count (verified binds only), audit DB path, path to **`results/report_*_emails.html`**
+- With mock LLM: `Using MockLLMClient` (from bootstrap) and `Contract loaded: ...`
 
 The browser opens the generated HTML report automatically.
 

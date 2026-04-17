@@ -1,30 +1,16 @@
-"""
-LLM client for Digital Underwriter ROA agent: Ollama (from dir_core.utils) and MockLLM.
-
-Usage:
-  client = OllamaClient(model="gemma3:4b", base_url="http://localhost:11434")
-  text = client.generate("Analyze this application...", system="You are an underwriter.")
-
-MockLLM: USE_MOCK_LLM=1 for tests without Ollama. Returns structured underwriting output.
-"""
+"""Deterministic mock LLM for underwriting — no API key (Sample Guide §12)."""
 
 from __future__ import annotations
 
 import json
 import logging
 import re
-from typing import Optional
-
-from dir_core.utils.llm_client import LLMClient
-from shared.llm.clients import OllamaClient
+from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["LLMClient", "OllamaClient", "MockLLM"]
-
 
 def _mock_territory_row_text(body: str) -> str:
-    """Collect Territory table row cells (renewal + remarks columns) for mock extraction."""
     for line in body.splitlines():
         if not re.match(r"^\|\s*Territory\s*\|", line, re.I):
             continue
@@ -42,7 +28,6 @@ def _mock_territory_row_text(body: str) -> str:
 
 
 def _mock_tiv_usd_from_body(body: str, fx: dict[str, float]) -> float:
-    """TiV from | Total Insurable Values | row (Total: **CUR n** or **CUR n**)."""
     for line in body.splitlines():
         if not re.match(r"^\|\s*Total\s+Insurable\s+Values\s*\|", line, re.I):
             continue
@@ -63,12 +48,11 @@ def _mock_tiv_usd_from_body(body: str, fx: dict[str, float]) -> float:
             cur, raw_amt = pairs[-1]
             return float(raw_amt.replace(",", "")) * fx.get(cur.upper(), 1.0)
     raise ValueError(
-        "MockLLM: no TiV figure in Total Insurable Values table row",
+        "Mock strategy: no TiV figure in Total Insurable Values table row",
     )
 
 
 def _mock_extract_submission_facts(user_prompt: str, system: Optional[str]) -> str:
-    """Deterministic TiV + territory extraction for tests (mirrors agent task)."""
     body = user_prompt
     if "EMAIL:" in user_prompt:
         body = user_prompt.split("EMAIL:", 1)[-1].lstrip()
@@ -85,42 +69,18 @@ def _mock_extract_submission_facts(user_prompt: str, system: Optional[str]) -> s
 
     usd = _mock_tiv_usd_from_body(body, fx)
     stated = _mock_territory_row_text(body)
-    out = (
-        f"BROKER_REQUESTED_TIV_USD: {usd}\n"
-        f"STATED_TERRITORIES: {stated}"
-    )
-    logger.info("MockLLM response (extract facts): %s", out.replace("\n", " | "))
+    out = f"BROKER_REQUESTED_TIV_USD: {usd}\nSTATED_TERRITORIES: {stated}"
+    logger.info("Mock LLM (extract facts): %s", out.replace("\n", " | "))
     return out
 
 
-class MockLLM(LLMClient):
-    """
-    Returns structured underwriting responses for Explain and Policy.
-    Use when Ollama is not running or for fast tests.
-    Extracts industry from prompt (context) to simulate real LLM behavior.
-    """
+def make_mock_strategy() -> Callable[[str, Optional[str]], str]:
+    """Return ``generate``-compatible strategy for ``MockLLMClient``."""
 
-    def __init__(
-        self,
-        total_insured_value: Optional[float] = None,
-        premium: Optional[float] = None,
-        industry_override: Optional[str] = None,
-    ):
-        """
-        Args:
-            total_insured_value: Fixed TiV (else from broker_requested_tiv_usd or revenue).
-            premium: Fixed premium (else ~2% of TiV).
-            industry_override: Override industry (else extracted from prompt).
-        """
-        self.total_insured_value = total_insured_value
-        self.premium = premium
-        self.industry_override = industry_override
-
-    def generate(self, prompt: str, system: Optional[str] = None) -> str:
-        prompt_lower = prompt.lower()
+    def strategy(prompt: str, system: Optional[str] = None) -> str:
         if system and "TASK: EXTRACT_SUBMISSION_FACTS" in system:
             return _mock_extract_submission_facts(prompt, system)
-        # Policy stage always includes "Interpretation:"; Explain uses "Client application:".
+        prompt_lower = prompt.lower()
         if "interpretation:" in prompt_lower:
             sys = system or ""
             max_tiv = 2_000_000
@@ -133,14 +93,13 @@ class MockLLM(LLMClient):
                     max_tiv = float(mm.group(1).replace(",", ""))
                 except ValueError:
                     pass
-            industry = self.industry_override
-            if industry is None:
-                m = re.search(r"industry_label:\s*([^\n]+)", prompt_lower, re.I)
-                if not m:
-                    m = re.search(r"industry\s*=\s*([^\n]+)", prompt_lower, re.I)
-                if not m:
-                    m = re.search(r"industry[:\s]+(\w+)(?:\s|$)", prompt_lower, re.I)
-                industry = (m.group(1).strip() if m else "Retail")[:200]
+            industry = None
+            m = re.search(r"industry_label:\s*([^\n]+)", prompt_lower, re.I)
+            if not m:
+                m = re.search(r"industry\s*=\s*([^\n]+)", prompt_lower, re.I)
+            if not m:
+                m = re.search(r"industry[:\s]+(\w+)(?:\s|$)", prompt_lower, re.I)
+            industry = (m.group(1).strip() if m else "Retail")[:200]
             revenue = 500_000
             m = re.search(r"revenue[:\s]+([\d.]+)", prompt_lower, re.I)
             if m:
@@ -159,15 +118,11 @@ class MockLLM(LLMClient):
                     requested = float(m.group(1).replace(",", ""))
                 except ValueError:
                     pass
-            tiv = self.total_insured_value
-            if tiv is None:
-                if requested is not None:
-                    tiv = min(requested, max_tiv)
-                else:
-                    tiv = min(revenue * 2, max_tiv)
-            premium = self.premium
-            if premium is None:
-                premium = tiv * 0.02
+            if requested is not None:
+                tiv = min(requested, max_tiv)
+            else:
+                tiv = min(revenue * 2, max_tiv)
+            premium = tiv * 0.02
             response = (
                 f"TOTAL_INSURED_VALUE: {tiv}\n"
                 f"PREMIUM: {premium}\n"
@@ -176,15 +131,18 @@ class MockLLM(LLMClient):
                 f"CONFIDENCE: 0.85"
             )
             logger.info(
-                "MockLLM response (policy): tiv=%.0f, premium=%.0f, industry=%s",
-                tiv, premium, industry,
+                "Mock LLM (policy): tiv=%.0f, premium=%.0f, industry=%s",
+                tiv,
+                premium,
+                industry,
             )
             return response
-        # Explain-style
         response = (
             "Narrative: Client application reviewed. "
             "SIGNALS: revenue, industry, business_type. "
             "RISKS: industry risk profile. OPPORTUNITIES: standard underwriting."
         )
-        logger.info("MockLLM response (explain)")
+        logger.info("Mock LLM (explain)")
         return response
+
+    return strategy

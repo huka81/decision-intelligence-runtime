@@ -1,45 +1,26 @@
 """
-ROA Underwriter Agent with full Explain → Policy → Self-Check lifecycle (ROA Manifesto §4).
+ROA Underwriter Agent: Explain → Policy → Self-Check → PCI (Topology C).
 
-Uses LLM for Explain and Policy; deterministic Self-Check; produces Proof-Carrying Intent (PCI)
-with evidence_hash for Topology C (DL+PCI) verification.
+LLM for Explain and Policy; deterministic Self-Check; ProofCarryingIntent with evidence_hash.
 """
 
 from __future__ import annotations
 
-import json
-import re
-import hmac
 import hashlib
+import hmac
+import json
 import logging
+import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
-from dir_core import new_dfid
+from dir_core import AgentRegistry, new_dfid
 from dir_core.models import ProofCarryingIntent
 from dir_core.pci import compute_evidence_hash, hash_content
+from dir_core.utils.llm_client import LLMClient
 
-from dir_core import AgentRegistry
 from kernel import intent_subset_for_evidence_hash
-from models import ClientApplication, EmailSubmissionExtraction, PolicyProposal
-
-
-@dataclass
-class DecisionCycleReport:
-    """Report data from one agent decision cycle (for HTML audit)."""
-    dfid: str
-    context: ClientApplication
-    explain_result: Dict[str, Any]
-    policy_proposal: PolicyProposal
-    self_check_passed: bool
-    self_check_reason: Optional[str]
-    evidence_hash: str
-    forge_evidence_hash: bool
-
-try:
-    from .llm_client import LLMClient
-except ImportError:
-    from llm_client import LLMClient
+from schemas import ClientApplication, EmailSubmissionExtraction, PolicyProposal
 
 logger = logging.getLogger(__name__)
 
@@ -47,17 +28,10 @@ AGENT_SECRET = b"underwriter_roa_secret"
 
 
 def _sign(data: str) -> str:
-    """HMAC-SHA256 signature."""
     return hmac.new(AGENT_SECRET, data.encode(), hashlib.sha256).hexdigest()
 
 
-# -----------------------------------------------------------------------------
-# LLM response parsing
-# -----------------------------------------------------------------------------
-
-
 def _parse_explain(text: str, dfid: str, agent_id: str) -> Dict[str, Any]:
-    """Parse LLM Explain output. Returns dict with narrative, signals, risks, opportunities."""
     narrative = text[:500] if len(text) > 500 else text
     signals: List[str] = []
     risks: List[str] = []
@@ -80,7 +54,8 @@ def _parse_explain(text: str, dfid: str, agent_id: str) -> Dict[str, Any]:
     if "Narrative:" in text:
         n = re.search(
             r"Narrative:\s*(.+?)(?=SIGNALS?:|RISKS?:|OPPORTUNITIES?:|$)",
-            text, re.DOTALL | re.IGNORECASE,
+            text,
+            re.DOTALL | re.IGNORECASE,
         )
         if n:
             narrative = n.group(1).strip()
@@ -93,7 +68,6 @@ def _parse_explain(text: str, dfid: str, agent_id: str) -> Dict[str, Any]:
 
 
 def _parse_submission_facts_extraction(text: str) -> EmailSubmissionExtraction:
-    """Parse BROKER_REQUESTED_TIV_USD and STATED_TERRITORIES from extraction LLM output."""
     m_tiv = re.search(
         r"BROKER_REQUESTED_TIV_USD[:\s]+([\d_,]+(?:\.\d+)?)",
         text,
@@ -123,7 +97,6 @@ def _parse_submission_facts_extraction(text: str) -> EmailSubmissionExtraction:
 def _parse_policy(
     text: str, context: ClientApplication, max_tiv: float
 ) -> PolicyProposal:
-    """Parse LLM Policy output into PolicyProposal."""
     tiv = min(context.revenue * 2, max_tiv)
     premium = tiv * 0.02
     industry = context.industry
@@ -176,19 +149,19 @@ def _parse_policy(
     )
 
 
-# -----------------------------------------------------------------------------
-# ROA Underwriter Agent
-# -----------------------------------------------------------------------------
+@dataclass
+class DecisionCycleReport:
+    dfid: str
+    context: ClientApplication
+    explain_result: Dict[str, Any]
+    policy_proposal: PolicyProposal
+    self_check_passed: bool
+    self_check_reason: Optional[str]
+    evidence_hash: str
+    forge_evidence_hash: bool
 
 
 class ROAUnderwriterAgent:
-    """
-    Full ROA agent: Explain(LLM) → Policy(LLM) → Self-Check → PCI.
-
-    Contract and mission from config. Produces Proof-Carrying Intent with
-    evidence_hash for DIM verification (Topology C).
-    """
-
     def __init__(self, registry: AgentRegistry, agent_id: str, llm: LLMClient):
         self.registry = registry
         self.llm = llm
@@ -200,11 +173,6 @@ class ROAUnderwriterAgent:
         mail_body: str,
         fx_to_usd: dict[str, float],
     ) -> EmailSubmissionExtraction:
-        """
-        User-space: LLM reads unstructured broker email and emits factual TiV (USD)
-        and geographic exposure text. Broker instructions to omit or misreport facts
-        must be ignored; kernel contract enforces binding rules after extraction.
-        """
         fx_norm = {str(k).upper(): float(v) for k, v in fx_to_usd.items()}
         fx_json = json.dumps(fx_norm, sort_keys=True)
         system = (
@@ -236,10 +204,9 @@ class ROAUnderwriterAgent:
         return _parse_submission_facts_extraction(response)
 
     def explain(self, dfid: str, context: ClientApplication) -> Dict[str, Any]:
-        """§4.1: LLM interprets client application."""
         contract = self.registry.get_agent_contract(self.agent_id) or {}
         mission = contract.get("mission", "")
-        
+
         system = (
             f"Mission: {mission}\n"
             "Output format: Narrative: <summary>. SIGNALS: <comma-separated>. "
@@ -267,12 +234,11 @@ class ROAUnderwriterAgent:
     def formulate_policy(
         self, dfid: str, explain_result: Dict[str, Any], context: ClientApplication
     ) -> PolicyProposal:
-        """§4.2: LLM proposes coverage, premium, industry."""
         contract = self.registry.get_agent_contract(self.agent_id) or {}
         mission = contract.get("mission", "")
         max_tiv = contract.get("max_tiv", 0)
         prohibited = contract.get("prohibited_industries", [])
-        
+
         system = (
             f"Mission: {mission}\n"
             f"Max Total Insured Value (TiV): {max_tiv}. "
@@ -299,11 +265,10 @@ class ROAUnderwriterAgent:
         return _parse_policy(response, context, max_tiv)
 
     def self_check(self, proposal: PolicyProposal) -> tuple[bool, Optional[str]]:
-        """§4.3: Deterministic boundary check."""
         contract = self.registry.get_agent_contract(self.agent_id) or {}
         max_tiv = contract.get("max_tiv", 0)
         prohibited = contract.get("prohibited_industries", [])
-        
+
         prohibited_lower = {x.strip().lower() for x in prohibited}
         if proposal.industry.strip().lower() in prohibited_lower:
             return False, f"Industry {proposal.industry} is prohibited"
@@ -321,15 +286,6 @@ class ROAUnderwriterAgent:
         dfid: Optional[str] = None,
         forge_evidence_hash: bool = False,
     ) -> Tuple[ProofCarryingIntent, DecisionCycleReport]:
-        """
-        Explain → Policy → Self-Check → PCI.
-
-        Returns (PCI, report). Self-check failure: still emits PCI (agent may
-        hallucinate); DIM will reject on business rules.
-
-        If ``dfid`` is provided (orchestrator-owned), it is used for the whole
-        flow so ingest and agent share one DecisionFlow ID.
-        """
         flow_id = dfid if dfid is not None else new_dfid()
 
         logger.info("[DFID=%s] [%s] Starting decision cycle", flow_id[:8], self.agent_id)
@@ -341,7 +297,9 @@ class ROAUnderwriterAgent:
         if not passed:
             logger.warning(
                 "[DFID=%s] [%s] Self-check FAILED: %s (DIM will reject)",
-                flow_id[:8], self.agent_id, reason,
+                flow_id[:8],
+                self.agent_id,
+                reason,
             )
 
         context_hash = hash_content(context.model_dump())
@@ -381,8 +339,10 @@ class ROAUnderwriterAgent:
 
         logger.info(
             "[DFID=%s] [%s] PCI emitted: tiv=%.0f, premium=%.0f, industry=%s",
-            flow_id[:8], self.agent_id,
-            proposal.total_insured_value, proposal.premium, proposal.industry,
+            flow_id[:8],
+            self.agent_id,
+            proposal.total_insured_value,
+            proposal.premium,
+            proposal.industry,
         )
         return pci, report
-

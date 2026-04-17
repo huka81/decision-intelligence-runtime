@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """
-33_insurance_underwriting - Digital Underwriter (Decision Ledger & Proof-Carrying Intents).
+33_insurance_underwriting — Digital Underwriter (Decision Ledger and Proof-Carrying Intents).
 
-Default: ingest London Market email fixtures → kernel gates → ROA (Explain → Policy → Self-Check)
-→ DIM → Decision Ledger → mock bind API. DFID-tagged SQLite audit + HTML report under results/.
+Topology: C — DL+PCI. Mechanisms: AgentRegistry, ContextStore, ROA (Explain → Policy → Self-Check),
+ProofCarryingIntent, ProofChecker, DecisionLedger, AuditStore idempotency, canonical StorageBundle.
 
-Run: python samples/33_insurance_underwriting/run.py
-Env: USE_MOCK_LLM=1, UNDERWRITING_AUDIT_DB=path, LOG_LEVEL=DEBUG
+Run from repo root: python samples/33_insurance_underwriting/run.py
 """
 
 from __future__ import annotations
@@ -19,20 +18,34 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
-# Allow `python samples/33_insurance_underwriting/run.py` without editable install
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC = _REPO_ROOT / "src"
 _SAMPLES = _REPO_ROOT / "samples"
+_SAMPLE_DIR = Path(__file__).resolve().parent
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 if str(_SAMPLES) not in sys.path:
     sys.path.insert(0, str(_SAMPLES))
+if str(_SAMPLE_DIR) not in sys.path:
+    sys.path.insert(0, str(_SAMPLE_DIR))
 
-from models import UnderwritingContract
+from dir_core import AgentRegistry
+from dir_core.storage import AuditStore
+from shared.bootstrap import (
+    Environment,
+    build_llm_from_config,
+    configured_live_llm_is_reachable,
+    database_connection_summary,
+    setup_environment,
+)
 from shared.config import load_yaml_config
-from report_generator import generate_email_report
+from shared.contracts.provider import ContractProvider
 
-from pipeline import build_llm, run_email_pipeline
+from orchestrator import run_email_pipeline
+from report_generator import generate_email_report
+from schemas import UnderwritingContract
+from telemetry import record_simulation_end, record_simulation_start
+from mocks import make_mock_strategy
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -41,33 +54,43 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def _new_simulation_report_path(sample_dir: Path) -> Path:
-    """
-    results/simulation_report_YYYY-MM-DD_HHMM.html (UTC, 24h clock; new file each run).
-    """
+def _llm_backend_label(llm: Any) -> str:
+    name = type(llm).__name__
+    if name == "MockLLMClient":
+        return "Mock"
+    if name == "OllamaClient":
+        return f"Ollama model={getattr(llm, 'model', '')} base_url={getattr(llm, 'base_url', '')}"
+    if name == "GeminiClient":
+        return f"Gemini model={getattr(llm, 'model', '')}"
+    return name
+
+
+def registry_contract_payload(
+    config: Dict[str, Any],
+    contracts: ContractProvider,
+    agent_id: str,
+) -> Dict[str, Any]:
+    rc = contracts.get_contract(agent_id)
+    base = rc.model_dump()
+    row = next(
+        (a for a in (config.get("agents") or []) if a.get("agent_id") == agent_id),
+        None,
+    )
+    if not row:
+        return base
+    extra = dict(row.get("contract") or {})
+    merged: Dict[str, Any] = {**base, **extra}
+    merged["agent_id"] = agent_id
+    if row.get("mission"):
+        merged["mission"] = row["mission"]
+    return merged
+
+
+def _new_report_path(sample_dir: Path, slug: str = "emails") -> Path:
     results_dir = sample_dir / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M")
-    return results_dir / f"simulation_report_{stamp}.html"
-
-
-def build_contract(config: Dict[str, Any]) -> UnderwritingContract:
-    uw = config.get("underwriting", {})
-    agents = config.get("agents", [])
-    agent_cfg = agents[0] if agents else {}
-    contract_cfg = agent_cfg.get("contract", {})
-    return UnderwritingContract(
-        agent_id=agent_cfg.get("agent_id", "underwriter_agent"),
-        version=agent_cfg.get("version", "1.0.0"),
-        created_by=agent_cfg.get("created_by"),
-        created_at=agent_cfg.get("created_at"),
-        mission=agent_cfg.get("mission", "Underwrite insurance policies."),
-        max_tiv=contract_cfg.get("max_tiv", uw.get("max_tiv", 2_000_000)),
-        prohibited_industries=contract_cfg.get(
-            "prohibited_industries",
-            uw.get("prohibited_industries", ["Fireworks", "CryptoMining"]),
-        ),
-    )
+    return results_dir / f"report_{stamp}_{slug}.html"
 
 
 def main() -> None:
@@ -75,66 +98,157 @@ def main() -> None:
     config_path = sample_dir / "config.yaml"
     config = load_yaml_config(config_path)
 
-    use_mock_llm = os.environ.get("USE_MOCK_LLM", "").strip().lower() in ("1", "true", "yes")
-    llm = build_llm(config, use_mock=use_mock_llm)
-    if use_mock_llm:
-        logger.info("Using MockLLM (no Ollama required)")
+    if os.environ.get("UNDERWRITING_AUDIT_DB"):
+        db = config.setdefault("database", {})
+        db["provider"] = "sqlite"
+        db["db_path"] = os.environ["UNDERWRITING_AUDIT_DB"]
 
-    contract = build_contract(config)
-    logger.info(
-        "Contract loaded: version=%s, created_by=%s, created_at=%s",
-        contract.version,
-        contract.created_by or "—",
-        contract.created_at or "—",
+    mock_strategy = make_mock_strategy()
+    env = setup_environment(
+        config,
+        mock_llm_strategy=mock_strategy,
+        config_path=str(config_path),
     )
-
-    email_results, ledger, audit = run_email_pipeline(sample_dir, config, llm)
-    db_path = Path(
-        os.environ.get(
-            "UNDERWRITING_AUDIT_DB",
-            str(sample_dir / config.get("email_processing", {}).get("audit_db", "data/underwriting_audit.sqlite")),
+    if not configured_live_llm_is_reachable(config):
+        env = Environment(
+            llm=build_llm_from_config(
+                config, mock_llm_strategy=mock_strategy, force_mock=True
+            ),
+            repository=env.repository,
+            contracts=env.contracts,
         )
+
+    llm = env.llm
+    bundle = env.repository
+    contracts = env.contracts
+    logger.info("Persistence: %s", database_connection_summary(config))
+
+    agents_cfg = config.get("agents") or []
+    if not agents_cfg:
+        logger.error("config.yaml must define agents:")
+        return
+    agent_id = str(agents_cfg[0].get("agent_id", "underwriter_agent"))
+
+    registry = AgentRegistry(storage=bundle.agent_registry)
+    handshake_contract = registry_contract_payload(config, contracts, agent_id)
+    hr = registry.handshake(
+        agent_id,
+        handshake_contract,
+        agent_version=str(agents_cfg[0].get("version", config.get("agent_version", "1.0.0"))),
+        priority=int(agents_cfg[0].get("priority", 10)),
     )
+    if not hr.accepted:
+        logger.error("Handshake rejected: %s", hr.reason)
+        return
 
-    print("=" * 70, flush=True)
-    print("Digital Underwriter - Email pipeline (Topology C + mock bind)", flush=True)
-    print("=" * 70, flush=True)
+    sim = config.get("simulation") or {}
+    simulation_id = str(sim.get("run_id", "uw_run"))
 
-    for case in email_results:
-        print(f"\n[Email] {case.source_file}", flush=True)
-        print(f"  DFID: {case.dfid}", flush=True)
-        for step in case.timeline:
-            detail = (step.get("detail") or "")[:120]
-            print(
-                f"    -> {step['step']}: {step['state']} - {detail}",
-                flush=True,
-            )
-        print(
-            f"  Final: {case.final_status} ({case.reason_code})",
-            flush=True,
+    audit = AuditStore(bundle.decision_audit, bundle.idempotency)
+    run_status = "ok"
+    try:
+        record_simulation_start(
+            audit,
+            simulation_id,
+            llm_backend=_llm_backend_label(llm),
         )
-        if case.policy_ref:
-            print(f"  Policy ref: {case.policy_ref}", flush=True)
 
-    print("\n" + "=" * 70, flush=True)
-    print("Summary", flush=True)
-    print("=" * 70, flush=True)
-    print(f"  Ledger entries (verified only): {len(ledger)}", flush=True)
-    print(f"  Audit DB: {db_path.resolve()}", flush=True)
-    print("\n  Day Two prevention: Only verified decisions reach the ledger and bind API.", flush=True)
+        email_results, ledger = run_email_pipeline(
+            sample_dir,
+            config,
+            llm,
+            bundle,
+            registry=registry,
+            audit=audit,
+            simulation_id=simulation_id,
+        )
 
-    report_path = _new_simulation_report_path(sample_dir)
-    generate_email_report(
-        email_results=email_results,
-        contract=contract.model_dump(),
-        ledger_count=len(ledger),
-        audit_db_path=str(db_path.resolve()),
-        output_path=report_path,
-        email_processing=config.get("email_processing", {}),
-    )
-    print(f"\n  HTML report: {report_path.resolve()}", flush=True)
-    audit.close()
-    webbrowser.open(report_path.resolve().as_uri())
+        db_path_str = str(
+            Path(config.get("database", {}).get("db_path", "data/underwriting.dir.sqlite"))
+        )
+        if not Path(db_path_str).is_absolute():
+            db_path_str = str((sample_dir / db_path_str).resolve())
+
+        contract = UnderwritingContract.model_validate(
+            _contract_dict_for_report(config)
+        )
+        logger.info(
+            "Contract loaded: version=%s, created_by=%s, created_at=%s",
+            contract.version,
+            contract.created_by or "—",
+            contract.created_at or "—",
+        )
+
+        logger.info("=" * 70)
+        logger.info("Digital Underwriter - email orchestrator (Topology C + mock bind)")
+        logger.info("=" * 70)
+
+        for case in email_results:
+            logger.info("")
+            logger.info("[Email] %s", case.source_file)
+            logger.info("  DFID: %s", case.dfid)
+            for step in case.timeline:
+                detail = (step.get("detail") or "")[:120]
+                logger.info("    -> %s: %s - %s", step["step"], step["state"], detail)
+            logger.info("  Final: %s (%s)", case.final_status, case.reason_code)
+            if case.policy_ref:
+                logger.info("  Policy ref: %s", case.policy_ref)
+
+        logger.info("")
+        logger.info("=" * 70)
+        logger.info("Summary")
+        logger.info("=" * 70)
+        logger.info("  Ledger entries (verified only): %s", len(ledger))
+        logger.info("  Audit DB: %s", db_path_str)
+        logger.info(
+            "  Day Two prevention: Only verified decisions reach the ledger and bind API."
+        )
+
+        report_path = _new_report_path(sample_dir)
+        generate_email_report(
+            email_results=email_results,
+            contract=contract.model_dump(),
+            ledger_count=len(ledger),
+            audit_db_path=db_path_str,
+            output_path=report_path,
+            email_processing=config.get("email_processing", {}),
+        )
+        logger.info("")
+        logger.info("  HTML report: %s", report_path.resolve())
+        webbrowser.open(report_path.resolve().as_uri())
+    except Exception as exc:
+        run_status = "error"
+        logger.exception("Run failed: %s", exc)
+        record_simulation_end(
+            audit,
+            simulation_id,
+            status="error",
+            error_message=str(exc),
+        )
+        raise
+    finally:
+        if run_status == "ok":
+            record_simulation_end(audit, simulation_id, status="ok")
+
+
+def _contract_dict_for_report(config: Dict[str, Any]) -> Dict[str, Any]:
+    uw = config.get("underwriting", {})
+    agents = config.get("agents", [])
+    agent_cfg = agents[0] if agents else {}
+    contract_cfg = agent_cfg.get("contract", {})
+    return {
+        "agent_id": agent_cfg.get("agent_id", "underwriter_agent"),
+        "version": agent_cfg.get("version", "1.0.0"),
+        "created_by": agent_cfg.get("created_by"),
+        "created_at": agent_cfg.get("created_at"),
+        "mission": contract_cfg.get("mission")
+        or agent_cfg.get("mission", "Underwrite insurance policies."),
+        "max_tiv": contract_cfg.get("max_tiv", uw.get("max_tiv", 2_000_000)),
+        "prohibited_industries": contract_cfg.get(
+            "prohibited_industries",
+            uw.get("prohibited_industries", ["Fireworks", "CryptoMining"]),
+        ),
+    }
 
 
 if __name__ == "__main__":

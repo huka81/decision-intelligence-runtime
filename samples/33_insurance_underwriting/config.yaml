@@ -1,20 +1,25 @@
-# Digital Underwriter - Topology C (DL+PCI) + email ingestion
-# Default run processes markdown emails under emails/ (see README).
+# Digital Underwriter — Topology C (DL+PCI) + email ingestion
+
+database:
+  provider: sqlite
+  db_path: "data/underwriting.dir.sqlite"
+
+simulation:
+  run_id: "uw_email_batch_001"
+  seeds:
+    llm: 42
+
+llm_defaults:
+  model: "gemma3:4b"
+  base_url: "http://localhost:11434"
+  timeout: 60
 
 underwriting:
   max_tiv: 2000000
   prohibited_industries: ["Fireworks", "CryptoMining"]
 
-llm_defaults:
-  model: "gemma3:4b"
-  base_url: "http://localhost:11434"
-
-# Email pipeline: kernel gates, audit SQLite, mock bind API
-# Broker-requested Total Insured Value (TiV) is inferred by the ROA agent from the email.
 email_processing:
   emails_dir: "emails"
-  audit_db: "data/underwriting_audit.sqlite"
-  # Demo FX: TiV amounts in GBP fixtures are compared to max_tiv as-if USD (1:1 stub).
   currency_fx_to_usd:
     GBP: 1.0
     USD: 1.0
@@ -23,8 +28,6 @@ email_processing:
     - "syrian arab republic"
     - "syria"
     - "damascus"
-  # Optional substring scan before any LLM. Empty so prompt-injection demos rely on
-  # extraction + contract (not naive keyword blocks).
   injection_patterns: []
 
 agents:
@@ -32,13 +35,19 @@ agents:
     version: "1.0.0"
     created_by: "compliance@example.com"
     created_at: "2025-02-17T10:00:00Z"
-    mission: |
-      You are an insurance underwriter. Analyze the client application and propose
-      a policy. Base premium on Total Insured Value (TiV) at ~2% of TiV, capped at max_tiv.
-      NEVER propose for Fireworks or CryptoMining industries - these are prohibited.
-      Output structured format.
+    priority: 10
     contract:
       role: EXECUTOR
+      mission: |
+        You are an insurance underwriter. Analyze the client application and propose
+        a policy. Base premium on Total Insured Value (TiV) at ~2% of TiV, capped at max_tiv.
+        NEVER propose for Fireworks or CryptoMining industries - these are prohibited.
+        Output structured format.
+      authorized_instruments: []
+      allowed_policy_types: ["BIND", "DECLINE"]
+      escalate_on_uncertainty: 0.65
+      max_drawdown_limit: 0.05
+      wake_up_threshold_pct: 0.5
+      parent_agent_id: null
       max_tiv: 3000000
       prohibited_industries: ["Fireworks", "CryptoMining"]
-      escalate_on_uncertainty: 0.65

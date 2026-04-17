@@ -1,8 +1,7 @@
 """
-Domain models for the Digital Underwriter use case (Topology C / DL+PCI).
+Domain schemas for the Digital Underwriter (Topology C / DL+PCI).
 
-Pydantic models for insurance underwriting: Responsibility Contract, Client Application,
-Policy Proposal. ProofCarryingIntent imported from dir_core.models (framework).
+Pydantic models for insurance underwriting. ProofCarryingIntent lives in dir_core.
 """
 
 from dataclasses import dataclass
@@ -30,24 +29,10 @@ __all__ = [
 ]
 
 
-# =============================================================================
-# Responsibility Contract (Underwriting Policy)
-# =============================================================================
-
-
 class UnderwritingContract(BaseModel):
-    """
-    Responsibility Contract for the Digital Underwriter.
-
-    Defines the authoritative rules that the DIM enforces. The agent must prove
-    compliance via the Evidence Hash; the DIM never trusts the agent's claims.
-
-    Audit fields (version, created_by, created_at) provide policy provenance
-    for compliance and traceability.
-    """
+    """Responsibility slice for kernel gates and DIM business rules (from config)."""
 
     agent_id: str = "underwriter_agent"
-    # Audit metadata
     version: str = Field(
         default="1.0.0",
         description="Policy version (SemVer)",
@@ -74,20 +59,8 @@ class UnderwritingContract(BaseModel):
     )
 
 
-# =============================================================================
-# Client Application (Context)
-# =============================================================================
-
-
 class ClientApplication(BaseModel):
-    """
-    Client application state held in the Context Store.
-
-    Represents the authoritative view of the applicant: business type,
-    revenue, and industry. Used to compute Context_Hash for Evidence Hash.
-
-    Optional fields support email-sourced submissions (London Market fixtures).
-    """
+    """Client application state held in the Context Store."""
 
     business_type: str = Field(description="Type of business (e.g. Retail, Factory)")
     revenue: float = Field(description="Annual revenue in USD (or contract currency)")
@@ -114,19 +87,8 @@ class ClientApplication(BaseModel):
     )
 
 
-# =============================================================================
-# Policy Proposal (Agent Output)
-# =============================================================================
-
-
 class PolicyProposal(BaseModel):
-    """
-    Agent User Space claim; serialized as JSON in PCI ``intent_payload``.
-
-    Per DIR-minified §3.9, ``confidence`` is observability only.
-    Evidence_Hash uses ``total_insured_value``, ``premium``, ``industry`` only;
-    see ``intent_subset_for_evidence_hash`` in kernel.
-    """
+    """Agent User Space claim; serialized as JSON in PCI ``intent_payload``."""
 
     total_insured_value: float = Field(
         description="Proposed Total Insured Value (TiV) in USD",
@@ -145,4 +107,3 @@ class PolicyProposal(BaseModel):
         le=1.0,
         description="Self-assessed certainty 0..1; not a permission grant",
     )
-

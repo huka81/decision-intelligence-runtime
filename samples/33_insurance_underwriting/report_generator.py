@@ -13,12 +13,12 @@ from html import escape as html_escape
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from roa_underwriter_agent import DecisionCycleReport
+from agent import DecisionCycleReport
 
 try:
-    from .pipeline import EmailCaseResult
+    from .orchestrator import EmailCaseResult
 except ImportError:
-    from pipeline import EmailCaseResult
+    from orchestrator import EmailCaseResult
 
 
 def _escape(s: str) -> str:
