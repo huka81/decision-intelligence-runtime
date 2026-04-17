@@ -25,6 +25,19 @@ from .contracts.provider import (
 logger = logging.getLogger(__name__)
 
 
+def _load_dotenv_next_to_config(config_path: Optional[str]) -> None:
+    """Load ``.env`` beside ``config.yaml`` so ``DB_*`` is set when cwd is the repo root."""
+    if not config_path:
+        return
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    env_file = Path(config_path).resolve().parent / ".env"
+    if env_file.is_file():
+        load_dotenv(env_file)
+
+
 def normalize_database_provider(raw: object) -> str:
     """Map YAML / user spellings to internal provider tokens."""
     if raw is None:
@@ -93,6 +106,10 @@ def open_storage_bundle(database_cfg: Dict[str, Any]) -> StorageBundle:
                 cfg[key] = int(val) if key == "port" else val
         cfg.pop("provider", None)
 
+        pw = cfg.get("password")
+        if pw is None or (isinstance(pw, str) and not pw.strip()):
+            cfg.pop("password", None)
+
         conn = connect(cfg)
         apply_schema(conn)
         repository = build_repository(conn)
@@ -152,6 +169,7 @@ def materialize_storage_bundle(
     :func:`setup_environment`. Use this from composition roots (e.g. samples) so
     persistence stays an externally wired adapter.
     """
+    _load_dotenv_next_to_config(config_path)
     db_section = config.get("database")
     if isinstance(db_section, dict) and config_path:
         config["database"] = resolve_sqlite_db_path_relative_to_config(db_section, config_path)
