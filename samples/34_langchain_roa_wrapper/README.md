@@ -444,7 +444,7 @@ scenarios:
 | `llm_defaults` | LLM model and Ollama endpoint |
 | `agent.contract` | Responsibility Contract: allowed_environments, allowed_policy_types |
 | `context_store` | Authoritative instance data (source of truth for DIM, invisible to agent) |
-| `scenarios` | Test cases: `idle_resources` (what agent sees), `expected` verdict |
+| `scenarios.yaml` | Test cases: `context.idle_resources`, `expected` verdict |
 
 ---
 
@@ -463,6 +463,23 @@ ollama pull gemma3:4b
 
 # 3. Run (from repo root)
 python samples/34_langchain_roa_wrapper/run.py
+```
+
+After a successful run, an HTML audit report is written under `results/` (Sample Development Guide §17).
+
+**Mock mode (no Ollama)** — deterministic end-to-end run:
+
+```powershell
+$env:USE_MOCK_LLM = "1"
+python samples/34_langchain_roa_wrapper/run.py
+```
+
+**Regenerate the HTML report** from the SQLite `StorageBundle` only (defaults to the latest `SIMULATION_START`):
+
+```bash
+cd samples/34_langchain_roa_wrapper
+python report_generator.py
+python report_generator.py --simulation-id lc_finops_batch_001
 ```
 
 **No cloud API key needed**; uses local Ollama (same as `samples/35_crewai_roa_wrapper`).
@@ -571,13 +588,15 @@ set OLLAMA_MODEL=gemma3:4b
 
 | Component | Purpose |
 |-----------|---------|
-| `config.yaml` | LLM (llm_defaults), agent contract, context store, test scenarios (same structure as 35_crewai_roa_wrapper) |
-| `config_loader.py` | Loads config.yaml, builds LlmConfig, FinOpsContract, ScenarioConfig |
-| `contracts.py` | FinOpsContract with `allowed_environments`, `from_config()` |
-| `LangChainROAWrapper` | Real LangChain agent (create_agent) + ChatOllama; mission injection; tool or prompt fallback |
-| `Submit_Policy_Proposal` | Tool that raises `ProposalIntercepted`; wrapper catches and converts to `PolicyProposal` |
-| `validate_finops_proposal()` | DIM logic: schema + RBAC + resource existence + environment boundary |
-| Context Store | From config: authoritative instance env (PROD/DEV/STG); DIM validates against it |
+| `config.yaml` | `database`, `simulation`, `llm_defaults`, `agents` (ResponsibilityContract), authoritative `context_store` |
+| `scenarios.yaml` | Scenario batch: `context.idle_resources`, `expected`, flags (`trust_input_labels`, `show_mission_demo`) |
+| `schemas.py` | `load_scenarios()`, `parse_llm_json()`, `registry_contract_payload()`, authoritative instances helper |
+| `agent.py` | ROA User Space: Explain + Policy (LangChain or mock `llm.generate`), Self-Check, `PolicyProposal` |
+| `dim.py` | FinOps `custom_validators` for `validate_proposal` (resource existence + environment boundary) |
+| `telemetry.py` | `bundle.decision_audit.record` helpers (`SIMULATION_*`, `AGENT_DECISION`, execution dry-run) |
+| `mocks/llm_mock_strategy.py` | Deterministic mock policy for `USE_MOCK_LLM=1` |
+| `run.py` | Bootstrap (`setup_environment`), handshake, ContextStore session, DIM, idempotency, scenario loop |
+| `report_generator.py` | HTML audit report §17 from `decision_audit` + registry + context; CLI `--simulation-id` / `--output-path` |
 
 ---
 

@@ -1,441 +1,279 @@
 #!/usr/bin/env python3
 """
-34_langchain_roa_wrapper - LangChain ReAct agent wrapped in ROA interface.
+34_langchain_roa_wrapper — LangChain ReAct agent wrapped as ROA User Space with DIM gate.
 
-Demonstrates:
-- Real LangChain ReAct agent + LLM (Ollama) for mission-aware reasoning
-- Submit_Policy_Proposal tool: intercepts intent, passes over "The Wall" to DIR Kernel
-- Context Store from config.yaml - source of truth for DIM validation
-- FinOps use case: DIM rejects TERMINATE on PROD instance (allowed_environments=[DEV, STG])
+Topology: classic. Mechanisms: AgentRegistry, ContextStore, validate_proposal (DIM + FinOps extras),
+idempotency_key, StorageBundle telemetry, scenario batch from scenarios.yaml.
 
 Run from repo root: python samples/34_langchain_roa_wrapper/run.py
-Requires: pip install -e . pip install -r samples/34_langchain_roa_wrapper/requirements.txt
-
-ROA Manifesto §4-5, DIR Architectural Pattern §6.
-
-Requirements:
-    ollama serve
-    ollama pull gemma3:4b   # or model from config.yaml (must support tool/function calling)
 """
 from __future__ import annotations
 
-import json
 import logging
+import os
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC = _REPO_ROOT / "src"
 _SAMPLES = _REPO_ROOT / "samples"
+_SAMPLE_DIR = Path(__file__).resolve().parent
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 if str(_SAMPLES) not in sys.path:
     sys.path.insert(0, str(_SAMPLES))
+if str(_SAMPLE_DIR) not in sys.path:
+    sys.path.insert(0, str(_SAMPLE_DIR))
 
-from dir_core import PolicyProposal, new_dfid
-from dir_core.data_types import DimReasonCode, ValidationReason, ValidationVerdict
-from dir_core.dim import validate_proposal
+from dir_core import (
+    AgentRegistry,
+    ContextStore,
+    idempotency_key,
+    new_dfid,
+    validate_proposal,
+)
+from dir_core.data_types import ValidationVerdict
 from dir_core.utils.logging_utils import log_with_dfid
-from shared.llm.clients import check_ollama
+from shared.bootstrap import (
+    Environment,
+    build_llm_from_config,
+    configured_live_llm_is_reachable,
+    database_connection_summary,
+    setup_environment,
+)
+from shared.config import load_yaml_config
 
-from contracts import FinOpsContract
-from config_loader import AppConfig, LlmConfig, ScenarioConfig, load_config
+from agent import run_finops_roa_cycle
+from dim import finops_custom_validators
+from mocks import make_mock_strategy
+from schemas import authoritative_instances_from_config, load_scenarios, registry_contract_payload
+from report_generator import write_finops_langchain_html_report
+from telemetry import (
+    record_agent_decision,
+    record_finops_execution,
+    record_self_check_failed,
+    record_simulation_end,
+    record_simulation_start,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
-# Reduce httpx noise (HTTP Request logs)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
-# -----------------------------------------------------------------------------
-# Ollama health check
-# -----------------------------------------------------------------------------
+def _explain_lists(meta: Dict[str, Any]) -> Tuple[Optional[List[Any]], Optional[List[Any]], Optional[List[Any]]]:
+    def _one(key: str) -> Optional[List[Any]]:
+        v = meta.get(key)
+        return v if isinstance(v, list) and v else None
+
+    return _one("signals"), _one("risks"), _one("opportunities")
 
 
-def _check_ollama(llm_cfg: LlmConfig) -> None:
-    """Verify Ollama is reachable and the requested model is available."""
-    base_url = llm_cfg.effective_base_url()
-    model = llm_cfg.effective_model()
-    if not check_ollama(base_url, model):
-        print()
-        print(f"[ERROR] Ollama not reachable at {base_url} or model '{model}' not found.")
-        print()
-        print("  Start Ollama:    ollama serve")
-        print(f"  Pull the model:  ollama pull {model}")
-        print()
-        print("  Or set env:  OLLAMA_BASE_URL=http://localhost:11434")
-        print(f"               OLLAMA_MODEL={model}")
-        print()
-
-
-# -----------------------------------------------------------------------------
-# Interception Mechanism (Claim vs. Fact boundary)
-# -----------------------------------------------------------------------------
-
-
-class ProposalIntercepted(Exception):
-    """
-    Control-flow exception raised when Submit_Policy_Proposal tool is invoked.
-
-    This is NOT an error - it's the intentional mechanism to halt agent execution
-    and capture the proposal (Claim) before any side effect occurs.
-    The wrapper catches this and converts payload to PolicyProposal.
-    """
-
-    def __init__(self, proposal_json: str):
-        self.proposal_json = proposal_json
-        super().__init__("Proposal intercepted - crossing The Wall to Kernel Space")
-
-
-# -----------------------------------------------------------------------------
-# Submit_Policy_Proposal Tool - The Trojan Horse
-# -----------------------------------------------------------------------------
-
-
-def _create_submit_policy_proposal_tool():
-    """
-    Create the Submit_Policy_Proposal LangChain tool.
-
-    When invoked by the agent, raises ProposalIntercepted - halting execution
-    and capturing intent. The tool never executes side effects.
-    """
-    from langchain_core.tools import tool
-
-    @tool
-    def submit_policy_proposal(proposal_json: str) -> str:
-        """Submit a policy proposal to the DIR Kernel for validation.
-        Call with JSON: {"action": "TERMINATE"|"STOP"|"SCALE_DOWN", "resource_id": "i-xxx", "reason": "..."}"""
-        raise ProposalIntercepted(proposal_json)
-
-    return submit_policy_proposal
-
-
-# -----------------------------------------------------------------------------
-# LangChain ROA Wrapper
-# -----------------------------------------------------------------------------
-
-
-def _make_llm(llm_cfg: LlmConfig):
-    """Create ChatOllama: native Ollama integration, no openai dependency."""
-    from langchain_ollama import ChatOllama
-
-    return ChatOllama(
-        model=llm_cfg.effective_model(),
-        base_url=llm_cfg.effective_base_url().rstrip("/"),
-        temperature=llm_cfg.temperature,
-    )
-
-
-class LangChainROAWrapper:
-    """
-    Wraps a real LangChain ReAct agent + LLM in an ROA interface.
-
-    - Injects mission from contract into agent prompt
-    - Provides exactly one action tool: Submit_Policy_Proposal
-    - Intercepts tool invocation, halts execution, returns PolicyProposal
-    - Uses Context Store from config for DIM validation (not for LLM input)
-    """
-
-    def __init__(self, contract: FinOpsContract, llm_cfg: LlmConfig):
-        self.contract = contract
-        self._llm = _make_llm(llm_cfg)
-        self._tool = _create_submit_policy_proposal_tool()
-        self._tools = [self._tool]
-        self._agent_executor = self._build_agent()
-
-    def _build_agent(self):
-        """Build agent using langchain create_agent (LangGraph-based)."""
-        from langchain.agents import create_agent
-
-        system_prompt = f"""You are a FinOps agent under a MISSION CONTRACT.
-MISSION: {self.contract.mission}
-AUTHORITY: Allowed environments {", ".join(self.contract.allowed_environments)}.
-Allowed actions: {", ".join(self.contract.allowed_policy_types)}. PROHIBITED: PROD.
-You MUST call Submit_Policy_Proposal with JSON: {{"action": "TERMINATE", "resource_id": "i-xxx", "reason": "..."}}
-Choose ONE instance within your boundaries. Infer environment from instance id (prod/dev/stg) if not provided."""
-
-        return create_agent(
-            model=self._llm,
-            tools=self._tools,
-            system_prompt=system_prompt,
-        )
-
-    def _invoke_prompt_fallback(self, agent_input: str) -> Dict[str, Any]:
-        """Fallback for models that don't support tools: prompt for JSON output."""
-        from langchain_core.messages import HumanMessage
-
-        prompt = agent_input + """
-
-Output ONLY a valid JSON object: {"action": "TERMINATE"|"STOP"|"SCALE_DOWN", "resource_id": "i-xxx", "reason": "..."}
-No markdown, no explanation, only the JSON."""
-        response = self._llm.invoke([HumanMessage(content=prompt)])
-        raw = response.content if hasattr(response, "content") else str(response)
-        text = raw if isinstance(raw, str) else str(raw)
-
-        # Extract JSON block (handle markdown, extra text)
-        start = text.find("{")
-        if start >= 0:
-            depth = 0
-            for i, c in enumerate(text[start:], start):
-                if c == "{":
-                    depth += 1
-                elif c == "}":
-                    depth -= 1
-                    if depth == 0:
-                        return json.loads(text[start : i + 1])
-        raise ValueError(f"Could not parse JSON from LLM response: {text[:200]}")
-
-    def _build_agent_input(self, instances: List[Dict[str, Any]]) -> str:
-        """Build task input for the agent with idle instances from scenario."""
-        if not instances:
-            return "No idle instances. Respond with NOOP or explain no action needed."
-        return (
-            "Analyze these idle cloud instances. Propose ONE termination using Submit_Policy_Proposal. "
-            "Select the best target WITHIN your allowed environments (DEV, STG). "
-            "Never propose PROD. Instances:\n" + json.dumps(instances, indent=2)
-        )
-
-    def _demonstrate_mission_injection(self, instances: List[Dict[str, Any]]) -> None:
-        """Show mission injection transformation (first scenario only)."""
-        print("\n" + "=" * 70)
-        print("[MISSION INJECTION DEMO]")
-        print("=" * 70)
-        print("\n[NAKED] LangChain Agent: 'terminate the most expensive ones', no boundaries")
-        print("[ROA] ROA-WRAPPED: Mission + allowed_environments=[DEV, STG], PROD prohibited")
-        print("=" * 70 + "\n")
-
-    def run(
-        self,
-        dfid: str,
-        idle_resources_json: str,
-        show_mission_demo: bool = False,
-        trust_input_labels: bool = False,
-    ) -> PolicyProposal:
-        """
-        Invoke LangChain agent with idle resources. Returns PolicyProposal (Claim).
-        DIM validates against Context Store from config; agent sees only idle_resources.
-        """
-        try:
-            resources = json.loads(idle_resources_json)
-        except json.JSONDecodeError:
-            resources = {"instances": []}
-
-        instances = resources.get("instances", [])
-        if not isinstance(instances, list):
-            instances = []
-
-        if show_mission_demo:
-            self._demonstrate_mission_injection(instances)
-
-        agent_input = self._build_agent_input(instances)
-
-        from langchain_core.messages import HumanMessage
-
-        data = None
-        try:
-            self._agent_executor.invoke({"messages": [HumanMessage(content=agent_input)]})
-        except ProposalIntercepted as intercepted:
-            data = json.loads(intercepted.proposal_json)
-        except Exception as e:
-            # Fallback: models like gemma3 don't support tools; use prompt-based JSON output
-            if "does not support tools" in str(e) or "400" in str(e):
-                print("  [MODE] Prompt-based JSON (model does not support tools)")
-                data = self._invoke_prompt_fallback(agent_input)
-            else:
-                raise
-
-        if data:
-            return PolicyProposal(
-                dfid=dfid,
-                agent_id=self.contract.agent_id,
-                policy_kind=data.get("action", "UNKNOWN"),
-                params={
-                    "resource_id": data.get("resource_id"),
-                    "reason": data.get("reason", ""),
-                },
-                confidence=0.9,
-                justification=data.get("reason", ""),
-            )
-
-        raise RuntimeError("Could not obtain proposal from agent")
-
-
-# -----------------------------------------------------------------------------
-# FinOps DIM Validation
-# -----------------------------------------------------------------------------
-
-
-def validate_finops_proposal(
-    proposal: PolicyProposal,
-    context: Dict[str, Any],
-    contract: FinOpsContract,
-    allowed_agents: Optional[List[str]] = None,
-) -> Tuple[ValidationVerdict, ValidationReason]:
-    """
-    Validate FinOps proposal: base DIM checks + environment boundary.
-
-    Validation layers:
-    1. Base DIM validation (schema, RBAC via allowed_agents)
-    2. Resource existence check (resource_id in Context Store)
-    3. Environment boundary check (instance env in allowed_environments)
-
-    Args:
-        proposal: The PolicyProposal to validate
-        context: Must contain {"instances": {"i-xxx": {"environment": "PROD"|"DEV"|"STG"}}}
-        contract: FinOpsContract with allowed_environments
-        allowed_agents: List of authorized agent IDs
-
-    Returns:
-        Tuple of (``ValidationVerdict``, reason) where reason is ``str`` or ``DimReasonCode``.
-    """
-    # Layer 1: Base validation (schema, RBAC)
-    base_context = {"state": context.get("state", {})}
-    verdict, reason = validate_proposal(proposal, base_context, allowed_agents or [])
-    if verdict == ValidationVerdict.REJECT:
-        return verdict, reason
-
-    # Layer 2: Resource existence
-    resource_id = proposal.params.get("resource_id")
-    if not resource_id:
-        return ValidationVerdict.REJECT, "Missing resource_id in proposal params"
-
-    instances = context.get("instances", {})
-    if resource_id not in instances:
-        return ValidationVerdict.REJECT, f"Resource {resource_id} not found in Context Store"
-
-    # Layer 3: Environment boundary
-    instance_env = instances[resource_id].get("environment", "UNKNOWN")
-    if instance_env not in contract.allowed_environments:
-        return (
-            ValidationVerdict.REJECT,
-            f"Instance {resource_id} is {instance_env}; agent allowed_environments={contract.allowed_environments}",
-        )
-
-    return ValidationVerdict.ACCEPT, DimReasonCode.VALIDATION_PASSED
-
-
-# -----------------------------------------------------------------------------
-# Main: End-to-End Flow
-# -----------------------------------------------------------------------------
-
-
-def run_scenario(
-    name: str,
-    wrapper: LangChainROAWrapper,
-    idle_resources: Dict[str, Any],
-    context_store: Dict[str, Any],
-    contract: FinOpsContract,
-    show_mission_demo: bool = False,
-    trust_input_labels: bool = False,
-) -> Tuple[PolicyProposal, ValidationVerdict, ValidationReason]:
-    """Run a single scenario and return proposal + verdict."""
-    dfid = new_dfid()
-    log_with_dfid(logger, dfid, logging.INFO, "Starting scenario: %s", name)
-
-    # --- REQUEST: what the agent sees ---
-    instances = idle_resources.get("instances", [])
-    print("\n  [REQUEST] Agent input (idle instances):")
-    for inst in instances:
-        print(f"    - {inst.get('id', '?')}: idle_hours={inst.get('idle_hours', '?')}, env={inst.get('environment', '(infer from id)')}")
-    if not instances:
-        print("    (none)")
-
-    proposal = wrapper.run(
-        dfid,
-        json.dumps(idle_resources),
-        show_mission_demo=show_mission_demo,
-        trust_input_labels=trust_input_labels,
-    )
-
-    # --- LANGCHAIN OUTPUT: what the agent proposed ---
-    print("\n  [LANGCHAIN OUTPUT] Agent proposal:")
-    print(f"    action: {proposal.policy_kind}")
-    print(f"    resource_id: {proposal.params.get('resource_id', 'N/A')}")
-    print(f"    reason: {proposal.params.get('reason', '')}")
-
-    verdict, reason = validate_finops_proposal(
-        proposal, context_store, contract, allowed_agents=[contract.agent_id]
-    )
-
-    # --- DIM VERDICT: why accepted or rejected ---
-    resource_id = proposal.params.get("resource_id", "")
-    instance_env = context_store.get("instances", {}).get(resource_id, {}).get("environment", "?")
-    print(f"\n  [DIM VERDICT] {verdict}")
-    if verdict == "ACCEPT":
-        print(f"    WHY ACCEPTED: {resource_id} is {instance_env}, within allowed {contract.allowed_environments}")
-    else:
-        print(f"    WHY REJECTED: {reason}")
-
-    return proposal, verdict, reason
+def _llm_backend_label(llm: Any) -> str:
+    name = type(llm).__name__
+    if name == "MockLLMClient":
+        return "Mock"
+    if name == "OllamaClient":
+        return f"Ollama model={getattr(llm, 'model', '')} base_url={getattr(llm, 'base_url', '')}"
+    if name == "GeminiClient":
+        return f"Gemini model={getattr(llm, 'model', '')}"
+    return name
 
 
 def main() -> None:
-    print("=" * 70)
-    print("34_langchain_roa_wrapper - LangChain ROA Wrapper / FinOps Demo")
-    print("=" * 70)
+    sample_dir = Path(__file__).resolve().parent
+    config_path = sample_dir / "config.yaml"
+    config = load_yaml_config(config_path)
+    scenarios = load_scenarios()
+    simulation_id = str((config.get("simulation") or {}).get("run_id", "lc_finops_run"))
+    mock_strategy = make_mock_strategy()
 
-    # Load configuration from config.yaml
-    cfg = load_config()
-    _check_ollama(cfg.llm)
-    contract = cfg.contract
-    context_store = cfg.context_store
-    wrapper = LangChainROAWrapper(contract, cfg.llm)
-
-    # Run all scenarios from config
-    results: List[Tuple[str, str, str]] = []
-    for i, scenario in enumerate(cfg.scenarios):
-        print(f"\n[{scenario.label}]")
-        print("-" * 70)
-
-        # Ensure idle_resources has 'instances' key (list format for agent input)
-        idle_resources = scenario.idle_resources
-        if "instances" not in idle_resources:
-            idle_resources = {"instances": []}
-
-        proposal, verdict, reason = run_scenario(
-            scenario.label,
-            wrapper,
-            idle_resources,
-            context_store,
-            contract,
-            show_mission_demo=scenario.show_mission_demo,
-            trust_input_labels=scenario.trust_input_labels,
+    env = setup_environment(
+        config,
+        mock_llm_strategy=mock_strategy,
+        config_path=str(config_path),
+    )
+    if not configured_live_llm_is_reachable(config):
+        env = Environment(
+            llm=build_llm_from_config(config, mock_llm_strategy=mock_strategy, force_mock=True),
+            repository=env.repository,
+            contracts=env.contracts,
         )
-        results.append((scenario.label, verdict, proposal.params.get("resource_id", "")))
 
-        # Scenario-specific feedback
-        proposed_resource_id = proposal.params.get("resource_id", "")
-        if verdict == "ACCEPT" and "dev" in proposed_resource_id.lower():
-            print("  -> Mission-aware agent autonomously avoided PROD, selected DEV instead.")
-        elif verdict == "REJECT" and "prod" in proposed_resource_id.lower():
-            print("  -> DIM rejected PROD termination (defense-in-depth).")
-        elif verdict == "ACCEPT":
-            print("  -> Safe to execute (within allowed_environments).")
-        elif verdict == "REJECT":
-            print("  -> Agent trusted input labels; DIM validated against Context Store.")
-            print("  -> Catastrophic production outage PREVENTED by DIM.")
+    llm = env.llm
+    bundle = env.repository
+    contracts = env.contracts
+    logger.info("Persistence: %s", database_connection_summary(config))
 
-    # Summary
-    print("\n" + "=" * 70)
-    print("[SUMMARY] LangChain ROA Wrapper - FinOps Demo")
-    print("=" * 70)
-    for label, verdict, resource_id in results:
-        short_label = (label[:50] + "...") if len(label) > 50 else label
-        print(f"  {short_label}")
-        print(f"    -> DIM verdict: {verdict} (resource: {resource_id or 'N/A'})")
-    print()
-    print("  KEY INSIGHT: Mission injection transforms agent behavior BEFORE DIM.")
-    print("  The wrapper doesn't just intercept - it makes the agent")
-    print("  mission-aware during reasoning, not just during validation.")
-    print()
-    print("  When input quality fails (Scenario C), DIM catches dangerous proposals")
-    print("  by validating against Context Store - not agent input.")
-    print()
-    print("  ROA: Mission injection + DIM validation = defense in depth.")
-    print("=" * 70)
+    registry = AgentRegistry(storage=bundle.agent_registry)
+    store = ContextStore(storage=bundle.context)
+
+    agent_rows: List[Dict[str, Any]] = list(config.get("agents") or [])
+    if not agent_rows:
+        logger.error("config.yaml must define agents[0]")
+        return
+    agent_id = str(agent_rows[0]["agent_id"])
+    priority = int(agent_rows[0].get("priority", 10))
+    agent_version = str(agent_rows[0].get("version", config.get("agent_version", "1.0.0")))
+
+    reg_payload = registry_contract_payload(config, contracts, agent_id)
+    hr = registry.handshake(agent_id, reg_payload, agent_version=agent_version, priority=priority)
+    if not hr.accepted:
+        logger.error("Handshake rejected: %s", hr.reason)
+        return
+
+    auth_instances = authoritative_instances_from_config(config)
+    allowed_envs = list(reg_payload.get("allowed_environments") or [])
+    llm_defaults = dict(config.get("llm_defaults") or {})
+    dim_contract = dict(reg_payload)
+    validators = finops_custom_validators()
+
+    record_simulation_start(bundle, simulation_id, llm_backend=_llm_backend_label(llm))
+
+    results: List[Tuple[str, str, str]] = []
+    t0 = time.perf_counter()
+    try:
+        for scenario in scenarios:
+            dfid = new_dfid()
+            log_with_dfid(logger, dfid, logging.INFO, "Scenario: %s", scenario.label)
+
+            idle = dict(scenario.idle_resources)
+            if "instances" not in idle:
+                idle = {"instances": []}
+
+            store.update_session(
+                dfid,
+                {
+                    "idle_resources": idle,
+                    "scenario_label": scenario.label,
+                    "trust_input_labels": scenario.trust_input_labels,
+                },
+            )
+            store.compile_working_context(agent_id, dfid)
+
+            dim_ctx: Dict[str, Any] = {
+                "state": {},
+                "instances": auth_instances.get("instances", {}),
+            }
+
+            contract = contracts.get_contract(agent_id)
+            proposal, roa_err, explain_meta = run_finops_roa_cycle(
+                llm,
+                contract,
+                dfid,
+                agent_id,
+                idle,
+                scenario.trust_input_labels,
+                llm_defaults,
+                allowed_envs,
+                show_mission_demo=scenario.show_mission_demo,
+            )
+            explain_meta = explain_meta or {}
+            es, er, eo = _explain_lists(explain_meta)
+
+            if proposal is None:
+                log_with_dfid(logger, dfid, logging.WARNING, "ROA: %s", roa_err)
+                record_self_check_failed(
+                    bundle,
+                    dfid,
+                    simulation_id,
+                    agent_id=agent_id,
+                    reason=str(roa_err or "unknown"),
+                    scenario_label=scenario.label,
+                    explain_narrative=str(explain_meta.get("narrative", "")),
+                    explain_signals=es,
+                    explain_risks=er,
+                    explain_opportunities=eo,
+                )
+                results.append((scenario.label, "SELF_CHECK_FAILED", ""))
+                continue
+
+            verdict, reason = validate_proposal(
+                proposal,
+                dim_ctx,
+                allowed_agents=[agent_id],
+                contract=dim_contract,
+                custom_validators=validators,
+            )
+            log_with_dfid(logger, dfid, logging.INFO, "DIM: %s %s", verdict, reason)
+
+            executed = False
+            if verdict == ValidationVerdict.ACCEPT:
+                ikey = idempotency_key(
+                    dfid,
+                    "finops_terminate",
+                    {"resource_id": proposal.params.get("resource_id")},
+                )
+                if bundle.idempotency.get(ikey) is None:
+                    bundle.idempotency.set(ikey, {"dfid": dfid, "status": "recorded"})
+                    record_finops_execution(
+                        bundle,
+                        dfid,
+                        simulation_id,
+                        agent_id=agent_id,
+                        policy_kind=proposal.policy_kind,
+                        resource_id=str(proposal.params.get("resource_id", "")),
+                        idempotency_key_value=ikey,
+                    )
+                    executed = True
+                else:
+                    log_with_dfid(logger, dfid, logging.INFO, "Idempotency hit for execution key")
+
+            role_s = str(getattr(contract.role, "value", contract.role))
+            record_agent_decision(
+                bundle,
+                dfid,
+                simulation_id,
+                agent_id=agent_id,
+                policy_kind=proposal.policy_kind,
+                verdict=str(verdict),
+                reason=str(reason),
+                confidence=proposal.confidence,
+                justification=str(proposal.justification or ""),
+                scenario_label=scenario.label,
+                executed=executed,
+                resource_id=str(proposal.params.get("resource_id", "")),
+                explain_narrative=str(explain_meta.get("narrative", "")),
+                explain_signals=es,
+                explain_risks=er,
+                explain_opportunities=eo,
+                self_check_passed=True,
+                self_check_reason="",
+                contract_role=role_s,
+                contract_allowed_policy_types=list(contract.allowed_policy_types),
+            )
+
+            results.append(
+                (scenario.label, str(verdict), str(proposal.params.get("resource_id", "")))
+            )
+
+        record_simulation_end(bundle, simulation_id, status="ok")
+    except Exception as e:
+        record_simulation_end(bundle, simulation_id, status="error", error_message=str(e))
+        raise
+
+    elapsed = time.perf_counter() - t0
+    report_path = write_finops_langchain_html_report(
+        bundle,
+        simulation_id=simulation_id,
+        sample_dir=sample_dir,
+        config=config,
+        scenario_yaml_count=len(scenarios),
+        elapsed_sec=elapsed,
+        run_status="ok",
+    )
+    logger.info("Wrote HTML report: %s", report_path)
+
+    logger.info("=" * 70)
+    logger.info("SUMMARY — LangChain ROA wrapper / FinOps")
+    logger.info("simulation_id=%s", simulation_id)
+    for label, verdict, rid in results:
+        short = (label[:56] + "…") if len(label) > 56 else label
+        logger.info("  %s -> %s resource=%s", short, verdict, rid or "N/A")
+    logger.info("=" * 70)
 
 
 if __name__ == "__main__":
     main()
-
