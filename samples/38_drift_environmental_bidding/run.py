@@ -25,7 +25,7 @@ if str(_SRC) not in sys.path:
 if str(_SAMPLES) not in sys.path:
     sys.path.insert(0, str(_SAMPLES))
 
-from dir_core import AgentRegistry, ContextStore, new_dfid
+from dir_core import DecisionRuntime
 
 from pipeline import run_simulation
 from report_generator import generate_report
@@ -72,20 +72,21 @@ def main() -> None:
     contracts = env.contracts
     logger.info("Persistence: %s", database_connection_summary(config))
 
-    registry = AgentRegistry(
-        storage=bundle.agent_registry,
+    runtime = DecisionRuntime(
+        bundle,
         supported_versions=cfg.registry.supported_versions,
     )
-    context_store = ContextStore(storage=bundle.context)
+    registry = runtime.registry
+    context_store = runtime.context_store
 
     ab = _first_agent_block(config)
     agent_id = str(ab["agent_id"])
     rc = contracts.get_contract(agent_id)
 
-    hr = registry.handshake(
+    hr = runtime.register_agent(
         agent_id,
         rc.model_dump(),
-        agent_version=str(ab.get("agent_version", "1.0.0")),
+        str(ab.get("agent_version", "1.0.0")),
         priority=int(ab.get("priority", 10)),
     )
     if not hr.accepted:

@@ -28,7 +28,7 @@ if str(_SAMPLES) not in sys.path:
 if str(_SAMPLE_DIR) not in sys.path:
     sys.path.insert(0, str(_SAMPLE_DIR))
 
-from dir_core import AgentRegistry, ContextStore, idempotency_key, new_dfid
+from dir_core import DecisionRuntime, idempotency_key, new_dfid
 from dir_core.data_types import ValidationVerdict
 from dir_core.utils.logging_utils import log_with_dfid
 from shared.bootstrap import (
@@ -120,11 +120,11 @@ def main() -> None:
     crew_cfg = CrewConfig.from_dict(agent_row.get("crew", {}))
     dim_contract = registry_claims_contract_payload(config, contracts, agent_id)
 
-    registry = AgentRegistry(storage=bundle.agent_registry)
-    store = ContextStore(storage=bundle.context)
+    runtime = DecisionRuntime(bundle)
+    store = runtime.context_store
 
     reg_payload = dim_contract
-    hr = registry.handshake(agent_id, reg_payload, agent_version=agent_version, priority=priority)
+    hr = runtime.register_agent(agent_id, reg_payload, agent_version, priority=priority)
     if not hr.accepted:
         logger.error("Handshake rejected: %s", hr.reason)
         return

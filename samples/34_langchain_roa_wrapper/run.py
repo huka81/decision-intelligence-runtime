@@ -28,13 +28,7 @@ if str(_SAMPLES) not in sys.path:
 if str(_SAMPLE_DIR) not in sys.path:
     sys.path.insert(0, str(_SAMPLE_DIR))
 
-from dir_core import (
-    AgentRegistry,
-    ContextStore,
-    idempotency_key,
-    new_dfid,
-    validate_proposal,
-)
+from dir_core import DecisionRuntime, idempotency_key, new_dfid
 from dir_core.data_types import ValidationVerdict
 from dir_core.utils.logging_utils import log_with_dfid
 from shared.bootstrap import (
@@ -108,8 +102,8 @@ def main() -> None:
     contracts = env.contracts
     logger.info("Persistence: %s", database_connection_summary(config))
 
-    registry = AgentRegistry(storage=bundle.agent_registry)
-    store = ContextStore(storage=bundle.context)
+    runtime = DecisionRuntime(bundle)
+    store = runtime.context_store
 
     agent_rows: List[Dict[str, Any]] = list(config.get("agents") or [])
     if not agent_rows:
@@ -120,7 +114,7 @@ def main() -> None:
     agent_version = str(agent_rows[0].get("version", config.get("agent_version", "1.0.0")))
 
     reg_payload = registry_contract_payload(config, contracts, agent_id)
-    hr = registry.handshake(agent_id, reg_payload, agent_version=agent_version, priority=priority)
+    hr = runtime.register_agent(agent_id, reg_payload, agent_version, priority=priority)
     if not hr.accepted:
         logger.error("Handshake rejected: %s", hr.reason)
         return
@@ -191,12 +185,15 @@ def main() -> None:
                 results.append((scenario.label, "SELF_CHECK_FAILED", ""))
                 continue
 
-            verdict, reason = validate_proposal(
+            verdict, reason = runtime.evaluate_proposal(
                 proposal,
-                dim_ctx,
+                {},
+                dim_context=dim_ctx,
                 allowed_agents=[agent_id],
                 contract=dim_contract,
                 custom_validators=validators,
+                use_registry_contract=False,
+                record_audit=False,
             )
             log_with_dfid(logger, dfid, logging.INFO, "DIM: %s %s", verdict, reason)
 

@@ -30,12 +30,10 @@ if str(_SAMPLES) not in sys.path:
 import __init__  # noqa: F401 - loads .env via package __init__.py
 
 from dir_core import (
-    AgentRegistry,
-    ContextStore,
+    DecisionRuntime,
     PolicyProposal,
     ResponsibilityContract,
     create_event_bus,
-    validate_proposal,
 )
 from dir_core.utils.logging_utils import log_with_dfid
 from shared.bootstrap import database_connection_summary, setup_environment
@@ -149,8 +147,9 @@ def main() -> None:
     llm = env.llm
 
     kernel_ctx = SimulationKernelContext()
-    registry = AgentRegistry(storage=env.repository.agent_registry)
-    ctx_store = ContextStore(storage=env.repository.context)
+    runtime = DecisionRuntime(env.repository)
+    registry = runtime.registry
+    ctx_store = runtime.context_store
     kernel_ctx.context_store = ctx_store
     register_config_agents(registry, env.contracts, config.get("agents", []))
 
@@ -203,7 +202,14 @@ def main() -> None:
     )
 
     def validate_proposal_shim(proposal: PolicyProposal) -> tuple[str, str]:
-        return validate_proposal(proposal, context={}, allowed_agents=None)
+        verdict, reason = runtime.evaluate_proposal(
+            proposal,
+            {},
+            allowed_agents=None,
+            use_registry_contract=False,
+            record_audit=False,
+        )
+        return (str(verdict), str(reason))
 
     # Persist simulation only via canonical StorageBundle.decision_audit.
     data_dir = sample_dir / "data"

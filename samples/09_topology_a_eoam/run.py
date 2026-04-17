@@ -14,13 +14,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from dir_core import (
+    DecisionRuntime,
     EventBus,
     EventMetadata,
     EventType,
     PolicyProposal,
     new_dfid,
-    validate_proposal,
 )
+from dir_core.storage import memory_storage
 from dir_core.intent_retry import IntentRetryGovernor
 from dir_core.lifecycle import FlowStatus, transition
 from dir_core.utils.logging_utils import log_with_dfid
@@ -114,6 +115,8 @@ def main() -> None:
     dfid = new_dfid()
     log_with_dfid(logger, dfid, logging.INFO, "EOAM: Observation received")
 
+    runtime = DecisionRuntime(memory_storage())
+
     bus = EventBus()
     proposals: List[PolicyProposal] = []
 
@@ -174,7 +177,14 @@ def main() -> None:
     retry_governor = IntentRetryGovernor(max_retries=3, db_path=None)
     if chosen:
         context = {"state": {"risk_score": context_snapshot.get("risk_score", 0.1)}}
-        result, reason = validate_proposal(chosen, context, retry_governor=retry_governor)
+        result, reason = runtime.evaluate_proposal(
+            chosen,
+            {},
+            dim_context=context,
+            retry_governor=retry_governor,
+            use_registry_contract=False,
+            record_audit=False,
+        )
         log_with_dfid(logger, dfid, logging.INFO, "DIM result=%s reason=%s", result, reason)
         # Lifecycle transition: reset IntentRetryGovernor on terminal state (DIR §4.3)
         if result == "ACCEPT":

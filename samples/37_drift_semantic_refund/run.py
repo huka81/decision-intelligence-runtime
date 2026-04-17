@@ -29,7 +29,7 @@ if str(_SAMPLES) not in sys.path:
 if str(_SAMPLE_DIR) not in sys.path:
     sys.path.insert(0, str(_SAMPLE_DIR))
 
-from dir_core import AgentRegistry, ContextStore
+from dir_core import DecisionRuntime
 
 from compliance_monitor import ComplianceMonitor
 from mocks import make_mock_strategy
@@ -146,14 +146,15 @@ def main() -> None:
     contracts = env.contracts
     logger.info("Persistence: %s", database_connection_summary(config))
 
-    registry = AgentRegistry(
-        storage=bundle.agent_registry,
+    runtime = DecisionRuntime(
+        bundle,
         supported_versions=cfg.registry.supported_versions,
     )
-    store = ContextStore(storage=bundle.context)
+    registry = runtime.registry
+    store = runtime.context_store
 
     agent_id = cfg.agent.agent_id
-    hs = registry.handshake(
+    hs = runtime.register_agent(
         agent_id,
         registry_handshake_payload(
             config,
@@ -162,7 +163,7 @@ def main() -> None:
             max_refund_eur=cfg.contract.max_refund_eur,
         ),
         cfg.agent.agent_version,
-        cfg.agent.priority,
+        priority=cfg.agent.priority,
     )
     if not hs.accepted:
         logger.error("Handshake rejected: %s", hs.reason)

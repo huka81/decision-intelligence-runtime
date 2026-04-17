@@ -405,6 +405,7 @@ def run_email_pipeline(
     registry: AgentRegistry,
     audit: AuditStore,
     simulation_id: str,
+    context_store: ContextStore | None = None,
 ) -> tuple[List[EmailCaseResult], DecisionLedger]:
     binder = PolicyBindingClient(audit)
 
@@ -412,7 +413,8 @@ def run_email_pipeline(
     contract_dict = contract.model_dump()
     agent_id = contract_dict["agent_id"]
 
-    context_store = ContextStore(storage=bundle.context)
+    if context_store is None:
+        context_store = ContextStore(storage=bundle.context)
     ledger = DecisionLedger()
     dim = DecisionIntegrityModule(registry, context_store, ledger)
     agent = ROAUnderwriterAgent(registry, agent_id, llm)

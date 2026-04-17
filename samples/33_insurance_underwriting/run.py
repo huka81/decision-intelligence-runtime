@@ -29,8 +29,7 @@ if str(_SAMPLES) not in sys.path:
 if str(_SAMPLE_DIR) not in sys.path:
     sys.path.insert(0, str(_SAMPLE_DIR))
 
-from dir_core import AgentRegistry
-from dir_core.storage import AuditStore
+from dir_core import DecisionRuntime
 from shared.bootstrap import (
     Environment,
     build_llm_from_config,
@@ -129,12 +128,13 @@ def main() -> None:
         return
     agent_id = str(agents_cfg[0].get("agent_id", "underwriter_agent"))
 
-    registry = AgentRegistry(storage=bundle.agent_registry)
+    runtime = DecisionRuntime(bundle)
+    registry = runtime.registry
     handshake_contract = registry_contract_payload(config, contracts, agent_id)
-    hr = registry.handshake(
+    hr = runtime.register_agent(
         agent_id,
         handshake_contract,
-        agent_version=str(agents_cfg[0].get("version", config.get("agent_version", "1.0.0"))),
+        str(agents_cfg[0].get("version", config.get("agent_version", "1.0.0"))),
         priority=int(agents_cfg[0].get("priority", 10)),
     )
     if not hr.accepted:
@@ -144,7 +144,7 @@ def main() -> None:
     sim = config.get("simulation") or {}
     simulation_id = str(sim.get("run_id", "uw_run"))
 
-    audit = AuditStore(bundle.decision_audit, bundle.idempotency)
+    audit = runtime.audit
     run_status = "ok"
     try:
         record_simulation_start(
@@ -161,6 +161,7 @@ def main() -> None:
             registry=registry,
             audit=audit,
             simulation_id=simulation_id,
+            context_store=runtime.context_store,
         )
 
         db_path_str = str(

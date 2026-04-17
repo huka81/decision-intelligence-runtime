@@ -35,7 +35,7 @@ Proste syntetyczne przykłady ilustrujące implementacje poszczególnych mechani
 | 05 | [05_dim_validation](05_dim_validation/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | Decision Integrity Module: deterministic validation gate |
 | 06 | [06_agent_registry](06_agent_registry/) | [DIR Pattern](../docs/02-decision-runtime/DIR_Architectural_Pattern.md) | Agent Registry: contracts and capability handshake |
 | 07 | [07_event_bus_swappable](07_event_bus_swappable/) | Infrastructure | In-memory Event Bus; note on swapping for Kafka/PubSub |
-| 08 | [08_custom_repo_psql](08_custom_repo_psql/) | Infrastructure | **Custom PostgreSQL storage backend**: implement all DIR storage Protocols against PostgreSQL; `build_repository → Repository`; full canonical 10-table schema (JSONB, TIMESTAMPTZ). Demonstrates the pluggable `storage=` pattern without touching the built-in SQLite backend. |
+| 08 | [08_custom_repo_psql](08_custom_repo_psql/) | Infrastructure | **PostgreSQL `StorageBundle`**: same bootstrap as other samples (`database.provider: postgres`, `DB_*` overrides); minimal classic flow to show registry, context, and audit rows on the shared adapter (`samples/shared/storage/pg_schema.sql`). |
 | 09 | [09_topology_a_eoam](09_topology_a_eoam/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | Topology A: Event-Oriented Agent Mesh |
 | 10 | [10_topology_b_sds](10_topology_b_sds/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | Topology B: Sovereign Decision Stream |
 | 11 | [11_topology_c_dl_pci](11_topology_c_dl_pci/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | Topology C: Decision Ledger & Proof-Carrying Intents |

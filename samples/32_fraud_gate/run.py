@@ -37,14 +37,8 @@ try:
 except ImportError:
     pass
 
-from dir_core import (
-    AgentRegistry,
-    ContextStore,
-    new_dfid,
-    validate_proposal,
-)
+from dir_core import DecisionRuntime, new_dfid
 from dir_core.data_types import ValidationVerdict
-from dir_core.storage import AuditStore
 from dir_core.utils.logging_utils import log_with_dfid
 
 from shared.bootstrap import (
@@ -100,14 +94,15 @@ def _run_one_scenario(
     *,
     scenario: ScenarioConfig,
     env: Environment,
-    store: ContextStore,
-    audit: AuditStore,
+    runtime: DecisionRuntime,
     rules: Any,
     contract: Any,
     agent_id: str,
     global_max_limit: float,
     simulation_id: str,
 ) -> None:
+    store = runtime.context_store
+    audit = runtime.audit
     risk_store = InMemoryRiskStore()
     for user_id, state in scenario.snapshot.items():
         risk_store.set(
@@ -212,12 +207,15 @@ def _run_one_scenario(
         "global_max_limit": global_max_limit,
     }
 
-    verdict, reason = validate_proposal(
+    verdict, reason = runtime.evaluate_proposal(
         proposal,
-        dim_context,
+        {},
+        dim_context=dim_context,
         allowed_agents=[agent_id],
         contract=contract.model_dump(),
         custom_validators=dim_validators(),
+        use_registry_contract=False,
+        record_audit=False,
     )
     log_with_dfid(logger, dfid, logging.INFO, "DIM: %s %s", verdict, reason)
 
@@ -295,9 +293,8 @@ def main() -> None:
     contracts = env.contracts
     logger.info("Persistence: %s", database_connection_summary(config))
 
-    registry = AgentRegistry(storage=bundle.agent_registry)
-    store = ContextStore(storage=bundle.context)
-    audit = AuditStore(bundle.decision_audit, bundle.idempotency)
+    runtime = DecisionRuntime(bundle)
+    audit = runtime.audit
 
     scenarios_path = sample_dir / "scenarios.yaml"
     scenarios = load_scenarios(scenarios_path)
@@ -310,10 +307,10 @@ def main() -> None:
 
     contract = contracts.get_contract(agent_id)
     priority = int(agents_cfg[0].get("priority", 10))
-    hr = registry.handshake(
+    hr = runtime.register_agent(
         agent_id,
         contract.model_dump(),
-        agent_version=str(config.get("agent_version", "1.0.0")),
+        str(config.get("agent_version", "1.0.0")),
         priority=priority,
     )
     if not hr.accepted:
@@ -332,8 +329,7 @@ def main() -> None:
             _run_one_scenario(
                 scenario=scenario,
                 env=env,
-                store=store,
-                audit=audit,
+                runtime=runtime,
                 rules=rules,
                 contract=contract,
                 agent_id=agent_id,
