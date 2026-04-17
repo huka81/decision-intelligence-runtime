@@ -41,6 +41,7 @@ from .data_types import (
     ValidationVerdict,
 )
 from .context_store import ContextStore
+from .runtime import DecisionRuntime
 from .dfid import new_dfid, new_dfid_with_parent
 from .event_bus import (
     Event,
@@ -197,6 +198,8 @@ __all__ = [
     "HandshakeResult",
     # Context Store (DIR ?8)
     "ContextStore",
+    # Facade (DX)
+    "DecisionRuntime",
     # Idempotency (DIR ?7)
     "IdempotencyGuard",
     "idempotency_key",
