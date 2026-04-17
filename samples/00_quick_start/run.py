@@ -1,122 +1,69 @@
 #!/usr/bin/env python3
 """
-00_quick_start - DIR Quick Start / High-Level Overview.
+00_quick_start — Minimal example preventing "Comma Catastrophe".
 
-Demonstrates the full architecture (Figure 1):
-- User Space: AI Agent (Ollama LLM or MockLLM)
-- DIR Kernel: Context Compiler, DIM, Execution Orchestrator, Context Store, Agent Registry
-- External: Mock Web Sources (with prompt injection), Mock API
+Demonstrates how DIR (DecisionRuntime) protects against language model
+misinterpretation of numbers (e.g., "15,500" interpreted as 15500.0).
 
-Scenario "Comma Catastrophe": Market feed contains ambiguous "15,500" ETH.
-The agent (real or mock) interprets it as 15500 — a catastrophic quantity.
-DIR rejects: order value exceeds max_order_usd limit. No API call.
-
-LLM mode (default): real Ollama (gemma3:4b or as configured in config.yaml).
-Mock mode: USE_MOCK_LLM=1 or llm_defaults.provider: mock in config.yaml.
-
-Run from repo root: python samples/00_quick_start/run.py
-Requires: pip install -e .  and  pip install pyyaml
+Run: python samples/00_quick_start/run.py
 """
-
 from __future__ import annotations
 
-import hashlib
+import sys
 import json
+import re
 import logging
 import os
-import re
-import sys
-import textwrap
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_SRC = _REPO_ROOT / "src"
-_SAMPLES = _REPO_ROOT / "samples"
-if str(_SRC) not in sys.path:
-    sys.path.insert(0, str(_SRC))
-if str(_SAMPLES) not in sys.path:
-    sys.path.insert(0, str(_SAMPLES))
+if str(_REPO_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT / "src"))
+if str(_REPO_ROOT / "samples") not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT / "samples"))
 
-from dir_core import (
-    ContextStore,
-    PolicyProposal,
-    new_dfid,
-    validate_proposal,
-)
-from dir_core.agent_registry import AgentRegistry
-from dir_core.storage import ensure_db
+from dir_core import DecisionRuntime, PolicyProposal, new_dfid
+from dir_core.storage import memory_storage
 from shared.config import load_yaml_config
-from dir_core.utils.llm_client import LLMClient
-from shared.llm.clients import OllamaClient, check_ollama
+from shared.llm.clients import OllamaClient, GeminiClient, MockLLMClient, check_ollama
 
-try:
-    from .llm_client import MockLLM
-except ImportError:
-    from llm_client import MockLLM
-
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
+# Mute internal DIR and adapter logs for maximum clarity in this showcase
+logging.getLogger("dir_core").setLevel(logging.WARNING)
+logging.getLogger("shared").setLevel(logging.WARNING)
 
-# ---------------------------------------------------------------------------
-# Mock Web Source (with prompt injection / ambiguous number)
-# ---------------------------------------------------------------------------
+def max_order_size_validator(
+    proposal: PolicyProposal, 
+    ctx: Dict[str, Any], 
+    contract: Dict[str, Any]
+) -> str | None:
+    """DIM Validator: Verifies if order value does not exceed the allowed limit."""
+    if proposal.policy_kind not in ("BUY", "SELL"):
+        return None
+    
+    qty_raw = proposal.params.get("quantity", 0.0)
+    try:
+        qty = float(str(qty_raw).replace(",", ""))
+    except (ValueError, TypeError):
+        qty = 0.0
+        
+    price_usd = ctx.get("web", {}).get("current_price_eth_usd", 2500.0)
+    value_usd = qty * price_usd
+    
+    max_usd = contract.get("permissions", {}).get("max_order_size_usd", float("inf"))
+    
+    if value_usd > max_usd:
+        return (
+            f"ORDER_VALUE_EXCEEDED: Value {value_usd:,.2f} USD "
+            f"exceeds allowed contract limit of {max_usd:,.2f} USD."
+        )
+    return None
 
-def mock_fetch_market_data(config: Dict[str, Any], inject_prompt: bool = True) -> Dict[str, Any]:
-    """
-    Simulates fetching data from external web source.
-    Contains prompt injection and ambiguous locale number (15,500 vs 15.500).
-    """
-    mock = config.get("mock_web", {})
-    prices = mock.get("prices", {"ETH-USD": 2500.0, "BTC-USD": 50000.0})
-    scenario = mock.get("inject", {}) if inject_prompt else mock.get("clean", {})
-    return {
-        "source": "market_signal_feed",
-        "suggested_position_eth": scenario.get("suggested_position_eth", "0"),
-        "note": scenario.get("note", ""),
-        "price_eth_usd": prices.get("ETH-USD", 2500.0),
-        "price_btc_usd": prices.get("BTC-USD", 50000.0),
-    }
-
-
-# ---------------------------------------------------------------------------
-# LLM Agent — prompt building, response parsing, reasoning
-# ---------------------------------------------------------------------------
-
-def _build_system_prompt(mission: str) -> str:
-    """System prompt defining the agent's role, injected into Ollama."""
-    return (
-        f"{mission} "
-        "Analyze the market signal feed and propose a trading action. "
-        "Respond with ONLY a valid JSON object — no markdown, no explanation. "
-        'Keys: policy_kind ("BUY"|"SELL"|"HOLD"), '
-        'params ({instrument: str, quantity: float, execution_type: str}), '
-        "justification (string), confidence (float 0-1)."
-    )
-
-
-def _build_prompt(web_data: Dict[str, Any], config: Dict[str, Any]) -> str:
-    """Build the user prompt from current market context."""
-    prices = config.get("mock_web", {}).get("prices", {})
-    eth_price = prices.get("ETH-USD", web_data.get("price_eth_usd", 0))
-    btc_price = prices.get("BTC-USD", web_data.get("price_btc_usd", 0))
-    return (
-        f"Market Signal Feed:\n"
-        f'- instrument: ETH-USD\n'
-        f'- suggested_position_eth: "{web_data.get("suggested_position_eth", "0")}"\n'
-        f'- note: "{web_data.get("note", "")}"\n'
-        f"\nCurrent prices:\n"
-        f"- ETH-USD: ${eth_price:,.2f}\n"
-        f"- BTC-USD: ${btc_price:,.2f}\n"
-        f"\nRespond with ONLY valid JSON:\n"
-        '{"policy_kind": "BUY", "params": {"instrument": "ETH-USD", "quantity": <float>, "execution_type": "MARKET"}, '
-        '"justification": "<your reasoning>", "confidence": <float 0.0-1.0>}'
-    )
-
-
-def _parse_llm_response(raw: str) -> Optional[Dict[str, Any]]:
-    """Extract JSON from LLM response, handling markdown code fences."""
+def parse_llm_json(raw: str) -> Optional[Dict[str, Any]]:
+    """Extracts JSON from model response (handles markdown)."""
     text = raw.strip()
     if "```" in text:
         m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
@@ -128,386 +75,156 @@ def _parse_llm_response(raw: str) -> Optional[Dict[str, Any]]:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        logger.warning("LLM response not valid JSON: %s", raw[:200])
         return None
 
 
-def agent_reason(
-    context: Dict[str, Any],
-    config: Dict[str, Any],
-    llm: LLMClient,
-) -> PolicyProposal:
-    """
-    Agent reasoning stage (User Space).
-    Builds a prompt from context, calls the LLM, parses the response into a
-    PolicyProposal.  Falls back to HOLD with confidence=0 if parsing fails.
-    The agent does NOT know contract limits — it reasons purely on market data.
-    """
-    web = context.get("web", {})
-    mission = config.get("contract", {}).get("mission", "You are a crypto trading agent.")
-    prompt = _build_prompt(web, config)
-    system = _build_system_prompt(mission)
-
+def normalize_confidence(raw: Any) -> float:
+    """Coerce LLM confidence into PolicyProposal range [0.0, 1.0] (untrusted input)."""
     try:
-        raw = llm.generate(prompt, system=system)
-    except Exception as exc:
-        logger.warning("LLM call failed: %s — defaulting to HOLD", exc)
-        raw = ""
-
-    parsed = _parse_llm_response(raw) if raw else None
-
-    if parsed is None:
-        return PolicyProposal(
-            dfid=context["meta"]["dfid"],
-            agent_id=context["meta"]["agent_id"],
-            policy_kind="HOLD",
-            params={"instrument": "ETH-USD", "quantity": 0.0, "execution_type": "MARKET"},
-            justification="LLM response could not be parsed; defaulting to HOLD.",
-            confidence=0.0,
-        )
-
-    return PolicyProposal(
-        dfid=context["meta"]["dfid"],
-        agent_id=context["meta"]["agent_id"],
-        policy_kind=str(parsed.get("policy_kind", "HOLD")),
-        params=parsed.get("params", {"instrument": "ETH-USD", "quantity": 0.0, "execution_type": "MARKET"}),
-        justification=str(parsed.get("justification", "")),
-        confidence=float(parsed.get("confidence", 0.0)),
-    )
+        v = float(raw)
+    except (TypeError, ValueError):
+        return 0.0
+    if v != v:  # NaN
+        return 0.0
+    # Whole numbers in (1, 100] are often "percent" style (e.g. 95 -> 0.95, 2 -> 0.02).
+    if 1.0 < v <= 100.0 and v == int(v):
+        v = v / 100.0
+    return max(0.0, min(1.0, v))
 
 
-# ---------------------------------------------------------------------------
-# LLM client factory (Ollama or MockLLM — same pattern as 32_fraud_gate)
-# ---------------------------------------------------------------------------
-
-def _build_llm(config: Dict[str, Any]) -> LLMClient:
-    """Build LLM client from config. Falls back to MockLLM automatically."""
+def _build_llm(config: Dict[str, Any]) -> Any:
+    """Build LLM client from config. Falls back to MockLLM if Ollama is unreachable."""
     llm_cfg = config.get("llm_defaults", {})
+    provider = str(llm_cfg.get("provider", "ollama")).lower()
+    
+    # We define a mock strategy to simulate the "Comma Catastrophe"
+    def mock_strategy(prompt: str, system: Optional[str]) -> str:
+        return json.dumps({
+            "policy_kind": "BUY",
+            "params": {"instrument": "ETH-USD", "quantity": 15500.0},
+            "confidence": 0.95,
+            "justification": "Market signal says buy 15,500 ETH. Interpreting as 15500 pieces and ignoring potential risks."
+        })
 
-    if os.getenv("USE_MOCK_LLM", "").strip() in ("1", "true", "yes"):
-        logger.info("[LLM] Using MockLLM (USE_MOCK_LLM=1)")
-        return MockLLM()
+    if os.getenv("USE_MOCK_LLM", "").strip() in ("1", "true", "yes") or provider == "mock":
+        logger.info("Using MockLLM as explicitly configured.")
+        return MockLLMClient(strategy=mock_strategy)
 
-    if not llm_cfg or str(llm_cfg.get("provider", "")).lower() == "mock":
-        logger.info("[LLM] Using MockLLM (provider=mock or llm_defaults absent)")
-        return MockLLM()
+    if provider == "gemini":
+        model = os.getenv("GEMINI_MODEL", llm_cfg.get("model", "gemini-1.5-pro"))
+        api_key = os.getenv("GEMINI_API_KEY", llm_cfg.get("api_key", ""))
+        logger.info("Using Gemini: model=%s", model)
+        return GeminiClient(model=model, api_key=api_key)
 
+    # Default to Ollama
     model = os.getenv("OLLAMA_MODEL", llm_cfg.get("model", "gemma3:4b"))
     base_url = os.getenv("OLLAMA_BASE_URL", llm_cfg.get("base_url", "http://localhost:11434"))
 
     if not check_ollama(base_url, model):
         logger.warning(
-            "[LLM] Ollama not reachable at %s or model '%s' not found — "
-            "falling back to MockLLM. (ollama serve && ollama pull %s)",
-            base_url, model, model,
+            "Ollama not reachable at %s (model: %s). Falling back to MockLLM.",
+            base_url,
+            model,
         )
-        return MockLLM()
+        return MockLLMClient(strategy=mock_strategy)
 
-    logger.info("[LLM] Using Ollama: model=%s base_url=%s", model, base_url)
+    logger.info("Using Ollama: model=%s base_url=%s", model, base_url)
     return OllamaClient(model=model, base_url=base_url)
-
-
-# ---------------------------------------------------------------------------
-# Contract validation (extends DIM for order size limit)
-# ---------------------------------------------------------------------------
-
-def validate_order_against_contract(
-    proposal: PolicyProposal,
-    contract: Dict[str, Any],
-    config: Dict[str, Any],
-) -> Tuple[bool, str]:
-    """Check order value against max_order_size_usd. Returns (ok, reason)."""
-    if proposal.policy_kind not in ("BUY", "SELL", "PLACE_ORDER"):
-        return True, "OK"
-    params = proposal.params
-    quantity = params.get("quantity") or 0
-    instrument = params.get("instrument", "")
-    prices = config.get("mock_web", {}).get("prices", {"ETH-USD": 2500.0, "BTC-USD": 50000.0})
-    price = prices.get(instrument, prices.get("ETH-USD", 2500.0))
-    value_usd = quantity * price
-    perms = contract.get("permissions", contract)
-    max_usd = perms.get("max_order_size_usd", float("inf"))
-    if value_usd > max_usd:
-        return False, (
-            f"ORDER_VALUE_EXCEEDED: Request ~{value_usd:,.0f} USD exceeds limit {max_usd:,.0f} USD "
-            f"(quantity={quantity}, instrument={instrument})"
-        )
-    return True, "OK"
-
-
-def contract_audit_meta(contract: Dict[str, Any]) -> Dict[str, str]:
-    """Extract audit-relevant contract identity for decision logs."""
-    return {
-        "agent_id": str(contract.get("agent_id", "unknown_agent")),
-        "version": str(contract.get("version", "unknown_version")),
-        "owner": str(contract.get("owner", "unknown_owner")),
-        "effective_from": str(contract.get("effective_from", "unknown_effective_from")),
-    }
-
-
-def log_audit_event(level: int, event: str, fields: Dict[str, Any]) -> None:
-    """Log audit events in a stable, multi-line format for terminal readability."""
-    lines = [f"[AUDIT][{event}]"]
-    for key, value in fields.items():
-        prefix = f"  - {key}: "
-        wrapped = textwrap.fill(
-            str(value),
-            width=100,
-            initial_indent=prefix,
-            subsequent_indent=" " * len(prefix),
-            break_long_words=False,
-            break_on_hyphens=False,
-        )
-        lines.append(wrapped)
-    logger.log(level, "\n".join(lines))
-
-
-# ---------------------------------------------------------------------------
-# Mock External API
-# ---------------------------------------------------------------------------
-
-def mock_exchange_api(proposal: PolicyProposal) -> str:
-    """Simulates external exchange API. Only logs; no real call."""
-    params = proposal.params
-    logger.info(
-        "[MOCK API] Would execute: %s %s %s @ %s",
-        proposal.policy_kind,
-        params.get("quantity"),
-        params.get("instrument"),
-        params.get("execution_type"),
-    )
-    return "mock_receipt_" + hashlib.sha256(proposal.model_dump_json().encode()).hexdigest()[:8]
-
-
-# ---------------------------------------------------------------------------
-# Context Compiler (assembles context for Agent)
-# ---------------------------------------------------------------------------
-
-def compile_context(
-    store: ContextStore,
-    registry: AgentRegistry,
-    agent_id: str,
-    dfid: str,
-    web_data: Dict[str, Any],
-) -> Dict[str, Any]:
-    """Context Compiler: merges session, state, web data; fetches schema from registry."""
-    store.update_session(dfid, {"web_raw": web_data})
-    ctx = store.compile_working_context(agent_id, dfid)
-    ctx["web"] = web_data
-    ctx["meta"]["dfid"] = dfid
-    ctx["meta"]["agent_id"] = agent_id
-    schema = registry.get_schema(agent_id)
-    if schema:
-        ctx["meta"]["schema"] = schema
-    return ctx
-
-
-# ---------------------------------------------------------------------------
-# Execution Orchestrator (when DIM accepts)
-# ---------------------------------------------------------------------------
-
-def execute_and_audit(
-    proposal: PolicyProposal,
-    store: ContextStore,
-    dfid: str,
-) -> str:
-    """Execute via mock API and audit to Context Store."""
-    receipt = mock_exchange_api(proposal)
-    store.update_session(dfid, {
-        "audit": {
-            "executed": True,
-            "receipt": receipt,
-            "policy_kind": proposal.policy_kind,
-            "params": proposal.params,
-        },
-    })
-    return receipt
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main() -> None:
     sample_dir = Path(__file__).resolve().parent
-    config_path = sample_dir / "config.yaml"
-    config = load_yaml_config(config_path)
-
+    config = load_yaml_config(sample_dir / "config.yaml")
     contract = config.get("contract", {})
-    agent_id = contract.get("agent_id", "crypto_position_manager_01")
-    agent_version = contract.get("version", "1.2.0")
-    contract_meta = contract_audit_meta(contract)
-    llm = _build_llm(config)
+    agent_id = contract.get("agent_id", "trading_bot_01")
 
-    log_audit_event(
-        logging.INFO,
-        "CONTRACT_LOAD",
-        {
-            "contract_agent_id": contract_meta["agent_id"],
-            "contract_version": contract_meta["version"],
-            "contract_owner": contract_meta["owner"],
-            "contract_effective_from": contract_meta["effective_from"],
-        },
-    )
+    logger.info("=" * 80)
+    logger.info(" DIR Quick Start: Comma Catastrophe ")
+    logger.info("=" * 80)
 
-    data_dir = sample_dir / "data"
-    db_path = ensure_db(data_dir / "quick_start.db")
-    store = ContextStore(str(db_path))
-    registry = AgentRegistry(str(db_path), supported_versions="1.x")
-
-    dfid = new_dfid()
-
-    print("=" * 80)
-    print("00_quick_start - DIR Quick Start (High-Level Overview)")
-    print("=" * 80)
-
-    # 1. Agent Registry: handshake with contract
-    hr = registry.handshake(
-        agent_id,
-        contract,
-        agent_version=agent_version,
-    )
+    # 1. Initialize DIR environment (in-memory storage for clean code)
+    runtime = DecisionRuntime(memory_storage())
+    
+    # 2. Handshake: Register agent contract
+    hr = runtime.register_agent(agent_id, contract, agent_version=contract.get("version", "1.0.0"))
     if not hr.accepted:
-        print(f"FATAL: Agent handshake failed: {hr.reason}")
+        logger.error("Agent registration rejected: %s", hr.reason)
         return
-    print(f"\n[1] Agent Registry: Handshake accepted (agent_id={agent_id})")
+        
+    logger.info("[1] Agent registered.")
+    logger.info(f"    Contract: order limit = {contract.get('permissions', {}).get('max_order_size_usd', 0):,.0f} USD")
+    logger.info("-" * 80)
 
-    # 2. Context Compiler: fetch from mock web
-    web_data = mock_fetch_market_data(config, inject_prompt=True)
-    print(f"\n[2] Context Compiler: Fetching from mock web source...")
-    print(f"    Web data (raw): {json.dumps(web_data, indent=2)}")
-    context = compile_context(store, registry, agent_id, dfid, web_data)
-
-    # 3. Agent: reason over context via LLM
-    proposal = agent_reason(context, config, llm)
-    log_audit_event(
-        logging.INFO,
-        "PROPOSAL_EMIT",
-        {
-            "dfid": proposal.dfid,
-            "agent_id": proposal.agent_id,
-            "policy_kind": proposal.policy_kind,
-            "params": json.dumps(proposal.params, ensure_ascii=True, sort_keys=True),
-            "confidence": proposal.confidence,
-            "justification": proposal.justification or "",
-        },
+    # 3. LLM Setup
+    llm = _build_llm(config)
+    
+    # 4. Input Scenario
+    mock_web = config.get("mock_web", {})
+    signal = {
+        "action": "BUY", 
+        "amount_str": mock_web.get("inject", {}).get("suggested_position_eth", "15,500") + " ETH",
+        "note": mock_web.get("inject", {}).get("note", "")
+    }
+    logger.info("[2] Test scenario - external signal: %s", signal)
+    logger.info(f"    LLM is processing the signal...")
+    
+    current_price_eth_usd = mock_web.get("prices", {}).get("ETH-USD", 2500.0)
+    
+    prompt = (
+        f"Analyze signal: {signal}.\n"
+        f"Current price ETH-USD: {current_price_eth_usd}.\n"
+        "Output ONLY JSON with keys: policy_kind (BUY/SELL/HOLD), "
+        "params (dict with instrument, quantity as a number), "
+        "confidence (float strictly between 0.0 and 1.0), justification."
     )
-    agent_mode = "Ollama" if isinstance(llm, OllamaClient) else "MockLLM"
-    print(f"\n[3] Agent [{agent_mode}]: Reasoning over context...")
-    print(f"    Proposal: {proposal.policy_kind} {proposal.params.get('quantity')} "
-          f"{proposal.params.get('instrument')}")
-    print(f"    Justification: {(proposal.justification or '')[:90]}")
+    raw_response = llm.generate(prompt, system=contract.get("mission"))
+    logger.info(f"    Raw LLM response: {raw_response}")
+    
+    parsed = parse_llm_json(raw_response)
+    if not parsed:
+        logger.error("Failed to parse LLM response. Exiting.")
+        return
+    
+    # 5. Formulation of proposal (User Space)
+    conf_raw = parsed.get("confidence", 0.0)
+    conf = normalize_confidence(conf_raw)
+    if conf != conf_raw:
+        logger.info(f"    Normalized confidence from LLM value {conf_raw!r} -> {conf}")
 
-    # 4. DIM Validation
-    perms = contract.get("permissions", {})
-    print(f"\n[4] DIM Validation: Checking against contract...")
-    print(f"    Contract: max_order_usd={perms.get('max_order_size_usd')}, "
-          f"allowed_instruments={perms.get('allowed_instruments')}")
-    base_ctx = {"state": {}, "meta": context.get("meta", {})}
-    verdict, reason = validate_proposal(
+    proposal = PolicyProposal(
+        dfid=new_dfid(),
+        agent_id=agent_id,
+        policy_kind=parsed.get("policy_kind", "HOLD"),
+        params=parsed.get("params", {}),
+        confidence=conf,
+        justification=parsed.get("justification", "")
+    )
+    
+    logger.info("")
+    logger.info("[3] Agent Reasoning (LLM Proposal):")
+    logger.info(f"    Action: {proposal.policy_kind} {proposal.params.get('quantity')} {proposal.params.get('instrument')}")
+    logger.info(f"    Justification: '{proposal.justification}'")
+    logger.info("-" * 80)
+    
+    # 6. DIM: Safety verification (Kernel Space)
+    logger.info("[4] DIR Runtime (DIM) - verifying proposal...")
+    
+    current_price_eth_usd = mock_web.get("prices", {}).get("ETH-USD", 2500.0)
+    verdict, reason = runtime.evaluate_proposal(
         proposal,
-        base_ctx,
+        raw_web_context={"current_price_eth_usd": current_price_eth_usd},
         allowed_agents=[agent_id],
+        contract=contract,
+        custom_validators=[max_order_size_validator],
+        record_audit=False
     )
+    
     if verdict == "ACCEPT":
-        ok, contract_reason = validate_order_against_contract(proposal, contract, config)
-        if not ok:
-            verdict = "REJECT"
-            reason = contract_reason
-
-    if verdict == "REJECT":
-        log_audit_event(
-            logging.WARNING,
-            "PROPOSAL_REJECT",
-            {
-                "dfid": proposal.dfid,
-                "policy_kind": proposal.policy_kind,
-                "reason": reason,
-                "contract_agent_id": contract_meta["agent_id"],
-                "contract_version": contract_meta["version"],
-                "contract_owner": contract_meta["owner"],
-                "contract_effective_from": contract_meta["effective_from"],
-            },
-        )
-        print(f"    REJECT: {reason}")
-        print(f"\n[5] DIR blocked catastrophic action. No API call. Escalation: Human notified.")
+        logger.info("ACCEPTED: %s. Order is sent to exchange.", reason)
     else:
-        log_audit_event(
-            logging.INFO,
-            "PROPOSAL_ACCEPT",
-            {
-                "dfid": proposal.dfid,
-                "policy_kind": proposal.policy_kind,
-                "reason": reason,
-                "contract_agent_id": contract_meta["agent_id"],
-                "contract_version": contract_meta["version"],
-                "contract_owner": contract_meta["owner"],
-                "contract_effective_from": contract_meta["effective_from"],
-            },
-        )
-        print(f"    ACCEPT: {reason}")
-        receipt = execute_and_audit(proposal, store, dfid)
-        print(f"\n[5] Execution Orchestrator: Mock API called. Receipt: {receipt}")
-
-    # 6. Summary
-    print(f"\n[6] Summary: DFID={dfid[:8]}... verdict={verdict} reason={reason[:50]}...")
-    print("=" * 80)
-
-    # Optional: second run with correct data (ACCEPT path)
-    print("\n--- BONUS: Run with correct data (no injection) ---")
-    web_clean = mock_fetch_market_data(config, inject_prompt=False)
-    dfid2 = new_dfid()
-    context2 = compile_context(store, registry, agent_id, dfid2, web_clean)
-    proposal2 = agent_reason(context2, config, llm)
-    log_audit_event(
-        logging.INFO,
-        "PROPOSAL_EMIT",
-        {
-            "dfid": proposal2.dfid,
-            "agent_id": proposal2.agent_id,
-            "policy_kind": proposal2.policy_kind,
-            "params": json.dumps(proposal2.params, ensure_ascii=True, sort_keys=True),
-            "confidence": proposal2.confidence,
-            "justification": proposal2.justification or "",
-        },
-    )
-    print(f"    Proposal: {proposal2.policy_kind} {proposal2.params.get('quantity')} ETH")
-    verdict2, reason2 = validate_proposal(proposal2, base_ctx, allowed_agents=[agent_id])
-    ok2, _ = validate_order_against_contract(proposal2, contract, config)
-    if ok2 and verdict2 == "ACCEPT":
-        log_audit_event(
-            logging.INFO,
-            "PROPOSAL_ACCEPT",
-            {
-                "dfid": proposal2.dfid,
-                "policy_kind": proposal2.policy_kind,
-                "reason": reason2,
-                "contract_agent_id": contract_meta["agent_id"],
-                "contract_version": contract_meta["version"],
-                "contract_owner": contract_meta["owner"],
-                "contract_effective_from": contract_meta["effective_from"],
-            },
-        )
-        execute_and_audit(proposal2, store, dfid2)
-        print(f"    Verdict: ACCEPT - executed.")
-    else:
-        log_audit_event(
-            logging.WARNING,
-            "PROPOSAL_REJECT",
-            {
-                "dfid": proposal2.dfid,
-                "policy_kind": proposal2.policy_kind,
-                "reason": reason2,
-                "contract_agent_id": contract_meta["agent_id"],
-                "contract_version": contract_meta["version"],
-                "contract_owner": contract_meta["owner"],
-                "contract_effective_from": contract_meta["effective_from"],
-            },
-        )
-        print(f"    Verdict: {verdict2} - {reason2}")
-    print("=" * 80)
-
+        logger.info("REJECTED: %s", reason)
+        logger.info("    -> DIR prevented the catastrophic order hallucinated by the LLM.")
+        
+    logger.info("=" * 80)
 
 if __name__ == "__main__":
     main()
-
