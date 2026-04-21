@@ -232,3 +232,4 @@ __marimo__/
 /samples/36_drift_optimization_discount/agent-prompt.md
 /samples/38_drift_environmental_bidding/agent-prompt.md
 /publications
+/samples/38_drift_environmental_bidding/data/*.sqlite
