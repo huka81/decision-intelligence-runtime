@@ -1,0 +1,2 @@
+# Extras beyond editable dir-runtime + PyYAML (declared in sample README).
+psycopg2-binary>=2.9
