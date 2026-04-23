@@ -215,3 +215,20 @@ def check_ollama(base_url: str, model: str, timeout: int = 5) -> bool:
     available = [m.get("name", "") for m in data.get("models", [])]
     model_base = model.split(":")[0]
     return any(model_base in name for name in available)
+
+def test_ollama_alive_and_responds() -> None:
+    """Verify Ollama service is alive and responds to LLM query. Prints response."""
+    client = OllamaClient(model="gemma3:4b", base_url="http://localhost:11434", timeout=30)
+    prompt = "Jaki jest sens zycia? Odpowiedz w jednym zdaniu."
+    response = client.generate(prompt, system="You are a thoughtful assistant. Answer briefly.")
+
+    # Print result (visible with pytest -s or in capsys)
+    print("\n" + "=" * 60)
+    print("Ollama LLM test - response:")
+    print("=" * 60)
+    print(f"Prompt: {prompt}")
+    print(f"Response: {response.strip()}")
+    print("=" * 60 + "\n")
+
+if __name__ == "__main__":
+    test_ollama_alive_and_responds()
