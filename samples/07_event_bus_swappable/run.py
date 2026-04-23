@@ -21,7 +21,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from dir import (
+from dir_core import (
     Event,
     EventBus,
     EventMetadata,
@@ -34,7 +34,7 @@ from dir import (
     select_winner,
     should_wake,
 )
-from utils.logging_utils import log_with_dfid
+from dir_core.utils.logging_utils import log_with_dfid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -507,3 +507,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

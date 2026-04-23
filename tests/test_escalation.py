@@ -3,12 +3,12 @@
 import tempfile
 from pathlib import Path
 
-from dir.escalation import (
+from dir_core.escalation import (
     EscalationManager,
     EscalationOutcome,
     ImpactCategory,
 )
-from dir.models import EscalationRequest, Policy, PolicyProposal
+from dir_core.models import EscalationRequest, Policy, PolicyProposal
 
 
 def test_request_escalation_granted() -> None:
@@ -114,3 +114,4 @@ def test_request_from_model() -> None:
             Path(path).unlink(missing_ok=True)
         except OSError:
             pass
+

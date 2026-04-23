@@ -1,0 +1,51 @@
+# Sample 08 — PostgreSQL-backed canonical StorageBundle (DIR classic)
+# Run: python samples/08_custom_repo_psql/run.py
+#
+# Secrets: use DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS — never commit real passwords.
+
+database:
+  provider: postgres
+  host: localhost
+  port: 5432
+  dbname: dir_quickstart
+  user: dir_user
+  password: ""
+
+simulation:
+  run_id: "psql_repo_demo_001"
+  seeds:
+    mock_llm: 42
+
+demo:
+  note: "Single decision flow to verify PostgreSQL-backed StorageBundle."
+
+llm_defaults:
+  model: "gemma3:4b"
+  base_url: "http://localhost:11434"
+  temperature: 0.2
+  timeout: 60
+
+# path omitted — bootstrap passes the loaded ``config.yaml`` path (Guide §7).
+contracts:
+  provider: yaml
+
+agents:
+  - agent_id: "repo_demo_agent"
+    priority: 10
+    owner: "dir-samples@example.com"
+    version: "1.0.0"
+    effective_from: "2026-02-01"
+    effective_until: null
+    approved_by: null
+    contract:
+      role: EXECUTOR
+      mission: >-
+        You are a placeholder agent for a storage wiring demo. Prefer HOLD.
+        Follow the JSON shapes requested in each ROA stage prompt exactly.
+      authorized_instruments: []
+      allowed_policy_types:
+        - "HOLD"
+      escalate_on_uncertainty: 0.5
+      max_drawdown_limit: 0.05
+      wake_up_threshold_pct: 0.5
+      parent_agent_id: null

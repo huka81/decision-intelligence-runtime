@@ -15,9 +15,9 @@ import time
 from pathlib import Path
 from typing import Any, Dict
 
-from dir import new_dfid
-from utils import ensure_db
-from dir.idempotency import IdempotencyGuard, SQLiteBackend
+from dir_core import new_dfid
+from dir_core.storage import ensure_db
+from dir_core.idempotency import IdempotencyGuard, SQLiteBackend
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -96,3 +96,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

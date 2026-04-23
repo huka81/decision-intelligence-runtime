@@ -105,8 +105,8 @@ python samples/05_dim_validation/run.py
 ## Key Functions
 
 ```python
-from dir.dim import validate_proposal
-from dir.models import PolicyProposal
+from dir_core.dim import validate_proposal
+from dir_core.models import PolicyProposal
 
 # Create a proposal
 proposal = PolicyProposal(
@@ -167,7 +167,7 @@ End of Demonstration
 
 ## Why DIM Matters
 
-From DIR Architectural Pattern §6:
+from dir_core Architectural Pattern §6:
 
 > *"The Decision Integrity Module (DIM) is the gatekeeper between policy proposals and execution. It enforces defense-in-depth through three validation layers: schema (structural correctness), RBAC (authorization), and state consistency (business logic). Without DIM, a compromised or buggy agent could emit dangerous policies that execute unchecked, leading to financial loss, compliance violations, or system damage."*
 
@@ -243,3 +243,4 @@ Agent → PolicyProposal
 ```
 
 The DIM sits between proposal generation and execution, ensuring safety without slowing down the decision pipeline (validation is fast, typically <1ms).
+

@@ -1,6 +1,6 @@
 # 07 - Event Bus (Swappable) - EOAM Demonstration
 
-**Goal:** Demonstrate the **Event-Oriented Agent Mesh (EOAM)** pattern from DIR Topologies §2, showing how multiple agents reactively collaborate through an event bus.
+**Goal:** Demonstrate the **Event-Oriented Agent Mesh (EOAM)** pattern from dir_core Topologies §2, showing how multiple agents reactively collaborate through an event bus.
 
 **DIR Alignment:** Topologies §2 (EOAM), §2.1 (Scope-Based Choreography), §2.3 (Economic Guardrails), §2.4 (Priority-Based Preemption)
 
@@ -182,7 +182,7 @@ Event Bus Sample - Event-Oriented Agent Mesh (EOAM)
 
 ## Why EOAM Matters
 
-From DIR Topologies §2:
+from dir_core Topologies §2:
 
 > *"EOAM is a decentralized architectural pattern where autonomous agents collaborate through a reactive event substrate. It defines a system that is 'Decentralized in activation, centralized in authority.'"*
 
@@ -191,3 +191,4 @@ Key benefits:
 - **Resilience**: One agent failure doesn't stop others
 - **Scalability**: Add agents without changing orchestration
 - **Auditability**: DFID traces every decision flow
+

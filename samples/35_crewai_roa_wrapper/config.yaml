@@ -1,164 +1,67 @@
-# 35 - CrewAI ROA Wrapper - Claims Agent Configuration
-# ROA Manifesto §3 (Responsibility Contract), DIR Architectural Pattern §6 (DIM)
-#
-# Structure:
-#   llm_defaults    - LLM provider and model (same convention as 31_finance_trading)
-#   agent           - Claims Agent identity, mission, and contract boundaries
-#   context_store   - Authoritative order data (source of truth for DIM, not for LLM)
-#   scenarios       - Test scenarios with expected DIM verdicts
+# 35 - CrewAI ROA wrapper — runtime config (Sample Guide §7)
+database:
+  provider: sqlite
+  db_path: "data/crewai_roa.db"
 
-# ============================================================================
-# LLM Configuration
-# ============================================================================
-# Same conventions as 31_finance_trading/config.yaml
-#
-# For Ollama (local) - default:
 llm_defaults:
   model: "gemma3:4b"
   base_url: "http://localhost:11434"
   temperature: 0.2
-#
-# For a different local model:
-# llm_defaults:
-#   model: "llama3.2:3b"
-#   base_url: "http://localhost:11434"
-#   temperature: 0.3
-#
-# Override via env vars:
-#   OLLAMA_MODEL=gemma3:4b
-#   OLLAMA_BASE_URL=http://localhost:11434
 
-# ============================================================================
-# Claims Agent Specification
-# ============================================================================
-# Single ROA-wrapped CrewAI Crew (Claims Analyst + Decision Maker agents).
-# The contract defines the authority boundary enforced by the DIM in Kernel Space.
-#
-agent:
-  agent_id: "claims_agent_v1"
+simulation:
+  run_id: "crewai_claims_batch_001"
+  seeds: {}
 
-  # Mission: long-term optimization target injected into agent backstory
-  # (ROA Manifesto §3.1 - Responsibility Contract)
-  mission: >
-    Process customer claims fairly, within policy boundaries,
-    without exceeding authority or escalating unnecessarily.
+agents:
+  - agent_id: "claims_agent_v1"
+    priority: 10
+    crew:
+      analyst_role: "Claims Analyst"
+      analyst_goal: "Analyze a customer refund claim and summarize eligibility."
+      decision_maker_role: "Decision Maker"
+      decision_maker_goal: >
+        Based on analyst findings, produce a refund proposal as JSON.
+        Use action=REFUND always. The DIR Kernel enforces all limits.
+    contract:
+      role: EXECUTOR
+      mission: >
+        Process customer claims fairly, within policy boundaries,
+        without exceeding authority or escalating unnecessarily.
+      authorized_instruments:
+        - electronics
+        - clothing
+        - home
+      allowed_policy_types:
+        - REFUND
+        - REPLACE
+        - ESCALATE
+      escalate_on_uncertainty: 0.7
+      max_drawdown_limit: 0.05
+      wake_up_threshold_pct: 0.5
+      parent_agent_id: null
+    claims_bounds:
+      max_refund_without_escalation: 500.0
+      return_window_days: 14
 
-  # CrewAI crew configuration
-  crew:
-    analyst_role: "Claims Analyst"
-    analyst_goal: "Analyze a customer refund claim and summarize eligibility."
-    decision_maker_role: "Decision Maker"
-    decision_maker_goal: >
-      Based on analyst findings, produce a refund proposal as JSON.
-      Use action=REFUND always. The DIR Kernel enforces all limits.
-
-  # Responsibility Contract - authority boundaries enforced by DIM
-  # (ROA Manifesto §3.1, DIR Architectural Pattern §6)
-  contract:
-    role: EXECUTOR
-    allowed_refund_categories:
-      - electronics
-      - clothing
-      - home
-    max_refund_without_escalation: 500.0   # EUR - above this: ESCALATE
-    return_window_days: 14                 # days from purchase date
-    allowed_policy_types:
-      - REFUND
-      - REPLACE
-      - ESCALATE
-    escalate_on_uncertainty: 0.7   # Reserved for future DIR/ResponsibilityContract use (confidence threshold)
-
-# ============================================================================
-# Context Store
-# ============================================================================
-# Authoritative order data - source of truth for the DIM validator.
-# The LLM (User Space) does NOT have direct access to this data.
-# Only the DIM (Kernel Space) reads from here during validation.
-# (DIR Architectural Pattern §5 - Context Store)
-#
 context_store:
   orders:
     ord_001:
-      purchase_date: "2026-02-20T10:00:00Z"
+      purchase_date: "2026-04-10T10:00:00Z"
       category: electronics
       amount: 299.99
-
     ord_002:
-      purchase_date: "2026-02-25T10:00:00Z"
+      purchase_date: "2026-04-12T10:00:00Z"
       category: electronics
       amount: 1200.00
-
     ord_003:
-      purchase_date: "2026-02-20T10:00:00Z"
+      purchase_date: "2026-04-11T10:00:00Z"
       category: clothing
       amount: 89.99
-
     ord_004:
-      purchase_date: "2026-02-20T10:00:00Z"
-      category: prohibited_category   # intentionally not in allowed_refund_categories
+      purchase_date: "2026-04-10T10:00:00Z"
+      category: prohibited_category
       amount: 50.00
-
     ord_005:
-      purchase_date: "2026-01-01T10:00:00Z"  # intentionally outside return window
+      purchase_date: "2026-01-01T10:00:00Z"
       category: electronics
       amount: 500.00
-
-# ============================================================================
-# Test Scenarios
-# ============================================================================
-# Each scenario runs the full pipeline:
-#   [claim_text → LLM extraction] or [claim dict] → Crew → proposal → DIM
-# 'expected' is used to verify the demo produces correct DIM verdicts.
-#
-# claim      : structured dict (direct input)
-# claim_text : natural language — LLM extracts order_id, amount, category, reason
-#
-scenarios:
-  - label: "SCENARIO A - Valid: within window & limit"
-    claim:
-      order_id: ord_001
-      amount_eur: 299.99
-      category: electronics
-      purchase_date: "2026-02-20T10:00:00Z"
-      reason: "Defective product"
-    expected: ACCEPT
-
-  - label: "SCENARIO B - Amount > 500 EUR (human approval required)"
-    claim:
-      order_id: ord_002
-      amount_eur: 1200.00
-      category: electronics
-      purchase_date: "2026-02-25T10:00:00Z"
-      reason: "Major defect"
-    expected: ESCALATE
-
-  - label: "SCENARIO C - Outside return window (purchased 2026-01-01)"
-    claim:
-      order_id: ord_005
-      amount_eur: 500.00
-      category: electronics
-      purchase_date: "2026-01-01T10:00:00Z"
-      reason: "Late claim"
-    expected: REJECT
-
-  - label: "SCENARIO D - Prohibited category"
-    claim:
-      order_id: ord_004
-      amount_eur: 50.00
-      category: prohibited_category
-      purchase_date: "2026-02-20T10:00:00Z"
-      reason: "Customer request"
-    expected: REJECT
-
-  # --- Natural language intake (English; customer writes text, not JSON) ---
-  - label: "SCENARIO E - NL intake: valid claim (ord_001)"
-    claim_text: >
-      I bought electronics order ord_001 for 299.99 EUR on 20 February 2026.
-      Defective product - screen does not work. I request a refund.
-    expected: ACCEPT
-
-  - label: "SCENARIO F - NL intake: amount > 500 EUR (ord_002)"
-    claim_text: >
-      Order ord_002 - laptop for 1200 EUR, 25 February 2026.
-      Major failure after one week. I want my money back.
-    expected: ESCALATE

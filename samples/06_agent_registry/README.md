@@ -95,7 +95,7 @@ python samples/06_agent_registry/run.py
 ## Key Classes and Methods
 
 ```python
-from dir.agent_registry import AgentRegistry
+from dir_core.agent_registry import AgentRegistry
 
 # Initialize
 registry = AgentRegistry(db_path)
@@ -167,7 +167,7 @@ SUCCESS: Agent registry persisted and retrieved data correctly.
 
 ## Why Agent Registry Matters
 
-From DIR Architectural Pattern §2.3 and ROA Manifesto §3.1:
+from dir_core Architectural Pattern §2.3 and ROA Manifesto §3.1:
 
 > *"In a multi-agent system, agents must discover each other's capabilities without tight coupling. The Agent Registry provides a central catalog where agents declare their Capability Contracts during initialization. This enables dynamic orchestration, capability-based routing, and runtime introspection without hardcoded dependencies."*
 
@@ -328,3 +328,4 @@ Agent Shutdown:
 ✅ **Centralized Registry**: Fast lookups, metadata-rich, auditable registration history
 
 The Agent Registry is the **phonebook** of the multi-agent system - it answers "Who can do what?" enabling dynamic, loosely-coupled orchestration.
+

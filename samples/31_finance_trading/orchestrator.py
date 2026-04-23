@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol, TYPE_CHECKING
 
-from dir import (
+from dir_core import (
     EventBus,
     EventMetadata,
     EventType,
@@ -19,9 +19,12 @@ from dir import (
     new_dfid,
     select_winner,
 )
-from utils.logging_utils import log_with_dfid
+from dir_core.utils.logging_utils import log_with_dfid
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from dir_kernel_wiring import SimulationKernelContext
 
 
 class ObservationAgent(Protocol):
@@ -58,6 +61,7 @@ class EOAMOrchestrator:
     # Wake-up Predicates: Track last prices for signal suppression (DIR Topologies §2.3)
     _last_prices: Dict[str, float] = field(default_factory=dict)  # scope -> last_price
     _suppressed_signals: int = field(default=0)  # Counter for logging
+    _kernel_ctx: Optional[Any] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if not self.priority_matrix:
@@ -77,6 +81,10 @@ class EOAMOrchestrator:
         """Set LLM and position template for spawning ROA PositionAgents."""
         self._llm = llm
         self._position_template = position_template
+
+    def set_kernel_context(self, kernel_ctx: Optional["SimulationKernelContext"]) -> None:
+        """Optional DIR bundle wiring for spawned agents (Context Store persistence)."""
+        self._kernel_ctx = kernel_ctx
 
     def register_agent(self, agent: ObservationAgent) -> None:
         """Subscribe agent to OBSERVATION (scope-based) with Wake-up Predicates (DIR Topologies §2.3).
@@ -221,7 +229,7 @@ class EOAMOrchestrator:
             raise RuntimeError(
                 "Orchestrator.set_spawn_deps(llm, position_template) must be called before spawn"
             )
-        from dir import ResponsibilityContract
+        from dir_core import ResponsibilityContract
         try:
             from .roa_agents import ROAPositionAgent
         except ImportError:
@@ -244,6 +252,7 @@ class EOAMOrchestrator:
             entry_price=entry_price,
             initial_exposure=initial_exposure,
             quantity=quantity,
+            kernel_ctx=self._kernel_ctx,
         )
         if parent_dfid:
             setattr(agent, "_parent_dfid", parent_dfid)
@@ -299,3 +308,4 @@ class EOAMOrchestrator:
             "tracked_instruments": list(self._last_prices.keys()),
             "last_prices": dict(self._last_prices),
         }
+

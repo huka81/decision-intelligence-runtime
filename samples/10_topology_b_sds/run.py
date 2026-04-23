@@ -1,40 +1,47 @@
 #!/usr/bin/env python3
 """
-10_topology_b_sds - Structural Decision Stream (SDS).
+10_topology_b_sds — Technical minimal demo: Topology B (SDS).
 
-DIR §2.4 / Topologies B.
-High-Velocity processing where "Structure is Safety".
-Key features:
-1. Strict Grammar/Schema enforcement (Pydantic validation) as the first line of defense.
-2. JIT Drift Check (monitoring distribution of decisions).
-3. Batched execution for throughput.
+Focus: Pydantic input grammar, drift window heuristic, ``BidResponse`` shape,
+DIM via ``DecisionRuntime.evaluate_proposal`` (default in-memory audit).
 
-Scenario: A high-frequency trading or ad-bidding agent that must adhere to strict formats.
+Aligned with ``06-technical-sample-development-guide.mdc``: no ``samples/shared``,
+no YAML, ``memory_storage`` + ``DecisionRuntime`` only.
 
-Implementation note: This sample illustrates "structural safety" via Pydantic validation
-(post-generation). Full Constrained Decoding (Outlines/Guidance) constrains output
-*during* LLM inference—see DIR Topologies §3.1.
+Run: python samples/10_topology_b_sds/run.py
 """
+from __future__ import annotations
 
-import json
 import logging
 import random
-import time
+import sys
 from dataclasses import dataclass, field
-from typing import List, Optional
+from pathlib import Path
+from typing import Any, Dict, List
 
 from pydantic import BaseModel, ValidationError
 
-# Using DIM for final policy check
-from dir.dim import validate_proposal
-from dir.models import PolicyProposal
-from dir import new_dfid
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from dir_core import (  # noqa: E402
+    DecisionRuntime,
+    PolicyProposal,
+    ResponsibilityContract,
+    new_dfid,
+)
+from dir_core.data_types import ContractRole, ValidationVerdict  # noqa: E402
+from dir_core.storage import memory_storage  # noqa: E402
+from dir_core.utils.logging_utils import log_with_dfid  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
+_SEED = 42
+_AGENT_ID = "agent_bidder_fast"
 
-# --- 1. Transmission Schema (The "Grammar") ---
 
 class BidRequest(BaseModel):
     request_id: str
@@ -42,121 +49,192 @@ class BidRequest(BaseModel):
     base_price: float
     user_segment: str
 
+
 class BidResponse(BaseModel):
-    # Strict structure required by the exchange
     request_id: str
     bid_price: float
     currency: str = "USD"
     creative_id: str
 
 
-# --- 2. JIT Drift Monitor ---
-
 @dataclass
 class DriftMonitor:
     window_size: int = 100
     history: List[float] = field(default_factory=list)
-    mean_threshold: float = 50.0  # Alert if mean bid > 50
+    mean_threshold: float = 50.0
 
     def record(self, value: float) -> bool:
         self.history.append(value)
         if len(self.history) > self.window_size:
             self.history.pop(0)
-        
         if len(self.history) >= 10:
             avg = sum(self.history) / len(self.history)
             if avg > self.mean_threshold:
-                return False  # Drift detected!
+                return False
         return True
 
 
-# --- 3. The Structural Agent ---
+def _contract_dict() -> Dict[str, Any]:
+    return ResponsibilityContract(
+        agent_id=_AGENT_ID,
+        role=ContractRole.EXECUTOR,
+        mission="Submit exchange-compatible bids under SDS structural rules.",
+        authorized_instruments=["ADS"],
+        allowed_policy_types=["SUBMIT_BID"],
+        escalate_on_uncertainty=0.7,
+        max_drawdown_limit=0.05,
+        wake_up_threshold_pct=0.5,
+        parent_agent_id=None,
+    ).model_dump()
+
 
 class StructuralAgent:
-    def __init__(self, agent_id: str):
+    """Schema, strategy, drift window, then ``PolicyProposal`` + DIM."""
+
+    def __init__(self, agent_id: str, runtime: DecisionRuntime) -> None:
         self.agent_id = agent_id
+        self.runtime = runtime
         self.drift_monitor = DriftMonitor()
 
-    def process_batch(self, requests: List[dict]) -> None:
-        logger.info(f"Processing batch of {len(requests)} requests...")
-        
+    def process_batch(self, requests: List[Dict[str, Any]]) -> Dict[str, int]:
+        batch_dfid = new_dfid()
+        log_with_dfid(
+            logger,
+            batch_dfid,
+            logging.INFO,
+            "SDS: processing batch of %d requests",
+            len(requests),
+        )
+        stats = {
+            "struct_invalid": 0,
+            "drift_skip": 0,
+            "dim_accept": 0,
+            "dim_reject": 0,
+        }
+
         for raw_req in requests:
-            # Step A: Structural Validation (The "Grammar" Check)
             try:
                 req = BidRequest(**raw_req)
             except ValidationError as e:
-                logger.error(f"❌ INVALID STRUCTURE: {e}")
+                stats["struct_invalid"] += 1
+                log_with_dfid(
+                    logger,
+                    batch_dfid,
+                    logging.WARNING,
+                    "INVALID_STRUCTURE skipped: %s",
+                    e,
+                )
                 continue
 
-            # Step B: Logic / Strategy
-            # Simple strategy: bid 10% above base, unless segment is "premium"
             multiplier = 1.5 if req.user_segment == "premium" else 1.1
             bid_price = round(req.base_price * multiplier, 2)
-            
-            # Step C: JIT Drift Check
+
             if not self.drift_monitor.record(bid_price):
-                logger.warning(f"⚠️ DRIFT DETECTED! High bid average. Skipping {req.request_id}.")
+                stats["drift_skip"] += 1
+                log_with_dfid(
+                    logger,
+                    batch_dfid,
+                    logging.WARNING,
+                    "DRIFT_DETECTED skipping request_id=%s",
+                    req.request_id,
+                )
                 continue
 
-            # Step D: Response Formatting
             resp = BidResponse(
                 request_id=req.request_id,
                 bid_price=bid_price,
-                creative_id="cr_123"
+                creative_id="cr_123",
             )
-
-            # Step E: DIM Validation (Final Guardrail)
-            # Create PolicyProposal for the runtime to approve
+            dfid = new_dfid()
             proposal = PolicyProposal(
-                dfid=new_dfid(), # New flow for this micro-decision
+                dfid=dfid,
                 agent_id=self.agent_id,
                 policy_kind="SUBMIT_BID",
                 params=resp.model_dump(),
-                confidence=0.95
+                confidence=0.95,
+                justification="Structural bid from SDS demo agent.",
             )
-
-            # Check with DIM (Dummy RBAC context)
-            verdict, reason = validate_proposal(proposal, context={"state": {"risk_score": 0.0}})
-            
-            if verdict == "ACCEPT":
-                 logger.info(f"✅ BID SENT: {resp.bid_price} for {req.item_id}")
+            verdict, reason = self.runtime.evaluate_proposal(
+                proposal,
+                {},
+                dim_context={"state": {"risk_score": 0.0}},
+                allowed_agents=[self.agent_id],
+            )
+            if verdict == ValidationVerdict.ACCEPT:
+                stats["dim_accept"] += 1
+                log_with_dfid(
+                    logger,
+                    dfid,
+                    logging.INFO,
+                    "BID_SENT bid_price=%s item_id=%s",
+                    resp.bid_price,
+                    req.item_id,
+                )
             else:
-                 logger.info(f"⛔ BLOCKED by DIM: {reason}")
+                stats["dim_reject"] += 1
+                log_with_dfid(
+                    logger,
+                    dfid,
+                    logging.INFO,
+                    "BLOCKED_BY_DIM reason=%s",
+                    reason,
+                )
+
+        return stats
 
 
-# --- 4. Simulation ---
-
-def main():
-    agent = StructuralAgent("agent_bidder_fast")
-    
-    # Generate batch of traffic
-    requests = []
+def _build_demo_batch(rng: random.Random) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
     for i in range(10):
-        requests.append({
-            "request_id": f"req_{i}",
-            "item_id": f"item_{random.randint(100, 999)}",
-            "base_price": random.uniform(10.0, 40.0), # Normal prices
-            "user_segment": random.choice(["standard", "premium"])
-        })
-    
-    # Inject Malformed Data (Structure Breach)
-    requests.append({
-        "request_id": "req_malformed",
-        "base_price": "NOT_A_NUMBER", # Error
-        "user_segment": "standard" 
-        # Missing item_id
-    })
-
-    # Inject Drift-Causing Data (High prices)
+        out.append(
+            {
+                "request_id": f"req_{i}",
+                "item_id": f"item_{rng.randint(100, 999)}",
+                "base_price": round(rng.uniform(10.0, 40.0), 2),
+                "user_segment": rng.choice(["standard", "premium"]),
+            }
+        )
+    out.append(
+        {
+            "request_id": "req_malformed",
+            "base_price": "NOT_A_NUMBER",
+            "user_segment": "standard",
+        }
+    )
     for i in range(5):
-        requests.append({
-            "request_id": f"req_high_{i}",
-            "item_id": "item_999",
-            "base_price": 100.0, # Will trigger drift monitor (>50 avg)
-            "user_segment": "premium"
-        })
+        out.append(
+            {
+                "request_id": f"req_high_{i}",
+                "item_id": "item_999",
+                "base_price": 100.0,
+                "user_segment": "premium",
+            }
+        )
+    return out
 
-    agent.process_batch(requests)
+
+def main() -> None:
+    bundle = memory_storage()
+    runtime = DecisionRuntime(bundle)
+    hr = runtime.register_agent(
+        _AGENT_ID,
+        _contract_dict(),
+        agent_version="1.0.0",
+    )
+    if not hr.accepted:
+        logger.error("Handshake rejected: %s", hr.reason)
+        return
+
+    rng = random.Random(_SEED)
+    requests = _build_demo_batch(rng)
+    agent = StructuralAgent(_AGENT_ID, runtime)
+    stats = agent.process_batch(requests)
+
+    print(
+        f"\n[SUMMARY] struct_invalid={stats['struct_invalid']} "
+        f"drift_skip={stats['drift_skip']} dim_accept={stats['dim_accept']} "
+        f"dim_reject={stats['dim_reject']}",
+    )
 
 
 if __name__ == "__main__":

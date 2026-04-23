@@ -99,7 +99,7 @@ python samples/04_context_store/run.py
 ## Key Classes and Methods
 
 ```python
-from dir.context_store import ContextStore
+from dir_core.context_store import ContextStore
 
 # Initialize
 store = ContextStore(db_path)
@@ -198,7 +198,7 @@ SUCCESS: Context compiled correctly from state and session layers.
 
 ## Why Layered Context Matters
 
-From DIR Architectural Pattern §8:
+from dir_core Architectural Pattern §8:
 
 > *"Context management is the foundation of intelligent decision-making. Agents need access to both ephemeral request data (session) and long-lived configuration (state), but mixing these layers creates confusion. The ContextStore separates concerns: session data is DFID-scoped and disposable, state data is agent-scoped and authoritative. The compiler assembles an immutable snapshot ensuring consistent context throughout the decision lifecycle."*
 
@@ -241,3 +241,4 @@ From DIR Architectural Pattern §8:
 ❌ **Single global context**: No separation, agents interfere, hard to debug  
 ❌ **Per-request monolith**: No agent memory, can't learn or evolve  
 ✅ **Layered ContextStore**: Clean separation, concurrent-safe, auditable
+

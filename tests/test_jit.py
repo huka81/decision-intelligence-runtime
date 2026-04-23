@@ -1,6 +1,7 @@
 """Tests for dir.jit module."""
 
-from dir.jit import JITStateVerifier, verify_drift
+from dir_core.data_types import ValidationVerdict
+from dir_core.jit import JITStateVerifier, verify_drift
 
 
 def test_verify_drift_no_drift() -> None:
@@ -51,7 +52,7 @@ def test_jit_state_verifier() -> None:
         {"status": "clean"},
         keys_to_compare=["status"],
     )
-    assert verdict == "ACCEPT"
+    assert verdict == ValidationVerdict.ACCEPT
     assert "no state drift" in reason
 
     verdict2, reason2 = v.verify(
@@ -59,5 +60,6 @@ def test_jit_state_verifier() -> None:
         {"status": "compromised"},
         keys_to_compare=["status"],
     )
-    assert verdict2 == "REJECT"
+    assert verdict2 == ValidationVerdict.REJECT
     assert "STATE_DRIFT" in reason2 or "drift" in reason2.lower()
+

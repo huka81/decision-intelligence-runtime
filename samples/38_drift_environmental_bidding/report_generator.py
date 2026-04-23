@@ -1,30 +1,47 @@
 """
-HTML report: CPC bids, rolling avg vs LTV, environmental drift suspension, cycle trace.
+HTML report from canonical ``decision_audit`` events (regenerable offline).
 """
 
 from __future__ import annotations
 
+import argparse
 import html
 import json
+import logging
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List, Optional
 
-from audit_store import AuditStore
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+_SAMPLES = _REPO_ROOT / "samples"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+if str(_SAMPLES) not in sys.path:
+    sys.path.insert(0, str(_SAMPLES))
 
-from models import BiddingSampleConfig
-from pipeline import SimulationResult, rolling_avg_cpc_series
+from dir_core.storage import StorageBundle
+
+from pipeline import SimulationResult
+from schemas import BiddingSampleConfig, max_cpc_ceiling_usd
+from shared.bootstrap import materialize_storage_bundle
+from shared.config import load_yaml_config
+from telemetry import filter_events_by_simulation, rolling_avg_cpc_series
+
+logger = logging.getLogger(__name__)
 
 
 def _esc(s: Any) -> str:
     return html.escape(str(s), quote=True)
 
 
-def _new_report_path(sample_dir: Path) -> Path:
+def _new_report_path(sample_dir: Path, slug: str = "bidding_drift") -> Path:
     results_dir = sample_dir / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M")
-    return results_dir / f"simulation_report_{stamp}.html"
+    suffix = f"_{slug}" if slug else ""
+    return results_dir / f"report_{stamp}{suffix}.html"
 
 
 def _x_tick_indices(n: int) -> List[int]:
@@ -238,17 +255,62 @@ def _legend_block(window: int) -> str:
     """
 
 
+def list_monitor_events_from_bundle(
+    bundle: StorageBundle,
+    simulation_id: str,
+) -> List[dict[str, Any]]:
+    events = filter_events_by_simulation(
+        bundle.decision_audit.all_events_chronological(),
+        simulation_id,
+    )
+    out: List[dict[str, Any]] = []
+    for ev in events:
+        if ev.get("event") not in ("MONITOR_TICK", "AGENT_SUSPENDED"):
+            continue
+        det = ev.get("details") or {}
+        out.append(
+            {
+                "dfid": ev.get("dfid"),
+                "event": ev.get("event"),
+                "timestamp": ev.get("timestamp"),
+                "state": ev.get("state"),
+                "details": det,
+            }
+        )
+    return out
+
+
 def generate_report(
     sample_dir: Path,
-    audit: AuditStore,
+    bundle: StorageBundle,
     sim: SimulationResult,
     *,
     cfg: BiddingSampleConfig,
+    simulation_id: str,
     registry_status: Optional[tuple],
+    output_path: Optional[Path] = None,
 ) -> Path:
-    out = _new_report_path(sample_dir)
+    from dir_core.models import ResponsibilityContract
+    from shared.contracts.provider import YamlContractProvider
+
+    out = output_path or _new_report_path(sample_dir)
+    config_path = sample_dir / "config.yaml"
+    raw_cfg = load_yaml_config(config_path)
+    ycp = YamlContractProvider(str(config_path))
+    try:
+        aid = str(raw_cfg["agents"][0]["agent_id"])
+        rc = ycp.get_contract(aid)
+    except (KeyError, IndexError, ValueError):
+        aid = "BiddingAgent"
+        rc = ResponsibilityContract(
+            agent_id=aid,
+            allowed_policy_types=["cpc_bid"],
+            max_drawdown_limit=2.0,
+        )
+    max_cpc = max_cpc_ceiling_usd(rc)
+
     window = cfg.monitor.window_size
-    ma_series = rolling_avg_cpc_series(audit, window)
+    ma_series = rolling_avg_cpc_series(bundle, simulation_id, window)
 
     exec_steps = [s for s in sim.steps if s.executed]
     suspended = sim.stopped_reason == "roi_environmental_monitor"
@@ -268,7 +330,7 @@ def generate_report(
             bids,
             ma_aligned,
             window=window,
-            max_cpc_usd=cfg.contract.max_cpc_usd,
+            max_cpc_usd=max_cpc,
             ltv_usd=cfg.monitor.ltv_usd,
             suspension_idx=suspend_idx,
         )
@@ -277,35 +339,35 @@ def generate_report(
     )
 
     ltv = cfg.monitor.ltv_usd
-    max_cpc = cfg.contract.max_cpc_usd
     n_need = cfg.monitor.negative_roi_consecutive_cycles
     sim_phase_a = cfg.simulation.normal_phase_iterations
     experiment_block = f"""
   <div class="panel experiment">
-    <h2>What this experiment demonstrates</h2>
+    <h2>What this run demonstrates</h2>
     <p>This sample illustrates <strong>environmental drift</strong> (Category 3 — state drift in the
        market). The agent follows its mission: maintain top placement by bidding just above the
-       observed market floor. The <strong>contract hard cap</strong> is
-       <strong>max_cpc_usd = {max_cpc:.2f} USD</strong>. External business reality is summarized by
+       observed market floor. The <strong>contract hard cap</strong> is encoded as
+       <strong>max_drawdown_limit = {max_cpc:.2f} USD</strong> (CPC ceiling in this scenario).
+       External business reality is summarized by
        <strong>customer LTV = {ltv:.2f} USD</strong> — if realized CPC approaches or exceeds LTV,
        acquisition is unprofitable even when the agent is kernel-compliant.</p>
-    <p>The <strong>Decision Integrity Module (DIM)</strong> enforces only encoded kernel rules
-       (schema, RBAC, TTL, context stub, and <strong>bid ≤ {max_cpc:.2f} USD</strong>). It does
-       <em>not</em> compare bids to LTV. When competitors escalate, bids can stay under the cap while
+    <p>The <strong>Decision Integrity Module (DIM)</strong> enforces schema, RBAC, TTL, context stub,
+       <strong>JIT drift</strong> between snapshot and live market facts, and the CPC ceiling.
+       It does <em>not</em> compare bids to LTV. When competitors escalate, bids can stay under the cap while
        CAC exceeds LTV — a failure mode no schema check can catch.</p>
     <p><strong>Simulation design:</strong> Roughly the first <strong>{sim_phase_a}</strong> cycles
        keep <code>market_cpc_to_win</code> in a gentler band; the remainder simulate a bidding war
        toward <strong>{cfg.simulation.market_cpc_end:.2f} USD</strong>. The simulated agent always
        bids <code>market_cpc_to_win + margin</code>, clipped to the contract ceiling.</p>
-    <p><strong>BusinessROIMonitor:</strong> After each execution, SQLite joins
-       <code>execution_log</code> to <code>market_snapshots</code> on <code>dfid</code> and computes
-       the average CPC over the last <strong>{window}</strong> bids. Estimated ROI is
-       <code>ltv_usd − avg_cpc</code>. If ROI is negative for <strong>{n_need}</strong> consecutive
+    <p><strong>BusinessROIMonitor:</strong> After each execution, events in
+       <code>decision_audit_events</code> with type <code>CPC_BID_EXECUTED</code> and this run's
+       <code>simulation_id</code> supply the rolling average CPC over the last <strong>{window}</strong> bids.
+       Estimated ROI is <code>ltv_usd − avg_cpc</code>. If ROI is negative for <strong>{n_need}</strong> consecutive
        evaluated cycles, the registry moves the agent to <code>SUSPENDED</code> with reason
        <code>{_esc(cfg.monitor.suspension_reason)}</code>.</p>
     <p><strong>How to read Figure 1:</strong> Panel A shows each executed bid versus the DIM cap and
        LTV. Panel B shows the rolling average CPC; the grey warm-up band is expected until at least
-       {window} bids exist. The trace table uses “—” in Avg CPC / ROI during the same warm-up.</p>
+       {window} bids exist. The trace table uses "—" in Avg CPC / ROI during the same warm-up.</p>
   </div>
 """
 
@@ -316,7 +378,7 @@ def generate_report(
         rows_html.append(
             "<tr>"
             f"<td>{s.iteration + 1}</td>"
-            f"<td><code>{_esc(s.dfid[:8])}...</code></td>"
+            f"<td><code title=\"{_esc(s.dfid)}\">{_esc(s.dfid[:8])}...</code></td>"
             f"<td>{_esc(s.cycle_id)}</td>"
             f"<td>{_esc(s.search_term)}</td>"
             f"<td>{s.market_cpc_to_win:.3f}</td>"
@@ -342,7 +404,7 @@ def generate_report(
             f"<p>After cycle <strong>#{sim.suspension_decision_number}</strong>, "
             f"the BusinessROIMonitor detected <strong>{n_need}</strong> consecutive cycles with "
             f"negative estimated ROI (rolling avg CPC above LTV <strong>{ltv:.2f} USD</strong>). "
-            f"The registry moved <code>{_esc(cfg.agent.agent_id)}</code> to "
+            f"The registry moved <code>{_esc(aid)}</code> to "
             f"<strong>SUSPENDED</strong> (reason: {_esc(reason_s)}).</p>"
             f"</div>"
         )
@@ -353,12 +415,12 @@ def generate_report(
             "</div>"
         )
 
-    monitor_rows = audit.list_monitor_events()
+    monitor_rows = list_monitor_events_from_bundle(bundle, simulation_id)
     mon_lines = []
     for ev in monitor_rows[-12:]:
         det = json.dumps(ev["details"], sort_keys=True, default=str)
         mon_lines.append(
-            f"<li><code>{_esc(ev['event'])}</code> {_esc(ev['state'])} "
+            f"<li><code>{_esc(ev['event'])}</code> {_esc(ev.get('state', ''))} "
             f"— {_esc(det)}</li>"
         )
     mon_section = (
@@ -367,11 +429,30 @@ def generate_report(
         + "</ul>"
     )
 
+    roa_section = """
+  <div class="panel">
+    <h2>ROA reconstruction (simulated)</h2>
+    <p class="muted">This sample uses deterministic simulated Explain → Policy → Self-Check in <code>agent.py</code>
+       (no LLM). Full narrative and justification appear in <code>POLICY_PROPOSAL</code> and <code>DIM_VALIDATION</code>
+       rows in <code>decision_audit_events</code> for each <code>dfid</code>.</p>
+  </div>
+"""
+
+    kernel_section = """
+  <details class="panel">
+    <summary>DIR kernel artefacts</summary>
+    <p class="muted">Agent registry and context sessions are persisted in the canonical SQLite schema alongside
+       <code>decision_audit_events</code>. Inspect the database file configured in <code>config.yaml</code>
+       (<code>database.db_path</code>).</p>
+  </details>
+"""
+
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     doc = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>Sample 38 - Environmental bidding drift</title>
+  <title>Sample 38 — Environmental bidding drift</title>
   <style>
     :root {{
       --bg: #0f1419;
@@ -471,17 +552,18 @@ def generate_report(
 </head>
 <body>
 <main>
-  <h1>Sample 38 — Environmental drift (ad bidding)</h1>
+  <h1>Sample 38 — Environmental drift (ad bidding) — SDS</h1>
+  <p class="muted">Generated UTC: <code>{_esc(stamp)}</code> · simulation_id: <code>{_esc(simulation_id)}</code></p>
   <p class="muted">Run summary: simulation stopped with reason <strong>{_esc(sim.stopped_reason)}</strong>.
      Cycles processed: {len(sim.steps)} / {sim.total_inputs}.</p>
 
   {experiment_block}
 
   <div class="panel">
-    <p><strong>Agent</strong> {_esc(cfg.agent.agent_id)}</p>
+    <p><strong>Agent</strong> {_esc(aid)}</p>
     <p><strong>Registry status</strong> {status_s}
        &nbsp;|&nbsp; <strong>Suspension reason</strong> {reason_s}</p>
-    <p><strong>Hard limit (DIM)</strong> max_cpc_usd = {max_cpc:.2f} USD
+    <p><strong>Hard limit (DIM)</strong> max_drawdown_limit (CPC ceiling) = {max_cpc:.2f} USD
        &nbsp;|&nbsp; <strong>Business metric (monitor)</strong> ltv_usd = {ltv:.2f} USD
        &nbsp;|&nbsp; <strong>Monitor</strong> rolling {window} bids;
        suspend after {n_need} consecutive negative ROI cycles</p>
@@ -495,9 +577,11 @@ def generate_report(
 
   {mon_section}
 
+  {roa_section}
+
   <h2>Cycle-level trace</h2>
-  <p class="muted">Source: <code>data/market_conditions.json</code>. <code>market_cpc_to_win</code> is stored in
-     <code>market_snapshots</code> at compile time (kernel fact), not inferred from the agent output.</p>
+  <p class="muted">Source: <code>data/market_conditions.json</code>. <code>market_cpc_to_win</code> is fixed at
+     context compile time (kernel fact in session + snapshot), not inferred from agent output.</p>
   <table>
     <thead>
       <tr>
@@ -509,9 +593,60 @@ def generate_report(
       {''.join(rows_html)}
     </tbody>
   </table>
+
+  {kernel_section}
 </main>
 </body>
 </html>
 """
     out.write_text(doc, encoding="utf-8")
     return out
+
+
+def _latest_simulation_id_from_events(bundle: StorageBundle) -> Optional[str]:
+    events = bundle.decision_audit.all_events_chronological()
+    for ev in reversed(events):
+        if ev.get("event") == "SIMULATION_START":
+            det = ev.get("details") or {}
+            sid = det.get("simulation_id")
+            if sid:
+                return str(sid)
+    return None
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    ap = argparse.ArgumentParser(description="Regenerate HTML report from decision_audit.")
+    ap.add_argument("--simulation-id", default=None, help="Filter run (default: latest SIMULATION_START)")
+    ap.add_argument("--output-path", default=None, help="Output HTML path")
+    args = ap.parse_args()
+
+    sample_dir = Path(__file__).resolve().parent
+    config_path = sample_dir / "config.yaml"
+    config = load_yaml_config(config_path)
+    bundle = materialize_storage_bundle(config, str(config_path))
+    cfg = BiddingSampleConfig.model_validate(config)
+
+    sim_id = args.simulation_id or _latest_simulation_id_from_events(bundle)
+    if not sim_id:
+        logger.error("No SIMULATION_START event found; run the sample first or pass --simulation-id")
+        raise SystemExit(1)
+
+    out = Path(args.output_path) if args.output_path else _new_report_path(sample_dir)
+
+    # Minimal SimulationResult for offline regen: empty steps (chart from audit only would need hydration)
+    sim = SimulationResult(stopped_reason="offline_regen", total_inputs=0)
+    generate_report(
+        sample_dir,
+        bundle,
+        sim,
+        cfg=cfg,
+        simulation_id=sim_id,
+        registry_status=None,
+        output_path=out,
+    )
+    logger.info("Wrote %s", out)
+
+
+if __name__ == "__main__":
+    main()

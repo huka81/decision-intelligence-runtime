@@ -1,108 +1,46 @@
-# 32 - Real-Time Fraud Gate (Topology B SDS)
-# DIR Topologies §3: Sovereign Decision Stream
-#
-# Structure:
-#   llm_defaults   - LLM provider (Ollama/Gemma) - same convention as 31, 35
-#   agent          - FraudGuardAgent identity
-#   jit_validator  - JIT validation limits (global_max_limit)
-#   scenarios      - Test scenarios with transaction context and expected JIT verdict
+# 32_fraud_gate — YAML-driven fraud gate (classic + scenarios.yaml)
+# Run: python samples/32_fraud_gate/run.py
 
-# ============================================================================
-# LLM Configuration
-# ============================================================================
-# Same conventions as samples/31_finance_trading and samples/35_crewai_roa_wrapper
-#
-# For Ollama (local) - default:
+database:
+  provider: sqlite
+  db_path: "data/fraud_gate.db"
+
+simulation:
+  run_id: "fraud_gate_demo"
+  seeds:
+    scenario_order: 7
+
 llm_defaults:
   model: "gemma3:4b"
   base_url: "http://localhost:11434"
   temperature: 0.2
-#
-# Override via env vars:
-#   OLLAMA_MODEL=gemma3:4b
-#   OLLAMA_BASE_URL=http://localhost:11434
-#
-# For Mock (testing without LLM):
-# llm_defaults:
-#   provider: "mock"
-# Or set: USE_MOCK_LLM=1
+  timeout: 60
 
-# ============================================================================
-# Agent Specification
-# ============================================================================
-agent:
-  agent_id: "fraud_guard_v1"
+contracts:
+  provider: yaml
 
-  # Mission (injected into LLM system prompt)
-  mission: >
-    You are a fraud analyst for a payment gateway. Evaluate each transaction
-    and output ONLY a JSON object with action, reason_code, risk_score.
+jit_validator:
+  global_max_limit: 50000.0
 
-  # Fallback rules: used when LLM returns invalid JSON or when MockLLM is used
-  # Deterministic logic - same thresholds in agent._fallback_decision and MockLLM
+fraud_gate:
   fallback_rules:
-    block_amount_threshold: 5000      # amount > this + high-risk country -> BLOCK
+    block_amount_threshold: 5000
     block_high_risk_countries: [nigeria]
-    allow_amount_max: 1000            # amount < this + known device + low velocity -> ALLOW
+    allow_amount_max: 1000
     allow_velocity_max: 10
     allow_device_prefix: "dev_known_"
 
-# ============================================================================
-# JIT Validator (Kernel Space)
-# ============================================================================
-# Fast-Pass checks: State Drift, Hard Limits, Schema sanity
-# DIR Topologies §3.2: Just-In-Time State Re-verification
-#
-jit_validator:
-  global_max_limit: 50000.0   # Hard limit from Risk Governor (amount > this -> REJECT)
-
-# ============================================================================
-# Test Scenarios
-# ============================================================================
-# Each scenario runs: context -> agent.decide -> JIT validate -> execute (if ALLOW)
-# expected: JIT verdict (ACCEPT | REJECT)
-# drift_attack: if true, flag user as compromised AFTER agent decides (demonstrates STATE_DRIFT_ERROR)
-#
-scenarios:
-  - label: "SCENARIO 1 - Legit"
-    tx_id: "tx_001"
-    context:
-      user_id: "user_legit"
-      amount: 50.0
-      geo_country: "US"
-      device_id: "dev_known_001"
-      velocity_24h: 3
-    snapshot:
-      user_legit:
-        status: "clean"
-        risk_score: 0.05
-    expected: ACCEPT
-
-  - label: "SCENARIO 2 - Obvious Fraud"
-    tx_id: "tx_002"
-    context:
-      user_id: "user_fraud"
-      amount: 10000.0
-      geo_country: "Nigeria"
-      device_id: "dev_unknown_xyz"
-      velocity_24h: 1
-    snapshot:
-      user_fraud:
-        status: "clean"
-        risk_score: 0.0
-    expected: ACCEPT   # JIT accepts agent's BLOCK - no execution (blocked)
-
-  - label: "SCENARIO 3 - Drift Attack"
-    tx_id: "tx_003"
-    context:
-      user_id: "user_drift"
-      amount: 100.0
-      geo_country: "US"
-      device_id: "dev_known_002"
-      velocity_24h: 2
-    snapshot:
-      user_drift:
-        status: "clean"
-        risk_score: 0.1
-    drift_attack: true   # Flag user as compromised AFTER agent decides
-    expected: REJECT     # JIT rejects with STATE_DRIFT_ERROR
+agents:
+  - agent_id: "fraud_guard_v1"
+    priority: 10
+    contract:
+      role: EXECUTOR
+      mission: >
+        You are a fraud analyst for a payment gateway. Evaluate each transaction
+        and follow the ROA JSON shapes requested in the user prompts exactly.
+      authorized_instruments: []
+      allowed_policy_types: ["ALLOW", "BLOCK", "CHALLENGE"]
+      escalate_on_uncertainty: 0.35
+      max_drawdown_limit: 0.05
+      wake_up_threshold_pct: 0.5
+      parent_agent_id: null

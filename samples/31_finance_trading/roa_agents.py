@@ -13,7 +13,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
-from dir import (
+from dir_core import (
     AgentState,
     EscalationRequest,
     ExplainResult,
@@ -23,13 +23,16 @@ from dir import (
     SelfCheckResult,
     new_dfid,
 )
-from utils.logging_utils import log_with_dfid
-from dir.models import DecisionRecord
+from dir_core.data_types import DecisionRecordOutcome
+from dir_core.utils.logging_utils import log_with_dfid
+from dir_core.models import DecisionRecord
+
+from dir_core.utils.llm_client import LLMClient
 
 try:
-    from .llm_client import LLMClient
+    from .dir_kernel_wiring import SimulationKernelContext, persist_roa_cycle_record
 except ImportError:
-    from llm_client import LLMClient
+    from dir_kernel_wiring import SimulationKernelContext, persist_roa_cycle_record
 
 logger = logging.getLogger(__name__)
 
@@ -153,9 +156,15 @@ class ROAAgentLLMBase:
     Self-Check and emit_proposal are deterministic. Contract and mission from config.
     """
 
-    def __init__(self, contract: ResponsibilityContract, llm: LLMClient):
+    def __init__(
+        self,
+        contract: ResponsibilityContract,
+        llm: LLMClient,
+        kernel_ctx: Optional[SimulationKernelContext] = None,
+    ):
         self.contract = contract
         self.llm = llm
+        self.kernel_ctx = kernel_ctx
         self.state = AgentState(agent_id=contract.agent_id)
 
     @property
@@ -271,20 +280,26 @@ class ROAAgentLLMBase:
         dfid: str,
         explain_result: ExplainResult,
         policy: Policy,
-        outcome: str,
+        outcome: DecisionRecordOutcome | str,
         reason: Optional[str] = None,
     ) -> None:
         """§3.4: Append to decision trajectory."""
+        outcome_val = (
+            outcome
+            if isinstance(outcome, DecisionRecordOutcome)
+            else DecisionRecordOutcome(str(outcome))
+        )
         record = DecisionRecord(
             dfid=dfid,
             explain_summary=explain_result.narrative[:100],
             policy_action=policy.proposed_action,
             policy_confidence=policy.confidence,
-            outcome=outcome,
+            outcome=outcome_val,
             outcome_reason=reason,
         )
         self.state.decision_trajectory.append(record)
         self.state.last_active = datetime.now(timezone.utc)
+        persist_roa_cycle_record(self.kernel_ctx, dfid, self.agent_id, record)
 
     def run_decision_cycle(
         self, dfid: str, context: Dict[str, Any]
@@ -313,10 +328,12 @@ class ROAAgentLLMBase:
                 "[%s] Self-check FAILED: %s (escalate=%s)",
                 self.agent_id, check_result.reason, check_result.should_escalate,
             )
-            self.record_decision(dfid, explain_result, policy, "ESCALATED", check_result.reason)
+            self.record_decision(
+                dfid, explain_result, policy, DecisionRecordOutcome.ESCALATED, check_result.reason,
+            )
             return self.create_escalation(dfid, policy, check_result.escalation_trigger or "unknown")
         proposal = self.emit_proposal(dfid, policy, context, explain_result)
-        self.record_decision(dfid, explain_result, policy, "ACCEPTED")
+        self.record_decision(dfid, explain_result, policy, DecisionRecordOutcome.ACCEPTED)
         log_with_dfid(
             logger, dfid, logging.INFO,
             "[%s] Proposal emitted: kind=%s confidence=%.2f",
@@ -333,8 +350,14 @@ class ROAAgentLLMBase:
 class ROAInstrumentAgent(ROAAgentLLMBase):
     """Instrument-level ROA agent: reacts to market observations, scope = instrument."""
 
-    def __init__(self, contract: ResponsibilityContract, llm: LLMClient, instrument: str):
-        super().__init__(contract, llm)
+    def __init__(
+        self,
+        contract: ResponsibilityContract,
+        llm: LLMClient,
+        instrument: str,
+        kernel_ctx: Optional[SimulationKernelContext] = None,
+    ):
+        super().__init__(contract, llm, kernel_ctx=kernel_ctx)
         self.instrument = instrument
 
     @property
@@ -388,8 +411,9 @@ class ROAPositionAgent(ROAAgentLLMBase):
         entry_price: float,
         initial_exposure: float,
         quantity: float,
+        kernel_ctx: Optional[SimulationKernelContext] = None,
     ):
-        super().__init__(contract, llm)
+        super().__init__(contract, llm, kernel_ctx=kernel_ctx)
         self.position_id = position_id
         self.instrument = instrument
         self.entry_price = entry_price
@@ -528,8 +552,14 @@ class ROAPositionAgent(ROAAgentLLMBase):
 class ROANewsScorerAgent(ROAAgentLLMBase):
     """Scores news; emits NEWS_QUALIFIED when score above threshold."""
 
-    def __init__(self, contract: ResponsibilityContract, llm: LLMClient, score_threshold: float = 0.6):
-        super().__init__(contract, llm)
+    def __init__(
+        self,
+        contract: ResponsibilityContract,
+        llm: LLMClient,
+        score_threshold: float = 0.6,
+        kernel_ctx: Optional[SimulationKernelContext] = None,
+    ):
+        super().__init__(contract, llm, kernel_ctx=kernel_ctx)
         self.score_threshold = score_threshold
 
     @property
@@ -564,3 +594,4 @@ class ROANewsScorerAgent(ROAAgentLLMBase):
         if isinstance(result, PolicyProposal):
             return result
         return None
+

@@ -1,6 +1,6 @@
 """Tests for dir.wakeup module."""
 
-from dir.wakeup import (
+from dir_core.wakeup import (
     WakeupPredicate,
     is_relevant_instrument,
     price_change_significant,
@@ -53,3 +53,4 @@ def test_should_wake_one_fails() -> None:
 
 def test_should_wake_empty() -> None:
     assert should_wake({"x": 1}, []) is True
+

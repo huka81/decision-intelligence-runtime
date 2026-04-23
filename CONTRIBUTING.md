@@ -71,8 +71,8 @@ ruff format src/ samples/ tests/
 
 When contributing, please respect the separation of concerns in the repository:
 
-* **`src/dir/`**: The core Kernel Space components (Decision Flow, JIT Validator, Context Store, Event Bus, etc.). This code must remain domain-agnostic.
-* **`src/utils/`**: Supporting utilities for samples (e.g., config loaders, LLM clients, mock generators) that are not part of the core DIR specification.
+* **`src/dir_core/`**: The core Kernel Space components (Decision Flow, JIT Validator, Context Store, Event Bus, etc.). This code must remain domain-agnostic.
+* **`src/dir_core/utils/`**: Supporting utilities for samples (e.g., config loaders, LLM clients, mock generators) that are not part of the core DIR specification.
 * **`samples/`**: Concrete implementations and use cases.
   * `01` to `29`: Foundational mechanisms and topologies (e.g., `00_quick_start`, `03_idempotency_guard`).
   * `31+`: Complete business use cases (e.g., `31_finance_trading`, `32_fraud_gate`).
@@ -82,8 +82,8 @@ When contributing, please respect the separation of concerns in the repository:
 
 * **Type Hinting**: We heavily rely on Python type hints. Ensure all new functions and methods have proper signatures.
 * **Kernel vs. User Space**: Maintain a strict boundary between what the Agent (User Space) does and what the Runtime enforces (Kernel Space).
-* **Documentation**: Document complex logic, especially within `src/dir/`, as it serves as the reference implementation of the DIR architecture.
-* **Sample Configuration**: Use `src/utils/config_loader.py` for loading YAML configurations in new samples to maintain consistency.
+* **Documentation**: Document complex logic, especially within `src/dir_core/`, as it serves as the reference implementation of the DIR architecture.
+* **Sample Configuration**: Use `src/dir_core/utils/config_loader.py` for loading YAML configurations in new samples to maintain consistency.
 
 ## License
 

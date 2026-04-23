@@ -1,5 +1,5 @@
 """
-Orchestrator: market JSON, market_snapshots (kernel), simulated bids, DIM, BusinessROIMonitor.
+Simulation loop: market JSON, ContextSnapshot, ROA (simulated), DIM + JIT, telemetry, ROI monitor.
 """
 
 from __future__ import annotations
@@ -10,14 +10,24 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from dir import ContextStore, PolicyProposal, new_dfid
-from dir.agent_registry import AgentRegistry
-from dir.models import ContextSnapshot
+from dir_core import AgentRegistry, ContextStore, idempotency_key, new_dfid
+from dir_core.data_types import ValidationVerdict
+from dir_core.models import ContextSnapshot
+from dir_core.storage import StorageBundle
+from dir_core.utils.logging_utils import log_with_dfid
 
-from audit_store import AuditStore
-from bidding_dim import validate_cpc_bid_proposal
-from models import BiddingSampleConfig
+from agent import run_bidding_roa_cycle
+from dim import validate_bidding_proposal
 from roi_monitor import BusinessROIMonitor
+from schemas import BiddingSampleConfig, max_cpc_ceiling_usd
+from telemetry import (
+    record_context_compiled,
+    record_cpc_bid_executed,
+    record_dim_validation,
+    record_policy_proposal,
+    record_simulation_end,
+    record_simulation_start,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,223 +92,279 @@ class SimulationResult:
     suspension_decision_number: Optional[int] = None
 
 
-def rolling_avg_cpc_series(audit: AuditStore, window: int) -> List[Optional[float]]:
-    """Rolling average CPC after each execution (None until ``window`` executions)."""
-    rows = audit.list_executions_chronological()
-    series: List[Optional[float]] = []
-    for k in range(len(rows)):
-        if k + 1 < window:
-            series.append(None)
-            continue
-        lo = k + 1 - window
-        sub = rows[lo : k + 1]
-        series.append(sum(float(r["cpc_bid_usd"]) for r in sub) / float(window))
-    return series
-
-
 def run_simulation(
     cfg: BiddingSampleConfig,
     *,
     sample_dir: Path,
-    audit: AuditStore,
+    bundle: StorageBundle,
     context_store: ContextStore,
     monitor: BusinessROIMonitor,
     agent_registry: AgentRegistry,
+    rc: Any,
+    agent_id: str,
+    simulation_id: str,
 ) -> SimulationResult:
     cycles = load_all_cycles(sample_dir, cfg.paths.inputs_file)
     n = len(cycles)
     result = SimulationResult(total_inputs=n)
-
-    ctx_dim = {"state": dict(cfg.dim.context_state)}
-    agent_id = cfg.agent.agent_id
-    max_cpc = cfg.contract.max_cpc_usd
+    sim_id = simulation_id
+    max_cpc = max_cpc_ceiling_usd(rc)
     margin = cfg.simulation.bid_margin_above_market
     allowed = cfg.dim.allowed_agents or [agent_id]
     ltv = cfg.monitor.ltv_usd
+
+    record_simulation_start(
+        bundle,
+        sim_id,
+        details={"total_cycles": n, "agent_id": agent_id},
+    )
 
     logged_early = False
     logged_late = False
     logged_roi_positive_window = False
 
     for i, cyc in enumerate(cycles):
-        st = agent_registry.get_agent_status(agent_id)
-        if st and st[0] == "SUSPENDED":
-            result.stopped_reason = "agent_already_suspended"
-            break
+            st = agent_registry.get_agent_status(agent_id)
+            if st and st[0] == "SUSPENDED":
+                result.stopped_reason = "agent_already_suspended"
+                break
 
-        dfid = new_dfid()
-        cref = cyc.cycle_id
-        market = cyc.market_cpc_to_win
-        bid = min(market + margin, max_cpc)
+            dfid = new_dfid()
+            cref = cyc.cycle_id
+            market = cyc.market_cpc_to_win
+            bid = min(market + margin, max_cpc)
 
-        audit.insert_decision_flow(dfid, agent_id, input_ref=cref)
-
-        snap_data: dict[str, Any] = {
-            "cycle_id": cref,
-            "search_term": cyc.search_term,
-            "market_cpc_to_win": market,
-            "impressions_available": cyc.impressions_available,
-            "channel": cyc.channel,
-            "campaign_id": cyc.campaign_id,
-            "compiled_for": agent_id,
-        }
-        snapshot = ContextSnapshot.create(dfid, snap_data, source="context_compiler")
-        audit.insert_market_snapshot(
-            dfid,
-            snapshot.snapshot_id,
-            market,
-            details={
+            snap_data: dict[str, Any] = {
+                "cycle_id": cref,
                 "search_term": cyc.search_term,
-                "cycle_id": cref,
-                "campaign_id": cyc.campaign_id,
-            },
-        )
-
-        context_store.update_session(
-            dfid,
-            {
-                "market": {
-                    "cycle_id": cref,
-                    "search_term": cyc.search_term,
-                    "market_cpc_to_win": market,
-                    "impressions_available": cyc.impressions_available,
-                    "channel": cyc.channel,
-                    "campaign_id": cyc.campaign_id,
-                },
-                "snapshot_id": snapshot.snapshot_id,
-            },
-        )
-
-        audit.record(
-            dfid,
-            "CONTEXT_COMPILED",
-            state="READY",
-            details={
-                "cycle_id": cref,
                 "market_cpc_to_win": market,
-                "snapshot_id": snapshot.snapshot_id,
-            },
-        )
+                "impressions_available": cyc.impressions_available,
+                "channel": cyc.channel,
+                "campaign_id": cyc.campaign_id,
+                "compiled_for": agent_id,
+            }
+            snapshot = ContextSnapshot.create(dfid, snap_data, source="context_compiler")
 
-        proposal = PolicyProposal(
-            dfid=dfid,
-            agent_id=agent_id,
-            policy_kind="cpc_bid",
-            params={"cpc_bid_usd": bid},
-            context_ref=snapshot.snapshot_id,
-            confidence=0.94,
-            justification=(
-                f"Simulated bid (cycle {i + 1}/{n}): stay just above market to hold top 3."
-            ),
-        )
+            context_store.update_session(
+                dfid,
+                {
+                    "market": {
+                        "cycle_id": cref,
+                        "search_term": cyc.search_term,
+                        "market_cpc_to_win": market,
+                        "impressions_available": cyc.impressions_available,
+                        "channel": cyc.channel,
+                        "campaign_id": cyc.campaign_id,
+                    },
+                    "snapshot_id": snapshot.snapshot_id,
+                },
+            )
 
-        audit.record(
-            dfid,
-            "POLICY_PROPOSAL",
-            state="EMITTED",
-            details={"cpc_bid_usd": bid, "policy_kind": proposal.policy_kind},
-        )
+            ctx_dim: Dict[str, Any] = {
+                "state": dict(cfg.dim.context_state),
+                "market_snapshot": dict(snap_data),
+                "market_live": dict(snap_data),
+            }
 
-        verdict, reason = validate_cpc_bid_proposal(
-            proposal,
-            ctx_dim,
-            allowed,
-            max_cpc,
-        )
+            record_context_compiled(
+                bundle,
+                dfid,
+                sim_id,
+                details={
+                    "cycle_id": cref,
+                    "market_cpc_to_win": market,
+                    "snapshot_id": snapshot.snapshot_id,
+                },
+            )
 
-        audit.record(
-            dfid,
-            "DIM_VALIDATION",
-            state=verdict,
-            details={"reason": reason},
-        )
+            proposal, roa_audit = run_bidding_roa_cycle(
+                dfid=dfid,
+                agent_id=agent_id,
+                contract=rc,
+                market_cpc_to_win=market,
+                bid_usd=bid,
+                cycle_index=i,
+                total_cycles=n,
+                snapshot_id=snapshot.snapshot_id,
+            )
 
-        step = SimulationStep(
-            iteration=i,
-            dfid=dfid,
-            cycle_id=cref,
-            search_term=cyc.search_term,
-            market_cpc_to_win=market,
-            bid_usd=bid,
-            dim_verdict=verdict,
-            dim_reason=reason,
-            executed=False,
-        )
+            if proposal is None:
+                log_with_dfid(
+                    logger,
+                    dfid,
+                    logging.WARNING,
+                    "Self-check failed; no proposal: %s",
+                    roa_audit.get("self_check_reason", ""),
+                )
+                step = SimulationStep(
+                    iteration=i,
+                    dfid=dfid,
+                    cycle_id=cref,
+                    search_term=cyc.search_term,
+                    market_cpc_to_win=market,
+                    bid_usd=bid,
+                    dim_verdict="REJECT",
+                    dim_reason="SELF_CHECK_FAILED",
+                    executed=False,
+                    console_note="SELF_CHECK",
+                )
+                result.steps.append(step)
+                continue
 
-        if verdict != "ACCEPT":
-            audit.complete_flow(dfid, status="ABORTED")
-            step.console_note = "DIM_REJECT"
+            record_policy_proposal(
+                bundle,
+                dfid,
+                sim_id,
+                details={
+                    "cpc_bid_usd": bid,
+                    "policy_kind": proposal.policy_kind,
+                    "explain_narrative": roa_audit.get("explain_narrative", ""),
+                    "self_check_passed": roa_audit.get("self_check_passed"),
+                },
+            )
+
+            verdict, reason = validate_bidding_proposal(
+                proposal,
+                ctx_dim,
+                allowed,
+                rc,
+            )
+            verdict_s = verdict.value if isinstance(verdict, ValidationVerdict) else str(verdict)
+            reason_s = reason.value if hasattr(reason, "value") else str(reason)
+
+            record_dim_validation(
+                bundle,
+                dfid,
+                sim_id,
+                verdict=verdict_s,
+                reason=reason_s,
+            )
+
+            log_with_dfid(
+                logger,
+                dfid,
+                logging.INFO,
+                "DIM: %s %s",
+                verdict_s,
+                reason_s,
+            )
+
+            step = SimulationStep(
+                iteration=i,
+                dfid=dfid,
+                cycle_id=cref,
+                search_term=cyc.search_term,
+                market_cpc_to_win=market,
+                bid_usd=bid,
+                dim_verdict=verdict_s,
+                dim_reason=reason_s,
+                executed=False,
+            )
+
+            if verdict_s != "ACCEPT":
+                step.console_note = "DIM_REJECT"
+                result.steps.append(step)
+                continue
+
+            ikey = idempotency_key(
+                dfid,
+                "cpc_bid",
+                {"cpc_bid_usd": bid, "cycle_id": cref},
+            )
+            record_cpc_bid_executed(
+                bundle,
+                dfid,
+                sim_id,
+                cpc_bid_usd=bid,
+                market_cpc_to_win=market,
+                cycle_id=cref,
+                idempotency_key=ikey,
+                extra={"policy_kind": proposal.policy_kind},
+            )
+            step.executed = True
+
+            stop, avg_after = monitor.evaluate_after_execution(dfid)
+            step.rolling_avg_cpc_after = avg_after
+            if avg_after is not None:
+                step.roi_estimate_after = ltv - avg_after
+
+            if not logged_early and i == 0:
+                logged_early = True
+                if avg_after is None:
+                    m_note = " Monitor OK (window not full)."
+                elif ltv > avg_after + 1e-9:
+                    m_note = (
+                        f" ROI positive (LTV {ltv:.2f} > avg CPC {avg_after:.2f}) - Monitor OK."
+                    )
+                else:
+                    m_note = (
+                        f" Rolling window full; avg CPC {avg_after:.2f} vs LTV {ltv:.2f}."
+                    )
+                log_with_dfid(
+                    logger,
+                    dfid,
+                    logging.INFO,
+                    "Bid %.2f USD - DIM accepts (< %.2f hard limit) -%s",
+                    bid,
+                    max_cpc,
+                    m_note,
+                )
+                step.console_note = "early_sample"
+
+            if (
+                not logged_roi_positive_window
+                and avg_after is not None
+                and step.roi_estimate_after is not None
+                and step.roi_estimate_after > 0
+            ):
+                logged_roi_positive_window = True
+                log_with_dfid(
+                    logger,
+                    dfid,
+                    logging.INFO,
+                    "Bid %.2f USD - DIM accepts - ROI positive (LTV %.2f > avg CPC %.2f)",
+                    bid,
+                    ltv,
+                    avg_after,
+                )
+
+            if not logged_late and avg_after is not None and avg_after > ltv + 1e-9:
+                logged_late = True
+                log_with_dfid(
+                    logger,
+                    dfid,
+                    logging.INFO,
+                    "Bid %.2f USD - DIM accepts - ROI negative (avg CPC %.2f > LTV %.2f)",
+                    bid,
+                    avg_after,
+                    ltv,
+                )
+                step.console_note = "late_sample"
+
             result.steps.append(step)
-            continue
 
-        exec_details = {
-            "policy_kind": proposal.policy_kind,
-            "proposal": proposal.model_dump(mode="json"),
-        }
-        audit.insert_execution(dfid, bid, details=exec_details)
-        audit.record(
-            dfid,
-            "EXECUTION_LOGGED",
-            state="COMPLETED",
-            details={"cpc_bid_usd": bid},
-        )
-        audit.complete_flow(dfid, status="COMPLETED")
-        step.executed = True
-
-        stop, avg_after = monitor.evaluate_after_execution(dfid)
-        step.rolling_avg_cpc_after = avg_after
-        if avg_after is not None:
-            step.roi_estimate_after = ltv - avg_after
-
-        if not logged_early and i == 0:
-            logged_early = True
-            m_note = (
-                " Monitor OK (window not full)."
-                if avg_after is None
-                else f" ROI positive (LTV {ltv:.2f} > avg CPC {avg_after:.2f}) - Monitor OK."
-            )
-            print(
-                f"[decision {i + 1}/{n}] Bid {bid:.2f} USD - DIM Accepts (< {max_cpc:.2f} hard limit) -"
-                f"{m_note}"
-            )
-            step.console_note = "early_sample"
-
-        if (
-            not logged_roi_positive_window
-            and avg_after is not None
-            and step.roi_estimate_after is not None
-            and step.roi_estimate_after > 0
-        ):
-            logged_roi_positive_window = True
-            print(
-                f"[decision {i + 1}/{n}] Bid {bid:.2f} USD - DIM Accepts (< {max_cpc:.2f} hard limit) - "
-                f"ROI positive (LTV {ltv:.2f} > avg CPC {avg_after:.2f}) - Monitor OK"
-            )
-
-        if (
-            not logged_late
-            and avg_after is not None
-            and avg_after > ltv + 1e-9
-        ):
-            logged_late = True
-            print(
-                f"[decision {i + 1}/{n}] Bid {bid:.2f} USD - DIM Accepts (bid < {max_cpc:.2f} hard limit) - "
-                f"ROI becomes negative (avg CPC {avg_after:.2f} > LTV {ltv:.2f})"
-            )
-            step.console_note = "late_sample"
-
-        result.steps.append(step)
-
-        if stop:
-            result.stopped_reason = "roi_environmental_monitor"
-            result.suspension_decision_number = i + 1
-            print(
-                f"Agent state transition: {agent_id} -> SUSPENDED "
-                f"(reason: {cfg.monitor.suspension_reason})"
-            )
-            break
+            if stop:
+                result.stopped_reason = "roi_environmental_monitor"
+                result.suspension_decision_number = i + 1
+                log_with_dfid(
+                    logger,
+                    dfid,
+                    logging.WARNING,
+                    "Agent %s -> SUSPENDED (%s)",
+                    agent_id,
+                    cfg.monitor.suspension_reason,
+                )
+                break
 
     if not result.stopped_reason and result.steps:
         result.stopped_reason = "completed_all_inputs"
+
+    record_simulation_end(
+        bundle,
+        sim_id,
+        status="ok",
+        stopped_reason=result.stopped_reason,
+        details={"steps_recorded": len(result.steps)},
+    )
 
     return result

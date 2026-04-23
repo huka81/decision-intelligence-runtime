@@ -68,12 +68,13 @@ test_*.db
 
 # Sample data directories (SQLite DBs generated at runtime)
 samples/**/*.db
+samples/**/*.sqlite
 
 # Sample data directories (JSON files generated at runtime)
 samples/**/data/*.json
 
 # Sample data directories (HTML files generated at runtime)
-samples/**/report.html
+samples/**/*.html
 
 # Flask stuff:
 instance/
@@ -230,3 +231,5 @@ __marimo__/
 /samples/37_drift_semantic_refund/agent-prompt.md
 /samples/36_drift_optimization_discount/agent-prompt.md
 /samples/38_drift_environmental_bidding/agent-prompt.md
+/publications
+/samples/38_drift_environmental_bidding/data/*.sqlite

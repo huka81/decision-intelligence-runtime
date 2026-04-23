@@ -3,8 +3,8 @@
 import tempfile
 from pathlib import Path
 
-from dir.models import CompensationAction
-from dir.saga import SagaCompensation
+from dir_core.models import CompensationAction
+from dir_core.saga import SagaCompensation
 
 
 def test_mark_dirty_and_get() -> None:
@@ -86,3 +86,4 @@ def test_execute_compensation_noop() -> None:
             Path(path).unlink(missing_ok=True)
         except OSError:
             pass  # Windows: file may be locked by SQLite
+

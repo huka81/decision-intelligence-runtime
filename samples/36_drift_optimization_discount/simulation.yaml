@@ -1,0 +1,22 @@
+# Retention discount drift experiment — phases, curve, seeds, profitability monitor.
+# Loaded automatically when referenced from config.yaml (simulation_config).
+# Telemetry correlation: simulation.run_id → detail_json.simulation_id
+
+simulation:
+  run_id: run_36_retention_01
+  seeds:
+    retention: 36
+  normal_phase_iterations: 30
+  normal_discount_mean: 5.5
+  normal_discount_peak_to_peak_pct: 2.0
+  drift_discount_start_phase2: 6.0
+  drift_discount_end: 14.2
+  drift_curve_exponent: 1.7
+  drift_phase_noise_pp: 0.45
+  drift_offer_volatility_pp: 1.35
+  simulation_seed: 36
+
+monitor:
+  window_size: 20
+  avg_threshold_pct: 10.0
+  suspension_reason: PROFITABILITY_DRIFT
