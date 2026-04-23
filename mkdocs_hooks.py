@@ -22,7 +22,7 @@ _SAMPLE_READMES: tuple[str, ...] = (
     "05_dim_validation",
     "06_agent_registry",
     "07_event_bus_swappable",
-    "08_bootstrap_sqlite",
+    "08_custom_repo_psql",
     "09_topology_a_eoam",
     "10_topology_b_sds",
     "11_topology_c_dl_pci",

@@ -144,7 +144,7 @@ Duration: 1.0018s (Execution due to param change)
 
 ## Why Idempotency Matters
 
-From DIR Architectural Pattern §7:
+from dir_core Architectural Pattern §7:
 
 > *"Idempotency is critical for cost control (token burn prevention), reliability (safe retries), and consistency (deterministic outcomes). In LLM-based systems, re-executing the same Explain or Policy step can waste thousands of tokens and dollars. The Idempotency Guard ensures that once a step completes within a DecisionFlow, it never re-runs, even if the flow is retried due to network failures or process crashes."*
 
@@ -168,3 +168,4 @@ From DIR Architectural Pattern §7:
 - Real-time data fetches (where freshness matters)
 - Operations with legitimate side effects (database writes)
 - Cheap operations (<10ms) where cache overhead exceeds benefit
+

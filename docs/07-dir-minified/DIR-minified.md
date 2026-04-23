@@ -2573,7 +2573,7 @@ All samples are in `samples/` from the repository root. Run with `python samples
 | `05_dim_validation` | DIM | Deterministic validation gate, all 5 hard gates, rejection codes |
 | `06_agent_registry` | Agent Registry | Capability contracts, version handshake, schema sync |
 | `07_event_bus_swappable` | Infrastructure | In-memory Event Bus; pattern for swapping to Kafka/PubSub |
-| `08_bootstrap_sqlite` | Infrastructure | DB bootstrap: ensure schema exists before run |
+| `08_custom_repo_psql` | Infrastructure | PostgreSQL `StorageBundle` via `setup_environment` / shared `pg_repo`; minimal classic ROA + DIM to exercise registry, context, and audit on the external adapter |
 | `09_topology_a_eoam` | Topology A | Event-Oriented Agent Mesh, parallel reasoning, priority arbitration |
 | `10_topology_b_sds` | Topology B | Sovereign Decision Stream, constrained decoding |
 | `11_topology_c_dl_pci` | Topology C | Decision Ledger, Proof-Carrying Intents, Proof Checker |

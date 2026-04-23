@@ -17,6 +17,12 @@ plugins:
   - include-markdown:
       rewrite_relative_urls: true
   - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_root_heading: true
+            show_source: true
 
 # Mermaid: without this, ```mermaid fences render as plain highlighted code.
 markdown_extensions:
@@ -56,6 +62,22 @@ nav:
       - Governance & Agent Drift: 04-governance/DIR_Governance.md
       - Context as code: 08-conclusion/Context_as_Code.md
       - Intelligent AI delegation framework mapping: 00-introduction/Intelligent_Delegation_Framework_Mapping.md
+  - Package:
+      - Overview: 09-pages/package/index.md
+      - Installation: 09-pages/package/installation.md
+      - Architecture: 09-pages/package/architecture.md
+      - Ports & Adapters: 09-pages/package/ports_and_adapters.md
+      - Core Components: 09-pages/package/core_components.md
+      - Models & DTOs: 09-pages/package/models.md
+  - API Reference:
+      - Overview: 10-api-reference/index.md
+      - Core Framework: 10-api-reference/core.md
+      - Kernel Services: 10-api-reference/services.md
+      - "Topology A (EOAM)": 10-api-reference/topology_a.md
+      - "Topology C (DL+PCI)": 10-api-reference/topology_c.md
+      - Execution Patterns: 10-api-reference/patterns.md
+      - Storage Layer: 10-api-reference/storage.md
+      - Database Schema: 10-api-reference/database_schema.md
   - Samples:
       - 09-pages/samples/index.md
       - "00 - Quick start": 09-pages/samples/00_quick_start.md
@@ -66,7 +88,7 @@ nav:
       - "05 - DIM validation": 09-pages/samples/05_dim_validation.md
       - "06 - Agent registry": 09-pages/samples/06_agent_registry.md
       - "07 - Event bus (swappable)": 09-pages/samples/07_event_bus_swappable.md
-      - "08 - Bootstrap SQLite": 09-pages/samples/08_bootstrap_sqlite.md
+      - "08 - Custom repo (PostgreSQL)": 09-pages/samples/08_custom_repo_psql.md
       - "09 - Topology A (EOAM)": 09-pages/samples/09_topology_a_eoam.md
       - "10 - Topology B (SDS)": 09-pages/samples/10_topology_b_sds.md
       - "11 - Topology C (DL+PCI)": 09-pages/samples/11_topology_c_dl_pci.md

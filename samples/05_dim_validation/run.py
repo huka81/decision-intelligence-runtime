@@ -11,8 +11,8 @@ Shows:
 import logging
 from typing import Dict, Any
 
-from dir.dim import validate_proposal
-from dir.models import PolicyProposal
+from dir_core.dim import validate_proposal
+from dir_core.models import PolicyProposal
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -23,7 +23,7 @@ def run_check(test_name: str, proposal: PolicyProposal, context: Dict[str, Any],
     print(f"\n[{test_name}] Checking proposal: {proposal.policy_kind} by {proposal.agent_id}")
     verdict, reason = validate_proposal(proposal, context, allowed_agents)
     
-    icon = "✅" if verdict == "ACCEPT" else "❌"
+    icon = "[OK]" if verdict == "ACCEPT" else "[NO]"
     print(f"   Verdict: {icon} {verdict}")
     print(f"   Reason:  {reason}")
     return verdict
@@ -62,7 +62,7 @@ def main() -> None:
     
     verdict = run_check("Test 2: Unauthorized Agent", p2, ctx_normal, allowed)
     if verdict != "REJECT":
-        print("   ⚠️  FAILURE: Should have rejected unauthorized agent!")
+        print("   WARNING: FAILURE: Should have rejected unauthorized agent!")
 
     # 3. High Risk Context (State Consistency)
     # Applying 'deploy_to_production' when risk is high
@@ -78,7 +78,7 @@ def main() -> None:
     
     verdict = run_check("Test 3: High Risk Deploy", p3, ctx_risky, allowed)
     if verdict != "REJECT":
-        print("   ⚠️  FAILURE: Should have rejected high-risk deployment!")
+        print("   WARNING: FAILURE: Should have rejected high-risk deployment!")
     else:
         print("   (Correctly rejected due to risk_score > 0.8)")
 
@@ -88,3 +88,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

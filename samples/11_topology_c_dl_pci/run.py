@@ -1,211 +1,218 @@
 #!/usr/bin/env python3
 """
-11_topology_c_dl_pci - Decision Ledger & Proof-Carrying Intents (PCI).
+11_topology_c_dl_pci — Technical minimal demo: Topology C (DL+PCI).
 
-DIR §2.4 / Topologies C.
-Scenario: High-stakes decision (e.g. fund transfer) requiring auditability and non-repudiation.
+Focus: build Proof-Carrying Intent, verify proof/hash against context and
+contract, pass proposal through DecisionRuntime DIM gate, append accepted PCI to
+DecisionLedger.
 
-Key components:
-1. Decision Ledger: Append-only, tamper-evident log (Merkle-chain style).
-2. PCI (Proof-Carrying Intent): Intent includes cryptographic signature and context hash.
+Aligned with .cursor/rules/06-technical-sample-development-guide.mdc.
+No samples/shared, no YAML, memory_storage + DecisionRuntime only.
+
+Run: python samples/11_topology_c_dl_pci/run.py
 """
+from __future__ import annotations
 
+import copy
 import hashlib
 import hmac
 import json
 import logging
-import time
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+import sys
+from pathlib import Path
+from typing import Any, Dict
 
-from dir import new_dfid
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from dir_core import (  # noqa: E402
+    DecisionLedger,
+    DecisionRuntime,
+    PolicyProposal,
+    ProofCarryingIntent,
+    ProofChecker,
+    ResponsibilityContract,
+    compute_evidence_hash,
+    hash_content,
+    proposal_params_for_hash,
+    new_dfid,
+)
+from dir_core.data_types import ContractRole, ValidationVerdict  # noqa: E402
+from dir_core.storage import memory_storage  # noqa: E402
+from dir_core.utils.logging_utils import log_with_dfid  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
+_AGENT_ID = "agent_banker"
+_KEYS = {_AGENT_ID: b"bank_super_secret"}
 
-# --- 1. Cryptographic Primitives (Simulated) ---
 
-def sign_data(secret_key: bytes, data: str) -> str:
-    """HMAC-SHA256 signature."""
-    return hmac.new(secret_key, data.encode(), hashlib.sha256).hexdigest()
+def _sign(secret_key: bytes, payload: Dict[str, Any]) -> str:
+    canonical = json.dumps(payload, sort_keys=True)
+    return hmac.new(secret_key, canonical.encode(), hashlib.sha256).hexdigest()
 
-def verify_signature(secret_key: bytes, data: str, signature: str) -> bool:
-    expected = sign_data(secret_key, data)
+
+def _verify_signature(secret_key: bytes, payload: Dict[str, Any], signature: str) -> bool:
+    expected = _sign(secret_key, payload)
     return hmac.compare_digest(expected, signature)
 
-def hash_content(data: Any) -> str:
-    canonical = json.dumps(data, sort_keys=True)
-    return hashlib.sha256(canonical.encode()).hexdigest()
+
+def _contract() -> Dict[str, Any]:
+    return ResponsibilityContract(
+        agent_id=_AGENT_ID,
+        role=ContractRole.EXECUTOR,
+        mission="Submit high-stakes transfer intents with PCI evidence.",
+        authorized_instruments=["BANK"],
+        allowed_policy_types=["TRANSFER_FUNDS"],
+        escalate_on_uncertainty=0.7,
+        max_drawdown_limit=0.05,
+        wake_up_threshold_pct=0.5,
+        parent_agent_id=None,
+    ).model_dump()
 
 
-# --- 2. The Chain (Decision Ledger) ---
-
-@dataclass
-class LedgerEntry:
-    index: int
-    prev_hash: str
-    timestamp: float
-    data: Dict[str, Any] # The PCI
-    entry_hash: str
-
-class DecisionLedger:
-    def __init__(self):
-        self.chain: List[LedgerEntry] = []
-        # Genesis block
-        self.chain.append(LedgerEntry(0, "0"*64, time.time(), {"msg": "GENESIS"}, self._hash_entry(0, "0"*64, {}, time.time())))
-
-    def _hash_entry(self, index: int, prev_hash: str, data: Dict, timestamp: float) -> str:
-        payload = f"{index}|{prev_hash}|{timestamp}|{hash_content(data)}"
-        return hashlib.sha256(payload.encode()).hexdigest()
-
-    def append(self, pci: Dict[str, Any]) -> bool:
-        """
-        Append PCI to ledger.
-        Returns True if accepted (valid format), False otherwise.
-        Note: Deep verification of PCI happens before or during append.
-        """
-        prev = self.chain[-1]
-        index = prev.index + 1
-        ts = time.time()
-        entry_hash = self._hash_entry(index, prev.entry_hash, pci, ts)
-        
-        entry = LedgerEntry(index, prev.entry_hash, ts, pci, entry_hash)
-        self.chain.append(entry)
-        logger.info(f"⛓️  Block #{index} appended. Hash: {entry_hash[:8]}...")
-        return True
-    
-    def verify_integrity(self) -> bool:
-        """Check hash chain integrity."""
-        for i in range(1, len(self.chain)):
-            curr = self.chain[i]
-            prev = self.chain[i-1]
-            if curr.prev_hash != prev.entry_hash:
-                logger.error(f"Integrity Fail at #{i}: Prev hash mismatch")
-                return False
-            recalc = self._hash_entry(curr.index, curr.prev_hash, curr.data, curr.timestamp)
-            if recalc != curr.entry_hash:
-                logger.error(f"Integrity Fail at #{i}: Hash mismatch")
-                return False
-        return True
+def _contract_hash(contract: Dict[str, Any]) -> str:
+    stable = {
+        "agent_id": contract["agent_id"],
+        "role": contract["role"],
+        "allowed_policy_types": contract["allowed_policy_types"],
+        "authorized_instruments": contract["authorized_instruments"],
+    }
+    return hash_content(stable)
 
 
-# --- 3. The Agent (Producer of PCI) ---
-
-class HighSecurityAgent:
-    def __init__(self, agent_id: str, secret_key: bytes):
-        self.agent_id = agent_id
-        self.secret_key = secret_key
-
-    def create_intent(self, amount: float, recipient: str, context_snapshot: Dict) -> Dict[str, Any]:
-        """Create Proof-Carrying Intent."""
-        
-        # 1. Bind to Context (prevent repurposing intent in different state)
-        context_hash = hash_content(context_snapshot)
-        
-        # 2. Construct Payload
-        intent_payload = {
-            "agent_id": self.agent_id,
-            "dfid": new_dfid(),
-            "action": "TRANSFER",
-            "params": {"amount": amount, "recipient": recipient},
-            "context_bind": context_hash, # Binds intent to this specific reality
-            "timestamp": time.time()
-        }
-        
-        # 3. Sign (Proof of Authorship + Integrity)
-        canonical_str = json.dumps(intent_payload, sort_keys=True)
-        signature = sign_data(self.secret_key, canonical_str)
-        
-        # 4. Attach Proof
-        pci = {
-            "payload": intent_payload,
-            "proof": {
-                "signer": self.agent_id,
-                "signature": signature,
-                "algo": "HMAC-SHA256"
-            }
-        }
-        return pci
+def _make_pci(
+    context: Dict[str, Any],
+    amount: float,
+    recipient: str,
+    contract_hash: str,
+) -> ProofCarryingIntent:
+    dfid = new_dfid()
+    payload = {
+        "agent_id": _AGENT_ID,
+        "policy_kind": "TRANSFER_FUNDS",
+        "params": {"amount": amount, "recipient": recipient},
+        "confidence": 0.95,
+        "justification": "Topology C technical demo intent.",
+    }
+    context_hash = hash_content(context)
+    evidence_hash = compute_evidence_hash(
+        dfid=dfid,
+        context_hash=context_hash,
+        contract_hash=contract_hash,
+        proposal_params=proposal_params_for_hash(payload),
+    )
+    signature = _sign(_KEYS[_AGENT_ID], payload)
+    return ProofCarryingIntent(
+        dfid=dfid,
+        intent_payload=payload,
+        context_ref=context_hash,
+        evidence_hash=evidence_hash,
+        signature=signature,
+    )
 
 
-# --- 4. The Verifier (Gatekeeper) ---
+def _submit(
+    runtime: DecisionRuntime,
+    ledger: DecisionLedger,
+    checker: ProofChecker,
+    pci: ProofCarryingIntent,
+    context: Dict[str, Any],
+    contract_hash: str,
+) -> bool:
+    dfid = pci.dfid
+    payload = dict(pci.intent_payload)
+    agent_id = str(payload.get("agent_id", ""))
+    if agent_id not in _KEYS:
+        log_with_dfid(logger, dfid, logging.WARNING, "REJECT unknown agent")
+        return False
 
-class LedgertGatekeeper:
-    def __init__(self, ledger: DecisionLedger, keys: Dict[str, bytes]):
-        self.ledger = ledger
-        self.keys = keys # Registry of public keys (secrets in this mock)
+    if not _verify_signature(_KEYS[agent_id], payload, pci.signature):
+        log_with_dfid(logger, dfid, logging.WARNING, "REJECT invalid signature")
+        return False
 
-    def submit(self, pci: Dict[str, Any], context_snapshot: Dict) -> bool:
-        payload = pci["payload"]
-        proof = pci["proof"]
-        agent_id = payload["agent_id"]
-        
-        # 1. Verify User
-        if agent_id not in self.keys:
-            logger.warning(f"⛔ REJECT: Unknown agent {agent_id}")
-            return False
-            
-        # 2. Verify Context Binding
-        current_ctx_hash = hash_content(context_snapshot)
-        if payload["context_bind"] != current_ctx_hash:
-            logger.warning("⛔ REJECT: Context mismatch (Stale intent or replay?)")
-            return False
-            
-        # 3. Verify Signature
-        canonical_str = json.dumps(payload, sort_keys=True)
-        is_valid = verify_signature(self.keys[agent_id], canonical_str, proof["signature"])
-        
-        if not is_valid:
-            logger.warning("⛔ REJECT: Invalid Signature")
-            return False
-            
-        logger.info(f"✅ VERIFIED PCI from {agent_id}. Action: {payload['action']}")
-        self.ledger.append(pci)
+    ok, reason = checker.verify(
+        pci,
+        get_context_hash=lambda: hash_content(context),
+        get_contract_hash=lambda: contract_hash,
+        get_proposal_params=proposal_params_for_hash,
+    )
+    if not ok:
+        log_with_dfid(logger, dfid, logging.WARNING, "REJECT proof: %s", reason)
+        return False
+
+    proposal = PolicyProposal(
+        dfid=dfid,
+        agent_id=agent_id,
+        policy_kind=str(payload.get("policy_kind", "")),
+        params=dict(payload.get("params", {})),
+        context_ref=pci.context_ref,
+        confidence=float(payload.get("confidence", 1.0)),
+        justification=str(payload.get("justification", "PCI verified")),
+    )
+    verdict, reason = runtime.evaluate_proposal(
+        proposal,
+        {},
+        dim_context={"state": {"risk_score": 0.0}},
+        allowed_agents=[_AGENT_ID],
+        contract=_contract(),
+        use_registry_contract=False,
+    )
+    if verdict == ValidationVerdict.ACCEPT:
+        ledger.append(pci)
+        log_with_dfid(logger, dfid, logging.INFO, "ACCEPT ledger_append")
         return True
 
+    log_with_dfid(logger, dfid, logging.INFO, "REJECT by DIM: %s", reason)
+    return False
 
-# --- 5. Simulation ---
 
-def main():
-    print("=" * 70)
-    print("Decision Ledger & Proof-Carrying Intents (PCI)")
-    print("=" * 70)
+def main() -> None:
+    runtime = DecisionRuntime(memory_storage())
+    contract = _contract()
+    c_hash = _contract_hash(contract)
+    hr = runtime.register_agent(_AGENT_ID, contract, agent_version="1.0.0")
+    if not hr.accepted:
+        logger.error("Handshake rejected: %s", hr.reason)
+        return
 
-    # Setup
     ledger = DecisionLedger()
-    agent_key = b"bank_super_secret"
-    agent = HighSecurityAgent("agent_banker", agent_key)
-    gatekeeper = LedgertGatekeeper(ledger, {"agent_banker": agent_key})
-    
-    # State A
+    checker = ProofChecker()
+    accepted = 0
+    rejected = 0
+
     context_a = {"balance": 1000, "status": "active"}
-    
-    # Scene 1: Valid Transaction
-    print("\n[Scene 1] Valid Transfer")
-    pci_1 = agent.create_intent(100.0, "alice", context_a)
-    gatekeeper.submit(pci_1, context_a)
-    
-    # Scene 2: Tampered Payload (Man-in-the-middle)
-    print("\n[Scene 2] Tampered Payload")
-    pci_2 = agent.create_intent(50.0, "bob", context_a)
-    # Attacker changes amount
-    pci_2["payload"]["params"]["amount"] = 999999.0 
-    gatekeeper.submit(pci_2, context_a)
-    
-    # Scene 3: Replay Attack (Context Mismatch)
-    print("\n[Scene 3] Replay Attack (Context Mismatch)")
-    # State changes
-    context_b = {"balance": 900, "status": "active"} 
-    # Attacker tries to replay pci_1 (which was valid for context_a)
-    gatekeeper.submit(pci_1, context_b)
-    
-    # Scene 4: Ledger Integrity Check
-    print("\n[Scene 4] Ledger Verification")
-    if ledger.verify_integrity():
-        print("✅ Ledger Integrity OK")
+    context_b = {"balance": 900, "status": "active"}
+
+    # Scene 1: valid PCI
+    pci_valid = _make_pci(context_a, amount=100.0, recipient="alice", contract_hash=c_hash)
+    if _submit(runtime, ledger, checker, pci_valid, context_a, c_hash):
+        accepted += 1
     else:
-        print("❌ Ledger Corrupted")
+        rejected += 1
+
+    # Scene 2: tampered payload (signature mismatch)
+    pci_tampered = copy.deepcopy(pci_valid)
+    pci_tampered.dfid = new_dfid()
+    pci_tampered.intent_payload["params"]["amount"] = 999_999.0
+    if _submit(runtime, ledger, checker, pci_tampered, context_a, c_hash):
+        accepted += 1
+    else:
+        rejected += 1
+
+    # Scene 3: replay in different context (evidence mismatch)
+    if _submit(runtime, ledger, checker, pci_valid, context_b, c_hash):
+        accepted += 1
+    else:
+        rejected += 1
+
+    print(
+        f"\n[SUMMARY] accepted={accepted} rejected={rejected} "
+        f"ledger_entries={len(ledger)}",
+    )
 
 
 if __name__ == "__main__":

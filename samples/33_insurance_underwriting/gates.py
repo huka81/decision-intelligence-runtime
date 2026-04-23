@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from models import ClientApplication, UnderwritingContract
+from schemas import ClientApplication, UnderwritingContract
 
 
 @dataclass

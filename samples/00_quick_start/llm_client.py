@@ -1,7 +1,8 @@
 """
 LLM client for 00_quick_start agent: OllamaClient and MockLLM.
 
-Mirrors the pattern from samples/32_fraud_gate/llm_client.py.
+Fraud sample wires LLM via shared.bootstrap.build_llm_from_config; this quick start
+keeps a local MockLLM class for the comma demo.
 
 MockLLM: deterministic mock for tests without Ollama (USE_MOCK_LLM=1 or provider: mock).
 It mimics how a real LLM would naively parse the ambiguous "15,500" feed value
@@ -16,7 +17,8 @@ import logging
 import re
 from typing import Optional
 
-from utils.ollama_client import LLMClient, OllamaClient  # re-exported for callers
+from dir_core.utils.llm_client import LLMClient
+from shared.llm.clients import OllamaClient  # re-exported for callers
 
 __all__ = ["LLMClient", "OllamaClient", "MockLLM"]
 

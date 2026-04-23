@@ -1,0 +1,50 @@
+# 32_fraud_gate — scenario fixtures (YAML-driven gate).
+# expected: DIM aggregate verdict after custom JIT validators (ACCEPT | REJECT)
+# drift_attack: if true, live risk is flipped after the agent proposes (TOCTOU demo)
+
+scenarios:
+  - label: "SCENARIO 1 - Legit"
+    tx_id: "tx_001"
+    notes: "Low amount, known device; DIM ACCEPT and ALLOW may execute."
+    context:
+      user_id: "user_legit"
+      amount: 50.0
+      geo_country: "US"
+      device_id: "dev_known_001"
+      velocity_24h: 3
+    snapshot:
+      user_legit:
+        status: "clean"
+        risk_score: 0.05
+    expected: ACCEPT
+
+  - label: "SCENARIO 2 - Obvious Fraud"
+    tx_id: "tx_002"
+    notes: "Agent should BLOCK; DIM still ACCEPT; no payment execution."
+    context:
+      user_id: "user_fraud"
+      amount: 10000.0
+      geo_country: "Nigeria"
+      device_id: "dev_unknown_xyz"
+      velocity_24h: 1
+    snapshot:
+      user_fraud:
+        status: "clean"
+        risk_score: 0.0
+    expected: ACCEPT
+
+  - label: "SCENARIO 3 - Drift Attack"
+    tx_id: "tx_003"
+    notes: "User flagged compromised after proposal; DIM REJECT on state drift."
+    context:
+      user_id: "user_drift"
+      amount: 100.0
+      geo_country: "US"
+      device_id: "dev_known_002"
+      velocity_24h: 2
+    snapshot:
+      user_drift:
+        status: "clean"
+        risk_score: 0.1
+    drift_attack: true
+    expected: REJECT

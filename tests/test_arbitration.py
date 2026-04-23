@@ -1,7 +1,7 @@
 """Tests for dir.arbitration module."""
 
-from dir.arbitration import DEFAULT_PRIORITY_MATRIX, select_winner
-from dir.models import PolicyProposal
+from dir_core.arbitration import DEFAULT_PRIORITY_MATRIX, select_winner
+from dir_core.models import PolicyProposal
 
 
 def _proposal(agent_id: str, policy_kind: str) -> PolicyProposal:
@@ -39,3 +39,4 @@ def test_select_winner_custom_matrix() -> None:
 def test_default_priority_matrix() -> None:
     assert DEFAULT_PRIORITY_MATRIX["RISK_ALERT"] == 1
     assert DEFAULT_PRIORITY_MATRIX["HOLD"] == 10
+

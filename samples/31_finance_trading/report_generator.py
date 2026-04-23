@@ -9,18 +9,24 @@ Generates report from database (persistent storage) instead of in-memory data.
 
 from __future__ import annotations
 
+import json
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
-from simulation_recorder import (
-    SimulationRecorder,
-    TickRecord,
-    SimDecisionRecord,
-    PositionRecord,
-)
-from simulation_database import SimulationDatabase
+try:
+    from telemetry import (
+        SimulationReportState,
+        hydrate_report_state_from_audit,
+    )
+except ImportError:
+    from .telemetry import (
+        SimulationReportState,
+        hydrate_report_state_from_audit,
+    )
 
+from dir_core.storage import StorageBundle
 
 def _escape(s: str) -> str:
     """Escape HTML special chars."""
@@ -42,14 +48,310 @@ def _section(title: str, content: str, expanded: bool = True) -> str:
     </details>"""
 
 
-def _build_chart_html(recorder: SimulationRecorder) -> str:
+def _related_dfids(state: SimulationReportState) -> Set[str]:
+    """DFIDs tied to this simulation (ticks, decisions, news, position parents)."""
+    s: Set[str] = set()
+    for t in state.ticks:
+        if t.dfid:
+            s.add(t.dfid)
+    for d in state.decisions:
+        if d.dfid:
+            s.add(d.dfid)
+    for n in state.news_events:
+        df = n.get("dfid")
+        if df:
+            s.add(str(df))
+    for p in state.positions:
+        if p.parent_dfid:
+            s.add(p.parent_dfid)
+    return s
+
+
+def _agent_ids_for_run(state: SimulationReportState) -> List[str]:
+    """Agent IDs that participate in audit + spawned position agents."""
+    ids: Set[str] = {d.agent_id for d in state.decisions if d.agent_id}
+    for p in state.positions:
+        if p.position_id:
+            ids.add(f"position_{p.position_id}")
+    return sorted(ids)
+
+
+def _fetch_flow_transitions(bundle: StorageBundle, allow_dfids: Set[str]) -> List[Dict[str, Any]]:
+    """Read flow_transitions for DFIDs in this run (memory / PostgreSQL / SQLite)."""
+    if not allow_dfids:
+        return []
+    ls = bundle.lifecycle
+    mem_fn = getattr(ls, "get_transitions", None)
+    if callable(mem_fn):
+        rows: List[Dict[str, Any]] = []
+        raw_transitions: Any = mem_fn()
+        for t in raw_transitions:
+            if t.get("dfid") in allow_dfids:
+                rows.append(dict(t))
+        rows.sort(key=lambda x: str(x.get("created_at", "")))
+        return rows
+    conn = getattr(ls, "_conn", None)
+    flat = list(allow_dfids)[:400]
+    if conn is not None and flat:
+        placeholders = ",".join(["%s"] * len(flat))
+        sql = (
+            "SELECT id, dfid, from_status, to_status, created_at::text "
+            "FROM flow_transitions WHERE dfid IN (" + placeholders + ") ORDER BY id ASC"
+        )
+        with conn.cursor() as cur:
+            cur.execute(sql, flat)
+            raw = cur.fetchall()
+        return [
+            {
+                "id": r[0],
+                "dfid": r[1],
+                "from_status": r[2] or "",
+                "to_status": r[3],
+                "created_at": str(r[4]) if r[4] is not None else "",
+            }
+            for r in raw
+        ]
+    db_path = getattr(ls, "db_path", None)
+    if db_path and flat:
+        placeholders = ",".join("?" * len(flat))
+        sql = (
+            "SELECT id, dfid, from_status, to_status, created_at "
+            "FROM flow_transitions WHERE dfid IN (" + placeholders + ") ORDER BY id ASC"
+        )
+        with sqlite3.connect(db_path) as c:
+            cur = c.execute(sql, flat)
+            raw = cur.fetchall()
+        return [
+            {
+                "id": r[0],
+                "dfid": r[1],
+                "from_status": r[2] or "",
+                "to_status": r[3],
+                "created_at": str(r[4]) if r[4] is not None else "",
+            }
+            for r in raw
+        ]
+    return []
+
+
+def _gather_registry_rows(bundle: StorageBundle, agent_ids: List[str]) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for aid in agent_ids:
+        rec = bundle.agent_registry.get_agent(aid)
+        if not rec:
+            continue
+        c = rec.get("contract") or {}
+        mission = str(c.get("mission") or "")
+        rows.append(
+            {
+                "agent_id": aid,
+                "status": rec.get("status", ""),
+                "priority": rec.get("priority", 0),
+                "role": str(c.get("role", "")),
+                "instruments": ", ".join(c.get("authorized_instruments") or []),
+                "mission_excerpt": mission[:160] + ("…" if len(mission) > 160 else ""),
+            }
+        )
+    return rows
+
+
+def _gather_session_snapshots(
+    bundle: StorageBundle,
+    simulation_id: str,
+    dfids: Set[str],
+    *,
+    limit: int = 100,
+) -> List[Dict[str, Any]]:
+    """Context Store session rows tagged with this simulation_id."""
+    out: List[Dict[str, Any]] = []
+    for i, dfid in enumerate(sorted(dfids)):
+        if i >= limit:
+            break
+        raw = bundle.context.get_session(dfid)
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if data.get("simulation_id") != simulation_id:
+            continue
+        steps = data.get("roa_internal_steps") or []
+        last = steps[-1] if steps else {}
+        out.append(
+            {
+                "dfid": dfid,
+                "roa_steps": len(steps),
+                "last_policy": str(last.get("policy_action", "—")),
+                "last_outcome": str(last.get("outcome", "—")),
+            }
+        )
+    return out
+
+
+def _gather_agent_state_snapshots(
+    bundle: StorageBundle,
+    simulation_id: str,
+    agent_ids: List[str],
+) -> List[Dict[str, Any]]:
+    """Context Store per-agent state for this simulation."""
+    out: List[Dict[str, Any]] = []
+    for aid in agent_ids:
+        raw = bundle.context.get_state(aid)
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if data.get("simulation_id") != simulation_id:
+            continue
+        out.append(
+            {
+                "agent_id": aid,
+                "last_dfid": str(data.get("last_dfid", "—")),
+                "last_policy": str(data.get("last_policy_action", "—")),
+                "last_outcome": str(data.get("last_outcome", "—")),
+            }
+        )
+    return out
+
+
+def _transition_business_note(from_s: str, to_s: str) -> str:
+    """Short business reading of a lifecycle row (sample-specific conventions)."""
+    if from_s == "POSITION_SPAWN" and to_s.startswith("position_"):
+        return "News flow spawned a dedicated position agent (capital at risk)."
+    if to_s == "RETIRED":
+        return "Position agent removed from active mesh after close (registry RETIRED)."
+    if from_s == "NEWS_QUALIFIED" or "NEWS" in from_s.upper():
+        return "Orchestration linked to news-qualified decision flow."
+    return "Kernel lifecycle transition (audit trail)."
+
+
+def _build_repository_business_html(
+    bundle: StorageBundle,
+    simulation_id: str,
+    state: SimulationReportState,
+) -> str:
+    """HTML: registry, lifecycle, context session/state — data from the same StorageBundle as the run."""
+    dfids = _related_dfids(state) | {simulation_id}
+    agent_ids = _agent_ids_for_run(state)
+    registry_rows = _gather_registry_rows(bundle, agent_ids)
+    transitions = _fetch_flow_transitions(bundle, dfids)
+    sessions = _gather_session_snapshots(bundle, simulation_id, dfids)
+    states = _gather_agent_state_snapshots(bundle, simulation_id, agent_ids)
+
+    intro = """
+    <p class="meta">
+        This section binds the <strong>trading narrative</strong> to DIR kernel artefacts persisted alongside
+        decision audit: <em>who</em> was authorised in the Agent Registry, <em>which flows</em> recorded lifecycle
+        transitions (spawn / retire), and <em>what</em> the Context Store captured per DFID and per agent state
+        (ROA Explain→Policy outcomes for compliance and post-trade review).
+    </p>
+    """
+
+    if not registry_rows and not transitions and not sessions and not states:
+        return intro + (
+            "<p><em>No Agent Registry / Context / lifecycle rows for agents in this run "
+            "(e.g. in-memory bundle cleared, or kernel persistence not used for this execution).</em></p>"
+        )
+
+    blocks: List[str] = [intro]
+
+    if registry_rows:
+        rows_html = "".join(
+            f"""<tr>
+            <td><code>{_escape(str(r["agent_id"]))}</code></td>
+            <td>{_escape(str(r["status"]))}</td>
+            <td>{r["priority"]}</td>
+            <td>{_escape(r["role"])}</td>
+            <td>{_escape(r["instruments"])}</td>
+            <td>{_escape(r["mission_excerpt"])}</td>
+        </tr>"""
+            for r in registry_rows
+        )
+        blocks.append(
+            f"""
+        <h3>Agent Registry — authority &amp; mission (DIR §2.3)</h3>
+        <p class="meta">Registered agents participating in this simulation snapshot (contract + runtime status).</p>
+        <table class="data-table">
+            <tr><th>Agent</th><th>Status</th><th>Priority</th><th>Role</th><th>Instruments</th><th>Mission (excerpt)</th></tr>
+            {rows_html}
+        </table>"""
+        )
+
+    if transitions:
+        tr_html = "".join(
+            f"""<tr>
+            <td>{_escape(str(t.get("created_at", "")))}</td>
+            <td><code>{_escape(str(t.get("dfid", "")))}</code></td>
+            <td>{_escape(str(t.get("from_status", "")))}</td>
+            <td>{_escape(str(t.get("to_status", "")))}</td>
+            <td>{_escape(_transition_business_note(str(t.get("from_status", "")), str(t.get("to_status", ""))))}</td>
+        </tr>"""
+            for t in transitions
+        )
+        blocks.append(
+            f"""
+        <h3>Flow lifecycle — orchestration (DIR §4.3)</h3>
+        <p class="meta">Append-only transitions for DFIDs tied to this run (spawn of position agents, retire on close).</p>
+        <table class="data-table">
+            <tr><th>Time</th><th>Flow / DFID</th><th>From</th><th>To</th><th>Business note</th></tr>
+            {tr_html}
+        </table>"""
+        )
+
+    if sessions:
+        s_html = "".join(
+            f"""<tr>
+            <td><code>{_escape(s["dfid"])}</code></td>
+            <td>{s["roa_steps"]}</td>
+            <td>{_escape(s["last_policy"])}</td>
+            <td>{_escape(s["last_outcome"])}</td>
+        </tr>"""
+            for s in sessions
+        )
+        blocks.append(
+            f"""
+        <h3>Context Store — session (per DFID)</h3>
+        <p class="meta">ROA internal steps persisted for each market/news decision flow (Explain→Policy outcome count).</p>
+        <table class="data-table">
+            <tr><th>DFID</th><th>ROA steps</th><th>Last policy</th><th>Last outcome</th></tr>
+            {s_html}
+        </table>"""
+        )
+
+    if states:
+        st_html = "".join(
+            f"""<tr>
+            <td><code>{_escape(st["agent_id"])}</code></td>
+            <td><code>{_escape(st["last_dfid"])}</code></td>
+            <td>{_escape(st["last_policy"])}</td>
+            <td>{_escape(st["last_outcome"])}</td>
+        </tr>"""
+            for st in states
+        )
+        blocks.append(
+            f"""
+        <h3>Context Store — agent state (authoritative slice)</h3>
+        <p class="meta">Latest kernel-written state per agent for this simulation (ties agents to last DFID and policy outcome).</p>
+        <table class="data-table">
+            <tr><th>Agent</th><th>Last DFID</th><th>Last policy</th><th>Last outcome</th></tr>
+            {st_html}
+        </table>"""
+        )
+
+    return "\n".join(blocks)
+
+
+def _build_chart_html(state: SimulationReportState) -> str:
     """Build Plotly charts for each instrument: price vs tick with decision points and rich tooltips."""
     try:
         import plotly.graph_objects as go
     except ImportError:
         return "<p><em>Chart requires plotly. Install: pip install plotly</em></p>"
 
-    instruments = list({t.instrument for t in recorder.ticks if t.instrument})
+    instruments = list({t.instrument for t in state.ticks if t.instrument})
     if not instruments:
         return "<p><em>No tick data to plot.</em></p>"
 
@@ -67,7 +369,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
 
     charts_html = []
     for idx, inst in enumerate(instruments):
-        ticks_inst = [t for t in recorder.ticks if t.instrument == inst]
+        ticks_inst = [t for t in state.ticks if t.instrument == inst]
         if not ticks_inst:
             continue
 
@@ -102,7 +404,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
         )
 
         decisions_inst = [
-            d for d in recorder.decisions
+            d for d in state.decisions
             if d.instrument == inst or (inst in (d.instruments_affected or []))
         ]
 
@@ -167,7 +469,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
         
         # Add NEWS_QUALIFIED events (news_scorer agent)
         news_qualified = [
-            d for d in recorder.decisions
+            d for d in state.decisions
             if d.policy_kind == "NEWS_QUALIFIED" and (inst in (d.instruments_affected or []))
         ]
         
@@ -194,7 +496,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
                 
                 # Find associated positions spawned from this news
                 spawned_positions = [
-                    p for p in recorder.positions 
+                    p for p in state.positions 
                     if p.parent_dfid == d.dfid and p.instrument == inst
                 ]
                 pos_info = ""
@@ -235,7 +537,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
                 )
         
         # Add OPEN_POSITION markers
-        positions_inst = [p for p in recorder.positions if p.instrument == inst]
+        positions_inst = [p for p in state.positions if p.instrument == inst]
         
         if positions_inst:
             x_open = []
@@ -265,7 +567,7 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
                 if pos.parent_dfid:
                     hover_text += f"<br><b>Parent DFID:</b> {pos.parent_dfid}"
                 
-                if pos.close_tick is not None:
+                if pos.close_tick is not None and pos.close_price is not None:
                     pnl_usd = pos.quantity * (pos.close_price - pos.entry_price)
                     pnl_percent = ((pos.close_price - pos.entry_price) / pos.entry_price) * 100
                     pnl_sign = "+" if pnl_usd >= 0 else ""
@@ -328,11 +630,11 @@ def _build_chart_html(recorder: SimulationRecorder) -> str:
     return "\n".join(charts_html)
 
 
-def _build_dfid_tree_html(recorder: SimulationRecorder) -> str:
+def _build_dfid_tree_html(state: SimulationReportState) -> str:
     """Build DFID hierarchy tree."""
     lines = []
     seen = set()
-    for pos in recorder.positions:
+    for pos in state.positions:
         if pos.parent_dfid and pos.parent_dfid not in seen:
             seen.add(pos.parent_dfid)
             lines.append(f"<tr><td><code>{_escape(pos.parent_dfid)}</code></td><td>News (NEWS_QUALIFIED)</td></tr>")
@@ -350,13 +652,13 @@ def _build_dfid_tree_html(recorder: SimulationRecorder) -> str:
     </table>"""
 
 
-def _build_decisions_table_html(recorder: SimulationRecorder) -> str:
+def _build_decisions_table_html(state: SimulationReportState) -> str:
     """Build decisions table with details."""
-    if not recorder.decisions:
+    if not state.decisions:
         return "<p><em>No decisions recorded.</em></p>"
 
     rows = []
-    for i, d in enumerate(recorder.decisions):
+    for i, d in enumerate(state.decisions):
         dim_class = "ok" if d.dim_result == "ACCEPT" else "reject"
         rows.append(
             f"""
@@ -384,13 +686,13 @@ def _build_decisions_table_html(recorder: SimulationRecorder) -> str:
     </table>"""
 
 
-def _build_position_lifecycle_html(recorder: SimulationRecorder) -> str:
+def _build_position_lifecycle_html(state: SimulationReportState) -> str:
     """Build position lifecycle section with detailed audit trail."""
-    if not recorder.positions:
+    if not state.positions:
         return "<p><em>No positions opened.</em></p>"
 
     blocks = []
-    for pos in recorder.positions:
+    for pos in state.positions:
         # Determine status
         status_emoji = "✅" if pos.close_tick is not None else "⏳"
         status_text = "CLOSED" if pos.close_tick is not None else "OPEN"
@@ -500,98 +802,31 @@ def _build_position_lifecycle_html(recorder: SimulationRecorder) -> str:
 
 def generate_html_report(
     simulation_id: str,
-    db_path: str | Path,
+    bundle: StorageBundle,
     output_path: Path,
     simulation_ticks: int = 0,
     news_count: int = 0,
     elapsed_seconds: float = 0.0,
 ) -> None:
     """
-    Generate complete HTML audit report for finance trading simulation from database.
-
-    Args:
-        simulation_id: Simulation ID to load data for
-        db_path: Path to simulation_data.db
-        output_path: Where to save the HTML file
-        simulation_ticks: Total ticks run
-        news_count: Total news events
-        elapsed_seconds: Wall-clock duration
+    Generate complete HTML audit report for finance trading simulation from canonical database.
     """
-    # Load data from database
-    db = SimulationDatabase(db_path)
-    db.connect()
-    
-    try:
-        # Load all data for this simulation
-        ticks_data = db.load_ticks(simulation_id)
-        decisions_data = db.load_decisions(simulation_id)
-        positions_data = db.load_positions(simulation_id)
-        news_events_data = db.load_news_events(simulation_id)
-        
-        # Create temporary recorder with loaded data
-        recorder = SimulationRecorder()
-        
-        # Convert loaded data to recorder format
-        for t in ticks_data:
-            recorder.ticks.append(TickRecord(
-                tick_index=t['tick_index'],
-                instrument=t['instrument'],
-                price=t['price'],
-                timestamp=t['timestamp'],
-                dfid=t['dfid'],
-                trend=t.get('trend', 'neutral'),
-                volatility=t.get('volatility', 0.0),
-            ))
-        
-        for d in decisions_data:
-            recorder.decisions.append(SimDecisionRecord(
-                tick_index=d['tick_index'],
-                dfid=d['dfid'],
-                parent_dfid=d.get('parent_dfid'),
-                agent_id=d['agent_id'],
-                policy_kind=d['policy_kind'],
-                justification=d.get('justification'),
-                dim_result=d['dim_result'],
-                dim_reason=d['dim_reason'],
-                explain_narrative=d.get('explain_narrative'),
-                explain_signals=d.get('explain_signals', []),
-                explain_risks=d.get('explain_risks', []),
-                explain_opportunities=d.get('explain_opportunities', []),
-                instrument=d.get('instrument'),
-                price=d.get('price'),
-                event_type=d['event_type'],
-                instruments_affected=d.get('instruments_affected', []),
-            ))
-        
-        for p in positions_data:
-            recorder.positions.append(PositionRecord(
-                position_id=p['position_id'],
-                instrument=p['instrument'],
-                entry_tick=p['entry_tick'],
-                entry_price=p['entry_price'],
-                initial_exposure=p['initial_exposure'],
-                current_exposure=p['current_exposure'],
-                quantity=p['quantity'],
-                parent_dfid=p.get('parent_dfid'),
-                news_headline=p.get('news_headline'),
-                lifecycle_events=p.get('lifecycle_events', []),
-                close_tick=p.get('close_tick'),
-                close_price=p.get('close_price'),
-                close_reason=p.get('close_reason'),
-            ))
-        
-        recorder.news_events = news_events_data
-        
-    finally:
-        db.close()
-    
+    events = bundle.decision_audit.all_events_chronological()
+    state = hydrate_report_state_from_audit(events, simulation_id)
+    audit_event_count = sum(
+        1
+        for e in events
+        if (e.get("details") or {}).get("simulation_id") == simulation_id
+    )
+    repository_html = _build_repository_business_html(bundle, simulation_id, state)
+
     # Generate report from loaded data
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    chart_html = _build_chart_html(recorder)
-    dfid_html = _build_dfid_tree_html(recorder)
-    decisions_html = _build_decisions_table_html(recorder)
-    lifecycle_html = _build_position_lifecycle_html(recorder)
+    chart_html = _build_chart_html(state)
+    dfid_html = _build_dfid_tree_html(state)
+    decisions_html = _build_decisions_table_html(state)
+    lifecycle_html = _build_position_lifecycle_html(state)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1011,9 +1246,12 @@ def generate_html_report(
         <p><strong>Ticks:</strong> {simulation_ticks}</p>
         <p><strong>News events:</strong> {news_count}</p>
         <p><strong>Elapsed:</strong> {elapsed_seconds:.1f}s</p>
-        <p><strong>Decisions:</strong> {len(recorder.decisions)}</p>
-        <p><strong>Positions:</strong> {len(recorder.positions)}</p>
+        <p><strong>Decisions:</strong> {len(state.decisions)}</p>
+        <p><strong>Positions:</strong> {len(state.positions)}</p>
+        <p><strong>Audit events (this simulation_id):</strong> {audit_event_count}</p>
     </div>
+
+    {_section("🏛 Operating model & persisted kernel (DIR)", repository_html)}
 
     <h2>📈 Price Charts with Decision Points</h2>
     <p class="meta">Hover over price line to see tick details. Hover over decision markers to see LLM justification and agent proposal.</p>
@@ -1041,48 +1279,64 @@ if __name__ == "__main__":
 
     parser = ArgumentParser(description="Generate HTML report for finance trading simulation")
     parser.add_argument("--simulation-id", type=str, help="Simulation ID to load (uses most recent if not specified)")
-    parser.add_argument("--db-path", type=Path, default=Path("data/simulation_data.db"), help="Path to simulation_data.db")
+    parser.add_argument(
+        "--db-path",
+        type=Path,
+        default=Path("data/simulation_data.db"),
+        help="SQLite database path (only when config.yaml is missing or database.provider is sqlite)",
+    )
     parser.add_argument("--output-path", type=Path, default=None, help="Where to save the HTML report")
     args = parser.parse_args()
 
-    # Resolve database path
-    db_path = args.db_path if args.db_path.is_absolute() else Path(__file__).parent / args.db_path
-    
-    if not db_path.exists():
-        print(f"Database not found: {db_path}")
-        print("Run a simulation first to create the database.")
-        exit(1)
-    
-    db = SimulationDatabase(db_path)
-    db.connect()
+    sample_dir = Path(__file__).resolve().parent
+    config_path = sample_dir / "config.yaml"
+    cli_db_path = args.db_path if args.db_path.is_absolute() else sample_dir / args.db_path
+
+    from shared.config import load_yaml_config
+    from shared.bootstrap import (
+        normalize_database_provider,
+        open_storage_bundle,
+        resolve_sqlite_db_path_relative_to_config,
+    )
+
+    if config_path.exists():
+        config = load_yaml_config(config_path)
+        db_cfg = resolve_sqlite_db_path_relative_to_config(
+            config.get("database") or {}, str(config_path)
+        )
+        db_provider = normalize_database_provider(db_cfg.get("provider", "memory"))
+        if db_provider == "sqlite":
+            sqlite_path = Path(db_cfg.get("db_path", "data/simulation_data.db"))
+            if not sqlite_path.exists():
+                print(f"SQLite database not found: {sqlite_path}")
+                print("Run a simulation first to create the database.")
+                exit(1)
+        bundle = open_storage_bundle(db_cfg)
+    else:
+        if not cli_db_path.exists():
+            print(f"Database not found: {cli_db_path}")
+            print("Run a simulation first or add config.yaml with database settings.")
+            exit(1)
+        from dir_core.storage import sqlite_storage
+
+        bundle = sqlite_storage(str(cli_db_path))
+        
+    events = bundle.decision_audit.all_events_chronological()
     
     # If no simulation ID provided, try to get the most recent one
     simulation_id = args.simulation_id
+    sim_summary = {}
     if not simulation_id:
-        try:
-            result = db.conn.execute(
-                "SELECT simulation_id FROM simulations ORDER BY run_timestamp DESC LIMIT 1"
-            ).fetchone()
-            if result:
-                simulation_id = result[0]
-                print(f"Using most recent simulation: {simulation_id}")
-            else:
-                print("No simulations found in database.")
-                db.close()
-                exit(1)
-        except Exception as e:
-            print(f"Error querying database: {e}")
-            db.close()
+        for r in reversed(events):
+            if r.get("event") == "SIMULATION_START":
+                simulation_id = r.get("details", {}).get("simulation_id")
+                sim_summary = r.get("details", {})
+                break
+        if not simulation_id:
+            print("No simulations found in database.")
             exit(1)
+        print(f"Using most recent simulation: {simulation_id}")
     
-    sim_summary = db.get_simulation_summary(simulation_id)
-    if not sim_summary:
-        print(f"Simulation {simulation_id} not found in database.")
-        db.close()
-        exit(1)
-    
-    db.close()
-
     # Determine output path
     if args.output_path:
         output_path = args.output_path
@@ -1090,18 +1344,18 @@ if __name__ == "__main__":
         sample_dir = Path(__file__).resolve().parent
         results_dir = sample_dir / "results"
         results_dir.mkdir(exist_ok=True)
-        output_path = results_dir / f"simulation_report_{simulation_id}.html"
+        output_path = results_dir / f"report_{simulation_id}.html"
     
     generate_html_report(
         simulation_id=simulation_id,
-        db_path=db_path,
+        bundle=bundle,
         output_path=output_path,
         simulation_ticks=sim_summary.get("simulation_ticks", 0),
         news_count=sim_summary.get("total_news_events", 0),
         elapsed_seconds=sim_summary.get("elapsed_seconds", 0.0),
     )
     
-    print(f"✅ Report generated: {output_path}")
+    print(f"Report generated: {output_path}")
     print(f"\nOpening report in browser...")
     try:
         import webbrowser

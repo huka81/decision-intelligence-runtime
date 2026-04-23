@@ -1,289 +1,230 @@
-# 32 - Real-Time Fraud Gate (Topology B SDS)
+# 32 — Fraud Gate (YAML scenarios)
 
-**Goal:** Demonstrate the **Sovereign Decision Stream (SDS)** pattern for high-velocity, structure-first fraud decisions. Uses **Constrained Decoding** (Straightjacket Grammar via Pydantic), **JIT State Drift** validation, and a **drift-attack** scenario where the agent proposes ALLOW but the Runtime rejects with `STATE_DRIFT_ERROR`.
+**Goal:** This reference sample shows a **classic** DIR gate where each payment scenario is driven from `scenarios.yaml`, the fraud analyst follows the full **ROA** lifecycle (Explain, Policy, deterministic Self-Check, `PolicyProposal`), and the **DIM** (`validate_proposal`) authorizes or blocks execution—including a **JIT snapshot vs live** check using `verify_drift` from `dir_core` so a post-decision risk flag (TOCTOU) cannot settle an outdated **ALLOW**. **AgentRegistry** handshake, **ContextStore**, **StorageBundle** audit, and **idempotent** mock settlement are wired through `shared.bootstrap.setup_environment` exactly as the Sample Development Guide requires.
 
-**DIR alignment:** [DIR Topologies §3](../../docs/03-topologies/DIR_Topologies.md) - suited to real-time fraud gating where the LLM can only output valid JSON, and the Runtime must catch state changes between snapshot and execution.
+**Mechanisms:** `AgentRegistry`, `ContextStore`, ROA, `validate_proposal`, custom DIM validators (`verify_drift`, hard limit), `AuditStore` idempotency cache, `decision_audit_events`, `context_session`.
 
-**LLM:** Uses **real Gemma** (Ollama) by default, like samples 31, 34, 35. Illustrative prompts describe each transaction; the LLM returns structured JSON (action, reason_code, risk_score). Set `USE_MOCK_LLM=1` for tests without a server.
+---
 
-**Configuration:** All LLM, agent (including `mission` and `fallback_rules`), JIT validator, and scenario data lives in `config.yaml`. No hardcoded thresholds. Same convention as `samples/31_finance_trading` and `samples/35_crewai_roa_wrapper`.
+## Repository layout (what lives where)
+
+| Layer | Location | Role |
+|--------|----------|------|
+| **DIR kernel** | `src/dir_core/` (installed as `dir-runtime`) | `new_dfid`, `validate_proposal`, `verify_drift`, `PolicyProposal`, `AgentRegistry`, `ContextStore`, storage protocols |
+| **Sample adapters** | `samples/shared/` | `setup_environment`, `load_yaml_config`, LLM clients, `StorageBundle` wiring |
+| **Business logic (this sample)** | `agent.py`, `dim.py`, `schemas.py` | ROA cycle, DIM custom validators, YAML types and `load_scenarios()` |
+| **Where results go** | SQLite under `data/` (from `config.yaml`), via `telemetry.py` | Append-only `decision_audit_events`, `idempotency_cache`, `context_session`, `agent_registry` |
+| **HTML audit report** | `report_generator.py`, `results/*.html` (gitignored) | Offline report from canonical telemetry (Sample Development Guide §17) |
+| **Mocks (no production deps)** | `mocks/` | In-memory risk rows, deterministic LLM strategy, fake PSP settlement — see `mocks/README.md` |
+
+---
+
+## Use cases
+
+```mermaid
+---
+title: Fraud gate — who does what
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
+flowchart TB
+    subgraph Actors["Actors"]
+        Customer["Cardholder / merchant"]
+        RiskOps["Risk operations"]
+    end
+
+    subgraph System["DIR sample"]
+        Gate["Fraud ROA agent + DIM"]
+        Store["SQLite StorageBundle"]
+    end
+
+    Customer -->|"payment attempt"| Gate
+    RiskOps -->|"account flag (drift demo)"| Gate
+    Gate -->|"audit + idempotent settle"| Store
+
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    class Customer,RiskOps userSpace;
+    class Gate,Store kernelSpace;
+```
 
 ---
 
 ## Architecture
 
-### Diagram 1: System Overview. config.yaml, agent, JIT validator
-
 ```mermaid
 ---
+title: Fraud gate — User Space vs Kernel Space
 config:
   layout: elk
+  theme: neutral
+  look: classic
 ---
 flowchart TB
-    subgraph CFG["config.yaml"]
-        LLM["`llm_defaults<br/>gemma3:4b @ localhost`"]
-        AGENT["`agent<br/>agent_id, mission, fallback_rules`"]
-        JIT["`jit_validator<br/>global_max_limit: 50000`"]
-        SCEN["`scenarios<br/>tx_id, context, snapshot, expected`"]
+    subgraph US["User Space"]
+        LLM["LLMClient (Ollama / Gemini / Mock)"]
+        Agent["Fraud ROA cycle"]
+        LLM --> Agent
+        Agent -->|"PolicyProposal"| Wall
     end
 
-    subgraph US["USER SPACE"]
-        FRAUD["FraudGuardAgent"]
-        FRAUD -->|DecisionAtom| WALL
+    Wall{{"The Wall — DIM + JIT"}}
+
+    subgraph KS["Kernel Space"]
+        DIM["validate_proposal"]
+        JIT["verify_drift + hard limit"]
+        Exec["Idempotent settlement log"]
+        DIM --> JIT
+        JIT --> Exec
     end
 
-    WALL{{"`THE WALL<br/>Proposal to JIT`"}}
+    Wall --> DIM
 
-    subgraph KS["KERNEL SPACE"]
-        JITV["JITValidator"]
-        EXEC["ExecutionEngine"]
-        JITV -->|ACCEPT + ALLOW| EXEC
+    subgraph Persist["Persistence"]
+        AR["agent_registry"]
+        CS["context_session"]
+        AUD["decision_audit_events"]
+        IDY["idempotency_cache"]
     end
 
-    LLM -.->|model| FRAUD
-    CFG -.->|agent config| FRAUD
-    CFG -.->|global_max_limit| JITV
-    CFG -.->|scenarios| RUN["run.py"]
+    Exec --> AUD
+    Exec --> IDY
+    Agent -.-> AR
+    Agent -.-> CS
 
-    WALL --> JITV
-
-    style US fill:#fffde7,stroke:#f9a825,color:#333
-    style KS fill:#e8f5e9,stroke:#388e3c,color:#333
-    style WALL fill:#37474f,color:#fff
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef wallStyle fill:#37474F,color:#fff,stroke:#263238,stroke-width:2px;
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+    class LLM,Agent userSpace;
+    class DIM,JIT,Exec kernelSpace;
+    class Wall wallStyle;
+    class AR,CS,AUD,IDY infraSpace;
 ```
 
-### Diagram 2: Execution Flow. One transaction
+---
+
+## Execution flow
 
 ```mermaid
+---
+title: One scenario end-to-end
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
 sequenceDiagram
     participant Run as run.py
-    participant CFG as config.yaml
-    participant Agent as FraudGuardAgent
-    participant RC as RiskCache
-    participant JIT as JITValidator
-    participant Exec as ExecutionEngine
+    participant Boot as setup_environment
+    participant Reg as AgentRegistry
+    participant Store as ContextStore
+    participant LLM as LLMClient
+    participant Agent as ROA cycle
+    participant DIM as validate_proposal
+    participant Aud as AuditStore
 
-    Run->>CFG: load_config()
-    CFG-->>Run: AppConfig(llm, agent, scenarios, global_max_limit)
-
-    loop for each scenario
-        Run->>RC: populate from snapshot
-        Run->>Agent: decide(ctx, dfid, snapshot_id)
-        Agent->>Agent: LLM (Gemma) - illustrative prompt -> JSON
-        Agent-->>Run: DecisionAtom
-
-        alt drift_attack
-            Run->>RC: flag_compromised(user)
-        end
-
-        Run->>JIT: validate(atom, risk_cache, snapshot, global_max_limit)
-        JIT->>JIT: State Drift + Hard Limits + Schema
-        JIT-->>Run: ACCEPT | REJECT
-
-        alt ACCEPT and action=ALLOW
-            Run->>Exec: execute(atom, tx_id)
-        end
-    end
+    Run->>Boot: load config + StorageBundle + LLM
+    Run->>Reg: handshake(agent_id, contract)
+    Run->>Store: update_session(dfid, transaction)
+    Run->>LLM: Explain prompt
+    LLM-->>Agent: explain JSON
+    Run->>LLM: Policy prompt
+    LLM-->>Agent: policy JSON
+    Agent->>Agent: Self-Check vs contract
+    Agent-->>Run: PolicyProposal
+    Run->>DIM: proposal + snapshot_user + live_risk
+    DIM-->>Run: ACCEPT or REJECT
+    Run->>Aud: AGENT_DECISION (+ PAYMENT on ALLOW)
 ```
-
-### Scenarios (from config.yaml)
-
-| Scenario | Context | Agent output | JIT result |
-|----------|---------|--------------|------------|
-| **1. Legit** | $50, US, known device | ALLOW | ACCEPT - Executed |
-| **2. Obvious Fraud** | $10k, Nigeria, unknown device | BLOCK | ACCEPT - No execution (blocked) |
-| **3. Drift Attack** | $100, US, known device; user flagged as Compromised at T+50ms | ALLOW | REJECT - STATE_DRIFT_ERROR |
-
-**Drift Attack (key demo):** At T=0 the snapshot shows the user as "clean". The agent reasons and proposes ALLOW. At T+50ms an external system flags the account as "Compromised". The JITValidator detects the state change and rejects - demonstrating why SDS needs the Runtime despite the Agent being "smart".
 
 ---
 
-## Configuration (config.yaml)
+## How to run
 
-All LLM, agent, JIT validator, and scenario configuration lives in **`config.yaml`**. No hardcoded values in code.
-Same convention as `samples/35_crewai_roa_wrapper/config.yaml`.
+From the repository root (after `pip install -e .` and `pip install pyyaml`; add `psycopg2-binary` only if you switch the sample to PostgreSQL):
 
-```yaml
-llm_defaults:
-  model: "gemma3:4b"
-  base_url: "http://localhost:11434"
-  temperature: 0.2
-
-agent:
-  agent_id: "fraud_guard_v1"
-  mission: >
-    You are a fraud analyst for a payment gateway. Evaluate each transaction
-    and output ONLY a JSON object with action, reason_code, risk_score.
-  fallback_rules:
-    block_amount_threshold: 5000
-    block_high_risk_countries: [nigeria]
-    allow_amount_max: 1000
-    allow_velocity_max: 10
-    allow_device_prefix: "dev_known_"
-
-jit_validator:
-  global_max_limit: 50000.0
-
-scenarios:
-  - label: "SCENARIO 1 - Legit"
-    tx_id: "tx_001"
-    context:
-      user_id: "user_legit"
-      amount: 50.0
-      geo_country: "US"
-      device_id: "dev_known_001"
-      velocity_24h: 3
-    snapshot:
-      user_legit:
-        status: "clean"
-        risk_score: 0.05
-    expected: ACCEPT
-
-  - label: "SCENARIO 2 - Obvious Fraud"
-    tx_id: "tx_002"
-    context:
-      user_id: "user_fraud"
-      amount: 10000.0
-      geo_country: "Nigeria"
-      device_id: "dev_unknown_xyz"
-      velocity_24h: 1
-    snapshot:
-      user_fraud:
-        status: "clean"
-        risk_score: 0.0
-    expected: ACCEPT
-
-  - label: "SCENARIO 3 - Drift Attack"
-    tx_id: "tx_003"
-    context:
-      user_id: "user_drift"
-      amount: 100.0
-      geo_country: "US"
-      device_id: "dev_known_002"
-      velocity_24h: 2
-    snapshot:
-      user_drift:
-        status: "clean"
-        risk_score: 0.1
-    drift_attack: true
-    expected: REJECT
-```
-
-| Section | Purpose |
-|---------|---------|
-| **llm_defaults** | `model`, `base_url`, `temperature` - Ollama/Gemma (same as 31, 35). Set `provider: "mock"` or env `USE_MOCK_LLM=1` for tests without LLM. |
-| **agent** | `agent_id`, `mission` (LLM system prompt), `fallback_rules` (thresholds for deterministic logic when LLM fails or MockLLM): `block_amount_threshold`, `block_high_risk_countries`, `allow_amount_max`, `allow_velocity_max`, `allow_device_prefix`. Same rules used by agent and MockLLM. |
-| **jit_validator** | `global_max_limit` - Hard limit for amount (Risk Governor) |
-| **scenarios** | List of test cases: `tx_id`, `context` (user_id, amount, geo_country, device_id, velocity_24h), `snapshot` (user state at T=0), `expected` (ACCEPT/REJECT), `drift_attack` (optional) |
-
----
-
-## How to Run
-
-From the repository root:
+**Ollama (local)**
 
 ```bash
-# 1. Install dependencies
-pip install -e .
-pip install pyyaml
-
-# 2. Start Ollama and pull Gemma (for real LLM)
 ollama serve
 ollama pull gemma3:4b
-
-# 3. Run
 python samples/32_fraud_gate/run.py
 ```
 
-**Without Ollama** (MockLLM for fast tests):
+**Gemini (cloud)**
+
+Set `GOOGLE_API_KEY` or `GEMINI_API_KEY`, then set in `config.yaml` under `llm_defaults` a `gemini-…` model and `provider: gemini` (see `samples/31_finance_trading/config.yaml` for the pattern).
+
+**Mock (no API keys, no network)**
 
 ```bash
 USE_MOCK_LLM=1 python samples/32_fraud_gate/run.py
 ```
 
-**Ollama fallback:** If Ollama is not reachable or the model is not found, the run falls back to MockLLM automatically (with a warning). No need to set `USE_MOCK_LLM=1` manually.
-
-Running `run.py` prints a banner at startup, loads `config.yaml`, and executes all 3 scenarios in sequence. Each scenario: [INPUT] -> [STEP 1] LLM -> [STEP 2] JIT -> [STEP 3] execute (if ALLOW).
+If Ollama or Gemini is selected but unreachable or misconfigured, `run.py` rebuilds the LLM with `force_mock=True` so the scenario sweep still finishes deterministically.
 
 ---
 
-## Schemas
+## Configuration
 
-### FraudDecisionSchema (Straightjacket Grammar)
+Annotated excerpts (full files are `config.yaml` and `scenarios.yaml` next to `run.py`).
 
-```python
-class FraudDecisionSchema(BaseModel):
-    action: Literal["ALLOW", "BLOCK", "CHALLENGE"]
-    reason_code: str
-    risk_score: float = Field(ge=0.0, le=1.0)
+- **`database`** — `provider: sqlite` and `db_path` anchored to this folder via `config_path` (see `samples/shared/bootstrap.py`).
+- **`simulation.run_id`** — becomes `simulation_id` on every audit row so runs are groupable in SQL.
+- **`llm_defaults`** — Ollama or Gemini defaults; mock is driven by `USE_MOCK_LLM=1` or `provider: mock`.
+- **`contracts.provider: yaml`** — contracts load from the same `config.yaml` (`agents` list).
+- **`agents[].contract`** — canonical `ResponsibilityContract` including `allowed_policy_types: [ALLOW, BLOCK, CHALLENGE]` and `escalate_on_uncertainty` for the Self-Check stage.
+- **`jit_validator.global_max_limit`** — hard cap passed into DIM as `global_max_limit` in the validation context.
+- **`fraud_gate.fallback_rules`** — shared thresholds for deterministic fallback parsing and for `mocks/llm_mock_strategy.py` (`make_mock_strategy`) when the mock client is active.
+
+---
+
+## Database storage
+
+| Canonical table | Written by | Content |
+|-----------------|------------|---------|
+| `agent_registry` | `AgentRegistry.handshake` | Contract JSON, priority, session token |
+| `context_session` | `ContextStore.update_session` | DFID-scoped transaction + scenario label |
+| `decision_audit_events` | `bundle.decision_audit` via `AuditStore` | `SIMULATION_START`, `SIMULATION_END`, `AGENT_DECISION`, `PAYMENT_GATEWAY_ALLOW` |
+| `idempotency_cache` | `AuditStore.save_idempotent_result` | SHA-256 key for mock settlement replay |
+
+**SQLite — filter one run**
+
+```sql
+SELECT dfid, event, detail_json
+FROM decision_audit_events
+WHERE json_extract(detail_json, '$.simulation_id') = 'fraud_gate_demo'
+ORDER BY id;
 ```
 
-### DecisionAtom
+**PostgreSQL — same filter**
 
-Extends the schema with `snapshot_id` for JIT drift verification.
-
----
-
-## Expected Output
-
-**Startup:**
-- Banner: "What this example demonstrates" (3 points + Pipeline)
-- `Using Ollama: model=gemma3:4b base_url=...` (or `Using MockLLM` when USE_MOCK_LLM=1)
-- If Ollama not reachable: `Falling back to MockLLM (Ollama not available)`
-
-**Per scenario:**
-- `--- SCENARIO 1 - Legit ---` (scenario label)
-- `[INPUT] tx_id=... user=... amount=$... country=... device=... velocity_24h=...`
-- `[STEP 1] Agent (LLM) evaluates transaction...`
-- `[MockLLM] Response: {...}` (when MockLLM is used)
-- `[AGENT] action=... reason_code=... risk_score=...`
-- `[STEP 2] JIT Validator: schema, hard_limit, state_drift...`
-- `[JIT] ACCEPT: schema OK, amount<=$50,000, no state drift` or `[JIT] REJECT: ...`
-- `[STEP 3] Execution...`
-- `[RESULT] Transaction EXECUTED (ALLOW)` or `Transaction BLOCKED` or `Transaction NOT executed`
-
-**Drift Attack (scenario 3):**
-- `[SCENARIO] Agent sees snapshot: user=clean. Decides. Then T+50ms: external system flags account as COMPROMISED.`
-- `[STEP 2] Simulating T+50ms: external system flags user=... as COMPROMISED`
-- `[JIT] REJECT: STATE_DRIFT_ERROR: user ... was 'clean' in snapshot, now 'compromised' (Runtime detected change)`
-
-**Summary:**
-- `SUMMARY - what this example verified:` with 3 lines (Legit, Obvious Fraud, Drift Attack)
-
----
-
-## Example Prompt (Illustrative)
-
-The agent sends a readable prompt to the LLM for each transaction:
-
-```
-Evaluate this payment transaction for fraud risk.
-
-**Transaction:**
-- User: user_legit
-- Amount: $50.00
-- Country: US
-- Device: dev_known_001
-- Transactions in last 24h: 3
-
-**User risk status (from snapshot):** clean
-
-**Decision rules:**
-- ALLOW: Low risk, known device, reasonable amount
-- BLOCK: High risk (e.g. large amount + high-risk country, unknown device)
-- CHALLENGE: Uncertain, needs additional verification
-
-Respond with ONLY a valid JSON object, no other text. Example:
-{"action": "ALLOW", "reason_code": "LOW_RISK_LEGIT", "risk_score": 0.1}
+```sql
+SELECT dfid, event, detail_json
+FROM decision_audit_events
+WHERE detail_json->>'simulation_id' = 'fraud_gate_demo'
+ORDER BY id;
 ```
 
 ---
 
-## Technical Notes
+## Expected output
 
-- **Real LLM (default):** Ollama + Gemma. Illustrative prompts; JSON extracted from response. Fallback to deterministic logic (using `fallback_rules` from config) if parse fails.
-- **MockLLM:** Set `USE_MOCK_LLM=1` or `provider: "mock"` in config for tests without Ollama. Also used automatically when Ollama is not reachable. Uses same `fallback_rules` as agent for consistent behavior.
-- **fallback_rules:** Shared by `agent._fallback_decision` and `MockLLM`; ensures identical deterministic logic when LLM is unavailable or returns invalid JSON.
-- **Risk Cache:** In-memory dict (no Redis); simulates external risk service with controlled updates.
-- **Zero API keys:** Uses local Ollama; no cloud API keys required.
-- **Banner:** Printed at startup; describes what the example demonstrates (LLM, JIT, Drift Attack, Pipeline).
+With `USE_MOCK_LLM=1` you should see, for each scenario, DFID-prefixed lines from `log_with_dfid`: two LLM round-trips (Explain then Policy), then `DIM: ACCEPT …` or `DIM: REJECT …`, then either `PaymentGateway (mock): ALLOW … cached=False` on a successful idempotent first settlement, `PaymentGateway (mock): BLOCK …` when the policy is not `ALLOW`, or `No payment execution` when DIM rejects (drift scenario). The run ends with `SUMMARY: finished 3 scenarios (simulation_id=fraud_gate_demo)` and a `Report: …/results/report_<UTC>_<slug>.html` line.
+
+---
+
+## Regenerating the HTML report
+
+Each run appends audit rows to the SQLite file configured in `config.yaml`. `run.py` generates a self-contained dark-theme HTML report under `results/` (Sample Development Guide §17) using only canonical telemetry plus registry and context snapshots. The generator isolates the **latest** `SIMULATION_START` … `SIMULATION_END` window for the chosen `simulation_id`, so reruns with the same `simulation.run_id` do not mix older scenarios into the report.
+
+Regenerate without executing the sample:
+
+```bash
+python samples/32_fraud_gate/report_generator.py --simulation-id fraud_gate_demo
+```
+
+Omit `--simulation-id` to use the most recent `SIMULATION_START` in the database. Optional: `--output-path path/to/report.html` and `--config path/to/config.yaml`.

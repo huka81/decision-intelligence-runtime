@@ -3,24 +3,83 @@ requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dir-runtime"
+# dir-core keeps pip install name and import path aligned (frictionless adoption).
+name = "dir-core"
 version = "0.1.0"
-description = "Decision Intelligence Runtime – shared package for ROA/DIR samples"
+description = "Decision Intelligence Runtime - deterministic Kernel Space for agentic AI"
 readme = "README.md"
 license = "Apache-2.0"
+authors = [{ name = "Artur Huk" }]
+# Per LS-1 rule in DIR-minified.md
 requires-python = ">=3.12"
+keywords = ["ai", "agents", "decision-intelligence", "roa", "dir", "llm", "governance"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
-    "pydantic>=2.0",
+    "pydantic>=2.0",      # Required by PY-1 rule
+    "structlog>=24.1.0",  # Required by LG-1 rule (structured logging with DFID)
+    "PyYAML>=6.0",        # Core: ROA contracts are YAML; foundational for the stack
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "ruff>=0.1"]
-eoam = ["httpx", "pyyaml", "plotly"]
-samples = ["pyyaml", "markdown>=3.5"]
+sqlite = []
+# psycopg3 (current recommended driver)
+postgres = ["psycopg[binary]>=3.1"]
+asyncpg = ["asyncpg>=0.29"]
+# Optional: Boxed Intelligence pattern (wrappers)
+frameworks = ["langchain-core", "crewai"]
+samples = ["markdown>=3.5", "httpx", "plotly"]
+dev = [
+    "pytest>=7",
+    "pytest-cov>=4",
+    "ruff>=0.3.0",
+    "mypy>=1.8",
+]
+
+[project.urls]
+Homepage = "https://github.com/huka81/decision-intelligence-runtime"
+Repository = "https://github.com/huka81/decision-intelligence-runtime"
+Issues = "https://github.com/huka81/decision-intelligence-runtime/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["dir_core*"]
+
+[tool.setuptools.package-data]
+"dir_core.storage" = ["schema.sql"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[tool.ruff.lint]
+# TID (flake8-tidy-imports): enforce import boundaries / architecture
+select = ["E", "F", "I", "UP", "TID"]
+ignore = ["E501"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+# Enforce "the wall" in the linter.
+# Per section 7b in DIR-minified.md
+"infrastructure".msg = "agents/ must not import from infrastructure/. Submit PolicyProposal to Runtime."
+"dir_core.execution".msg = "agents/ must not import from kernel.execution. Execution is Kernel-only."
+"openai".msg = "LLM clients must be instantiated in User Space, not Kernel Space."
+"anthropic".msg = "LLM clients must be instantiated in User Space, not Kernel Space."
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+ignore_missing_imports = true
+
+# Stricter typing for kernel modules only (per DIR-minified.md).
+[[tool.mypy.overrides]]
+module = "dir_core.kernel.*"
+disallow_any_generics = true
+disallow_untyped_defs = true
+no_implicit_reexport = true

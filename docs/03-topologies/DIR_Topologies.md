@@ -298,7 +298,7 @@ The cornerstone of SDS is the use of grammars (e.g., via libraries like *Outline
 In SDS, there is no emergent context or asynchronous message passing. The **Context Compiler** assembles an **Atomic Context**-a pre-validated package containing:
 
 1.  **The Mission** (from ROA).
-2.  **The Constraints** (from DIR Hard Gates).
+2.  **The Constraints** (from dir_core Hard Gates).
 3.  **The Snapshot** (from the Context Store).
 
 **Critical Binding:** The Agent's output (The Intent) **MUST** include the `ContextSnapshotID` hash-binding from the input. The DIR verifies this JIT to prevent execution against a drift-unverified state. The combination of the **Atomic Context**, the **Intent**, and the **Signature** forms the final **Decision Atom**.
@@ -871,3 +871,4 @@ Topology C utilizes the **Decision Ledger** to manage failures without relying o
 ## 6. Conclusion
 
 The **Evidence Hash** and **Proof-Carrying Intent** represent the most rigorous layer of the **Decision Intelligence Runtime**. By treating safety as a cryptographic requirement of the artifact, Topology C ensures that even the most advanced Large Language Models remain "Provers" of intent rather than "Owners" of execution. This annex provides the technical substrate for a system where truth is found in the **Ledger**, and agents are held to an immutable standard of formal compliance.
+

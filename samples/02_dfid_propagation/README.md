@@ -148,8 +148,9 @@ Status: COMPLETED
 
 ## Why DFID Matters
 
-From DIR Manifesto §5.4:
+from dir_core Manifesto §5.4:
 
 > *"A DecisionFlow is the logical container for the initial context, all policy proposals, validation results, escalations, execution events, and final outcomes. DFID allows: auditability, debugging, compliance reporting, causal reasoning, replaying decisions, and clean separation of concurrent decision processes."*
 
 Without DFID correlation, a multi-agent system becomes **opaque** - you cannot trace why a decision was made or who contributed to it.
+

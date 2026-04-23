@@ -1,0 +1,56 @@
+# Scenario-driven claims gate (Sample Guide §8). Input under `context`; expected DIM verdict.
+scenarios:
+  - label: "SCENARIO A - Valid: within window & limit"
+    context:
+      claim:
+        order_id: ord_001
+        amount_eur: 299.99
+        category: electronics
+        purchase_date: "2026-04-10T10:00:00Z"
+        reason: "Defective product"
+    expected: ACCEPT
+    notes: "Baseline approve"
+
+  - label: "SCENARIO B - Amount > 500 EUR (human approval required)"
+    context:
+      claim:
+        order_id: ord_002
+        amount_eur: 1200.00
+        category: electronics
+        purchase_date: "2026-04-12T10:00:00Z"
+        reason: "Major defect"
+    expected: ESCALATE
+
+  - label: "SCENARIO C - Outside return window (purchased 2026-01-01)"
+    context:
+      claim:
+        order_id: ord_005
+        amount_eur: 500.00
+        category: electronics
+        purchase_date: "2026-01-01T10:00:00Z"
+        reason: "Late claim"
+    expected: REJECT
+
+  - label: "SCENARIO D - Prohibited category"
+    context:
+      claim:
+        order_id: ord_004
+        amount_eur: 50.00
+        category: prohibited_category
+        purchase_date: "2026-04-10T10:00:00Z"
+        reason: "Customer request"
+    expected: REJECT
+
+  - label: "SCENARIO E - NL intake: valid claim (ord_001)"
+    context:
+      claim_text: >
+        I bought electronics order ord_001 for 299.99 EUR on 10 April 2026.
+        Defective product - screen does not work. I request a refund.
+    expected: ACCEPT
+
+  - label: "SCENARIO F - NL intake: amount > 500 EUR (ord_002)"
+    context:
+      claim_text: >
+        Order ord_002 - laptop for 1200 EUR, 12 April 2026.
+        Major failure after one week. I want my money back.
+    expected: ESCALATE
