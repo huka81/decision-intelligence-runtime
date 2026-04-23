@@ -4,7 +4,7 @@ name: Publish Docs
 on:
   push:
     branches:
-      - feature/mkdocs
+      - main
 
 permissions:
   contents: write
