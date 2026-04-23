@@ -1,6 +1,4 @@
 # Shared dependencies for DIR/ROA samples. Install from repo root: pip install -e .
 pydantic>=2.0
 pyyaml
-plotly
 load-dotenv
-markdown

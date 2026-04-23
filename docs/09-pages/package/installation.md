@@ -9,11 +9,19 @@ nav_order: 2
 
 ## Prerequisites
 
-- **Python 3.12+** is recommended (minimum 3.10) for native `typing` features and optimal performance.
+- **Python 3.12+** is required.
 
-## Installing from Source (Local Development)
+## Installation
 
-Currently, `dir-core` is available directly from the repository source.
+The `dir-core` package is available on PyPI:
+
+```bash
+pip install dir-core
+```
+
+### Installing from Source (Local Development)
+
+For development or running the samples, you can install `dir-core` directly from the repository source in editable mode:
 
 ```bash
 # Clone the repository
@@ -70,3 +78,24 @@ contract = ResponsibilityContract(
 print(f"Generated DFID: {dfid}")
 print(f"Contract Agent ID: {contract.agent_id}")
 ```
+
+## Running Samples
+
+The repository includes a comprehensive suite of samples demonstrating the runtime in action. To run them, make sure you have cloned the repository and installed the dependencies from the repository root:
+
+```bash
+pip install -e .
+pip install -r requirements.txt
+```
+
+Then, you can execute any sample from the **repository root**:
+
+```bash
+python samples/00_quick_start/run.py   # Quick Start (recommended)
+# or
+python samples/01_roa_agent/run.py
+# or
+python samples/31_finance_trading/run.py
+```
+
+For the complete list of available samples and detailed explanations of their specific use cases, refer to the [Samples overview](../samples/index.md).

@@ -170,40 +170,13 @@ decision-intelligence-runtime/
 
 ## Samples & Reference Implementations
 
+The project includes a comprehensive set of reference implementations, divided into two categories:
+1. **Mechanics & Topologies (00–11)**: Synthetic examples illustrating specific architectural mechanisms (ROA, DIM, Idempotency, DFID, Event Bus, etc.).
+2. **Business Use Cases (31+)**: End-to-end scenarios applying DIR patterns to real-world-like business problems (Trading, Fraud Detection, Underwriting, FinOps, Agent Drift).
+
 Execute any sample from the repository root: `python samples/<folder>/run.py`
 
-*Full list and details: [samples/README.md](samples/README.md)*
-
-### Mechanics & Topologies (00–11)
-
-| # | Sample | Focus | Description |
-|---|--------|-------|--------------|
-| 00 | `00_quick_start` | Quick Start | High-level overview: comma catastrophe, prompt injection |
-| 01 | `01_roa_agent` | ROA Manifesto | Contract, Explain → Policy → Proposal |
-| 02 | `02_dfid_propagation` | DIR Pattern | DecisionFlow ID: generation, propagation, logging |
-| 03 | `03_idempotency_guard` | DIR Pattern | Idempotency: preventing duplicate side effects |
-| 04 | `04_context_store` | DIR Pattern | 4 Layers of Context: Session, State, Memory, Artifacts |
-| 05 | `05_dim_validation` | DIR Pattern | Decision Integrity Module: deterministic validation gate |
-| 06 | `06_agent_registry` | DIR Pattern | Agent Registry: manifests and capability handshake |
-| 07 | `07_event_bus_swappable` | Infrastructure | In-memory Event Bus; note on swapping for Kafka/PubSub |
-| 08 | `08_custom_repo_psql` | Infrastructure | **PostgreSQL `StorageBundle`**: `setup_environment` with `database.provider: postgres` and env `DB_*`; minimal classic ROA + DIM run so audit and context land in the shared PostgreSQL adapter. See [sample README](samples/08_custom_repo_psql/README.md). |
-| 09 | `09_topology_a_eoam` | Topology A | Event-Oriented Agent Mesh |
-| 10 | `10_topology_b_sds` | Topology B | Sovereign Decision Stream |
-| 11 | `11_topology_c_dl_pci` | Topology C | Decision Ledger & Proof-Carrying Intents |
-| 88 | `88_meta_context_engineering` | Meta-Sample | **Travel/insurance**: System Prompt Toolkit. Domain: flight delay refunds. Generates Flight Delay Refund System (Topology C). |
-
-### Business Use Cases (31+)
-
-| # | Sample | Domain | What it checks |
-|---|--------|--------|----------------|
-| 31 | `31_finance_trading` | **Finance/trading** | Market quotes, news, parallel agents; position spawning and execution. **(Topology: EOAM)** |
-| 32 | `32_fraud_gate` | **Fraud detection** | YAML-driven fraud gate: ROA, DIM, JIT drift via `verify_drift`, StorageBundle audit, mock settlement idempotency. **(Topology: classic + scenarios)** |
-| 33 | `33_insurance_underwriting` | **Insurance underwriting** | Risk evaluation with cryptographic Proof-Carrying Intents (PCI). **(Topology: DL+PCI)** |
-| 34 | `34_langchain_roa_wrapper` | **FinOps** | LangChain ReAct → ROA. Cloud cost management. Verifies mission injection blocks PROD termination. |
-| 35 | `35_crewai_roa_wrapper` | **Customer claims/refunds** | CrewAI Crew → ROA. E-commerce refunds (EUR). Verifies ACCEPT/ESCALATE/REJECT by category, return window, amount; NL intake. |
-| 36 | `36_drift_optimization_discount` | **Retention discounts** | Optimization drift (reward hacking): agent offers discounts within DIM hard cap but profitability decays in aggregate. PerformanceMonitor detects rolling-average breach and suspends the agent. Shows that **kernel compliance ≠ business health**. *(See [Governance & Drift](./docs/04-governance/DIR_Governance.md))* |
-| 37 | `37_drift_semantic_refund` | **Support refunds** | Semantic drift (emotional manipulation): refunds stay under a EUR cap so DIM accepts, but the delay policy is violated. ComplianceMonitor uses rolling `REFUND_EXECUTED` telemetry (`delay_hours` in audit details) and suspends when the semantic violation rate exceeds the threshold. *(See [Governance & Drift](./docs/04-governance/DIR_Governance.md))* |
-| 38 | `38_drift_environmental_bidding` | **AdTech / bidding** | Environmental drift: market CPC escalates; bids stay under a contract cap so DIM accepts, but rolling average CPC exceeds LTV. BusinessROIMonitor joins `execution_log` to `market_snapshots` and suspends after consecutive negative ROI cycles. *(See [Governance & Drift](./docs/04-governance/DIR_Governance.md))* |
+**[View the full catalog of Samples & Reference Implementations](samples/README.md)**
 
 ---
 ## Documentation

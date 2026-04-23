@@ -46,6 +46,8 @@ registry = AgentRegistry(storage=custom_storage.agent_registry)
 store = ContextStore(storage=custom_storage.context)
 ```
 
+For a concrete reference implementation of a **PostgreSQL** storage adapter, see the sample in [samples/08_custom_repo_psql/](../../../samples/08_custom_repo_psql/README.md).
+
 *(Note: `dir-core` provides `sqlite_storage` and `memory_storage` as lightweight defaults).*
 
 ## 2. Responsibility Contracts

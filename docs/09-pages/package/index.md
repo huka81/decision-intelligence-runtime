@@ -39,7 +39,14 @@ At the heart of `dir-core` lies a strict architectural boundary known as **The W
 - A **Policy Enforcement Point (PEP)** that evaluates Agent proposals against formal `ResponsibilityContracts`.
 - A **State Machine** for DecisionFlow lifecycles, ensuring full traceability via `DecisionFlow IDs (DFID)`.
 - A **Protective Layer** applying constraints like JIT State Drift validation, Idempotency, and Rate Limiting (Intent Retry Governors).
+- An **Observability & Audit Engine** guaranteeing that every step of the decision flow (from context building to execution) is fully verifiable and reconstructable.
 - A set of **Pydantic Data Transfer Objects (DTOs)** defining the standard language for Agent-Kernel communication (`PolicyProposal`, `ExecutionIntent`).
+
+## Telemetry & Auditability
+
+DIR treats audit trails not as an afterthought, but as a first-class architectural primitive. Because every decision is bound to a single, immutable `DFID` (DecisionFlow ID), the runtime emits deterministic, structured telemetry events (`DecisionAuditStorage` and `flow_transitions`). 
+
+This means that at any point in the future, human operators can reconstruct the exact state of the world (`Context`), the agent's intent (`Proposal`), the kernel's validation (`DIM Verdict`), and the final outcome (`Execution`), providing absolute accountability for every automated action.
 
 ## What `dir-core` IS NOT
 

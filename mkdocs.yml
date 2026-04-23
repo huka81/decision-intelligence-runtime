@@ -17,6 +17,12 @@ plugins:
   - include-markdown:
       rewrite_relative_urls: true
   - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_root_heading: true
+            show_source: true
 
 # Mermaid: without this, ```mermaid fences render as plain highlighted code.
 markdown_extensions:
@@ -56,13 +62,22 @@ nav:
       - Governance & Agent Drift: 04-governance/DIR_Governance.md
       - Context as code: 08-conclusion/Context_as_Code.md
       - Intelligent AI delegation framework mapping: 00-introduction/Intelligent_Delegation_Framework_Mapping.md
-  - dir-core Package:
+  - Package:
       - Overview: 09-pages/package/index.md
       - Installation: 09-pages/package/installation.md
       - Architecture: 09-pages/package/architecture.md
       - Ports & Adapters: 09-pages/package/ports_and_adapters.md
       - Core Components: 09-pages/package/core_components.md
       - Models & DTOs: 09-pages/package/models.md
+  - API Reference:
+      - Overview: 10-api-reference/index.md
+      - Core Framework: 10-api-reference/core.md
+      - Kernel Services: 10-api-reference/services.md
+      - "Topology A (EOAM)": 10-api-reference/topology_a.md
+      - "Topology C (DL+PCI)": 10-api-reference/topology_c.md
+      - Execution Patterns: 10-api-reference/patterns.md
+      - Storage Layer: 10-api-reference/storage.md
+      - Database Schema: 10-api-reference/database_schema.md
   - Samples:
       - 09-pages/samples/index.md
       - "00 - Quick start": 09-pages/samples/00_quick_start.md

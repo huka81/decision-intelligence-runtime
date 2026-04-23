@@ -7,6 +7,10 @@ nav_order: 3
 
 The **Decision Intelligence Runtime (`dir-core`)** introduces a robust architectural pattern tailored for AI governance. This pattern enforces predictability, determinism, and safety while allowing seamless integration with modern generative models.
 
+
+![DIR High Level Design](../../../assets/images/dir-hld.png)
+
+
 ## "The Wall": A Strict Separation of Concerns
 
 At the core of `dir-core` is a conceptual boundary called **The Wall**. It separates the unpredictable nature of AI from the deterministic mechanics of application infrastructure.
