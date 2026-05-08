@@ -49,16 +49,17 @@ priority_matrix:
 # Example configurations:
 #
 # For Ollama (local):
-# llm_defaults:
-#   model: "gemma3:4b"
-#   base_url: "http://localhost:11434"
-#   provider: "ollama"  # Optional - auto-detected for non-gemini models
-#
-# For Gemini (cloud):
 llm_defaults:
-  provider: "gemini"  # Optional - auto-detected for gemini-* models
-  model: "gemma-3-27b-it"  
-  timeout: 60
+  model: "gemma3:4b"
+  base_url: "http://localhost:11434"
+  provider: "ollama"  # Optional - auto-detected for non-gemini models
+
+# For Gemini (cloud):
+# llm_defaults:
+#   provider: "gemini"  # Optional - auto-detected for gemini-* models
+#   model: "gemma-4-31b-it"  
+#   model: "gemini-flash-lite-latest"  # Updated to a more cost-effective model for testing
+#   timeout: 60
 #
 # For Mock (testing without LLM):
 # llm_defaults:

@@ -67,13 +67,12 @@ class OllamaClient(LLMClient):
             logger.warning("Ollama response parse error: %s", e)
             raise
 
-
 class GeminiClient(LLMClient):
-    """Sync client for Google Gemini API."""
+    """Sync client for Google Gemini API using google-generativeai SDK."""
 
     def __init__(
         self,
-        model: str = "gemini-flash-latest",
+        model: str = "gemini-flash-lite-latest",
         api_key: Optional[str] = None,
         timeout: int = 60,
     ):
@@ -81,11 +80,20 @@ class GeminiClient(LLMClient):
         Initialize Gemini client.
 
         Args:
-            model: Model name (e.g., "gemini-1.5-pro", "gemini-flash-latest")
+            model: Model name (e.g., "gemini-flash-lite-latest", "gemini-1.5-pro", "gemini-1.5-flash")
             api_key: Google API key. If None, reads from GOOGLE_API_KEY or
                 GEMINI_API_KEY env var.
             timeout: Request timeout in seconds
         """
+        try:
+            import google.generativeai as genai
+        except ImportError:
+            raise ImportError(
+                "google-generativeai package is not installed. "
+                "Please install it using 'pip install google-generativeai'."
+            )
+
+        self.model_name = model
         self.model = model
         self.api_key = (
             api_key
@@ -97,92 +105,66 @@ class GeminiClient(LLMClient):
                 "Gemini API key not provided. Set api_key parameter or "
                 "GOOGLE_API_KEY/GEMINI_API_KEY environment variable."
             )
+        
+        genai.configure(api_key=self.api_key)
+        self.client = genai.GenerativeModel(model_name=self.model_name)
         self.timeout = timeout
-        self.base_url = "https://generativelanguage.googleapis.com/v1beta"
 
     def generate(self, prompt: str, system: Optional[str] = None) -> str:
         logger.debug(
-            "Gemini request: model=%s, prompt_len=%d, system_len=%d",
-            self.model, len(prompt), len(system or ""),
-        )
-
-        url = (
-            f"{self.base_url}/models/{self.model}"
-            f":generateContent?key={self.api_key}"
-        )
-
-        contents = []
-        if system:
-            contents.append({"role": "user", "parts": [{"text": system}]})
-            contents.append({
-                "role": "model",
-                "parts": [{"text": "Understood. I will follow these instructions."}],
-            })
-        contents.append({"role": "user", "parts": [{"text": prompt}]})
-
-        body = {
-            "contents": contents,
-            "generationConfig": {
-                "temperature": 0.7,
-                "topK": 40,
-                "topP": 0.95,
-                "maxOutputTokens": 2048,
-            },
-        }
-
-        data = json.dumps(body).encode("utf-8")
-        req = urllib.request.Request(
-            url,
-            data=data,
-            method="POST",
-            headers={"Content-Type": "application/json"},
+            "Gemini request (SDK): model=%s, prompt_len=%d, system_len=%d",
+            self.model_name, len(prompt), len(system or ""),
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                out = json.loads(resp.read().decode("utf-8"))
-
-            if "candidates" not in out or not out["candidates"]:
-                logger.warning("Gemini response missing candidates: %s", out)
-                return ""
-
-            candidate = out["candidates"][0]
-            has_content = (
-                "content" in candidate and "parts" in candidate["content"]
-            )
-            if not has_content:
-                logger.warning(
-                    "Gemini response missing content/parts: %s", candidate
+            # Prepare contents
+            history = []
+            if system:
+                # System instructions in SDK are best handled via system_instruction 
+                # during model initialization, but for compatibility with this interface 
+                # we can use a multi-turn approach or re-init model.
+                # Here we use the simplified multi-turn injection if needed or 
+                # just initialize with system instruction if possible.
+                import google.generativeai as genai
+                model = genai.GenerativeModel(
+                    model_name=self.model_name,
+                    system_instruction=system
                 )
-                return ""
+            else:
+                model = self.client
 
-            parts = candidate["content"]["parts"]
-            response = "".join(
-                part.get("text", "") for part in parts
-            ).strip()
+            response = model.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": 0.7,
+                    "top_k": 40,
+                    "top_p": 0.95,
+                    "max_output_tokens": 2048,
+                }
+            )
 
+            res_text = response.text.strip()
+            
             preview = (
-                response[:200] + "..." if len(response) > 200 else response
+                res_text[:200] + "..." if len(res_text) > 200 else res_text
             )
             logger.info(
                 "Gemini response (len=%d): %s",
-                len(response),
+                len(res_text),
                 preview.replace("\n", " "),
             )
-            return response
+            return res_text
 
-        except urllib.error.HTTPError as e:
-            error_body = e.read().decode("utf-8") if e.fp else ""
-            logger.warning(
-                "Gemini request failed (HTTP %s): %s", e.code, error_body
-            )
+        except Exception as e:
+            logger.warning("Gemini SDK request failed: %s", e)
             raise
-        except urllib.error.URLError as e:
-            logger.warning("Gemini request failed: %s", e)
-            raise
-        except (KeyError, json.JSONDecodeError) as e:
-            logger.warning("Gemini response parse error: %s", e)
-            raise
+
+    def list_available_models(self):
+        """List available models from Google Generative AI."""
+        import google.generativeai as genai
+        print("Available models:")
+        for model in genai.list_models():
+            print(model.name)
 
 
 class MockLLMClient(LLMClient):
@@ -216,6 +198,7 @@ def check_ollama(base_url: str, model: str, timeout: int = 5) -> bool:
     model_base = model.split(":")[0]
     return any(model_base in name for name in available)
 
+
 def test_ollama_alive_and_responds() -> None:
     """Verify Ollama service is alive and responds to LLM query. Prints response."""
     client = OllamaClient(model="gemma3:4b", base_url="http://localhost:11434", timeout=30)
@@ -231,4 +214,6 @@ def test_ollama_alive_and_responds() -> None:
     print("=" * 60 + "\n")
 
 if __name__ == "__main__":
-    test_ollama_alive_and_responds()
+    # test_ollama_alive_and_responds()
+    gemini = GeminiClient()
+    gemini.list_available_models()
