@@ -116,13 +116,15 @@ def main() -> None:
     simulation_id = cfg.simulation.run_id
 
     (sample_dir / "data").mkdir(parents=True, exist_ok=True)
-    db_rel = (config.get("database") or {}).get("db_path", "data/retention_drift.sqlite")
+    db_rel = (config.get("database") or {}).get(
+        "db_path", "data/36_drift_optimization_discount.db"
+    )
     primary_db = (sample_dir / Path(str(db_rel))).resolve()
     if primary_db.exists():
         try:
             _unlink_retry(primary_db)
         except PermissionError:
-            alt = sample_dir / f"data/retention_drift_run_{os.getpid()}.sqlite"
+            alt = sample_dir / f"data/36_drift_optimization_discount_{os.getpid()}.db"
             logger.warning(
                 "Could not remove locked database %s; using %s for this run.",
                 primary_db.name,
@@ -132,7 +134,7 @@ def main() -> None:
                 alt.relative_to(sample_dir).as_posix()
             )
 
-    legacy_audit = sample_dir / "data/retention_audit.sqlite"
+    legacy_audit = sample_dir / "data/retention_drift.sqlite"
     if legacy_audit.exists():
         try:
             _unlink_retry(legacy_audit)

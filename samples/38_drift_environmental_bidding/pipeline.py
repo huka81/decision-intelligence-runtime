@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -13,7 +14,7 @@ from typing import Any, Dict, List, Optional
 from dir_core import AgentRegistry, ContextStore, idempotency_key, new_dfid
 from dir_core.data_types import ValidationVerdict
 from dir_core.models import ContextSnapshot
-from dir_core.storage import StorageBundle
+from dir_core.storage.base import AuditStore
 from dir_core.utils.logging_utils import log_with_dfid
 
 from agent import run_bidding_roa_cycle
@@ -96,7 +97,7 @@ def run_simulation(
     cfg: BiddingSampleConfig,
     *,
     sample_dir: Path,
-    bundle: StorageBundle,
+    audit: AuditStore,
     context_store: ContextStore,
     monitor: BusinessROIMonitor,
     agent_registry: AgentRegistry,
@@ -113,8 +114,9 @@ def run_simulation(
     allowed = cfg.dim.allowed_agents or [agent_id]
     ltv = cfg.monitor.ltv_usd
 
+    t0 = time.perf_counter()
     record_simulation_start(
-        bundle,
+        audit,
         sim_id,
         details={"total_cycles": n, "agent_id": agent_id},
     )
@@ -167,7 +169,7 @@ def run_simulation(
             }
 
             record_context_compiled(
-                bundle,
+                audit,
                 dfid,
                 sim_id,
                 details={
@@ -175,6 +177,8 @@ def run_simulation(
                     "market_cpc_to_win": market,
                     "snapshot_id": snapshot.snapshot_id,
                 },
+                agent_id=agent_id,
+                causation_id=dfid,
             )
 
             proposal, roa_audit = run_bidding_roa_cycle(
@@ -212,7 +216,7 @@ def run_simulation(
                 continue
 
             record_policy_proposal(
-                bundle,
+                audit,
                 dfid,
                 sim_id,
                 details={
@@ -221,6 +225,8 @@ def run_simulation(
                     "explain_narrative": roa_audit.get("explain_narrative", ""),
                     "self_check_passed": roa_audit.get("self_check_passed"),
                 },
+                agent_id=agent_id,
+                causation_id=dfid,
             )
 
             verdict, reason = validate_bidding_proposal(
@@ -233,11 +239,13 @@ def run_simulation(
             reason_s = reason.value if hasattr(reason, "value") else str(reason)
 
             record_dim_validation(
-                bundle,
+                audit,
                 dfid,
                 sim_id,
                 verdict=verdict_s,
                 reason=reason_s,
+                agent_id=agent_id,
+                causation_id=dfid,
             )
 
             log_with_dfid(
@@ -272,7 +280,7 @@ def run_simulation(
                 {"cpc_bid_usd": bid, "cycle_id": cref},
             )
             record_cpc_bid_executed(
-                bundle,
+                audit,
                 dfid,
                 sim_id,
                 cpc_bid_usd=bid,
@@ -280,6 +288,8 @@ def run_simulation(
                 cycle_id=cref,
                 idempotency_key=ikey,
                 extra={"policy_kind": proposal.policy_kind},
+                agent_id=agent_id,
+                causation_id=dfid,
             )
             step.executed = True
 
@@ -360,11 +370,12 @@ def run_simulation(
         result.stopped_reason = "completed_all_inputs"
 
     record_simulation_end(
-        bundle,
+        audit,
         sim_id,
         status="ok",
         stopped_reason=result.stopped_reason,
         details={"steps_recorded": len(result.steps)},
+        elapsed_seconds=time.perf_counter() - t0,
     )
 
     return result

@@ -2,7 +2,7 @@
 
 database:
   provider: sqlite
-  db_path: "data/langchain_roa_finops.db"
+  db_path: "data/34_langchain_roa_wrapper.db"
 
 simulation:
   run_id: "lc_finops_batch_001"

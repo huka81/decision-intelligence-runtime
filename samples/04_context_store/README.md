@@ -14,7 +14,9 @@
 | **Context Compilation** | §8.4 | `compile_working_context()` assembles immutable snapshot |
 | **DFID Correlation** | §5.4 | Session data scoped to specific decision flow |
 | **Agent State Isolation** | §3.4 | Each agent has independent state storage |
-| **Persistence** | Implementation | SQLite backend with separate tables for session/state |
+| **Persistence** | §8, `schema.sql` | SQLite `flow_context`, `agent_state`; full DDL via `sqlite_storage` |
+| **Registry FK** | §2.3, §8 | Agent handshake before state/session so FK to `agent_registry` holds |
+| **Telemetry** | Observability | Append-only `decision_audit_events` with `root_dfid` / `correlation_id` per run |
 | **Immutable Snapshot** | §8.4 | Compiled context is frozen view for decision consistency |
 
 ## Architecture
@@ -30,7 +32,7 @@
 │  │  Scope: DecisionFlow (dfid)                                 │    │
 │  │  Examples: request_id, user_intent, input_payload           │    │
 │  │  Lifetime: Single decision flow                             │    │
-│  │  Storage: context_session table                             │    │
+│  │  Storage: `flow_context` (canonical schema)                  │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
@@ -38,7 +40,7 @@
 │  │  Scope: Agent (agent_id)                                    │    │
 │  │  Examples: policy_version, risk_threshold, allowed_markets  │    │
 │  │  Lifetime: Long-lived (persists across flows)               │    │
-│  │  Storage: context_state table                               │    │
+│  │  Storage: `agent_state`                                     │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
@@ -80,21 +82,14 @@ python samples/04_context_store/run.py
 ## Scenario Demonstrated
 
 ### Layer Population and Compilation
-1. **Initialize Store**: Create SQLite-backed ContextStore
-2. **Populate State Layer** (Agent-scoped):
-   - `policy_version`: "2.1.0"
-   - `risk_threshold`: 0.75
-   - `allowed_markets`: ["BTC-USD", "ETH-USD"]
-   - `last_audit`: "2023-10-27"
-3. **Populate Session Layer** (DFID-scoped):
-   - `request_id`: "req_123"
-   - `user_intent`: "check_risk"
-   - `input_payload`: {"symbol": "BTC-USD", "amount": 5.0}
-4. **Compile Working Context**:
-   - Merges session + state layers
-   - Adds metadata (agent_id, dfid, source)
-   - Returns immutable snapshot dictionary
-5. **Verification**: Confirms both layers correctly merged
+1. **Initialize**: `sqlite_storage` + `DecisionRuntime`; handshake registers the agent (`agent_risk_analyzer_v1`).
+2. **Audit**: Time-stamped `run_id` as `root_dfid` / `correlation_id`; events include `SIMULATION_START`, `AGENT_STATE_UPDATED`, `CONTEXT_SESSION_UPDATED`, `WORKING_CONTEXT_COMPILED`, `SIMULATION_END`.
+3. **Populate State** (`agent_state`): policy_version, risk_threshold, allowed_markets, last_audit
+4. **Populate Session** (`flow_context`), passing `agent_id` so `decision_flows` rows satisfy FKs.
+5. **Compile** `compile_working_context(agent_id, dfid)` → session + state + stubs.
+6. **Verification**: Expected fields present; audit row count printed for this `run_id`.
+
+Persistence file: `data/context_run.sqlite` (gitignored).
 
 ## Key Classes and Methods
 

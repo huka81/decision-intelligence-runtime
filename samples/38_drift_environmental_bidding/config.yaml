@@ -1,7 +1,7 @@
 # --- Persistence (canonical StorageBundle) ---
 database:
   provider: sqlite
-  db_path: data/bidding_audit.sqlite
+  db_path: data/38_drift_environmental_bidding.db
 
 # --- LLM (mock; this sample uses deterministic simulated ROA, not live LLM) ---
 llm_defaults:

@@ -2,7 +2,7 @@
 
 database:
   provider: sqlite
-  db_path: "data/underwriting.dir.sqlite"
+  db_path: "data/33_insurance_underwriting.db"
 
 simulation:
   run_id: "uw_email_batch_001"
@@ -32,7 +32,11 @@ email_processing:
 
 agents:
   - agent_id: "underwriter_agent"
+    owner: "reference-sample"
     version: "1.0.0"
+    effective_from: "2026-01-01"
+    effective_until: null
+    approved_by: null
     created_by: "compliance@example.com"
     created_at: "2025-02-17T10:00:00Z"
     priority: 10

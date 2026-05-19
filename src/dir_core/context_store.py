@@ -63,11 +63,17 @@ class ContextStore:
         raw = self._storage.get_session(dfid)
         return json.loads(raw) if raw else {}
 
-    def update_session(self, dfid: str, updates: Dict[str, Any]) -> None:
+    def update_session(
+        self,
+        dfid: str,
+        updates: Dict[str, Any],
+        *,
+        agent_id: Optional[str] = None,
+    ) -> None:
         """Merge updates into existing session."""
         current = self.get_session(dfid)
         current.update(updates)
-        self._storage.set_session(dfid, json.dumps(current))
+        self._storage.set_session(dfid, json.dumps(current), agent_id=agent_id)
 
     # -------------------------------------------------------------------------
     # Layer 2: State (Authoritative)

@@ -34,6 +34,7 @@ def transition(
     db_path: Optional[str] = None,
     *,
     storage: Optional["LifecycleStorage"] = None,
+    root_dfid: Optional[str] = None,
 ) -> None:
     """Record a flow status transition.
 
@@ -48,6 +49,7 @@ def transition(
             is also provided, ``storage`` takes precedence.
         storage: Custom :class:`~dir_core.storage.LifecycleStorage` backend.
             Pass ``None`` to skip persistence entirely.
+        root_dfid: Top-level flow id for ``flow_transitions``; defaults to *dfid*.
     """
     if retry_governor is not None and to_status in (FlowStatus.CLOSED, FlowStatus.ABORTED):
         retry_governor.reset(dfid)
@@ -58,4 +60,9 @@ def transition(
         _storage = SqliteLifecycleStorage(db_path)
 
     if _storage is not None:
-        _storage.record_transition(dfid, from_status.value, to_status.value)
+        _storage.record_transition(
+            dfid,
+            from_status.value,
+            to_status.value,
+            root_dfid=root_dfid,
+        )

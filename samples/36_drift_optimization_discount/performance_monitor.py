@@ -69,6 +69,7 @@ class PerformanceMonitor:
             self._bundle,
             last_dfid,
             self._simulation_id,
+            agent_id=self._agent_id,
             state=state,
             moving_avg_discount_pct=avg,
             window_size=self._window,

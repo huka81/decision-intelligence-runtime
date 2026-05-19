@@ -1,7 +1,7 @@
 # 35 - CrewAI ROA wrapper — runtime config (Sample Guide §7)
 database:
   provider: sqlite
-  db_path: "data/crewai_roa.db"
+  db_path: "data/35_crewai_roa_wrapper.db"
 
 llm_defaults:
   model: "gemma3:4b"
@@ -46,19 +46,19 @@ agents:
 context_store:
   orders:
     ord_001:
-      purchase_date: "2026-04-10T10:00:00Z"
+      purchase_date: "2026-05-15T10:00:00Z"
       category: electronics
       amount: 299.99
     ord_002:
-      purchase_date: "2026-04-12T10:00:00Z"
+      purchase_date: "2026-05-17T10:00:00Z"
       category: electronics
       amount: 1200.00
     ord_003:
-      purchase_date: "2026-04-11T10:00:00Z"
+      purchase_date: "2026-05-16T10:00:00Z"
       category: clothing
       amount: 89.99
     ord_004:
-      purchase_date: "2026-04-10T10:00:00Z"
+      purchase_date: "2026-05-15T10:00:00Z"
       category: prohibited_category
       amount: 50.00
     ord_005:

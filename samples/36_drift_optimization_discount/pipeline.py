@@ -261,6 +261,7 @@ def run_simulation(
             bundle,
             dfid,
             simulation_id,
+            agent_id=agent_id,
             input_ref=ref,
             session_keys=list(sess.keys()),
             plan=plan,
@@ -330,6 +331,7 @@ def run_simulation(
             bundle,
             dfid,
             simulation_id,
+            agent_id=agent_id,
             discount_offered=float(proposal.params.get("discount_offered", 0.0)),
             policy_kind=proposal.policy_kind,
         )
@@ -349,6 +351,7 @@ def run_simulation(
             bundle,
             dfid,
             simulation_id,
+            agent_id=agent_id,
             verdict=v_str,
             reason=str(reason),
         )
@@ -390,6 +393,7 @@ def run_simulation(
             bundle,
             dfid,
             simulation_id,
+            agent_id=agent_id,
             discount_offered=float(discount_for_step),
             policy_kind=proposal.policy_kind,
             proposal_dump=proposal.model_dump(mode="json"),
