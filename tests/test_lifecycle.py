@@ -2,6 +2,7 @@
 
 import tempfile
 from pathlib import Path
+from typing import Optional
 
 from dir_core.intent_retry import IntentRetryGovernor
 from dir_core.lifecycle import FlowStatus, transition
@@ -9,10 +10,17 @@ from dir_core.lifecycle import FlowStatus, transition
 
 class _RecordingLifecycleStorage:
     def __init__(self) -> None:
-        self.rows: list[tuple[str, str, str]] = []
+        self.rows: list[tuple[str, str, str, Optional[str]]] = []
 
-    def record_transition(self, dfid: str, from_status: str, to_status: str) -> None:
-        self.rows.append((dfid, from_status, to_status))
+    def record_transition(
+        self,
+        dfid: str,
+        from_status: str,
+        to_status: str,
+        *,
+        root_dfid: Optional[str] = None,
+    ) -> None:
+        self.rows.append((dfid, from_status, to_status, root_dfid))
 
 
 def test_transition_persists_via_custom_storage() -> None:
@@ -24,7 +32,7 @@ def test_transition_persists_via_custom_storage() -> None:
         FlowStatus.ACTIVE,
         storage=store,
     )
-    assert store.rows == [("df-1", "CREATED", "ACTIVE")]
+    assert store.rows == [("df-1", "CREATED", "ACTIVE", None)]
 
 
 def test_transition_no_storage_when_omitted() -> None:
@@ -77,11 +85,11 @@ def test_transition_sqlite_db_path() -> None:
         conn = sqlite3.connect(path)
         try:
             cur = conn.execute(
-                "SELECT dfid, from_status, to_status FROM flow_transitions WHERE dfid = ?",
+                "SELECT dfid, root_dfid, from_status, to_status FROM flow_transitions WHERE dfid = ?",
                 ("df-s",),
             )
             row = cur.fetchone()
-            assert row == ("df-s", "CREATED", "ACTIVE")
+            assert row == ("df-s", "df-s", "CREATED", "ACTIVE")
         finally:
             conn.close()
     finally:
@@ -104,7 +112,7 @@ def test_storage_kwarg_overrides_db_path() -> None:
             db_path=unused_sqlite,
             storage=store,
         )
-        assert store.rows == [("df-p", "ACTIVE", "CLOSED")]
+        assert store.rows == [("df-p", "ACTIVE", "CLOSED", None)]
     finally:
         try:
             Path(unused_sqlite).unlink(missing_ok=True)

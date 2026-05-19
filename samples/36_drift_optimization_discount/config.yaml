@@ -3,7 +3,7 @@
 
 database:
   provider: sqlite
-  db_path: data/retention_drift.sqlite
+  db_path: data/36_drift_optimization_discount.db
 
 llm_defaults:
   provider: mock

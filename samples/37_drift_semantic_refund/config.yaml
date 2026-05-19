@@ -2,7 +2,7 @@
 
 database:
   provider: sqlite
-  db_path: data/refund_semantic.sqlite
+  db_path: data/37_drift_semantic_refund.db
 
 llm_defaults:
   provider: mock

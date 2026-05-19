@@ -76,7 +76,9 @@ class DecisionRuntime:
         now: datetime | None = None,
         record_audit: bool = True,
     ) -> ValidationResult:
-        self.context_store.update_session(proposal.dfid, dict(raw_web_context))
+        self.context_store.update_session(
+            proposal.dfid, dict(raw_web_context), agent_id=proposal.agent_id
+        )
 
         if dim_context is not None:
             context: dict[str, Any] = dict(dim_context)
@@ -129,7 +131,12 @@ class DecisionRuntime:
                 "verdict": str(verdict),
                 "confidence": proposal.confidence,
             }
-            self.audit.record(proposal.dfid, event, details=details)
+            self.audit.record(
+                proposal.dfid,
+                event,
+                details=details,
+                agent_id=proposal.agent_id,
+            )
 
         result: ValidationResult = (verdict, reason)
         return result

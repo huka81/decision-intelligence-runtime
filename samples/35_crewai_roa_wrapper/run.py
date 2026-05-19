@@ -122,6 +122,7 @@ def main() -> None:
 
     runtime = DecisionRuntime(bundle)
     store = runtime.context_store
+    audit = runtime.audit
 
     reg_payload = dim_contract
     hr = runtime.register_agent(agent_id, reg_payload, agent_version, priority=priority)
@@ -134,7 +135,9 @@ def main() -> None:
     orders = orders_from_config(config)
     dim_ctx: Dict[str, Any] = {"state": {}, "orders": orders}
 
-    record_simulation_start(bundle, simulation_id, llm_backend=_llm_backend_label(use_crew_llm, config))
+    record_simulation_start(
+        audit, simulation_id, llm_backend=_llm_backend_label(use_crew_llm, config)
+    )
 
     results: List[Tuple[str, str, str]] = []
     t0 = time.perf_counter()
@@ -178,7 +181,7 @@ def main() -> None:
             if proposal is None:
                 log_with_dfid(logger, dfid, logging.WARNING, "ROA: %s", roa_err)
                 record_claims_self_check_failed(
-                    bundle,
+                    audit,
                     dfid,
                     simulation_id,
                     agent_id=agent_id,
@@ -209,7 +212,7 @@ def main() -> None:
                 if bundle.idempotency.get(ikey) is None:
                     bundle.idempotency.set(ikey, {"dfid": dfid, "status": "recorded"})
                     record_claims_refund_execution(
-                        bundle,
+                        audit,
                         dfid,
                         simulation_id,
                         agent_id=agent_id,
@@ -217,6 +220,7 @@ def main() -> None:
                         order_id=oid,
                         idempotency_key_value=ikey,
                         amount_eur=float(proposal.params.get("amount_eur") or 0.0),
+                        causation_id=dfid,
                     )
                     executed = True
                 else:
@@ -224,7 +228,7 @@ def main() -> None:
 
             role_s = str(getattr(rc.role, "value", rc.role))
             record_agent_decision(
-                bundle,
+                audit,
                 dfid,
                 simulation_id,
                 agent_id=agent_id,
@@ -242,13 +246,28 @@ def main() -> None:
                 contract_role=role_s,
                 contract_allowed_policy_types=list(rc.allowed_policy_types),
                 amount_eur=float(proposal.params.get("amount_eur") or 0.0),
+                causation_id=dfid,
             )
 
             results.append((scenario.label, str(verdict), scenario.expected))
 
-        record_simulation_end(bundle, simulation_id, status="ok")
+        elapsed_ok = time.perf_counter() - t0
+        record_simulation_end(
+            audit,
+            simulation_id,
+            status="ok",
+            elapsed_seconds=elapsed_ok,
+            scenarios_total=len(scenarios),
+        )
     except Exception as e:
-        record_simulation_end(bundle, simulation_id, status="error", error_message=str(e))
+        record_simulation_end(
+            audit,
+            simulation_id,
+            status="error",
+            error_message=str(e),
+            elapsed_seconds=time.perf_counter() - t0,
+            scenarios_total=len(scenarios),
+        )
         raise
 
     elapsed = time.perf_counter() - t0

@@ -75,6 +75,7 @@ class ComplianceMonitor:
             self._bundle,
             last_dfid,
             self._simulation_id,
+            agent_id=self._agent_id,
             state=state,
             violation_rate=rate,
             window_size=self._window,

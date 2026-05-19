@@ -74,68 +74,55 @@ python samples/06_agent_registry/run.py
 ## Scenario Demonstrated
 
 ### Agent Registration and Discovery
-1. **Initialize Registry**: Create SQLite-backed AgentRegistry
-2. **Register High-Priority Monitor**:
+1. **Initialize storage**: `sqlite_storage` applies the canonical `schema.sql` DDL; `DecisionRuntime` exposes registry and `AuditStore`.
+2. **Telemetry**: Each run gets a time-stamped `run_id` (`correlation_id` / `root_dfid`); `SIMULATION_START`, per-agent `AGENT_HANDSHAKE_ACCEPTED`, `SIMULATION_END` append to `decision_audit_events`.
+3. **Handshake (register) high-priority monitor**:
    - `agent_id`: "agent_supervisor"
    - `role`: "MONITOR"
    - `capabilities`: ["halt_system", "audit_log"]
    - `priority`: 100 (highest in system)
-   - `version`: "1.0.0"
-3. **Register Standard Executor**:
+   - `agent_version`: "1.0.0" (must satisfy runtime `supported_versions`, default `1.x`)
+4. **Handshake standard executor**:
    - `agent_id`: "agent_trader_btc"
    - `role`: "EXECUTOR"
    - `capabilities`: ["place_order", "cancel_order"]
    - `supported_instruments`: ["BTC-USD"]
-   - `priority`: 10 (standard priority)
-   - `version`: "2.1.0"
-4. **Discovery**: List all active agents
-5. **Inspection**: Retrieve contract and priority for specific agent
-6. **Verification**: Confirm data persistence and retrieval
+   - `priority`: 10
+   - `agent_version`: "1.2.0" (same major as supervisor for default `1.x` constraint)
+5. **Discovery**: List all active agents (may include bootstrap `__dir_kernel__` from audit bootstrap)
+6. **Inspection**: Retrieve contract and priority for a specific agent
+7. **Verification**: Confirm persistence and audit row count for this `run_id`
 
 ## Key Classes and Methods
 
 ```python
-from dir_core.agent_registry import AgentRegistry
+from dir_core import DecisionRuntime
+from dir_core.storage import sqlite_storage
 
-# Initialize
-registry = AgentRegistry(db_path)
+bundle = sqlite_storage("data/registry_run.sqlite")
+runtime = DecisionRuntime(bundle)
+registry = runtime.registry
+audit = runtime.audit
 
-# Register Agent with Capability Contract
-registry.register_agent(
-    agent_id="agent_trader_btc",
-    contract={
+hr = runtime.register_agent(
+    "agent_trader_btc",
+    {
         "role": "EXECUTOR",
         "capabilities": ["place_order", "cancel_order"],
         "supported_instruments": ["BTC-USD"],
-        "version": "2.1.0"
+        "version": "1.2.0",
     },
-    priority=10
+    "1.2.0",
+    priority=10,
 )
+assert hr.accepted
 
-# Discovery: List all active agents
 agents = registry.list_agents()
-# Returns: ["agent_supervisor", "agent_trader_btc", ...]
-
-# Inspection: Get agent capability contract
 contract = registry.get_agent_contract("agent_trader_btc")
-# Returns: {"role": "EXECUTOR", "capabilities": [...], ...}
-
-# Coordination: Get agent priority
 priority = registry.get_agent_priority("agent_trader_btc")
-# Returns: 10
 ```
 
-## Database Schema
-
-```sql
-CREATE TABLE agent_registry (
-    agent_id TEXT PRIMARY KEY,
-    contract JSON,
-    priority INTEGER DEFAULT 0,
-    status TEXT DEFAULT 'ACTIVE',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)
-```
+SQLite table `agent_registry` is defined in `src/dir_core/storage/schema.sql` (JSON contract, priority, status `ACTIVE`/`SUSPENDED`/…, `agent_version`, `session_token`, timestamps). This sample stores agents under `data/registry_run.sqlite` (gitignored).
 
 ## Expected Output
 
@@ -143,26 +130,22 @@ CREATE TABLE agent_registry (
 ======================================================================
 Agent Registry Demonstration
 ======================================================================
-Database: D:\...\samples\06_agent_registry\data\registry.db
+Database: .../samples/06_agent_registry/data/registry_run.sqlite
 
-[Registration] Registering agents...
-INFO Registered agent: agent_supervisor (priority=100)
-INFO Registered agent: agent_trader_btc (priority=10)
+[Registration] Handshake (register) agents...
+   [OK] agent_supervisor handshake accepted
+   [OK] agent_trader_btc handshake accepted
 
-[Discovery] Active Agents: ['agent_supervisor', 'agent_trader_btc']
-   ✅ Listing successful
+[Discovery] Active Agents: ['__dir_kernel__', 'agent_supervisor', 'agent_trader_btc']
+   [OK] Listing successful
 
 [Inspection] Checking 'agent_trader_btc'...
    Priority: 10
    Contract:
-   {
-     'role': 'EXECUTOR',
-     'capabilities': ['place_order', 'cancel_order'],
-     'supported_instruments': ['BTC-USD'],
-     'version': '2.1.0'
-   }
+{'role': 'EXECUTOR', 'capabilities': [...], 'supported_instruments': ['BTC-USD'], 'version': '1.2.0'}
 
 SUCCESS: Agent registry persisted and retrieved data correctly.
+Audit events for this run (run_id / correlation_id): 4
 ```
 
 ## Why Agent Registry Matters

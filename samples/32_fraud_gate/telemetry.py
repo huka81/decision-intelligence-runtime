@@ -1,4 +1,15 @@
-"""Telemetry helpers — named ``bundle.decision_audit.record`` wrappers (Sample Guide §9.3)."""
+"""Telemetry helpers — ``AuditStore`` / ``decision_audit_events`` (DIR canonical model).
+
+Wrappers align with ``src/dir_core/storage/schema.sql`` and
+``.cursor/rules/07-telemetry-guidelines.md``:
+
+* ``root_dfid`` on every row is the run lineage key (``simulation_id``); per-scenario
+  ``dfid`` remains the execution id (``§2`` aggregate root + denormalized root key).
+* ``detail_json`` carries structured payloads including ``correlation_id`` (and optional
+  ``causation_id`` for chained events).
+* ``step_id`` / ``state`` surface the observability columns; severities follow the schema
+  CHECK constraint.
+"""
 
 from __future__ import annotations
 
@@ -11,22 +22,40 @@ from dir_core.utils.logging_utils import log_with_dfid
 logger = logging.getLogger(__name__)
 
 
+def _detail_base(
+    simulation_id: str,
+    extra: Optional[Dict[str, Any]] = None,
+    *,
+    causation_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    out: Dict[str, Any] = {
+        "simulation_id": simulation_id,
+        "correlation_id": simulation_id,
+    }
+    if causation_id:
+        out["causation_id"] = causation_id
+    if extra:
+        out.update(extra)
+    return out
+
+
 def record_simulation_start(
     audit: AuditStore,
     simulation_id: str,
     *,
     llm_backend: str = "",
 ) -> None:
-    details: Dict[str, Any] = {
-        "simulation_id": simulation_id,
-        "sample": "32_fraud_gate",
-    }
+    extra: Dict[str, Any] = {"sample": "32_fraud_gate"}
     if llm_backend:
-        details["llm_backend"] = llm_backend
+        extra["llm_backend"] = llm_backend
     audit.record(
         simulation_id,
         "SIMULATION_START",
-        details=details,
+        step_id="SIMULATION",
+        state="RUNNING",
+        details=_detail_base(simulation_id, extra),
+        root_dfid=simulation_id,
+        severity="INFO",
     )
 
 
@@ -37,13 +66,19 @@ def record_simulation_end(
     status: str,
     error_message: str = "",
 ) -> None:
-    details: Dict[str, Any] = {
-        "simulation_id": simulation_id,
-        "status": status,
-    }
+    extra: Dict[str, Any] = {"status": status}
     if error_message:
-        details["error_message"] = error_message
-    audit.record(simulation_id, "SIMULATION_END", details=details)
+        extra["error_message"] = error_message
+    sev = "ERROR" if status.lower() == "error" else "INFO"
+    audit.record(
+        simulation_id,
+        "SIMULATION_END",
+        step_id="SIMULATION",
+        state=status.upper(),
+        details=_detail_base(simulation_id, extra),
+        root_dfid=simulation_id,
+        severity=sev,
+    )
 
 
 def record_agent_decision(
@@ -79,8 +114,7 @@ def record_agent_decision(
     drift_attack: bool = False,
 ) -> None:
     allowed = contract_allowed_policy_types or []
-    details: Dict[str, Any] = {
-        "simulation_id": simulation_id,
+    payload: Dict[str, Any] = {
         "agent_id": agent_id,
         "scenario_label": scenario_label,
         "tx_id": tx_id,
@@ -112,10 +146,19 @@ def record_agent_decision(
         "self_check_reason": self_check_reason,
         "drift_attack": drift_attack,
     }
+    v_upper = str(verdict).upper()
+    sev = "INFO"
+    if v_upper in ("REJECT", "ESCALATE"):
+        sev = "WARNING"
     audit.record(
         dfid,
         "AGENT_DECISION",
-        details=details,
+        step_id="ROA_DIM",
+        state=v_upper,
+        details=_detail_base(simulation_id, payload),
+        root_dfid=simulation_id,
+        agent_id=agent_id,
+        severity=sev,
     )
 
 
@@ -133,14 +176,20 @@ def record_payment_executed(
     audit.record(
         dfid,
         "PAYMENT_GATEWAY_ALLOW",
-        details={
-            "simulation_id": simulation_id,
-            "tx_id": tx_id,
-            "user_id": user_id,
-            "amount": amount,
-            "idempotency_key_prefix": idempotency_key_prefix,
-            "cached": cached,
-        },
+        step_id="PAYMENT_ALLOW",
+        state="CACHED_REPLAY" if cached else "SETTLED",
+        details=_detail_base(
+            simulation_id,
+            {
+                "tx_id": tx_id,
+                "user_id": user_id,
+                "amount": amount,
+                "idempotency_key_prefix": idempotency_key_prefix,
+                "cached": cached,
+            },
+        ),
+        root_dfid=simulation_id,
+        severity="INFO",
     )
     log_with_dfid(
         logger,

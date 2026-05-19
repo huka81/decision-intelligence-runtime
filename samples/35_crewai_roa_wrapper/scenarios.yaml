@@ -6,7 +6,7 @@ scenarios:
         order_id: ord_001
         amount_eur: 299.99
         category: electronics
-        purchase_date: "2026-04-10T10:00:00Z"
+        purchase_date: "2026-05-15T10:00:00Z"
         reason: "Defective product"
     expected: ACCEPT
     notes: "Baseline approve"
@@ -17,7 +17,7 @@ scenarios:
         order_id: ord_002
         amount_eur: 1200.00
         category: electronics
-        purchase_date: "2026-04-12T10:00:00Z"
+        purchase_date: "2026-05-17T10:00:00Z"
         reason: "Major defect"
     expected: ESCALATE
 
@@ -37,20 +37,20 @@ scenarios:
         order_id: ord_004
         amount_eur: 50.00
         category: prohibited_category
-        purchase_date: "2026-04-10T10:00:00Z"
+        purchase_date: "2026-05-15T10:00:00Z"
         reason: "Customer request"
     expected: REJECT
 
   - label: "SCENARIO E - NL intake: valid claim (ord_001)"
     context:
       claim_text: >
-        I bought electronics order ord_001 for 299.99 EUR on 10 April 2026.
+        I bought electronics order ord_001 for 299.99 EUR on 15 May 2026.
         Defective product - screen does not work. I request a refund.
     expected: ACCEPT
 
   - label: "SCENARIO F - NL intake: amount > 500 EUR (ord_002)"
     context:
       claim_text: >
-        Order ord_002 - laptop for 1200 EUR, 12 April 2026.
+        Order ord_002 - laptop for 1200 EUR, 17 May 2026.
         Major failure after one week. I want my money back.
     expected: ESCALATE

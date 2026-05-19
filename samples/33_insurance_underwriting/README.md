@@ -141,6 +141,28 @@ agents:
 | `prohibited_territories` | Case-insensitive substrings vs **agent-extracted** territories **after** extraction. If both territory and `max_tiv` fail, the kernel returns **`CONTRACT_VIOLATION`**; territory-only → **`PROHIBITED_TERRITORY`**. |
 | `injection_patterns` | Optional substrings for **ABORTED** (`PROMPT_INJECTION`) before any LLM call; default config leaves this empty so injection is handled by extraction contract + kernel |
 
+### Persistence (canonical `schema.sql`)
+
+The sample uses the built-in SQLite bundle from `setup_environment`. Each email **DFID** has a **root** row in `decision_flows` (`root_dfid = dfid`, `dfid_parent` null) before `flow_context` or `decision_audit_events` rows are written. Compiled session JSON is stored in **`flow_context`**. Append-only telemetry uses **`decision_audit_events`** (`event_type`, `detail_json`, `root_dfid`, `severity`). Mock bind idempotency uses **`idempotency_cache`** (`idempotency_key`, `request_hash`, `result`, `expires_at`).
+
+**SQLite — audit rows for one `simulation_id`:**
+
+```sql
+SELECT id, dfid, event_type, json_extract(detail_json, '$.simulation_id') AS sim
+FROM decision_audit_events
+WHERE json_extract(detail_json, '$.simulation_id') = 'uw_email_batch_001'
+ORDER BY id;
+```
+
+**PostgreSQL (same logical columns on a mirrored database):**
+
+```sql
+SELECT id, dfid, event_type, detail_json->>'simulation_id' AS sim
+FROM decision_audit_events
+WHERE detail_json->>'simulation_id' = 'uw_email_batch_001'
+ORDER BY id;
+```
+
 ### When Explain / Policy / PCI appear (DIR)
 
 1. **Submission-facts extraction** (broker TiV + stated territories) is a User Space LLM step; the kernel then applies **deterministic** post-extraction gates (`prohibited_territories`, `max_tiv`). **`injection_patterns`** run earlier, before the first LLM call.

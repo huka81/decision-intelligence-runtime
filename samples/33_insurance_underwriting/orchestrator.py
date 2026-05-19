@@ -78,12 +78,28 @@ def process_email_file(
     dfid = new_dfid()
     ep = config.get("email_processing", {})
     fx = {k.upper(): float(v) for k, v in ep.get("currency_fx_to_usd", {}).items()}
+    agent_id = str(contract_dict["agent_id"])
+
+    def _rec(
+        event: str,
+        *,
+        step_id: str = "",
+        state: str = "",
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        record_underwriting_step(
+            audit,
+            dfid,
+            simulation_id,
+            event,
+            step_id=step_id,
+            state=state,
+            details=details,
+            agent_id=agent_id,
+        )
 
     log_with_dfid(logger, dfid, logging.INFO, "FLOW_CREATED file=%s", path.name)
-    record_underwriting_step(
-        audit,
-        dfid,
-        simulation_id,
+    _rec(
         "FLOW_CREATED",
         step_id="0",
         state="CREATED",
@@ -93,7 +109,9 @@ def process_email_file(
     fixture = load_markdown_email_fixture(path)
     context = client_application_from_fixture(fixture, fx)
 
-    context_store.update_session(dfid, context.model_dump())
+    context_store.update_session(
+        dfid, context.model_dump(), agent_id=contract_dict["agent_id"]
+    )
 
     result = EmailCaseResult(
         dfid=dfid,
@@ -105,10 +123,7 @@ def process_email_file(
         mail_body_markdown=fixture.body_text,
     )
     result.add_step("MAIL_INGESTED", "CREATED", f"Read {path.name}")
-    record_underwriting_step(
-        audit,
-        dfid,
-        simulation_id,
+    _rec(
         "MAIL_INGESTED",
         state="CREATED",
         details={
@@ -127,10 +142,7 @@ def process_email_file(
     )
 
     result.add_step("CONTEXT_COMPILED", "ACTIVE", "ClientApplication built from email")
-    record_underwriting_step(
-        audit,
-        dfid,
-        simulation_id,
+    _rec(
         "CONTEXT_COMPILED",
         state="ACTIVE",
         details={
@@ -157,19 +169,13 @@ def process_email_file(
             else "GATE_REJECTED"
         )
         result.add_step(ev, gate.lifecycle_state, gate.message)
-        record_underwriting_step(
-            audit,
-            dfid,
-            simulation_id,
+        _rec(
             ev,
             state=gate.lifecycle_state,
             details={"code": gate.code, "message": gate.message},
         )
         log_with_dfid(logger, dfid, logging.INFO, "%s code=%s", ev, gate.code)
-        record_underwriting_step(
-            audit,
-            dfid,
-            simulation_id,
+        _rec(
             "FLOW_TERMINAL",
             state=gate.lifecycle_state,
             details={"outcome": result.final_status},
@@ -181,10 +187,7 @@ def process_email_file(
         "ACTIVE",
         "No optional keyword injection match (territory + authority after agent extraction)",
     )
-    record_underwriting_step(
-        audit,
-        dfid,
-        simulation_id,
+    _rec(
         "KERNEL_GATES_PASSED",
         state="ACTIVE",
         details={},
@@ -199,10 +202,7 @@ def process_email_file(
         result.final_status = "REJECTED"
         msg = f"Agent could not extract submission facts: {exc}"
         result.add_step("AGENT_SUBMISSION_EXTRACTION", "ABORTED", msg)
-        record_underwriting_step(
-            audit,
-            dfid,
-            simulation_id,
+        _rec(
             "AGENT_SUBMISSION_EXTRACTION_FAILED",
             state="ABORTED",
             details={"error": str(exc)},
@@ -214,10 +214,7 @@ def process_email_file(
             "AGENT_SUBMISSION_EXTRACTION_FAILED: %s",
             exc,
         )
-        record_underwriting_step(
-            audit,
-            dfid,
-            simulation_id,
+        _rec(
             "FLOW_TERMINAL",
             state="ABORTED",
             details={"outcome": "REJECTED"},
@@ -229,7 +226,9 @@ def process_email_file(
     context = context.model_copy(
         update={"requested_tiv_usd": facts.broker_requested_tiv_usd}
     )
-    context_store.update_session(dfid, context.model_dump())
+    context_store.update_session(
+        dfid, context.model_dump(), agent_id=contract_dict["agent_id"]
+    )
 
     detail_lim = f"tiv_usd={facts.broker_requested_tiv_usd:,.0f}"
     detail_ter = (facts.stated_territories or "")[:500]
@@ -238,10 +237,7 @@ def process_email_file(
         "ACTIVE",
         f"{detail_lim}; stated_territories: {detail_ter[:200]}{'...' if len(detail_ter) > 200 else ''}",
     )
-    record_underwriting_step(
-        audit,
-        dfid,
-        simulation_id,
+    _rec(
         "AGENT_SUBMISSION_EXTRACTION",
         state="ACTIVE",
         details={
@@ -275,19 +271,13 @@ def process_email_file(
             else "GATE_REJECTED"
         )
         result.add_step(ev, post.lifecycle_state, post.message)
-        record_underwriting_step(
-            audit,
-            dfid,
-            simulation_id,
+        _rec(
             ev,
             state=post.lifecycle_state,
             details={"code": post.code, "message": post.message},
         )
         log_with_dfid(logger, dfid, logging.INFO, "%s code=%s", ev, post.code)
-        record_underwriting_step(
-            audit,
-            dfid,
-            simulation_id,
+        _rec(
             "FLOW_TERMINAL",
             state=post.lifecycle_state,
             details={"outcome": result.final_status},
@@ -297,10 +287,7 @@ def process_email_file(
     result.add_step("AGENT_DECISION_CYCLE", "ACTIVE", "Explain -> Policy -> Self-Check -> PCI")
     pci, report = agent.run_decision_cycle(context, dfid=dfid)
     result.report = report
-    record_underwriting_step(
-        audit,
-        dfid,
-        simulation_id,
+    _rec(
         "PCI_EMITTED",
         state="VALIDATING",
         details={
@@ -320,10 +307,7 @@ def process_email_file(
     result.add_step("DIM_VERIFY_AND_COMMIT", "VALIDATING", "Proof check + business rules")
     dim_out = dim.verify_and_commit(pci, contract_dict["agent_id"])
     result.dim_result = dim_out
-    record_underwriting_step(
-        audit,
-        dfid,
-        simulation_id,
+    _rec(
         "DIM_RESULT",
         state="VALIDATING",
         details={"result": dim_out},
@@ -335,19 +319,13 @@ def process_email_file(
         result.reason_code = dim_out.replace(" ", "_").upper()
         result.lifecycle_state = "ABORTED"
         result.add_step("FLOW_ABORTED", "ABORTED", dim_out)
-        record_underwriting_step(
-            audit,
-            dfid,
-            simulation_id,
+        _rec(
             "FLOW_ABORTED",
             state="ABORTED",
             details={"reason": dim_out},
         )
         log_with_dfid(logger, dfid, logging.WARNING, "FLOW_ABORTED reason=%s", dim_out)
-        record_underwriting_step(
-            audit,
-            dfid,
-            simulation_id,
+        _rec(
             "FLOW_TERMINAL",
             state="ABORTED",
             details={"outcome": "REJECTED"},
@@ -355,10 +333,7 @@ def process_email_file(
         return result
 
     result.add_step("LEDGER_COMMITTED", "ACCEPTED", "PCI appended to Decision Ledger")
-    record_underwriting_step(
-        audit,
-        dfid,
-        simulation_id,
+    _rec(
         "LEDGER_COMMITTED",
         state="ACCEPTED",
         details={},
@@ -378,10 +353,7 @@ def process_email_file(
     result.reason_code = "POLICY_BOUND"
     result.lifecycle_state = "CLOSED"
     result.add_step("BIND_SUCCEEDED", "CLOSED", br.message)
-    record_underwriting_step(
-        audit,
-        dfid,
-        simulation_id,
+    _rec(
         "FLOW_TERMINAL",
         state="CLOSED",
         details={"outcome": "BOUND", "policy_ref": br.policy_ref},

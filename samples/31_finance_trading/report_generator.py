@@ -95,7 +95,7 @@ def _fetch_flow_transitions(bundle: StorageBundle, allow_dfids: Set[str]) -> Lis
     if conn is not None and flat:
         placeholders = ",".join(["%s"] * len(flat))
         sql = (
-            "SELECT id, dfid, from_status, to_status, created_at::text "
+            "SELECT id, dfid, root_dfid, from_status, to_status, created_at::text "
             "FROM flow_transitions WHERE dfid IN (" + placeholders + ") ORDER BY id ASC"
         )
         with conn.cursor() as cur:
@@ -105,9 +105,10 @@ def _fetch_flow_transitions(bundle: StorageBundle, allow_dfids: Set[str]) -> Lis
             {
                 "id": r[0],
                 "dfid": r[1],
-                "from_status": r[2] or "",
-                "to_status": r[3],
-                "created_at": str(r[4]) if r[4] is not None else "",
+                "root_dfid": r[2] or "",
+                "from_status": r[3] or "",
+                "to_status": r[4],
+                "created_at": str(r[5]) if r[5] is not None else "",
             }
             for r in raw
         ]
@@ -115,7 +116,7 @@ def _fetch_flow_transitions(bundle: StorageBundle, allow_dfids: Set[str]) -> Lis
     if db_path and flat:
         placeholders = ",".join("?" * len(flat))
         sql = (
-            "SELECT id, dfid, from_status, to_status, created_at "
+            "SELECT id, dfid, root_dfid, from_status, to_status, created_at "
             "FROM flow_transitions WHERE dfid IN (" + placeholders + ") ORDER BY id ASC"
         )
         with sqlite3.connect(db_path) as c:
@@ -125,9 +126,10 @@ def _fetch_flow_transitions(bundle: StorageBundle, allow_dfids: Set[str]) -> Lis
             {
                 "id": r[0],
                 "dfid": r[1],
-                "from_status": r[2] or "",
-                "to_status": r[3],
-                "created_at": str(r[4]) if r[4] is not None else "",
+                "root_dfid": r[2] or "",
+                "from_status": r[3] or "",
+                "to_status": r[4],
+                "created_at": str(r[5]) if r[5] is not None else "",
             }
             for r in raw
         ]
@@ -218,13 +220,15 @@ def _gather_agent_state_snapshots(
 
 
 def _transition_business_note(from_s: str, to_s: str) -> str:
-    """Short business reading of a lifecycle row (sample-specific conventions)."""
+    """Short business reading of a lifecycle row (DIR §4.3 flow_transitions)."""
+    if from_s == "CREATED" and to_s == "RUNNING":
+        return "Decision flow activated (e.g. news-qualified position spawn)."
+    if from_s == "RUNNING" and to_s == "COMPLETED":
+        return "Decision flow completed (e.g. position closed)."
     if from_s == "POSITION_SPAWN" and to_s.startswith("position_"):
-        return "News flow spawned a dedicated position agent (capital at risk)."
+        return "Legacy label: position agent spawned (prefer CREATED→RUNNING)."
     if to_s == "RETIRED":
-        return "Position agent removed from active mesh after close (registry RETIRED)."
-    if from_s == "NEWS_QUALIFIED" or "NEWS" in from_s.upper():
-        return "Orchestration linked to news-qualified decision flow."
+        return "Legacy label: position agent retired after close."
     return "Kernel lifecycle transition (audit trail)."
 
 
@@ -285,6 +289,7 @@ def _build_repository_business_html(
             f"""<tr>
             <td>{_escape(str(t.get("created_at", "")))}</td>
             <td><code>{_escape(str(t.get("dfid", "")))}</code></td>
+            <td><code>{_escape(str(t.get("root_dfid", "")))}</code></td>
             <td>{_escape(str(t.get("from_status", "")))}</td>
             <td>{_escape(str(t.get("to_status", "")))}</td>
             <td>{_escape(_transition_business_note(str(t.get("from_status", "")), str(t.get("to_status", ""))))}</td>
@@ -296,7 +301,7 @@ def _build_repository_business_html(
         <h3>Flow lifecycle — orchestration (DIR §4.3)</h3>
         <p class="meta">Append-only transitions for DFIDs tied to this run (spawn of position agents, retire on close).</p>
         <table class="data-table">
-            <tr><th>Time</th><th>Flow / DFID</th><th>From</th><th>To</th><th>Business note</th></tr>
+            <tr><th>Time</th><th>Flow / DFID</th><th>Root DFID</th><th>From</th><th>To</th><th>Business note</th></tr>
             {tr_html}
         </table>"""
         )
@@ -1282,7 +1287,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--db-path",
         type=Path,
-        default=Path("data/simulation_data.db"),
+        default=Path("data/31_finance_trading.db"),
         help="SQLite database path (only when config.yaml is missing or database.provider is sqlite)",
     )
     parser.add_argument("--output-path", type=Path, default=None, help="Where to save the HTML report")
@@ -1306,7 +1311,7 @@ if __name__ == "__main__":
         )
         db_provider = normalize_database_provider(db_cfg.get("provider", "memory"))
         if db_provider == "sqlite":
-            sqlite_path = Path(db_cfg.get("db_path", "data/simulation_data.db"))
+            sqlite_path = Path(db_cfg.get("db_path", "data/31_finance_trading.db"))
             if not sqlite_path.exists():
                 print(f"SQLite database not found: {sqlite_path}")
                 print("Run a simulation first to create the database.")

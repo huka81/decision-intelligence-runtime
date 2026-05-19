@@ -204,6 +204,7 @@ def run_simulation(
             bundle,
             dfid,
             simulation_id,
+            agent_id=agent_id,
             input_ref=ref,
             delay_hours=ticket.delay_hours,
             snapshot_id=snapshot.snapshot_id,
@@ -218,6 +219,7 @@ def run_simulation(
                 bundle,
                 dfid,
                 simulation_id,
+                agent_id=agent_id,
                 reason="Simulated agent declined refund for this ticket",
             )
             result.steps.append(
@@ -255,6 +257,7 @@ def run_simulation(
             bundle,
             dfid,
             simulation_id,
+            agent_id=agent_id,
             refund_amount_eur=float(refund_eur),
             policy_kind=proposal.policy_kind,
         )
@@ -272,6 +275,7 @@ def run_simulation(
             bundle,
             dfid,
             simulation_id,
+            agent_id=agent_id,
             verdict=v_str,
             reason=str(reason),
         )
@@ -315,6 +319,7 @@ def run_simulation(
             bundle,
             dfid,
             simulation_id,
+            agent_id=agent_id,
             refund_amount_eur=float(refund_eur),
             delay_hours=ticket.delay_hours,
             ticket_id=ref,

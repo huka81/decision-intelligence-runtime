@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import time
 import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
@@ -146,11 +147,16 @@ def main() -> None:
 
     audit = runtime.audit
     run_status = "ok"
+    t0 = time.perf_counter()
+    email_results: list[Any] = []
+    ledger: Any = None
     try:
         record_simulation_start(
             audit,
             simulation_id,
             llm_backend=_llm_backend_label(llm),
+            config=config,
+            run_id=str(sim.get("run_id", simulation_id)),
         )
 
         email_results, ledger = run_email_pipeline(
@@ -165,7 +171,7 @@ def main() -> None:
         )
 
         db_path_str = str(
-            Path(config.get("database", {}).get("db_path", "data/underwriting.dir.sqlite"))
+            Path(config.get("database", {}).get("db_path", "data/33_insurance_underwriting.db"))
         )
         if not Path(db_path_str).is_absolute():
             db_path_str = str((sample_dir / db_path_str).resolve())
@@ -225,11 +231,24 @@ def main() -> None:
             simulation_id,
             status="error",
             error_message=str(exc),
+            elapsed_seconds=time.perf_counter() - t0,
+            agent_id=agent_id,
         )
         raise
     finally:
         if run_status == "ok":
-            record_simulation_end(audit, simulation_id, status="ok")
+            n_exec = sum(
+                1 for c in email_results if getattr(c, "final_status", None) == "BOUND"
+            )
+            record_simulation_end(
+                audit,
+                simulation_id,
+                status="ok",
+                elapsed_seconds=time.perf_counter() - t0,
+                decisions_total=len(email_results),
+                executions_total=n_exec,
+                agent_id=agent_id,
+            )
 
 
 def _contract_dict_for_report(config: Dict[str, Any]) -> Dict[str, Any]:
