@@ -89,8 +89,14 @@ class ContextStorage(Protocol):
         """Return JSON-encoded session data for dfid, or None."""
         ...
 
-    def set_session(self, dfid: str, data_json: str) -> None:
-        """Persist JSON-encoded session data for dfid."""
+    def set_session(
+        self, dfid: str, data_json: str, *, agent_id: Optional[str] = None
+    ) -> None:
+        """Persist JSON-encoded session data for dfid.
+
+        SQLite backends require *agent_id* (or an internal bootstrap agent) so
+        a ``decision_flows`` row exists before writing ``flow_context``.
+        """
         ...
 
     def get_state(self, agent_id: str) -> Optional[str]:
@@ -140,6 +146,9 @@ class DecisionAuditStorage(Protocol):
         step_id: str = "",
         state: str = "",
         details: Optional[Dict[str, Any]] = None,
+        root_dfid: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        severity: str = "INFO",
     ) -> None:
         """Append one DFID-scoped audit row.
 
@@ -148,6 +157,8 @@ class DecisionAuditStorage(Protocol):
         (``sort_keys=True``, ``default=str``) so SQLite, PostgreSQL, and any
         other backend produce comparable ``detail_json`` / ``detail_json``-text
         column values and do not fail on non-JSON-native values.
+
+        *root_dfid* defaults to *dfid* when the flow is a root decision flow.
         """
         ...
 
@@ -191,9 +202,19 @@ class AuditStore:
         step_id: str = "",
         state: str = "",
         details: Optional[Dict[str, Any]] = None,
+        root_dfid: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        severity: str = "INFO",
     ) -> None:
         self._decision_audit.record(
-            dfid, event, step_id=step_id, state=state, details=details
+            dfid,
+            event,
+            step_id=step_id,
+            state=state,
+            details=details,
+            root_dfid=root_dfid,
+            agent_id=agent_id,
+            severity=severity,
         )
 
     def get_idempotent_result(self, key: str) -> Optional[Dict[str, Any]]:
@@ -346,7 +367,7 @@ class EscalationStorage(Protocol):
         decision: str,
         proposal_json: Optional[str],
     ) -> None:
-        """Mark escalation as RESOLVED with human decision."""
+        """Mark escalation as APPROVED or REJECTED with human decision."""
         ...
 
     def get_pending_requests(self) -> List[Dict[str, Any]]:
@@ -363,7 +384,12 @@ class EscalationStorage(Protocol):
 @runtime_checkable
 class LifecycleStorage(Protocol):
     def record_transition(
-        self, dfid: str, from_status: str, to_status: str
+        self,
+        dfid: str,
+        from_status: str,
+        to_status: str,
+        *,
+        root_dfid: Optional[str] = None,
     ) -> None:
-        """Append a flow transition record."""
+        """Append a flow transition record. *root_dfid* defaults to *dfid*."""
         ...

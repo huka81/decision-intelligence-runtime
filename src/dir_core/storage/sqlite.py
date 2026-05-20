@@ -11,10 +11,11 @@ All ``init_schema`` calls load and apply that file — no DDL is hardcoded here.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -23,6 +24,13 @@ from ..data_types import AgentRegistryStatus
 from .json_util import dumps_json_dict
 
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
+
+_DIR_KERNEL_AGENT = "__dir_kernel__"
+_IDEMPOTENCY_TTL_DAYS = 365
+
+_AUDIT_SEVERITIES = frozenset(
+    {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+)
 
 
 # ---------------------------------------------------------------------------
@@ -33,7 +41,63 @@ _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 def _connect(db_path: str) -> sqlite3.Connection:
     """Open a SQLite connection, creating parent directories if needed."""
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    return sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+
+def _ensure_agent_registry_row(conn: sqlite3.Connection, agent_id: str) -> None:
+    conn.execute(
+        "INSERT OR IGNORE INTO agent_registry (agent_id, contract, priority, status) "
+        "VALUES (?, '{}', 0, 'ACTIVE')",
+        (agent_id,),
+    )
+
+
+def _ensure_root_decision_flow(
+    conn: sqlite3.Connection, dfid: str, agent_id: str
+) -> None:
+    _ensure_agent_registry_row(conn, agent_id)
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO decision_flows
+            (dfid, root_dfid, dfid_parent, agent_id, status)
+        VALUES (?, ?, NULL, ?, 'CREATED')
+        """,
+        (dfid, dfid, agent_id),
+    )
+
+
+def _ensure_decision_flow_for_dfid(
+    conn: sqlite3.Connection,
+    dfid: str,
+    *,
+    agent_id: Optional[str] = None,
+    details: Optional[Dict[str, Any]] = None,
+) -> None:
+    aid = agent_id or (details or {}).get("agent_id")
+    if aid:
+        _ensure_root_decision_flow(conn, dfid, aid)
+    else:
+        _ensure_root_decision_flow(conn, dfid, _DIR_KERNEL_AGENT)
+
+
+def _idempotency_expires_iso() -> str:
+    return (
+        datetime.now(timezone.utc) + timedelta(days=_IDEMPOTENCY_TTL_DAYS)
+    ).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
+def _request_hash(payload: Dict[str, Any]) -> str:
+    body = dumps_json_dict(payload)
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def _human_decision_to_escalation_status(decision: str) -> str:
+    u = (decision or "").upper()
+    if u == "ABORT":
+        return "REJECTED"
+    return "APPROVED"
 
 
 def _apply_schema(conn: sqlite3.Connection) -> None:
@@ -58,6 +122,7 @@ def ensure_db(
     resolved = Path(path).resolve()
     resolved.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(resolved))
+    conn.execute("PRAGMA foreign_keys = ON")
     try:
         if create_tables is not None:
             create_tables(conn)
@@ -183,16 +248,24 @@ class SqliteContextStorage:
     def get_session(self, dfid: str) -> Optional[str]:
         with _connect(self.db_path) as conn:
             cursor = conn.execute(
-                "SELECT data FROM context_session WHERE dfid = ?", (dfid,)
+                "SELECT data FROM flow_context WHERE dfid = ?", (dfid,)
             )
             row = cursor.fetchone()
             return row[0] if row else None
 
-    def set_session(self, dfid: str, data_json: str) -> None:
+    def set_session(self, dfid: str, data_json: str, *, agent_id: Optional[str] = None) -> None:
         with _connect(self.db_path) as conn:
+            eff_agent = agent_id or _DIR_KERNEL_AGENT
+            _ensure_root_decision_flow(conn, dfid, eff_agent)
             conn.execute(
-                "INSERT OR REPLACE INTO context_session (dfid, data) "
-                "VALUES (?, ?)",
+                """
+                INSERT INTO flow_context (dfid, data, version, updated_at)
+                VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+                ON CONFLICT(dfid) DO UPDATE SET
+                    data = excluded.data,
+                    version = flow_context.version + 1,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
                 (dfid, data_json),
             )
             conn.commit()
@@ -200,7 +273,7 @@ class SqliteContextStorage:
     def get_state(self, agent_id: str) -> Optional[str]:
         with _connect(self.db_path) as conn:
             cursor = conn.execute(
-                "SELECT data FROM context_state WHERE agent_id = ?",
+                "SELECT data FROM agent_state WHERE agent_id = ?",
                 (agent_id,),
             )
             row = cursor.fetchone()
@@ -209,8 +282,14 @@ class SqliteContextStorage:
     def set_state(self, agent_id: str, data_json: str) -> None:
         with _connect(self.db_path) as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO context_state (agent_id, data) "
-                "VALUES (?, ?)",
+                """
+                INSERT INTO agent_state (agent_id, data, version, updated_at)
+                VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+                ON CONFLICT(agent_id) DO UPDATE SET
+                    data = excluded.data,
+                    version = agent_state.version + 1,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
                 (agent_id, data_json),
             )
             conn.commit()
@@ -235,17 +314,29 @@ class SqliteIdempotencyStorage:
     def get(self, key: str) -> Optional[Dict[str, Any]]:
         with _connect(self.db_path) as conn:
             cursor = conn.execute(
-                "SELECT result FROM idempotency_cache WHERE key = ?", (key,)
+                "SELECT result FROM idempotency_cache WHERE idempotency_key = ?",
+                (key,),
             )
             row = cursor.fetchone()
             return json.loads(row[0]) if row else None
 
     def set(self, key: str, result: Dict[str, Any]) -> None:
+        payload = dumps_json_dict(result)
+        rh = _request_hash(result)
+        exp = _idempotency_expires_iso()
         with _connect(self.db_path) as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO idempotency_cache (key, result) "
-                "VALUES (?, ?)",
-                (key, dumps_json_dict(result)),
+                """
+                INSERT INTO idempotency_cache
+                    (idempotency_key, request_hash, result, expires_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(idempotency_key) DO UPDATE SET
+                    request_hash = excluded.request_hash,
+                    result = excluded.result,
+                    created_at = CURRENT_TIMESTAMP,
+                    expires_at = excluded.expires_at
+                """,
+                (key, rh, payload, exp),
             )
             conn.commit()
 
@@ -274,26 +365,50 @@ class SqliteDecisionAuditStorage:
         step_id: str = "",
         state: str = "",
         details: Optional[Dict[str, Any]] = None,
+        root_dfid: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        severity: str = "INFO",
     ) -> None:
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        rd = root_dfid or dfid
+        sev = severity if severity in _AUDIT_SEVERITIES else "INFO"
         payload = dumps_json_dict(details or {})
         with _connect(self.db_path) as conn:
+            _ensure_decision_flow_for_dfid(conn, dfid, agent_id=agent_id, details=details)
             conn.execute(
                 """
                 INSERT INTO decision_audit_events
-                    (dfid, event, timestamp, step_id, state, detail_json)
-                VALUES (?, ?, ?, ?, ?, ?)
+                    (dfid, root_dfid, event_type, severity, step_id, state, detail_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (dfid, event, ts, step_id, state, payload),
+                (dfid, rd, event, sev, step_id, state, payload),
             )
             conn.commit()
+
+    @staticmethod
+    def _row_to_event(r: sqlite3.Row) -> Dict[str, Any]:
+        detail = json.loads(r["detail_json"] or "{}")
+        created = r["created_at"]
+        et = r["event_type"]
+        return {
+            "dfid": r["dfid"],
+            "root_dfid": r["root_dfid"],
+            "event": et,
+            "event_type": et,
+            "timestamp": created,
+            "created_at": created,
+            "severity": r["severity"],
+            "step_id": r["step_id"],
+            "state": r["state"],
+            "details": detail,
+        }
 
     def events_for_dfid(self, dfid: str) -> List[Dict[str, Any]]:
         with _connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
                 """
-                SELECT dfid, event, timestamp, step_id, state, detail_json
+                SELECT dfid, root_dfid, event_type, severity, step_id, state,
+                       detail_json, created_at
                 FROM decision_audit_events
                 WHERE dfid = ?
                 ORDER BY id ASC
@@ -301,44 +416,21 @@ class SqliteDecisionAuditStorage:
                 (dfid,),
             )
             rows = cursor.fetchall()
-        out: List[Dict[str, Any]] = []
-        for r in rows:
-            out.append(
-                {
-                    "dfid": r["dfid"],
-                    "event": r["event"],
-                    "timestamp": r["timestamp"],
-                    "step_id": r["step_id"],
-                    "state": r["state"],
-                    "details": json.loads(r["detail_json"] or "{}"),
-                }
-            )
-        return out
+        return [self._row_to_event(r) for r in rows]
 
     def all_events_chronological(self) -> List[Dict[str, Any]]:
         with _connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
                 """
-                SELECT dfid, event, timestamp, step_id, state, detail_json
+                SELECT dfid, root_dfid, event_type, severity, step_id, state,
+                       detail_json, created_at
                 FROM decision_audit_events
                 ORDER BY id ASC
                 """
             )
             rows = cursor.fetchall()
-        out: List[Dict[str, Any]] = []
-        for r in rows:
-            out.append(
-                {
-                    "dfid": r["dfid"],
-                    "event": r["event"],
-                    "timestamp": r["timestamp"],
-                    "step_id": r["step_id"],
-                    "state": r["state"],
-                    "details": json.loads(r["detail_json"] or "{}"),
-                }
-            )
-        return out
+        return [self._row_to_event(r) for r in rows]
 
 
 # ---------------------------------------------------------------------------
@@ -361,6 +453,7 @@ class SqliteSagaStorage:
         self, dfid: str, failed_step: str, partial_state_json: str
     ) -> None:
         with _connect(self.db_path) as conn:
+            _ensure_root_decision_flow(conn, dfid, _DIR_KERNEL_AGENT)
             conn.execute(
                 """
                 INSERT OR REPLACE INTO saga_dirty_state
@@ -445,13 +538,15 @@ class SqliteResourceLockStorage:
         while time.monotonic() < deadline:
             try:
                 conn = sqlite3.connect(self.db_path, timeout=0.1)
+                conn.execute("PRAGMA foreign_keys = ON")
                 conn.execute("BEGIN IMMEDIATE")
                 try:
+                    _ensure_root_decision_flow(conn, dfid, _DIR_KERNEL_AGENT)
                     for rid, amount in resources.items():
                         conn.execute(
                             "INSERT OR REPLACE INTO resource_locks "
-                            "(dfid, resource_id, amount) VALUES (?, ?, ?)",
-                            (dfid, rid, amount),
+                            "(resource_id, dfid, amount) VALUES (?, ?, ?)",
+                            (rid, dfid, amount),
                         )
                     conn.commit()
                     conn.close()
@@ -501,6 +596,7 @@ class SqliteIntentRetryStorage:
 
     def set_count(self, dfid: str, count: int) -> None:
         with _connect(self.db_path) as conn:
+            _ensure_root_decision_flow(conn, dfid, _DIR_KERNEL_AGENT)
             conn.execute(
                 "INSERT OR REPLACE INTO intent_retry "
                 "(dfid, rejection_count, updated_at) "
@@ -543,6 +639,7 @@ class SqliteEscalationStorage:
 
     def record_budget_token(self, agent_id: str) -> None:
         with _connect(self.db_path) as conn:
+            _ensure_agent_registry_row(conn, agent_id)
             conn.execute(
                 "INSERT INTO escalation_budget (agent_id) VALUES (?)",
                 (agent_id,),
@@ -558,15 +655,25 @@ class SqliteEscalationStorage:
         proposal_json: str,
         impact: str,
     ) -> None:
+        root_dfid = dfid
         with _connect(self.db_path) as conn:
+            _ensure_root_decision_flow(conn, dfid, agent_id)
             conn.execute(
                 """
-                INSERT OR REPLACE INTO escalation_requests
-                (dfid, agent_id, reason, context_json, proposal_json,
+                INSERT INTO escalation_requests
+                (dfid, root_dfid, agent_id, reason, context_json, proposal_json,
                  impact, status)
-                VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
                 """,
-                (dfid, agent_id, reason, context_json, proposal_json, impact),
+                (
+                    dfid,
+                    root_dfid,
+                    agent_id,
+                    reason,
+                    context_json,
+                    proposal_json,
+                    impact,
+                ),
             )
             conn.commit()
 
@@ -577,16 +684,17 @@ class SqliteEscalationStorage:
         decision: str,
         proposal_json: Optional[str],
     ) -> None:
+        status = _human_decision_to_escalation_status(decision)
         with _connect(self.db_path) as conn:
             conn.execute(
                 """
                 UPDATE escalation_requests
-                SET status = 'RESOLVED', resolved_at = ?,
+                SET status = ?, resolved_at = ?,
                     human_decision = ?,
                     proposal_json = COALESCE(?, proposal_json)
-                WHERE dfid = ?
+                WHERE dfid = ? AND status = 'PENDING'
                 """,
-                (resolved_at, decision, proposal_json, dfid),
+                (status, resolved_at, decision, proposal_json, dfid),
             )
             conn.commit()
 
@@ -629,12 +737,19 @@ class SqliteLifecycleStorage:
             _apply_schema(conn)
 
     def record_transition(
-        self, dfid: str, from_status: str, to_status: str
+        self,
+        dfid: str,
+        from_status: str,
+        to_status: str,
+        *,
+        root_dfid: Optional[str] = None,
     ) -> None:
+        rd = root_dfid or dfid
         with _connect(self.db_path) as conn:
+            _ensure_root_decision_flow(conn, dfid, _DIR_KERNEL_AGENT)
             conn.execute(
-                "INSERT INTO flow_transitions (dfid, from_status, to_status) "
-                "VALUES (?, ?, ?)",
-                (dfid, from_status, to_status),
+                "INSERT INTO flow_transitions (dfid, root_dfid, from_status, to_status) "
+                "VALUES (?, ?, ?, ?)",
+                (dfid, rd, from_status, to_status),
             )
             conn.commit()

@@ -1,15 +1,14 @@
 """
-Finance trading sample — telemetry helpers for ``bundle.decision_audit``.
+Finance trading sample — telemetry helpers for ``AuditStore`` / ``decision_audit_events``.
 
-Thin wrappers around :meth:`StorageBundle.decision_audit.record` plus report
-hydration from ``all_events_chronological()``. No parallel in-memory collector
-during the run.
+Thin wrappers around :meth:`AuditStore.record` plus report hydration from
+``all_events_chronological()``. No parallel in-memory collector during the run.
 
 Rows land in ``decision_audit_events``. Column ``dfid`` is the flow id (often a
 UUID for ticks); ``simulation_id`` is stored inside ``detail_json`` / ``details``.
-To list one run in PostgreSQL, filter
-``detail_json->>'simulation_id'``, not ``dfid LIKE 'sim_%'`` (that only shows
-start/end rows).
+The run root uses ``root_dfid = simulation_id`` for all child observation and
+news flows. Filter PostgreSQL with ``detail_json->>'simulation_id'``, not
+``dfid LIKE 'sim_%'`` (that only shows start/end rows).
 
 ``hydrate_report_state_from_audit`` rebuilds report-facing structures from
 ``all_events_chronological()`` for HTML generation only.
@@ -24,11 +23,13 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from dir_core.storage import StorageBundle
+from dir_core.storage.base import AuditStore
 
 
 @dataclass
 class TickRecord:
     """Single tick (market observation) for chart data."""
+
     tick_index: int
     instrument: str
     price: float
@@ -41,6 +42,7 @@ class TickRecord:
 @dataclass
 class SimDecisionRecord:
     """Single decision event for report (agent proposal + DIM result)."""
+
     tick_index: int
     dfid: str
     parent_dfid: Optional[str]
@@ -62,6 +64,7 @@ class SimDecisionRecord:
 @dataclass
 class PositionRecord:
     """Position lifecycle: spawn from news with exposure tracking, decisions."""
+
     position_id: str
     instrument: str
     entry_tick: int
@@ -80,6 +83,7 @@ class PositionRecord:
 @dataclass
 class SimulationReportState:
     """In-memory view of one simulation for HTML report (loaded from audit log)."""
+
     simulation_id: str
     ticks: List[TickRecord] = field(default_factory=list)
     decisions: List[SimDecisionRecord] = field(default_factory=list)
@@ -87,21 +91,81 @@ class SimulationReportState:
     news_events: List[Dict[str, Any]] = field(default_factory=list)
 
 
-def count_decision_audit_rows_for_simulation(
-    bundle: StorageBundle,
+def _governance_agents(config: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    if not config:
+        return []
+    rows: List[Dict[str, Any]] = []
+    for a in config.get("agents") or []:
+        c = a.get("contract") or {}
+        rows.append(
+            {
+                "agent_id": a.get("agent_id"),
+                "type": a.get("type"),
+                "role": c.get("role"),
+                "priority": a.get("priority"),
+            }
+        )
+    return rows
+
+
+def _detail_base(
     simulation_id: str,
+    extra: Optional[Dict[str, Any]] = None,
+    *,
+    causation_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    out: Dict[str, Any] = {
+        "simulation_id": simulation_id,
+        "correlation_id": simulation_id,
+    }
+    if causation_id:
+        out["causation_id"] = causation_id
+    if extra:
+        out.update(extra)
+    return out
+
+
+def _record(
+    audit: AuditStore,
+    dfid: str,
+    event: str,
+    simulation_id: str,
+    *,
+    details: Optional[Dict[str, Any]] = None,
+    root_dfid: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    step_id: str = "",
+    state: str = "",
+    severity: str = "INFO",
+    causation_id: Optional[str] = None,
+) -> None:
+    merged = _detail_base(simulation_id, details, causation_id=causation_id)
+    audit.record(
+        dfid,
+        event,
+        step_id=step_id,
+        state=state,
+        details=merged,
+        root_dfid=root_dfid or simulation_id,
+        agent_id=agent_id,
+        severity=severity,
+    )
+
+
+def count_decision_audit_rows_for_simulation(
+    audit: AuditStore,
+    simulation_id: str,
+    *,
+    bundle: Optional[StorageBundle] = None,
 ) -> int:
-    """Count audit rows for *simulation_id* (value lives in ``details`` / ``detail_json``).
-
-    MARKET_TICK and most events use the observation DFID in column ``dfid``; the
-    run id is duplicated in ``details['simulation_id']``. Filtering only
-    ``WHERE dfid LIKE 'sim_%'`` typically shows just SIMULATION_START / END.
-
-    PostgreSQL: runs ``COUNT(*)`` with ``detail_json->>'simulation_id'``.
-    SQLite / memory: scans ``all_events_chronological()`` in process.
-    """
-    da = bundle.decision_audit
-    conn = getattr(da, "_conn", None)
+    """Count audit rows for *simulation_id* (value lives in ``details`` / ``detail_json``)."""
+    da = bundle.decision_audit if bundle is not None else None
+    if da is None:
+        try:
+            da = audit._decision_audit  # type: ignore[attr-defined]
+        except AttributeError:
+            da = None
+    conn = getattr(da, "_conn", None) if da is not None else None
     if conn is not None:
         with conn.cursor() as cur:
             cur.execute(
@@ -117,60 +181,113 @@ def count_decision_audit_rows_for_simulation(
 
     return sum(
         1
-        for e in bundle.decision_audit.all_events_chronological()
+        for e in audit.all_events_chronological()
         if e.get("details", {}).get("simulation_id") == simulation_id
     )
 
 
-def start_simulation_audit(bundle: StorageBundle, config: Dict[str, Any]) -> str:
-    """Emit SIMULATION_START and return the new simulation_id."""
+def record_simulation_start(
+    audit: AuditStore,
+    config: Dict[str, Any],
+    *,
+    llm_backend: str = "",
+) -> str:
+    """Emit SIMULATION_START and return the new simulation_id (root flow)."""
     timestamp = datetime.now(timezone.utc).isoformat()
     config_str = json.dumps(config, sort_keys=True)
     config_hash = hashlib.sha256(config_str.encode()).hexdigest()[:16]
     simulation_id = (
         f"sim_{timestamp.replace(':', '-').replace('.', '-')}_{config_hash[:8]}"
     )
-    bundle.decision_audit.record(
+    sim = config.get("simulation", {}) or {}
+    details: Dict[str, Any] = {
+        "config_hash": config_hash,
+        "simulation_ticks": sim.get("simulation_ticks"),
+        "topology": "A-EOAM",
+        "sample": "31_finance_trading",
+        "started_at": timestamp,
+        "agents": _governance_agents(config),
+        "seeds": sim.get("seeds", {}),
+    }
+    if llm_backend:
+        details["llm_backend"] = llm_backend
+    _record(
+        audit,
         simulation_id,
         "SIMULATION_START",
-        details={
-            "simulation_id": simulation_id,
-            "config_hash": config_hash,
-            "simulation_ticks": config.get("simulation", {}).get("simulation_ticks"),
-        },
+        simulation_id,
+        details=details,
+        root_dfid=simulation_id,
+        state="CREATED",
     )
     return simulation_id
 
 
-def complete_simulation_audit(
-    bundle: StorageBundle,
+def record_simulation_end(
+    audit: AuditStore,
     simulation_id: str,
+    *,
     status: str = "completed",
     error_message: Optional[str] = None,
+    elapsed_seconds: Optional[float] = None,
+    tick_count: int = 0,
+    news_count: int = 0,
 ) -> None:
-    bundle.decision_audit.record(
+    details: Dict[str, Any] = {
+        "status": status,
+        "error_message": error_message,
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+        "tick_count": tick_count,
+        "news_count": news_count,
+    }
+    if elapsed_seconds is not None:
+        details["elapsed_seconds"] = elapsed_seconds
+    _record(
+        audit,
         simulation_id,
         "SIMULATION_END",
-        details={
-            "simulation_id": simulation_id,
-            "status": status,
-            "error_message": error_message,
-        },
+        simulation_id,
+        details=details,
+        root_dfid=simulation_id,
+        state="COMPLETED" if status == "completed" else "FAILED",
+        severity="ERROR" if status not in ("completed", "ok") else "INFO",
+    )
+
+
+# Backward-compatible aliases
+start_simulation_audit = record_simulation_start
+complete_simulation_audit = record_simulation_end
+
+
+def record_flow_transition(
+    bundle: StorageBundle,
+    dfid: str,
+    simulation_id: str,
+    from_status: str,
+    to_status: str,
+) -> None:
+    """Append lifecycle history with lineage ``root_dfid = simulation_id``."""
+    bundle.lifecycle.record_transition(
+        dfid,
+        from_status,
+        to_status,
+        root_dfid=simulation_id,
     )
 
 
 def record_market_tick(
-    bundle: StorageBundle,
+    audit: AuditStore,
     simulation_id: str,
     tick_index: int,
     payload: Dict[str, Any],
     dfid: str,
 ) -> None:
-    bundle.decision_audit.record(
+    _record(
+        audit,
         dfid,
         "MARKET_TICK",
+        simulation_id,
         details={
-            "simulation_id": simulation_id,
             "tick_index": tick_index,
             "instrument": payload.get("instrument", ""),
             "price": payload.get("price", 0.0),
@@ -178,17 +295,20 @@ def record_market_tick(
             "volatility": payload.get("volatility", 0.0),
             "timestamp": payload.get("timestamp", ""),
         },
+        state="RUNNING",
     )
 
 
 def record_agent_decision(
-    bundle: StorageBundle,
+    audit: AuditStore,
     simulation_id: str,
     tick_index: int,
     proposal: Any,
     dim_result: str,
     dim_reason: str,
     event_type: str = "observation",
+    *,
+    causation_id: Optional[str] = None,
 ) -> None:
     params = getattr(proposal, "params", {}) or {}
     instruments_affected = params.get("instruments_affected", [])
@@ -196,14 +316,16 @@ def record_agent_decision(
     if not instrument and instruments_affected:
         instrument = instruments_affected[0] if instruments_affected else None
     dfid = getattr(proposal, "dfid", "")
-    bundle.decision_audit.record(
+    agent_id = getattr(proposal, "agent_id", "") or None
+    _record(
+        audit,
         dfid,
         "AGENT_DECISION",
+        simulation_id,
         details={
-            "simulation_id": simulation_id,
             "tick_index": tick_index,
             "parent_dfid": params.get("parent_dfid"),
-            "agent_id": getattr(proposal, "agent_id", ""),
+            "agent_id": agent_id or "",
             "policy_kind": getattr(proposal, "policy_kind", ""),
             "justification": getattr(proposal, "justification", None),
             "dim_result": dim_result,
@@ -217,11 +339,14 @@ def record_agent_decision(
             "event_type": event_type,
             "instruments_affected": instruments_affected,
         },
+        agent_id=agent_id,
+        causation_id=causation_id or dfid,
+        state=str(dim_result),
     )
 
 
 def record_position_spawned(
-    bundle: StorageBundle,
+    audit: AuditStore,
     simulation_id: str,
     position_id: str,
     instrument: str,
@@ -231,12 +356,16 @@ def record_position_spawned(
     quantity: float,
     parent_dfid: Optional[str] = None,
     news_headline: Optional[str] = None,
+    *,
+    causation_id: Optional[str] = None,
 ) -> None:
-    bundle.decision_audit.record(
-        parent_dfid or simulation_id,
+    flow_dfid = parent_dfid or simulation_id
+    _record(
+        audit,
+        flow_dfid,
         "POSITION_SPAWNED",
+        simulation_id,
         details={
-            "simulation_id": simulation_id,
             "position_id": position_id,
             "instrument": instrument,
             "entry_tick": entry_tick,
@@ -244,65 +373,82 @@ def record_position_spawned(
             "initial_exposure": initial_exposure,
             "quantity": quantity,
             "news_headline": news_headline,
+            "parent_dfid": parent_dfid,
         },
+        causation_id=causation_id or parent_dfid,
+        state="RUNNING",
     )
 
 
 def record_position_event(
-    bundle: StorageBundle,
+    audit: AuditStore,
     simulation_id: str,
     position_id: str,
     tick_index: int,
     policy_kind: str,
     price: float,
     justification: Optional[str] = None,
+    *,
+    dfid: Optional[str] = None,
+    causation_id: Optional[str] = None,
 ) -> None:
-    bundle.decision_audit.record(
-        simulation_id,
+    _record(
+        audit,
+        dfid or simulation_id,
         "POSITION_EVENT",
+        simulation_id,
         details={
-            "simulation_id": simulation_id,
             "position_id": position_id,
             "tick_index": tick_index,
             "policy_kind": policy_kind,
             "price": price,
             "justification": justification,
         },
+        causation_id=causation_id,
     )
 
 
 def record_position_closed(
-    bundle: StorageBundle,
+    audit: AuditStore,
     simulation_id: str,
     position_id: str,
     close_tick: int,
     close_price: float,
     close_reason: str,
+    *,
+    dfid: Optional[str] = None,
+    causation_id: Optional[str] = None,
 ) -> None:
-    bundle.decision_audit.record(
-        simulation_id,
+    _record(
+        audit,
+        dfid or simulation_id,
         "POSITION_CLOSED",
+        simulation_id,
         details={
-            "simulation_id": simulation_id,
             "position_id": position_id,
             "close_tick": close_tick,
             "close_price": close_price,
             "close_reason": close_reason,
         },
+        causation_id=causation_id,
+        state="COMPLETED",
     )
 
 
 def record_position_exposure_updated(
-    bundle: StorageBundle,
+    audit: AuditStore,
     simulation_id: str,
     position_id: str,
     new_exposure: float,
+    *,
+    dfid: Optional[str] = None,
 ) -> None:
-    bundle.decision_audit.record(
-        simulation_id,
+    _record(
+        audit,
+        dfid or simulation_id,
         "POSITION_EXPOSURE_UPDATED",
+        simulation_id,
         details={
-            "simulation_id": simulation_id,
             "position_id": position_id,
             "new_exposure": new_exposure,
         },
@@ -310,22 +456,23 @@ def record_position_exposure_updated(
 
 
 def record_news_generated(
-    bundle: StorageBundle,
+    audit: AuditStore,
     simulation_id: str,
     payload: Dict[str, Any],
     dfid: str,
 ) -> None:
-    news_event = {
-        "dfid": dfid,
-        "headline": payload.get("headline", ""),
-        "sentiment": payload.get("sentiment"),
-        "instruments_affected": payload.get("instruments_affected", []),
-        "raw_score": payload.get("raw_score"),
-    }
-    bundle.decision_audit.record(
+    _record(
+        audit,
         dfid,
         "NEWS_GENERATED",
-        details={"simulation_id": simulation_id, **news_event},
+        simulation_id,
+        details={
+            "headline": payload.get("headline", ""),
+            "sentiment": payload.get("sentiment"),
+            "instruments_affected": payload.get("instruments_affected", []),
+            "raw_score": payload.get("raw_score"),
+        },
+        state="CREATED",
     )
 
 
@@ -339,14 +486,14 @@ def hydrate_report_state_from_audit(
         d = row.get("details", {})
         if d.get("simulation_id") != simulation_id:
             continue
-        ev_type = row.get("event")
+        ev_type = row.get("event") or row.get("event_type")
         if ev_type == "MARKET_TICK":
             state.ticks.append(
                 TickRecord(
                     tick_index=d.get("tick_index", 0),
                     instrument=d.get("instrument", ""),
                     price=d.get("price", 0.0),
-                    timestamp=d.get("timestamp", row["timestamp"]),
+                    timestamp=d.get("timestamp", row.get("timestamp", "")),
                     dfid=row["dfid"],
                     trend=d.get("trend", "neutral"),
                     volatility=d.get("volatility", 0.0),

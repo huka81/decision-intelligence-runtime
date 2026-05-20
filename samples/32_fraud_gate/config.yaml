@@ -3,7 +3,7 @@
 
 database:
   provider: sqlite
-  db_path: "data/fraud_gate.db"
+  db_path: "data/32_fraud_gate.db"
 
 simulation:
   run_id: "fraud_gate_demo"

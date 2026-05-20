@@ -22,6 +22,7 @@ if str(_SAMPLES) not in sys.path:
     sys.path.insert(0, str(_SAMPLES))
 
 from dir_core.storage import StorageBundle
+from dir_core.storage.base import AuditStore
 
 from pipeline import SimulationResult
 from schemas import BiddingSampleConfig, max_cpc_ceiling_usd
@@ -265,13 +266,14 @@ def list_monitor_events_from_bundle(
     )
     out: List[dict[str, Any]] = []
     for ev in events:
-        if ev.get("event") not in ("MONITOR_TICK", "AGENT_SUSPENDED"):
+        et = ev.get("event") or ev.get("event_type")
+        if et not in ("MONITOR_TICK", "AGENT_SUSPENDED"):
             continue
         det = ev.get("details") or {}
         out.append(
             {
                 "dfid": ev.get("dfid"),
-                "event": ev.get("event"),
+                "event": et,
                 "timestamp": ev.get("timestamp"),
                 "state": ev.get("state"),
                 "details": det,
@@ -310,7 +312,8 @@ def generate_report(
     max_cpc = max_cpc_ceiling_usd(rc)
 
     window = cfg.monitor.window_size
-    ma_series = rolling_avg_cpc_series(bundle, simulation_id, window)
+    audit = AuditStore(bundle.decision_audit, bundle.idempotency)
+    ma_series = rolling_avg_cpc_series(audit, simulation_id, window)
 
     exec_steps = [s for s in sim.steps if s.executed]
     suspended = sim.stopped_reason == "roi_environmental_monitor"

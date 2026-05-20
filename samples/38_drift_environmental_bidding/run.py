@@ -78,6 +78,7 @@ def main() -> None:
     )
     registry = runtime.registry
     context_store = runtime.context_store
+    audit = runtime.audit
 
     ab = _first_agent_block(config)
     agent_id = str(ab["agent_id"])
@@ -95,7 +96,7 @@ def main() -> None:
 
     sim_id = cfg.simulation.run_id
     monitor = BusinessROIMonitor(
-        bundle,
+        audit,
         registry,
         simulation_id=sim_id,
         agent_id=agent_id,
@@ -112,7 +113,7 @@ def main() -> None:
         sim = run_simulation(
             cfg,
             sample_dir=sample_dir,
-            bundle=bundle,
+            audit=audit,
             context_store=context_store,
             monitor=monitor,
             agent_registry=registry,
@@ -122,7 +123,7 @@ def main() -> None:
         )
     except Exception as e:
         record_simulation_end(
-            bundle,
+            audit,
             sim_id,
             status="error",
             stopped_reason="exception",

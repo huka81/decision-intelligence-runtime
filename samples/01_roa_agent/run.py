@@ -11,18 +11,26 @@ Run from repo root: python samples/01_roa_agent/run.py
 Requires PYTHONPATH including workspace src/ (see .vscode/settings.json).
 
 ROA Manifesto alignment: §3-4, §6
+
+Canonical telemetry: ``samples/01_roa_agent/data/01_roa_agent.db`` (optional).
 """
 from __future__ import annotations
 
 import json
 import logging
 import random
+import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from dir_core import (
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from dir_core import (  # noqa: E402
     AgentState,
     DecisionRecord,
     EscalationRequest,
@@ -33,7 +41,15 @@ from dir_core import (
     SelfCheckResult,
     new_dfid,
 )
+from dir_core.storage import AuditStore, ensure_db, sqlite_storage  # noqa: E402
 from dir_core.utils.logging_utils import log_with_dfid
+
+from telemetry import (  # noqa: E402
+    SIMULATION_ID,
+    record_roa_cycle_result,
+    record_simulation_end,
+    record_simulation_start,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -704,9 +720,9 @@ class PositionAgent(ROAAgent):
 # =============================================================================
 
 
-def main() -> None:
-    """Demonstrate full ROA lifecycle with dynamic agents and escalation scenarios."""
-    
+def _run_roa_demo(audit: AuditStore) -> None:
+    """Scenarios A–G: ROA lifecycle (one ``decision_audit`` row per ``run_decision_cycle``)."""
+
     print("=" * 70)
     print("ROA Agent Sample - Full Lifecycle Demonstration")
     print("=" * 70)
@@ -737,7 +753,8 @@ def main() -> None:
     }
     
     result_a = btc_agent.run_decision_cycle(dfid_a, context_a)
-    
+    record_roa_cycle_result(audit, dfid_a, SIMULATION_ID, result_a, scenario_label="A")
+
     if isinstance(result_a, PolicyProposal):
         print(f"\n[RESULT A] PolicyProposal emitted:")
         print(f"  DFID: {result_a.dfid}")
@@ -765,7 +782,8 @@ def main() -> None:
     }
     
     result_b = btc_agent.run_decision_cycle(dfid_b, context_b)
-    
+    record_roa_cycle_result(audit, dfid_b, SIMULATION_ID, result_b, scenario_label="B")
+
     if isinstance(result_b, EscalationRequest):
         print(f"\n[RESULT B] EscalationRequest emitted:")
         print(f"  DFID: {result_b.dfid}")
@@ -801,7 +819,8 @@ def main() -> None:
     context_c = {"price": 63500}  # +5.8% profit
     
     result_c = position_agent.run_decision_cycle(dfid_c, context_c)
-    
+    record_roa_cycle_result(audit, dfid_c, SIMULATION_ID, result_c, scenario_label="C")
+
     if isinstance(result_c, PolicyProposal):
         print(f"\n[RESULT C] PositionAgent PolicyProposal:")
         print(f"  DFID: {result_c.dfid}")
@@ -824,7 +843,8 @@ def main() -> None:
     context_d = {"price": 57500}  # -4.2% loss, exceeds 3% max_drawdown_limit
     
     result_d = position_agent.run_decision_cycle(dfid_d, context_d)
-    
+    record_roa_cycle_result(audit, dfid_d, SIMULATION_ID, result_d, scenario_label="D")
+
     if isinstance(result_d, PolicyProposal):
         print(f"\n[RESULT D] Risk-triggered PolicyProposal:")
         print(f"  Action: {result_d.policy_kind}")
@@ -895,7 +915,8 @@ def main() -> None:
     }
     
     result_e = restored_agent.run_decision_cycle(dfid_e, context_e)
-    
+    record_roa_cycle_result(audit, dfid_e, SIMULATION_ID, result_e, scenario_label="E")
+
     if isinstance(result_e, PolicyProposal):
         print(f"\n[RESULT E] Restored agent decision:")
         print(f"  Action: {result_e.policy_kind}")
@@ -964,11 +985,17 @@ def main() -> None:
     dfid_f1 = new_dfid()
     log_with_dfid(logger, dfid_f1, logging.INFO, "Growth agent analyzing...")
     result_f1 = growth_agent.run_decision_cycle(dfid_f1, same_context)
-    
+    record_roa_cycle_result(
+        audit, dfid_f1, SIMULATION_ID, result_f1, scenario_label="F_growth"
+    )
+
     dfid_f2 = new_dfid()
     log_with_dfid(logger, dfid_f2, logging.INFO, "Defensive agent analyzing...")
     result_f2 = defensive_agent.run_decision_cycle(dfid_f2, same_context)
-    
+    record_roa_cycle_result(
+        audit, dfid_f2, SIMULATION_ID, result_f2, scenario_label="F_defensive"
+    )
+
     print("\n  [COMPARISON] Same data, different missions:")
     print(f"\n  Growth Agent (mission: 'Maximize alpha...'):")
     print(f"    Focus: opportunity_weight={growth_agent.parse_mission_focus()['opportunity_weight']:.1f}x")
@@ -1018,7 +1045,14 @@ def main() -> None:
         dfid_g = new_dfid()
         log_with_dfid(logger, dfid_g, logging.INFO, f"Challenge {i}: vol={ctx['volatility']:.1%}")
         result_g = evolving_agent.run_decision_cycle(dfid_g, ctx)
-        
+        record_roa_cycle_result(
+            audit,
+            dfid_g,
+            SIMULATION_ID,
+            result_g,
+            scenario_label=f"G_challenge_{i}",
+        )
+
         outcome = "ESCALATED" if isinstance(result_g, EscalationRequest) else result_g.policy_kind
         print(f"  Challenge {i}: vol={ctx['volatility']:.1%} -> {outcome} (policy v{evolving_agent.state.policy_version})")
     
@@ -1030,6 +1064,31 @@ def main() -> None:
     escalation_count = sum(1 for r in evolving_agent.state.decision_trajectory if r.outcome == "ESCALATED")
     print(f"  Escalations in history: {escalation_count}")
     print(f"  -> Agent {'shifted to more conservative strategy' if evolving_agent.state.policy_version > 1 else 'maintained original strategy'}")
+
+
+def main() -> None:
+    """Run ROA demo and append audit rows to canonical SQLite under ``data/``."""
+    data_dir = Path(__file__).resolve().parent / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    db_path = ensure_db(data_dir / "01_roa_agent.db")
+    bundle = sqlite_storage(str(db_path))
+    audit = AuditStore(bundle.decision_audit, bundle.idempotency)
+    run_status = "ok"
+    end_error: Optional[str] = None
+    try:
+        record_simulation_start(audit, SIMULATION_ID)
+        _run_roa_demo(audit)
+    except Exception as exc:
+        run_status = "error"
+        end_error = str(exc)
+        raise
+    finally:
+        record_simulation_end(
+            audit,
+            SIMULATION_ID,
+            status=run_status,
+            error_message=end_error,
+        )
 
 
 if __name__ == "__main__":

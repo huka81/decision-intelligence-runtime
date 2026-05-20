@@ -44,7 +44,18 @@ class ClaimExtractionOutput(BaseModel):
     )
 
 
+def _ensure_crewai_openai_compat() -> None:
+    """CrewAI native OpenAI provider imports a symbol renamed in openai 1.83."""
+    import openai.types.chat as chat_types
+
+    if not hasattr(chat_types, "ChatCompletionMessageFunctionToolCall"):
+        from openai.types.chat import ChatCompletionMessageToolCall
+
+        chat_types.ChatCompletionMessageFunctionToolCall = ChatCompletionMessageToolCall
+
+
 def _make_crew_llm(model: str, base_url: str, temperature: float) -> Any:
+    _ensure_crewai_openai_compat()
     from crewai import LLM
 
     return LLM(
@@ -216,7 +227,7 @@ class CrewAIROAWrapper:
                 f"Authority boundaries:\n{boundaries}\n\n"
                 "RULES:\n"
                 "- Always set action to 'REFUND'.\n"
-                "- Copy order_id, amount_eur, category exactly from the claim.\n"
+                "- Copy order_id, amount_eur, category exactly from the claim (never cap or reduce amount_eur).\n"
                 "- The DIM Kernel decides ACCEPT/REJECT/ESCALATE — you only propose.\n"
                 "- Output ONLY valid JSON, nothing else."
             ),
@@ -245,7 +256,7 @@ class CrewAIROAWrapper:
                 "Output a JSON object with these exact fields:\n"
                 "  action     : always the string 'REFUND'\n"
                 "  order_id   : from the claim\n"
-                "  amount_eur : from the claim (numeric)\n"
+                "  amount_eur : exact numeric value from the claim (do not cap at 500)\n"
                 "  category   : from the claim\n"
                 "  reason     : one sentence justification\n\n"
                 f"Claim data:\n{claim_str}\n\n"

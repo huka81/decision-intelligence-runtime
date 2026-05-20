@@ -117,13 +117,15 @@ def main() -> None:
     simulation_id = cfg.simulation.run_id
 
     (sample_dir / "data").mkdir(parents=True, exist_ok=True)
-    db_rel = (config.get("database") or {}).get("db_path", "data/refund_semantic.sqlite")
+    db_rel = (config.get("database") or {}).get(
+        "db_path", "data/37_drift_semantic_refund.db"
+    )
     primary_db = (sample_dir / Path(str(db_rel))).resolve()
     if primary_db.exists():
         try:
             _unlink_retry(primary_db)
         except PermissionError:
-            alt = sample_dir / f"data/refund_semantic_run_{os.getpid()}.sqlite"
+            alt = sample_dir / f"data/37_drift_semantic_refund_{os.getpid()}.db"
             logger.warning(
                 "Could not remove locked database %s; using %s for this run.",
                 primary_db.name,

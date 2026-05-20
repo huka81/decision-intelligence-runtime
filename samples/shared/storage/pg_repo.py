@@ -1,17 +1,17 @@
 """
-dir_repo.py — PostgreSQL storage backends for DIR (sample 08).
+pg_repo.py — PostgreSQL storage backends for DIR (samples 08+).
 
 Implements every DIR storage Protocol from dir_core.storage.base against one
-shared psycopg2 connection.  DDL is applied once via apply_schema() before
-constructing backends.
+shared psycopg2 connection.  DDL is defined in pg_schema.sql (canonical parity
+with src/dir_core/storage/schema.sql) and applied via apply_schema().
 
 USAGE
 -----
-    from dir_repo import Repository, connect, apply_schema, build_repository
+    from samples.shared.storage.pg_repo import connect, apply_schema, build_repository
 
     conn = connect(config["database"])
     apply_schema(conn)
-    repo: Repository = build_repository(conn)
+    repo = build_repository(conn)
 
     registry = AgentRegistry(storage=repo.agent_registry, supported_versions="1.x")
     store    = ContextStore(storage=repo.context)
@@ -23,10 +23,11 @@ DEPENDENCY
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -43,11 +44,76 @@ Repository = StorageBundle
 
 _SCHEMA_PATH = Path(__file__).parent / "pg_schema.sql"
 
-# Each CREATE TABLE statement in schema.sql (psycopg2: one command per execute).
-_CREATE_TABLE_RE = re.compile(
-    r"CREATE TABLE IF NOT EXISTS\s+\w+\s*\([\s\S]+?\);\s*",
+_DIR_KERNEL_AGENT = "__dir_kernel__"
+_IDEMPOTENCY_TTL_DAYS = 365
+
+_AUDIT_SEVERITIES = frozenset(
+    {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+)
+
+# DDL statements in pg_schema.sql (psycopg2: one command per execute).
+_DDL_STMT_RE = re.compile(
+    r"CREATE (?:TABLE|INDEX) IF NOT EXISTS\s+[\s\S]+?;\s*",
     re.IGNORECASE,
 )
+
+
+def _ensure_agent_registry_row(
+    cur: psycopg2.extensions.cursor, agent_id: str
+) -> None:
+    cur.execute(
+        """
+        INSERT INTO agent_registry (agent_id, contract, priority, status)
+        VALUES (%s, '{}'::jsonb, 0, 'ACTIVE')
+        ON CONFLICT (agent_id) DO NOTHING
+        """,
+        (agent_id,),
+    )
+
+
+def _ensure_root_decision_flow(
+    cur: psycopg2.extensions.cursor, dfid: str, agent_id: str
+) -> None:
+    _ensure_agent_registry_row(cur, agent_id)
+    cur.execute(
+        """
+        INSERT INTO decision_flows
+            (dfid, root_dfid, dfid_parent, agent_id, status)
+        VALUES (%s, %s, NULL, %s, 'CREATED')
+        ON CONFLICT (dfid) DO NOTHING
+        """,
+        (dfid, dfid, agent_id),
+    )
+
+
+def _ensure_decision_flow_for_dfid(
+    cur: psycopg2.extensions.cursor,
+    dfid: str,
+    *,
+    agent_id: Optional[str] = None,
+    details: Optional[Dict[str, Any]] = None,
+) -> None:
+    aid = agent_id or (details or {}).get("agent_id")
+    if aid:
+        _ensure_root_decision_flow(cur, dfid, aid)
+    else:
+        _ensure_root_decision_flow(cur, dfid, _DIR_KERNEL_AGENT)
+
+
+def _idempotency_expires_at() -> datetime:
+    return datetime.now(timezone.utc) + timedelta(days=_IDEMPOTENCY_TTL_DAYS)
+
+
+def _request_hash(payload: Dict[str, Any]) -> str:
+    body = dumps_json_dict(payload)
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def _human_decision_to_escalation_status(decision: str) -> str:
+    u = (decision or "").upper()
+    if u == "ABORT":
+        return "REJECTED"
+    return "APPROVED"
 
 
 # ---------------------------------------------------------------------------
@@ -66,18 +132,16 @@ def connect(cfg: Dict[str, Any]) -> psycopg2.extensions.connection:
 
 
 def apply_schema(conn: psycopg2.extensions.connection) -> None:
-    """Execute schema.sql against *conn* (CREATE TABLE IF NOT EXISTS — idempotent).
+    """Execute pg_schema.sql against *conn* (CREATE TABLE/INDEX — idempotent).
 
     Call once on startup before constructing storage instances.
     Statements are executed one at a time (psycopg2 requires a single SQL
     command per execute()).
     """
     sql = _SCHEMA_PATH.read_text(encoding="utf-8")
-    statements = [m.group(0).strip() for m in _CREATE_TABLE_RE.finditer(sql)]
+    statements = [m.group(0).strip() for m in _DDL_STMT_RE.finditer(sql)]
     if not statements:
-        raise RuntimeError(
-            f"No CREATE TABLE statements found in {_SCHEMA_PATH}"
-        )
+        raise RuntimeError(f"No DDL statements found in {_SCHEMA_PATH}")
     with conn.cursor() as cur:
         for stmt in statements:
             cur.execute(stmt)
@@ -86,8 +150,15 @@ def apply_schema(conn: psycopg2.extensions.connection) -> None:
 
 def build_repository(
     conn: psycopg2.extensions.connection,
+    *,
+    apply_schema_on_build: bool = False,
 ) -> Repository:
-    """Return a repository handle with every storage backend backed by *conn*."""
+    """Return a repository handle with every storage backend backed by *conn*.
+
+    Set *apply_schema_on_build* when callers skip a separate ``apply_schema()``.
+    """
+    if apply_schema_on_build:
+        apply_schema(conn)
     return StorageBundle(
         agent_registry=PgAgentRegistryStorage(conn),
         context=PgContextStorage(conn),
@@ -109,7 +180,7 @@ def build_repository(
 class PgAgentRegistryStorage:
     """PostgreSQL backend for AgentRegistry (DIR §2.3).
 
-    Table: agent_registry  (see schema.sql)
+    Table: agent_registry  (see pg_schema.sql)
     """
 
     def __init__(self, conn: psycopg2.extensions.connection) -> None:
@@ -224,7 +295,7 @@ class PgAgentRegistryStorage:
 class PgContextStorage:
     """PostgreSQL backend for ContextStore (DIR §8).
 
-    Tables: context_session, context_state  (see schema.sql)
+    Tables: flow_context, agent_state  (see pg_schema.sql)
     """
 
     def __init__(self, conn: psycopg2.extensions.connection) -> None:
@@ -236,20 +307,25 @@ class PgContextStorage:
     def get_session(self, dfid: str) -> Optional[str]:
         with self._conn.cursor() as cur:
             cur.execute(
-                "SELECT data::text FROM context_session WHERE dfid = %s",
+                "SELECT data::text FROM flow_context WHERE dfid = %s",
                 (dfid,),
             )
             row = cur.fetchone()
         return row[0] if row else None
 
-    def set_session(self, dfid: str, data_json: str) -> None:
+    def set_session(
+        self, dfid: str, data_json: str, *, agent_id: Optional[str] = None
+    ) -> None:
+        eff_agent = agent_id or _DIR_KERNEL_AGENT
         with self._conn.cursor() as cur:
+            _ensure_root_decision_flow(cur, dfid, eff_agent)
             cur.execute(
                 """
-                INSERT INTO context_session (dfid, data)
-                VALUES (%s, %s::jsonb)
+                INSERT INTO flow_context (dfid, data, version, updated_at)
+                VALUES (%s, %s::jsonb, 1, NOW())
                 ON CONFLICT (dfid) DO UPDATE SET
                     data       = EXCLUDED.data,
+                    version    = flow_context.version + 1,
                     updated_at = NOW()
                 """,
                 (dfid, data_json),
@@ -259,7 +335,7 @@ class PgContextStorage:
     def get_state(self, agent_id: str) -> Optional[str]:
         with self._conn.cursor() as cur:
             cur.execute(
-                "SELECT data::text FROM context_state WHERE agent_id = %s",
+                "SELECT data::text FROM agent_state WHERE agent_id = %s",
                 (agent_id,),
             )
             row = cur.fetchone()
@@ -267,13 +343,14 @@ class PgContextStorage:
 
     def set_state(self, agent_id: str, data_json: str) -> None:
         with self._conn.cursor() as cur:
+            _ensure_agent_registry_row(cur, agent_id)
             cur.execute(
                 """
-                INSERT INTO context_state (agent_id, data)
-                VALUES (%s, %s::jsonb)
+                INSERT INTO agent_state (agent_id, data, version, updated_at)
+                VALUES (%s, %s::jsonb, 1, NOW())
                 ON CONFLICT (agent_id) DO UPDATE SET
                     data       = EXCLUDED.data,
-                    version    = context_state.version + 1,
+                    version    = agent_state.version + 1,
                     updated_at = NOW()
                 """,
                 (agent_id, data_json),
@@ -295,7 +372,7 @@ class PgIdempotencyStorage:
     def get(self, key: str) -> Optional[Dict[str, Any]]:
         with self._conn.cursor() as cur:
             cur.execute(
-                "SELECT result::text FROM idempotency_cache WHERE key = %s",
+                "SELECT result::text FROM idempotency_cache WHERE idempotency_key = %s",
                 (key,),
             )
             row = cur.fetchone()
@@ -304,16 +381,22 @@ class PgIdempotencyStorage:
         return json.loads(row[0])
 
     def set(self, key: str, result: Dict[str, Any]) -> None:
+        payload = dumps_json_dict(result)
+        rh = _request_hash(result)
+        exp = _idempotency_expires_at()
         with self._conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO idempotency_cache (key, result)
-                VALUES (%s, %s::jsonb)
-                ON CONFLICT (key) DO UPDATE SET
-                    result     = EXCLUDED.result,
-                    created_at = NOW()
+                INSERT INTO idempotency_cache
+                    (idempotency_key, request_hash, result, expires_at)
+                VALUES (%s, %s, %s::jsonb, %s)
+                ON CONFLICT (idempotency_key) DO UPDATE SET
+                    request_hash = EXCLUDED.request_hash,
+                    result       = EXCLUDED.result,
+                    created_at   = NOW(),
+                    expires_at   = EXCLUDED.expires_at
                 """,
-                (key, dumps_json_dict(result)),
+                (key, rh, payload, exp),
             )
         self._conn.commit()
 
@@ -332,6 +415,28 @@ class PgDecisionAuditStorage:
     def init_schema(self) -> None:
         pass
 
+    @staticmethod
+    def _row_to_event(row: tuple[Any, ...]) -> Dict[str, Any]:
+        detail = json.loads(row[6] or "{}")
+        created = row[7]
+        if hasattr(created, "isoformat"):
+            created = created.isoformat().replace("+00:00", "Z")
+        else:
+            created = str(created)
+        et = row[2]
+        return {
+            "dfid": row[0],
+            "root_dfid": row[1],
+            "event": et,
+            "event_type": et,
+            "timestamp": created,
+            "created_at": created,
+            "severity": row[3],
+            "step_id": row[4],
+            "state": row[5],
+            "details": detail,
+        }
+
     def record(
         self,
         dfid: str,
@@ -340,19 +445,28 @@ class PgDecisionAuditStorage:
         step_id: str = "",
         state: str = "",
         details: Optional[Dict[str, Any]] = None,
+        root_dfid: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        severity: str = "INFO",
     ) -> None:
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        rd = root_dfid or dfid
+        sev = severity if severity in _AUDIT_SEVERITIES else "INFO"
         with self._conn.cursor() as cur:
+            _ensure_decision_flow_for_dfid(
+                cur, dfid, agent_id=agent_id, details=details
+            )
             cur.execute(
                 """
                 INSERT INTO decision_audit_events
-                    (dfid, event, timestamp, step_id, state, detail_json)
-                VALUES (%s, %s, %s, %s, %s, %s::jsonb)
+                    (dfid, root_dfid, event_type, severity,
+                     step_id, state, detail_json)
+                VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)
                 """,
                 (
                     dfid,
+                    rd,
                     event,
-                    ts,
+                    sev,
                     step_id,
                     state,
                     dumps_json_dict(details or {}),
@@ -364,7 +478,8 @@ class PgDecisionAuditStorage:
         with self._conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT dfid, event, timestamp, step_id, state, detail_json::text
+                SELECT dfid, root_dfid, event_type, severity,
+                       step_id, state, detail_json::text, created_at
                 FROM decision_audit_events
                 WHERE dfid = %s
                 ORDER BY id ASC
@@ -372,39 +487,20 @@ class PgDecisionAuditStorage:
                 (dfid,),
             )
             rows = cur.fetchall()
-        return [
-            {
-                "dfid": r[0],
-                "event": r[1],
-                "timestamp": r[2],
-                "step_id": r[3],
-                "state": r[4],
-                "details": json.loads(r[5] or "{}"),
-            }
-            for r in rows
-        ]
+        return [self._row_to_event(r) for r in rows]
 
     def all_events_chronological(self) -> List[Dict[str, Any]]:
         with self._conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT dfid, event, timestamp, step_id, state, detail_json::text
+                SELECT dfid, root_dfid, event_type, severity,
+                       step_id, state, detail_json::text, created_at
                 FROM decision_audit_events
                 ORDER BY id ASC
                 """
             )
             rows = cur.fetchall()
-        return [
-            {
-                "dfid": r[0],
-                "event": r[1],
-                "timestamp": r[2],
-                "step_id": r[3],
-                "state": r[4],
-                "details": json.loads(r[5] or "{}"),
-            }
-            for r in rows
-        ]
+        return [self._row_to_event(r) for r in rows]
 
 
 # ---------------------------------------------------------------------------
@@ -425,6 +521,7 @@ class PgSagaStorage:
         self, dfid: str, failed_step: str, partial_state_json: str
     ) -> None:
         with self._conn.cursor() as cur:
+            _ensure_root_decision_flow(cur, dfid, _DIR_KERNEL_AGENT)
             cur.execute(
                 """
                 INSERT INTO saga_dirty_state
@@ -510,17 +607,19 @@ class PgResourceLockStorage:
                     cur.execute(
                         "LOCK TABLE resource_locks IN EXCLUSIVE MODE"
                     )
+                    _ensure_root_decision_flow(cur, dfid, _DIR_KERNEL_AGENT)
                     for rid, amount in resources.items():
                         cur.execute(
                             """
                             INSERT INTO resource_locks
-                                (dfid, resource_id, amount)
+                                (resource_id, dfid, amount)
                             VALUES (%s, %s, %s)
-                            ON CONFLICT (dfid, resource_id) DO UPDATE SET
+                            ON CONFLICT (resource_id) DO UPDATE SET
+                                dfid = EXCLUDED.dfid,
                                 amount = EXCLUDED.amount,
                                 acquired_at = NOW()
                             """,
-                            (dfid, rid, amount),
+                            (rid, dfid, amount),
                         )
                 self._conn.commit()
                 return True
@@ -563,10 +662,11 @@ class PgIntentRetryStorage:
 
     def set_count(self, dfid: str, count: int) -> None:
         with self._conn.cursor() as cur:
+            _ensure_root_decision_flow(cur, dfid, _DIR_KERNEL_AGENT)
             cur.execute(
                 """
-                INSERT INTO intent_retry (dfid, rejection_count)
-                VALUES (%s, %s)
+                INSERT INTO intent_retry (dfid, rejection_count, updated_at)
+                VALUES (%s, %s, NOW())
                 ON CONFLICT (dfid) DO UPDATE SET
                     rejection_count = EXCLUDED.rejection_count,
                     updated_at = NOW()
@@ -611,6 +711,7 @@ class PgEscalationStorage:
 
     def record_budget_token(self, agent_id: str) -> None:
         with self._conn.cursor() as cur:
+            _ensure_agent_registry_row(cur, agent_id)
             cur.execute(
                 "INSERT INTO escalation_budget (agent_id) VALUES (%s)",
                 (agent_id,),
@@ -626,25 +727,25 @@ class PgEscalationStorage:
         proposal_json: str,
         impact: str,
     ) -> None:
+        root_dfid = dfid
         with self._conn.cursor() as cur:
+            _ensure_root_decision_flow(cur, dfid, agent_id)
             cur.execute(
                 """
                 INSERT INTO escalation_requests
-                    (dfid, agent_id, reason, context_json, proposal_json,
-                     impact, status)
-                VALUES (%s, %s, %s, %s, %s, %s, 'PENDING')
-                ON CONFLICT (dfid) DO UPDATE SET
-                    agent_id      = EXCLUDED.agent_id,
-                    reason        = EXCLUDED.reason,
-                    context_json  = EXCLUDED.context_json,
-                    proposal_json = EXCLUDED.proposal_json,
-                    impact        = EXCLUDED.impact,
-                    status        = 'PENDING',
-                    created_at    = NOW(),
-                    resolved_at   = NULL,
-                    human_decision = NULL
+                    (dfid, root_dfid, agent_id, reason, context_json,
+                     proposal_json, impact, status)
+                VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, 'PENDING')
                 """,
-                (dfid, agent_id, reason, context_json, proposal_json, impact),
+                (
+                    dfid,
+                    root_dfid,
+                    agent_id,
+                    reason,
+                    context_json,
+                    proposal_json,
+                    impact,
+                ),
             )
         self._conn.commit()
 
@@ -655,17 +756,18 @@ class PgEscalationStorage:
         decision: str,
         proposal_json: Optional[str],
     ) -> None:
+        status = _human_decision_to_escalation_status(decision)
         with self._conn.cursor() as cur:
             cur.execute(
                 """
                 UPDATE escalation_requests
-                SET status = 'RESOLVED',
+                SET status = %s,
                     resolved_at = %s::timestamptz,
                     human_decision = %s,
-                    proposal_json = COALESCE(%s, proposal_json)
-                WHERE dfid = %s
+                    proposal_json = COALESCE(%s::jsonb, proposal_json)
+                WHERE dfid = %s AND status = 'PENDING'
                 """,
-                (resolved_at, decision, proposal_json, dfid),
+                (status, resolved_at, decision, proposal_json, dfid),
             )
         self._conn.commit()
 
@@ -673,7 +775,8 @@ class PgEscalationStorage:
         with self._conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT dfid, agent_id, reason, context_json, proposal_json, impact
+                SELECT dfid, agent_id, reason, context_json::text,
+                       proposal_json::text, impact
                 FROM escalation_requests
                 WHERE status = 'PENDING'
                 """
@@ -681,12 +784,12 @@ class PgEscalationStorage:
             rows = cur.fetchall()
         return [
             {
-                "dfid":     r[0],
+                "dfid": r[0],
                 "agent_id": r[1],
-                "reason":   r[2],
-                "context":  json.loads(r[3] or "{}"),
+                "reason": r[2],
+                "context": json.loads(r[3] or "{}"),
                 "proposal": json.loads(r[4] or "{}"),
-                "impact":   r[5],
+                "impact": r[5],
             }
             for r in rows
         ]
@@ -704,14 +807,22 @@ class PgLifecycleStorage:
         self._conn = conn
 
     def record_transition(
-        self, dfid: str, from_status: str, to_status: str
+        self,
+        dfid: str,
+        from_status: str,
+        to_status: str,
+        *,
+        root_dfid: Optional[str] = None,
     ) -> None:
+        rd = root_dfid or dfid
         with self._conn.cursor() as cur:
+            _ensure_root_decision_flow(cur, dfid, _DIR_KERNEL_AGENT)
             cur.execute(
                 """
-                INSERT INTO flow_transitions (dfid, from_status, to_status)
-                VALUES (%s, %s, %s)
+                INSERT INTO flow_transitions
+                    (dfid, root_dfid, from_status, to_status)
+                VALUES (%s, %s, %s, %s)
                 """,
-                (dfid, from_status, to_status),
+                (dfid, rd, from_status, to_status),
             )
         self._conn.commit()

@@ -101,7 +101,7 @@ def _read_flow_transitions_ro(db_path: str) -> List[Dict[str, Any]]:
     try:
         conn.row_factory = sqlite3.Row
         cur = conn.execute(
-            "SELECT dfid, from_status, to_status, created_at "
+            "SELECT dfid, root_dfid, from_status, to_status, created_at "
             "FROM flow_transitions ORDER BY id ASC"
         )
         return [dict(r) for r in cur.fetchall()]
@@ -324,6 +324,7 @@ def _kernel_claims_section(
                 "<tr>"
                 f"<td>{_esc(t.get('created_at', ''))}</td>"
                 f"<td><code>{_esc(t.get('dfid', ''))}</code></td>"
+                f"<td><code>{_esc(t.get('root_dfid', ''))}</code></td>"
                 f"<td>{_esc(t.get('from_status', ''))}</td>"
                 f"<td>{_esc(t.get('to_status', ''))}</td>"
                 "<td>Lifecycle transition in canonical store.</td>"
@@ -331,7 +332,8 @@ def _kernel_claims_section(
             )
         flow_html = (
             "<table class='data'><thead><tr>"
-            "<th>created_at</th><th>dfid</th><th>from_status</th><th>to_status</th>"
+            "<th>created_at</th><th>dfid</th><th>root_dfid</th>"
+            "<th>from_status</th><th>to_status</th>"
             "<th>note</th></tr></thead><tbody>"
             + "".join(tr_rows)
             + "</tbody></table>"

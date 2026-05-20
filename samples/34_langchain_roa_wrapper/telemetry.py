@@ -1,4 +1,13 @@
-"""Named helpers over ``bundle.decision_audit`` (Sample Guide §9.3–§9.4)."""
+"""``StorageBundle.decision_audit`` helpers — canonical ``decision_audit_events`` rows.
+
+Aligned with ``src/dir_core/storage/schema.sql`` and
+``.cursor/rules/07-telemetry-guidelines.md``:
+
+* ``root_dfid`` = ``simulation_id`` for every row (run lineage); per-scenario ``dfid``
+  stays the execution identifier.
+* ``detail_json`` includes ``correlation_id`` (and optional ``causation_id``).
+* ``step_id`` / ``state`` / ``severity`` use top-level columns, not prose-only logs.
+"""
 
 from __future__ import annotations
 
@@ -7,9 +16,20 @@ from typing import Any, Dict, List, Optional
 from dir_core.storage import StorageBundle
 
 
-def _with_simulation(simulation_id: str, details: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    out: Dict[str, Any] = dict(details or {})
-    out.setdefault("simulation_id", simulation_id)
+def _detail_base(
+    simulation_id: str,
+    extra: Optional[Dict[str, Any]] = None,
+    *,
+    causation_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    out: Dict[str, Any] = {
+        "simulation_id": simulation_id,
+        "correlation_id": simulation_id,
+    }
+    if causation_id:
+        out["causation_id"] = causation_id
+    if extra:
+        out.update(extra)
     return out
 
 
@@ -20,10 +40,18 @@ def record_simulation_start(
     llm_backend: str = "",
     sample: str = "34_langchain_roa_wrapper",
 ) -> None:
-    details: Dict[str, Any] = {"simulation_id": simulation_id, "sample": sample}
+    extra: Dict[str, Any] = {"sample": sample}
     if llm_backend:
-        details["llm_backend"] = llm_backend
-    bundle.decision_audit.record(simulation_id, "SIMULATION_START", details=details)
+        extra["llm_backend"] = llm_backend
+    bundle.decision_audit.record(
+        simulation_id,
+        "SIMULATION_START",
+        step_id="SIMULATION",
+        state="RUNNING",
+        details=_detail_base(simulation_id, extra),
+        root_dfid=simulation_id,
+        severity="INFO",
+    )
 
 
 def record_simulation_end(
@@ -33,10 +61,19 @@ def record_simulation_end(
     status: str,
     error_message: str = "",
 ) -> None:
-    details: Dict[str, Any] = {"simulation_id": simulation_id, "status": status}
+    extra: Dict[str, Any] = {"status": status}
     if error_message:
-        details["error_message"] = error_message
-    bundle.decision_audit.record(simulation_id, "SIMULATION_END", details=details)
+        extra["error_message"] = error_message
+    sev = "ERROR" if status.lower() == "error" else "INFO"
+    bundle.decision_audit.record(
+        simulation_id,
+        "SIMULATION_END",
+        step_id="SIMULATION",
+        state=status.upper(),
+        details=_detail_base(simulation_id, extra),
+        root_dfid=simulation_id,
+        severity=sev,
+    )
 
 
 def record_agent_decision(
@@ -86,10 +123,19 @@ def record_agent_decision(
         details["explain_risks"] = explain_risks
     if explain_opportunities:
         details["explain_opportunities"] = explain_opportunities
+    v_upper = str(verdict).upper()
+    sev = "INFO"
+    if v_upper in ("REJECT", "ESCALATE"):
+        sev = "WARNING"
     bundle.decision_audit.record(
         dfid,
         "AGENT_DECISION",
-        details=_with_simulation(simulation_id, details),
+        step_id="ROA_DIM",
+        state=v_upper,
+        details=_detail_base(simulation_id, details),
+        root_dfid=simulation_id,
+        agent_id=agent_id,
+        severity=sev,
     )
 
 
@@ -122,7 +168,12 @@ def record_self_check_failed(
     bundle.decision_audit.record(
         dfid,
         "FINOPS_SELF_CHECK_FAILED",
-        details=_with_simulation(simulation_id, det),
+        step_id="SELF_CHECK",
+        state="FAILED",
+        details=_detail_base(simulation_id, det),
+        root_dfid=simulation_id,
+        agent_id=agent_id,
+        severity="WARNING",
     )
 
 
@@ -139,7 +190,9 @@ def record_finops_execution(
     bundle.decision_audit.record(
         dfid,
         "FINOPS_EXECUTION",
-        details=_with_simulation(
+        step_id="FINOPS_EXECUTION",
+        state="DRY_RUN",
+        details=_detail_base(
             simulation_id,
             {
                 "agent_id": agent_id,
@@ -149,4 +202,7 @@ def record_finops_execution(
                 "mode": "dry_run",
             },
         ),
+        root_dfid=simulation_id,
+        agent_id=agent_id,
+        severity="INFO",
     )

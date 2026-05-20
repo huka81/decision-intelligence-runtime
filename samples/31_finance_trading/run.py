@@ -50,16 +50,17 @@ try:
     from .report_generator import generate_html_report
     from .roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
     from .telemetry import (
-        complete_simulation_audit,
         count_decision_audit_rows_for_simulation,
         record_agent_decision,
+        record_flow_transition,
         record_market_tick,
         record_news_generated,
         record_position_closed,
         record_position_event,
         record_position_exposure_updated,
         record_position_spawned,
-        start_simulation_audit,
+        record_simulation_end,
+        record_simulation_start,
     )
 except ImportError:
     from dir_kernel_wiring import (
@@ -72,16 +73,17 @@ except ImportError:
     from report_generator import generate_html_report
     from roa_agents import ROAInstrumentAgent, ROANewsScorerAgent
     from telemetry import (
-        complete_simulation_audit,
         count_decision_audit_rows_for_simulation,
         record_agent_decision,
+        record_flow_transition,
         record_market_tick,
         record_news_generated,
         record_position_closed,
         record_position_event,
         record_position_exposure_updated,
         record_position_spawned,
-        start_simulation_audit,
+        record_simulation_end,
+        record_simulation_start,
     )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -147,8 +149,10 @@ def main() -> None:
     llm = env.llm
 
     kernel_ctx = SimulationKernelContext()
-    runtime = DecisionRuntime(env.repository)
+    bundle = env.repository
+    runtime = DecisionRuntime(bundle)
     registry = runtime.registry
+    audit = runtime.audit
     ctx_store = runtime.context_store
     kernel_ctx.context_store = ctx_store
     register_config_agents(registry, env.contracts, config.get("agents", []))
@@ -211,18 +215,14 @@ def main() -> None:
         )
         return (str(verdict), str(reason))
 
-    # Persist simulation only via canonical StorageBundle.decision_audit.
     data_dir = sample_dir / "data"
     data_dir.mkdir(exist_ok=True)
-    bundle = env.repository
-    simulation_id = start_simulation_audit(bundle, config)
+    llm_backend = type(llm).__name__
+    simulation_id = record_simulation_start(audit, config, llm_backend=llm_backend)
     kernel_ctx.simulation_id = simulation_id
-    logger.info("Simulation ID: %s", simulation_id)
+    logger.info("Simulation ID: %s (root_dfid)", simulation_id)
     logger.info("Persistence: %s", database_connection_summary(config))
-    logger.info(
-        "Decision audit backend: %s",
-        type(bundle.decision_audit).__name__,
-    )
+    logger.info("Decision audit backend: %s", type(bundle.decision_audit).__name__)
     
     last_prices: Dict[str, float] = dict(initial_prices)
 
@@ -249,7 +249,7 @@ def main() -> None:
             last_prices[scope] = tick_payload.get("price", last_prices.get(scope, 1000.0))
 
             dfid = orch.emit_observation(tick_payload, scope=scope)
-            record_market_tick(bundle, simulation_id, tick_count, tick_payload, dfid)
+            record_market_tick(audit, simulation_id, tick_count, tick_payload, dfid)
 
             winner = orch.arbitrate(dfid)
             orch.clear_pending(dfid)
@@ -257,8 +257,14 @@ def main() -> None:
             if winner:
                 result, reason = validate_proposal_shim(winner)
                 record_agent_decision(
-                    bundle, simulation_id, tick_count, winner, result, reason,
+                    audit,
+                    simulation_id,
+                    tick_count,
+                    winner,
+                    result,
+                    reason,
                     event_type="observation",
+                    causation_id=dfid,
                 )
                 log_with_dfid(logger, dfid, logging.INFO, "DIM: %s %s", result, reason)
                 if result == "ACCEPT":
@@ -281,7 +287,7 @@ def main() -> None:
                             quantity=quantity,
                         )
                         record_position_spawned(
-                            bundle,
+                            audit,
                             simulation_id,
                             agent.position_id,
                             winner.params.get("instrument", scope),
@@ -289,12 +295,12 @@ def main() -> None:
                             float(entry_price_val),
                             max_exposure,
                             quantity,
+                            parent_dfid=dfid,
+                            causation_id=dfid,
                         )
                         register_spawned_position_agent(registry, agent.contract)
-                        bundle.lifecycle.record_transition(
-                            simulation_id,
-                            "POSITION_SPAWN",
-                            agent.agent_id,
+                        record_flow_transition(
+                            bundle, dfid, simulation_id, "CREATED", "RUNNING",
                         )
                     elif winner.policy_kind in ("CLOSE", "TAKE_PROFIT"):
                         # Position closure (CLOSE or TAKE_PROFIT): update database and cleanup agent
@@ -306,22 +312,26 @@ def main() -> None:
                             pnl_usd = winner.params.get("unrealized_pnl_usd", 0.0)
                             
                             record_position_event(
-                                bundle,
+                                audit,
                                 simulation_id,
                                 position_id,
                                 tick_count,
                                 winner.policy_kind,
                                 close_price,
                                 winner.justification,
+                                dfid=dfid,
+                                causation_id=dfid,
                             )
 
                             record_position_closed(
-                                bundle,
+                                audit,
                                 simulation_id,
                                 position_id,
                                 tick_count,
                                 close_price,
                                 close_reason,
+                                dfid=dfid,
+                                causation_id=dfid,
                             )
 
                             registry.set_agent_status(
@@ -329,10 +339,8 @@ def main() -> None:
                                 "RETIRED",
                                 "POSITION_CLOSED",
                             )
-                            bundle.lifecycle.record_transition(
-                                simulation_id,
-                                winner.agent_id,
-                                "RETIRED",
+                            record_flow_transition(
+                                bundle, dfid, simulation_id, "RUNNING", "COMPLETED",
                             )
 
                             orch.cleanup_position_agent(winner.agent_id)
@@ -354,20 +362,23 @@ def main() -> None:
                             new_exposure = winner.params.get("new_exposure", 0.0)
                             
                             record_position_event(
-                                bundle,
+                                audit,
                                 simulation_id,
                                 position_id,
                                 tick_count,
                                 winner.policy_kind,
                                 winner.params.get("price", 0.0),
                                 winner.justification,
+                                dfid=dfid,
+                                causation_id=dfid,
                             )
 
                             record_position_exposure_updated(
-                                bundle,
+                                audit,
                                 simulation_id,
                                 position_id,
                                 new_exposure,
+                                dfid=dfid,
                             )
                             
                             log_with_dfid(
@@ -378,13 +389,15 @@ def main() -> None:
                     else:
                         if hasattr(winner, "params") and winner.params.get("position_id"):
                             record_position_event(
-                                bundle,
+                                audit,
                                 simulation_id,
                                 winner.params["position_id"],
                                 tick_count,
                                 winner.policy_kind,
                                 winner.params.get("price", 0.0),
                                 winner.justification,
+                                dfid=dfid,
+                                causation_id=dfid,
                             )
                         log_with_dfid(
                             logger, dfid, logging.INFO,
@@ -397,20 +410,21 @@ def main() -> None:
             if tick_count % news_every_n_ticks == 0 and news_count < max_news_events:
                 news_payload = next(news_gen.news_payloads(max_events=1, sleep_between=False))
                 news_dfid = orch.emit_news(news_payload)
-                record_news_generated(bundle, simulation_id, news_payload, news_dfid)
+                record_news_generated(audit, simulation_id, news_payload, news_dfid)
 
                 news_winner = orch.arbitrate(news_dfid)
                 orch.clear_pending(news_dfid)
                 if news_winner:
                     result, _ = validate_proposal_shim(news_winner)
                     record_agent_decision(
-                        bundle,
+                        audit,
                         simulation_id,
                         tick_count,
                         news_winner,
                         result,
                         "",
                         event_type="news",
+                        causation_id=news_dfid,
                     )
                     log_with_dfid(
                         logger, news_dfid, logging.INFO,
@@ -439,7 +453,7 @@ def main() -> None:
                                 news_headline=headline,
                             )
                             record_position_spawned(
-                                bundle,
+                                audit,
                                 simulation_id,
                                 agent.position_id,
                                 inst,
@@ -449,12 +463,11 @@ def main() -> None:
                                 quantity,
                                 parent_dfid=news_dfid,
                                 news_headline=headline,
+                                causation_id=news_dfid,
                             )
                             register_spawned_position_agent(registry, agent.contract)
-                            bundle.lifecycle.record_transition(
-                                news_dfid,
-                                "POSITION_SPAWN",
-                                agent.agent_id,
+                            record_flow_transition(
+                                bundle, news_dfid, simulation_id, "CREATED", "RUNNING",
                             )
                             # Clear logging for position opening
                             log_with_dfid(
@@ -494,8 +507,17 @@ def main() -> None:
 
         # Simulation completed successfully
         elapsed_seconds = time.monotonic() - start_time
-        complete_simulation_audit(bundle, simulation_id, status="completed")
-        audit_rows = count_decision_audit_rows_for_simulation(bundle, simulation_id)
+        record_simulation_end(
+            audit,
+            simulation_id,
+            status="completed",
+            elapsed_seconds=elapsed_seconds,
+            tick_count=tick_count,
+            news_count=news_count,
+        )
+        audit_rows = count_decision_audit_rows_for_simulation(
+            audit, simulation_id, bundle=bundle,
+        )
         logger.info(
             "Decision audit rows for this simulation_id: %s "
             "(filter detail_json / details by simulation_id, not dfid prefix)",
@@ -504,7 +526,8 @@ def main() -> None:
         if type(bundle.decision_audit).__name__ == "PgDecisionAuditStorage":
             esc = simulation_id.replace("'", "''")
             logger.info(
-                "PostgreSQL sample: SELECT id, dfid, event FROM decision_audit_events "
+                "PostgreSQL: SELECT id, dfid, root_dfid, event_type "
+                "FROM decision_audit_events "
                 "WHERE detail_json->>'simulation_id' = '%s' ORDER BY id LIMIT 20;",
                 esc,
             )
@@ -512,8 +535,14 @@ def main() -> None:
     except Exception as e:
         logger.error("Simulation failed: %s", e, exc_info=True)
         elapsed_seconds = time.monotonic() - start_time
-        complete_simulation_audit(
-            bundle, simulation_id, status="error", error_message=str(e),
+        record_simulation_end(
+            audit,
+            simulation_id,
+            status="error",
+            error_message=str(e),
+            elapsed_seconds=elapsed_seconds,
+            tick_count=tick_count,
+            news_count=news_count,
         )
         raise
 
@@ -532,7 +561,7 @@ def main() -> None:
     report_path = results_dir / f"report_{report_date}_{tick_count}ticks.html"
     generate_html_report(
         simulation_id=simulation_id,
-        bundle=env.repository,
+        bundle=bundle,
         output_path=report_path,
         simulation_ticks=tick_count,
         news_count=news_count,

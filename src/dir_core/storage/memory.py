@@ -93,7 +93,10 @@ class MemoryContextStorage:
     def get_session(self, dfid: str) -> Optional[str]:
         return self._sessions.get(dfid)
 
-    def set_session(self, dfid: str, data_json: str) -> None:
+    def set_session(
+        self, dfid: str, data_json: str, *, agent_id: Optional[str] = None
+    ) -> None:
+        del agent_id  # in-memory backend does not model decision_flows FK
         self._sessions[dfid] = data_json
 
     def get_state(self, agent_id: str) -> Optional[str]:
@@ -143,13 +146,22 @@ class MemoryDecisionAuditStorage:
         step_id: str = "",
         state: str = "",
         details: Optional[Dict[str, Any]] = None,
+        root_dfid: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        severity: str = "INFO",
     ) -> None:
+        del agent_id  # optional; persisted only by SQL backends
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        rd = root_dfid or dfid
         self._rows.append(
             {
                 "dfid": dfid,
+                "root_dfid": rd,
                 "event": event,
+                "event_type": event,
                 "timestamp": ts,
+                "created_at": ts,
+                "severity": severity,
                 "step_id": step_id,
                 "state": state,
                 "details": dict(details or {}),
@@ -297,6 +309,7 @@ class MemoryEscalationStorage:
     ) -> None:
         self._requests[dfid] = {
             "dfid": dfid,
+            "root_dfid": dfid,
             "agent_id": agent_id,
             "reason": reason,
             "context": json.loads(context_json or "{}"),
@@ -316,7 +329,8 @@ class MemoryEscalationStorage:
     ) -> None:
         if dfid in self._requests:
             req = self._requests[dfid]
-            req["status"] = "RESOLVED"
+            u = (decision or "").upper()
+            req["status"] = "REJECTED" if u == "ABORT" else "APPROVED"
             req["resolved_at"] = resolved_at
             req["human_decision"] = decision
             if proposal_json:
@@ -348,10 +362,19 @@ class MemoryLifecycleStorage:
     def __init__(self) -> None:
         self._transitions: List[Dict[str, Any]] = []
 
-    def record_transition(self, dfid: str, from_status: str, to_status: str) -> None:
+    def record_transition(
+        self,
+        dfid: str,
+        from_status: str,
+        to_status: str,
+        *,
+        root_dfid: Optional[str] = None,
+    ) -> None:
+        rd = root_dfid or dfid
         self._transitions.append(
             {
                 "dfid": dfid,
+                "root_dfid": rd,
                 "from_status": from_status,
                 "to_status": to_status,
                 "created_at": datetime.now(timezone.utc).isoformat(),
