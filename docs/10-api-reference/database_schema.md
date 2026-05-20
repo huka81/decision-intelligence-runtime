@@ -10,22 +10,24 @@ The authoritative DDL is `src/dir_core/storage/schema.sql`. Depending on the bac
 
 ```mermaid
 erDiagram
-    agent_registry ||--o{ decision_flows : "agent_id"
-    agent_registry ||--o| agent_state : "agent_id"
-    agent_registry ||--o{ escalation_budget : "agent_id"
-    agent_registry ||--o{ escalation_requests : "agent_id"
-    agent_registry ||--o{ decision_feedback_trajectory : "agent_id"
+    %% Foreign keys from schema.sql (root_dfid is never an FK — lineage / tracing only)
+    agent_registry ||--o{ decision_flows : agent_id
+    agent_registry ||--o| agent_state : agent_id
+    agent_registry ||--o{ decision_feedback_trajectory : agent_id
+    agent_registry ||--o{ escalation_budget : agent_id
+    agent_registry ||--o{ escalation_requests : agent_id
 
-    decision_flows ||--o{ decision_flows : "dfid_parent"
-    decision_flows ||--o| flow_context : "dfid"
-    decision_flows ||--o| saga_dirty_state : "dfid"
-    decision_flows ||--o{ resource_locks : "dfid"
-    decision_flows ||--o| intent_retry : "dfid"
-    decision_flows ||--o{ escalation_requests : "dfid"
-    decision_flows ||--o{ flow_transitions : "dfid"
-    decision_flows ||--o{ decision_audit_events : "dfid"
-    decision_flows ||--o{ decision_feedback_trajectory : "dfid"
+    decision_flows ||--o{ decision_flows : dfid_parent
+    decision_flows ||--o| flow_context : dfid
+    decision_flows ||--o| saga_dirty_state : dfid
+    decision_flows ||--o{ resource_locks : dfid
+    decision_flows ||--o| intent_retry : dfid
+    decision_flows ||--o{ decision_feedback_trajectory : dfid
+    decision_flows ||--o{ escalation_requests : dfid
+    decision_flows ||--o{ flow_transitions : dfid
+    decision_flows ||--o{ decision_audit_events : dfid
 
+    %% §2.3 — Agent Registry
     agent_registry {
         TEXT agent_id PK
         JSON contract
@@ -38,6 +40,7 @@ erDiagram
         TIMESTAMP updated_at
     }
 
+    %% §4.3 — Decision Flows (lifecycle root)
     decision_flows {
         TEXT dfid PK
         TEXT root_dfid
@@ -55,20 +58,23 @@ erDiagram
         TIMESTAMP updated_at
     }
 
+    %% §8 — per-flow session (ON DELETE CASCADE)
     flow_context {
-        TEXT dfid PK_FK
+        TEXT dfid PK, FK
         JSON data
         INTEGER version
         TIMESTAMP updated_at
     }
 
+    %% §8 — persistent agent state (ON DELETE CASCADE)
     agent_state {
-        TEXT agent_id PK_FK
+        TEXT agent_id PK, FK
         JSON data
         INTEGER version
         TIMESTAMP updated_at
     }
 
+    %% §8 — epistemic trajectory (ON DELETE CASCADE)
     decision_feedback_trajectory {
         INTEGER id PK
         TEXT agent_id FK
@@ -80,6 +86,7 @@ erDiagram
         TIMESTAMP created_at
     }
 
+    %% §7 — idempotency (no FK; standalone)
     idempotency_cache {
         TEXT idempotency_key PK
         TEXT request_hash
@@ -88,13 +95,15 @@ erDiagram
         TIMESTAMP expires_at
     }
 
+    %% §7 — saga dirty state (ON DELETE CASCADE)
     saga_dirty_state {
-        TEXT dfid PK_FK
+        TEXT dfid PK, FK
         TEXT failed_step
         JSON partial_state_json
         TIMESTAMP created_at
     }
 
+    %% §6.2 — resource locks (ON DELETE CASCADE)
     resource_locks {
         TEXT resource_id PK
         TEXT dfid FK
@@ -103,8 +112,9 @@ erDiagram
         TIMESTAMP expires_at
     }
 
+    %% §6.2 — intent retry (ON DELETE CASCADE)
     intent_retry {
-        TEXT dfid PK_FK
+        TEXT dfid PK, FK
         INTEGER rejection_count
         INTEGER max_retries
         TEXT retry_policy
@@ -113,12 +123,14 @@ erDiagram
         TIMESTAMP updated_at
     }
 
+    %% §9 — escalation budget (ON DELETE CASCADE)
     escalation_budget {
         INTEGER id PK
         TEXT agent_id FK
         TIMESTAMP created_at
     }
 
+    %% §9 — escalation requests (dfid CASCADE; agent_id no CASCADE)
     escalation_requests {
         INTEGER id PK
         TEXT dfid FK
@@ -134,6 +146,7 @@ erDiagram
         TIMESTAMP resolved_at
     }
 
+    %% §4.3 — flow transition log (ON DELETE CASCADE)
     flow_transitions {
         INTEGER id PK
         TEXT dfid FK
@@ -145,6 +158,7 @@ erDiagram
         TIMESTAMP created_at
     }
 
+    %% Observability — audit events (ON DELETE CASCADE)
     decision_audit_events {
         INTEGER id PK
         TEXT dfid FK
