@@ -54,6 +54,20 @@ def on_page_markdown(markdown, page, config, **kwargs):
 
     if uri.startswith("09-pages/samples/"):
         markdown = markdown.replace("](../docs/", "](../")
+        
+        repo = (config.get("repo_url") or "").rstrip("/")
+        if repo:
+            def samples_repl(match: re.Match[str]) -> str:
+                rest = match.group(1)
+                head = rest.rstrip("/")
+                kind = "blob" if head.endswith((".md", ".py", ".yaml", ".sql", ".sh", ".cmd", ".example")) or "." in head.split("/")[-1] else "tree"
+                return f"]({repo}/{kind}/main/samples/{rest}"
+            
+            markdown = re.sub(r"\]\((?:\.\./)*(?:\./)?samples/([^)]+)\)", samples_repl, markdown)
+            # Also catch relative links that were rewritten by include-markdown plugin
+            # They usually look like ../../../samples/...
+            markdown = re.sub(r"\]\(\.\./\.\./\.\./samples/([^)]+)\)", samples_repl, markdown)
+
         if uri == "09-pages/samples/index.md":
             for d in _SAMPLE_READMES:
                 markdown = markdown.replace(f"]({d}/README.md)", f"]({d}.md)")
