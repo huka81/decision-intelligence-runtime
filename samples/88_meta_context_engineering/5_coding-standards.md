@@ -129,10 +129,12 @@
 |------|-------------|
 | **DIR-1** | **Proof Checker** MUST be deterministic. No LLM calls, no network I/O during verification. |
 | **DIR-2** | **Decision Ledger** MUST be append-only. No updates or deletes. |
-| **DIR-3** | **Idempotency Key** MUST follow `SHA256(DFID + Step_ID + Canonical_Params)`. `Attempt_Number` MUST NOT be in the key. |
+| **DIR-3** | **Idempotency Key** MUST follow `SHA256(DFID + Step_ID + Canonical_Params)`. `Step_ID` is a stable string naming the execution step (e.g., `"PAYOUT"` for the refund payout). `Attempt_Number` MUST NOT be in the key. |
 | **DIR-4** | **DFID** MUST propagate through the entire pipeline. Every function that participates in a decision flow MUST accept and forward `dfid`. |
 | **DIR-5** | **Agent (ROA)** MUST NOT hold API keys or database credentials. It submits proposals only. |
 | **DIR-6** | **Kernel (DIR)** MUST validate every proposal before execution. No bypass. |
+| **DIR-7** | **Intent Retry Governor**: The Kernel MUST cap retries per DFID at 3. On the 3rd failed attempt, flow is `ABORTED:REASONING_EXHAUSTION` — not escalated. |
+| **DIR-8** | **ValidationFeedback**: Every rejection MUST return the reason to the agent's Memory Context before the next invocation. |
 
 ---
 
@@ -147,4 +149,6 @@ Before considering the implementation complete, verify:
 - [ ] Structured JSON logging with `dfid` in decision-related logs
 - [ ] Domain-specific exceptions, no bare `except`
 - [ ] Proof Checker is deterministic; no LLM in Kernel Space
-- [ ] DFID propagation, Idempotency Key formula, append-only Ledger
+- [ ] DFID propagation, Idempotency Key formula (`SHA256(DFID + Step_ID + Canonical_Params)`), append-only Ledger
+- [ ] Intent Retry Governor: max 3 retries per DFID; 4th attempt impossible; `REASONING_EXHAUSTION` on exhaustion
+- [ ] ValidationFeedback: rejection reason written to Memory Context before next agent invocation

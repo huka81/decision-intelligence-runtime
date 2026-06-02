@@ -1,0 +1,92 @@
+# Deterministic CI Enforcement: Cross-Cutting Security Boundaries
+#
+# Paired with (soft enforcement):
+#   - 3_threat-model.md SEC-3 — Enforced Idempotency
+#   - 3_threat-model.md SEC-4 — No Shared Memory (cross-flow state)
+#   - 5_coding-standards.md DIR-3 — Idempotency Key formula
+#   - 5_coding-standards.md GS-1 — No global mutable state
+#
+# These rules address the two most dangerous implementation mistakes:
+#   1. Including Attempt_Number in the idempotency key (enables duplicate payouts).
+#   2. Global mutable state shared across DecisionFlows (enables cross-flow data leakage).
+#
+# Usage:
+#   semgrep --config semgrep-security.yml <implementation_dir>
+
+rules:
+  - id: block-attempt-number-in-idempotency-key
+    message: >
+      Architecture Violation [DIR-3 / SEC-3]: Attempt_Number MUST NOT be
+      included in the Idempotency Key. The correct formula is
+      SHA256(DFID + Step_ID + Canonical_Params). Including an attempt counter
+      generates a new key on each retry, defeating idempotency and enabling
+      duplicate payout transactions (Threat Model Trap 2 and Trap 4).
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.sha256($X + ... + $ATTEMPT + ...)
+          - pattern: hashlib.sha256(... + str($ATTEMPT) + ...)
+    metavariable-regex:
+      metavariable: $ATTEMPT
+      regex: ".*(attempt|retry|attempt_number|retry_count|attempt_count).*"
+
+  - id: block-hardcoded-secrets
+    message: >
+      Security Violation [SC-1 / DIR-5]: Hardcoded credentials, tokens, or API
+      keys are forbidden. Use environment variables via a config object injected
+      at the Kernel level — never inline secrets in source code.
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: $VAR = "sk-..."
+          - pattern: $VAR = "Bearer ..."
+          - pattern: API_KEY = "..."
+          - pattern: SECRET = "..."
+          - pattern: TOKEN = "..."
+          - pattern: PASSWORD = "..."
+
+  - id: block-global-mutable-list-in-agent
+    message: >
+      Architecture Violation [SEC-4 / GS-1]: Module-level mutable lists are
+      forbidden in Agent code. Global mutable state persists across
+      DecisionFlows, violating the Zero Shared Memory invariant (Threat Model
+      SEC-4). All state retrieval MUST pass through the Context Compiler.
+    severity: WARNING
+    languages: [python]
+    pattern: |
+      $VAR: list = [...]
+    pattern-not-inside: |
+      def $FUNC(...):
+        ...
+    pattern-not-inside: |
+      class $CLASS:
+        ...
+    paths:
+      include:
+        - "**/agent/**"
+        - "**/user_space/**"
+        - "**/refund_policy_agent*"
+
+  - id: block-global-mutable-dict-in-agent
+    message: >
+      Architecture Violation [SEC-4 / GS-1]: Module-level mutable dicts are
+      forbidden in Agent code. Global mutable state persists across
+      DecisionFlows, violating the Zero Shared Memory invariant (Threat Model
+      SEC-4). All state retrieval MUST pass through the Context Compiler.
+    severity: WARNING
+    languages: [python]
+    pattern: |
+      $VAR: dict = {...}
+    pattern-not-inside: |
+      def $FUNC(...):
+        ...
+    pattern-not-inside: |
+      class $CLASS:
+        ...
+    paths:
+      include:
+        - "**/agent/**"
+        - "**/user_space/**"
+        - "**/refund_policy_agent*"

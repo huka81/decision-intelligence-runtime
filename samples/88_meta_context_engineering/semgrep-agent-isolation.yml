@@ -1,0 +1,63 @@
+# Deterministic CI Enforcement: User Space Agent I/O Isolation
+#
+# Paired with (soft enforcement):
+#   - 2_dir-boundaries.md §2.1 — Strict I/O Isolation (Zero Agent I/O)
+#   - 3_threat-model.md SEC-1 — No Direct I/O in User Space
+#   - 5_coding-standards.md DIR-5 — Agent MUST NOT hold API keys or credentials
+#
+# These rules are NOT suggestions. They are hard CI gates that reject any
+# generated code that violates the declared User Space / Kernel Space boundary.
+# The LLM reads the Markdown to guide generation; the CI runner executes these
+# rules to enforce it deterministically.
+#
+# Usage:
+#   semgrep --config semgrep-agent-isolation.yml <implementation_dir>
+
+rules:
+  - id: block-io-imports-in-agent
+    message: >
+      Architecture Violation [§2.1 / SEC-1]: The User Space Agent MUST NOT
+      perform network or database I/O. All state is provided by the Kernel via
+      WorkingContext. Remove this import and ensure the agent receives all data
+      through the compiled WorkingContext object.
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: import requests
+          - pattern: import httpx
+          - pattern: import sqlalchemy
+          - pattern: import psycopg2
+          - pattern: import smtplib
+          - pattern: import aiohttp
+          - pattern: import urllib
+          - pattern: import urllib.request
+          - pattern: from requests import ...
+          - pattern: from httpx import ...
+          - pattern: from sqlalchemy import ...
+          - pattern: from psycopg2 import ...
+          - pattern: from aiohttp import ...
+    paths:
+      include:
+        - "**/agent/**"
+        - "**/user_space/**"
+        - "**/refund_policy_agent*"
+
+  - id: block-credentials-in-agent
+    message: >
+      Architecture Violation [DIR-5 / SEC-1]: The Agent MUST NOT read
+      credentials, API keys, or environment secrets directly. Configuration
+      injection is the Kernel's responsibility. The agent receives only a
+      compiled WorkingContext — never raw environment access.
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: os.environ.get(...)
+          - pattern: os.environ[...]
+          - pattern: os.getenv(...)
+    paths:
+      include:
+        - "**/agent/**"
+        - "**/user_space/**"
+        - "**/refund_policy_agent*"

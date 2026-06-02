@@ -1,0 +1,67 @@
+# Deterministic CI Enforcement: Kernel Space Determinism
+#
+# Paired with (soft enforcement):
+#   - 2_dir-boundaries.md §2.2 — Deterministic Verification Boundary
+#   - 3_threat-model.md SEC-2 — Immutable Validation
+#   - 5_coding-standards.md DIR-1 — Proof Checker MUST be deterministic
+#
+# The Kernel (Context Compiler, Proof Checker, Decision Ledger, Execution
+# Engine) MUST contain zero probabilistic reasoning. These rules enforce that
+# guarantee mechanically — the CI runner rejects any Kernel-Space module that
+# imports an LLM library, regardless of what the agent was instructed.
+#
+# Usage:
+#   semgrep --config semgrep-kernel-determinism.yml <implementation_dir>
+
+rules:
+  - id: block-llm-in-kernel-space
+    message: >
+      Architecture Violation [§2.2 / SEC-2 / DIR-1]: Kernel Space components
+      (Proof Checker, Context Compiler, Execution Engine, Decision Ledger) MUST
+      be 100% deterministic. LLM libraries are strictly forbidden here. If you
+      need probabilistic reasoning, it belongs in User Space (the Agent), not
+      in the validation or execution path.
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: import openai
+          - pattern: import anthropic
+          - pattern: import litellm
+          - pattern: import langchain
+          - pattern: from openai import ...
+          - pattern: from anthropic import ...
+          - pattern: from litellm import ...
+          - pattern: from langchain import ...
+          - pattern: from langchain_core import ...
+          - pattern: from langchain_community import ...
+    paths:
+      include:
+        - "**/kernel/**"
+        - "**/proof_checker*"
+        - "**/execution_engine*"
+        - "**/context_compiler*"
+        - "**/ledger*"
+        - "**/decision_integrity*"
+        - "**/dim*"
+
+  - id: block-network-io-in-proof-checker
+    message: >
+      Architecture Violation [§2.2 / SEC-2]: The Proof Checker MUST NOT make
+      external API calls during validation. It verifies cryptographic signatures
+      and hashes using locally available data only. Network calls during proof
+      verification break determinism and open a timing attack surface.
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: import requests
+          - pattern: import httpx
+          - pattern: import aiohttp
+          - pattern: from requests import ...
+          - pattern: from httpx import ...
+    paths:
+      include:
+        - "**/proof_checker*"
+        - "**/decision_integrity*"
+        - "**/dim*"
