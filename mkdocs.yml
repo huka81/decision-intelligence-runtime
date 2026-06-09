@@ -93,6 +93,7 @@ nav:
       - "09 - Topology A (EOAM)": 09-pages/samples/09_topology_a_eoam.md
       - "10 - Topology B (SDS)": 09-pages/samples/10_topology_b_sds.md
       - "11 - Topology C (DL+PCI)": 09-pages/samples/11_topology_c_dl_pci.md
+      - "12 - Compliant Lie (Evidence Governance)": 09-pages/samples/12_compliant_lie.md
       - "31 - Finance trading": 09-pages/samples/31_finance_trading.md
       - "32 - Fraud gate": 09-pages/samples/32_fraud_gate.md
       - "33 - Insurance underwriting": 09-pages/samples/33_insurance_underwriting.md
@@ -101,6 +102,7 @@ nav:
       - "36 - Drift optimization discount": 09-pages/samples/36_drift_optimization_discount.md
       - "37 - Drift semantic refund": 09-pages/samples/37_drift_semantic_refund.md
       - "38 - Drift environmental bidding": 09-pages/samples/38_drift_environmental_bidding.md
+      - "39 - Fintech evidence governance": 09-pages/samples/39_fintech_evidence_governance.md
       - "88 - Meta context engineering": 09-pages/samples/88_meta_context_engineering.md
   - FAQ: 09-pages/faq.md
   - About:

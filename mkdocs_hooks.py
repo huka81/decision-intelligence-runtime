@@ -13,7 +13,7 @@ import mkdocs.plugins
 log = logging.getLogger("mkdocs")
 
 # Sync with docs/09-pages/samples/*.md stubs and mkdocs.yml nav → Samples.
-_SAMPLE_READMES: tuple[str, ...] = (
+_SAMPLE_IDS: tuple[str, ...] = (
     "00_quick_start",
     "01_roa_agent",
     "02_dfid_propagation",
@@ -26,6 +26,7 @@ _SAMPLE_READMES: tuple[str, ...] = (
     "09_topology_a_eoam",
     "10_topology_b_sds",
     "11_topology_c_dl_pci",
+    "12_compliant_lie",
     "31_finance_trading",
     "32_fraud_gate",
     "33_insurance_underwriting",
@@ -34,8 +35,11 @@ _SAMPLE_READMES: tuple[str, ...] = (
     "36_drift_optimization_discount",
     "37_drift_semantic_refund",
     "38_drift_environmental_bidding",
+    "39_fintech_evidence_governance",
     "88_meta_context_engineering",
 )
+
+_SAMPLES_LINK_RE = re.compile(r"\]\((?:\.\./)*(?:\./)?samples/([^)]+)\)")
 
 
 def _repo_assets(config) -> Path:
@@ -46,6 +50,56 @@ def _docs_assets(config) -> Path:
     return Path(config["docs_dir"]).resolve() / "assets"
 
 
+def _sample_id_from_path(rest: str) -> str:
+    """Extract sample folder id from a samples/... href tail."""
+    rest = rest.strip().rstrip("/")
+    if rest in ("README.md", "README"):
+        return ""
+    head = rest.split("/")[0]
+    if head.endswith(".md"):
+        return head.removesuffix(".md")
+    return head
+
+
+def _mkdocs_sample_href(rest: str, page_uri: str) -> str:
+    """Map samples/... targets to MkDocs Samples section URLs (not GitHub tree)."""
+    rest = rest.strip()
+    sample_id = _sample_id_from_path(rest)
+
+    if not sample_id:
+        if page_uri == "09-pages/samples/index.md":
+            return "."
+        return "09-pages/samples/"
+
+    if page_uri == "09-pages/samples/index.md":
+        return f"{sample_id}.md"
+
+    if page_uri.startswith("09-pages/samples/"):
+        return f"{sample_id}.md"
+
+    # Home (docs/index.md includes root README.md)
+    return f"09-pages/samples/{sample_id}/"
+
+
+def _rewrite_sample_links(markdown: str, page_uri: str) -> str:
+    markdown = _SAMPLES_LINK_RE.sub(
+        lambda m: f"]({_mkdocs_sample_href(m.group(1), page_uri)})",
+        markdown,
+    )
+
+    if page_uri == "09-pages/samples/index.md":
+        for sid in _SAMPLE_IDS:
+            markdown = markdown.replace(f"]({sid}/README.md)", f"]({sid}.md)")
+            markdown = markdown.replace(f"]({sid}/)", f"]({sid}.md)")
+
+    return markdown
+
+
+def _rewrite_root_readme_doc_links(markdown: str) -> str:
+    """Root README uses ./docs/...; MkDocs docs_dir is already docs/."""
+    return re.sub(r"\]\(\./docs/([^)]+)\)", r"](\1)", markdown)
+
+
 @mkdocs.plugins.event_priority(50)
 def on_page_markdown(markdown, page, config, **kwargs):
     """Fix asset paths, samples includes, and Home-only GitHub links."""
@@ -54,25 +108,7 @@ def on_page_markdown(markdown, page, config, **kwargs):
 
     if uri.startswith("09-pages/samples/"):
         markdown = markdown.replace("](../docs/", "](../")
-        
-        repo = (config.get("repo_url") or "").rstrip("/")
-        if repo:
-            def samples_repl(match: re.Match[str]) -> str:
-                rest = match.group(1)
-                head = rest.rstrip("/")
-                kind = "blob" if head.endswith((".md", ".py", ".yaml", ".sql", ".sh", ".cmd", ".example")) or "." in head.split("/")[-1] else "tree"
-                return f"]({repo}/{kind}/main/samples/{rest}"
-            
-            markdown = re.sub(r"\]\((?:\.\./)*(?:\./)?samples/([^)]+)\)", samples_repl, markdown)
-            # Also catch relative links that were rewritten by include-markdown plugin
-            # They usually look like ../../../samples/...
-            markdown = re.sub(r"\]\(\.\./\.\./\.\./samples/([^)]+)\)", samples_repl, markdown)
-
-        if uri == "09-pages/samples/index.md":
-            for d in _SAMPLE_READMES:
-                markdown = markdown.replace(f"]({d}/README.md)", f"]({d}.md)")
-                markdown = markdown.replace(f"]({d}/)", f"]({d}.md)")
-        return markdown
+        return _rewrite_sample_links(markdown, uri)
 
     if uri == "09-pages/faq.md":
         markdown = markdown.replace("](../docs/", "](../")
@@ -83,27 +119,20 @@ def on_page_markdown(markdown, page, config, **kwargs):
         return markdown
 
     markdown = markdown.replace("../assets/", "assets/")
+    markdown = _rewrite_root_readme_doc_links(markdown)
+    markdown = _rewrite_sample_links(markdown, uri)
+
     repo = (config.get("repo_url") or "").rstrip("/")
-    if not repo:
-        return markdown
-
-    def samples_repl(match: re.Match[str]) -> str:
-        rest = match.group(1)
-        head = rest.rstrip("/")
-        kind = "blob" if head.endswith(".md") else "tree"
-        return f"]({repo}/{kind}/main/samples/{rest}"
-
-    markdown = re.sub(r"\]\((?:\.\./)*(?:\./)?samples/([^)]+)\)", samples_repl, markdown)
-
-    for old, new in (
-        ("](./FAQ.md)", f"]({repo}/blob/main/FAQ.md)"),
-        ("](../FAQ.md)", f"]({repo}/blob/main/FAQ.md)"),
-        ("](FAQ.md)", f"]({repo}/blob/main/FAQ.md)"),
-        ("](../LICENSE)", f"]({repo}/blob/main/LICENSE)"),
-        ("](./LICENSE)", f"]({repo}/blob/main/LICENSE)"),
-        ("](LICENSE)", f"]({repo}/blob/main/LICENSE)"),
-    ):
-        markdown = markdown.replace(old, new)
+    if repo:
+        for old, new in (
+            ("](./FAQ.md)", f"]({repo}/blob/main/FAQ.md)"),
+            ("](../FAQ.md)", f"]({repo}/blob/main/FAQ.md)"),
+            ("](FAQ.md)", f"]({repo}/blob/main/FAQ.md)"),
+            ("](../LICENSE)", f"]({repo}/blob/main/LICENSE)"),
+            ("](./LICENSE)", f"]({repo}/blob/main/LICENSE)"),
+            ("](LICENSE)", f"]({repo}/blob/main/LICENSE)"),
+        ):
+            markdown = markdown.replace(old, new)
 
     return markdown
 
