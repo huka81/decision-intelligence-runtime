@@ -16,7 +16,7 @@ This paper introduces the **Decision Intelligence Runtime (DIR)**, an architectu
 
 DIR applies principles from distributed systems orchestration (sagas, idempotency) and security (policy enforcement points) to the domain of AI agents. It proposes a strict separation of concerns where agents are responsible for **Reasoning** (proposing strategies) and a deterministic runtime is responsible for **Execution** (validating and applying those strategies).
 
-By decoupling intent from action, DIR solves common stability issues such as race conditions, hallucinations in function calls, and execution of stale decisions. This document outlines the pattern's core components, including the DecisionFlow ID (an adaptation of distributed tracing for reasoning chains) and the Decision Integrity Module, offering a blueprint for moving agents from experimental scripts to reliable production systems.
+By decoupling intent from action, DIR solves common stability issues such as race conditions, hallucinations in function calls, and execution of stale decisions. This document outlines the pattern's core components, including the DecisionFlow ID (an adaptation of distributed tracing for reasoning chains) and the Decision Integrity Module, offering a blueprint for moving agents from experimental scripts to reliable production systems. Formally, DIR is an architecture designed to prevent **Illegal Decision States** - conditions where Context, Authority, Intent, Evidence, or Time invariants are violated - and the DIM is the enforcement mechanism that makes such states unreachable.
 
 ## 1. Motivation: Why Agents Need a Runtime
 
@@ -151,7 +151,7 @@ In a static system, hard-coding agent permissions works. In AIvestor, as special
 
 DIR introduces an **Agent Registry**-a service discovery[^3] mechanism for intelligence.
 
-* **Registration:** On startup, an agent registers its `Manifest`: its ID, its subscribed inputs (Context), and its authorized outputs (Policy Types).
+* **Registration:** On startup, an agent registers its `Responsibility Contract`: its ID, its subscribed inputs (Context), and its authorized outputs (Policy Types).
 * **Capability Contract:** The Registry acts as the source of truth for ROA constraints. When the Validation Layer asks "Can Agent X trade Asset Y?", it queries the Registry, not the Agent. This prevents agents from self-granting permissions via prompt injection.
 
 ### *Conceptual Decomposition (Single Service, Multiple Authorities)*
@@ -168,15 +168,15 @@ DIR introduces an **Agent Registry**-a service discovery[^3] mechanism for intel
 Beyond capability tracking, the Agent Registry facilitates **Resource Locking and Reservation**. In environments where multiple agents (e.g., concurrent PositionAgents) operate on a shared finite resource-such as a single capital pool or a limited API throughput-the Registry acts as a synchronization point. It allows the Runtime to grant temporary 'Reservation Locks' to a DecisionFlow.
 
 **Operational Resilience (Addressing SPOF):**
-The Registry is a critical component. To prevent it from becoming a Single Point of Failure (SPOF), the Runtime implements **Local Manifest Caching**.
-*   **Cache Strategy:** The Runtime caches Agent Manifests locally with a short TTL (e.g., 60 seconds).
+The Registry is a critical component. To prevent it from becoming a Single Point of Failure (SPOF), the Runtime implements **Local Responsibility Contract Caching**.
+*   **Cache Strategy:** The Runtime caches Agent Responsibility Contracts locally with a short TTL (e.g., 60 seconds).
 *   **Degraded Mode:** If the Registry is unreachable, the Runtime continues to serve known agents using cached definitions. New agent registrations or schema updates are rejected until connectivity is restored.
 
 **Note on Schema Evolution:**
 This dynamism requires that Agents do not "memorize" the policy schema indefinitely. Instead, the Agent Registry serves the current version of the JSON schema dynamically during the Context compilation step. This ensures that even as capabilities evolve, the Agent always reasons against a valid, up-to-date interface contract.
 
 **Strict Versioning (Avoiding "Contract Hell"):**
-In distributed agent systems, mismatched expectations lead to failures. The Agent Registry mandates **Semantic Versioning (SemVer)** alignment. An agent initialized with `v1.2` capability manifests must negotiate with a Runtime supporting `v1.x` schemas. If a disconnect is detected, the Runtime rejects the agent's registration during the handshake, preventing runtime parsing errors in production.
+In distributed agent systems, mismatched expectations lead to failures. The Agent Registry mandates **Semantic Versioning (SemVer)** alignment. An agent initialized with `v1.2` Responsibility Contracts must negotiate with a Runtime supporting `v1.x` schemas. If a disconnect is detected, the Runtime rejects the agent's registration during the handshake, preventing runtime parsing errors in production.
 
 **Registry Updates and Flow Binding:**
 Registry updates are versioned. A `DecisionFlow` is bound to the Registry snapshot version active at `CREATED` state. Any mid-flow authority revocation (e.g., security kill-switch) triggers an immediate `ABORT` on the next JIT check, ensuring no policy executes under revoked permissions.
@@ -508,6 +508,66 @@ To mitigate this, the Execution Engine enforces a **Just-In-Time (JIT) State Che
 
 > **Architectural Note:** This introduces a performance penalty (an extra read operation). DIR accepts this cost ("Safety over Speed") to guarantee that no decision executes against a phantom reality.
 
+### 6.6 The DIM as Illegal State Preventer
+
+The preceding validation pipeline can be understood through the lens of formal state integrity. A decision is only valid — and safe to execute — when five conditions hold simultaneously. This defines the **Legal Decision State (LDS)**:
+
+```
+LDS = Context (C) ∧ Authority (A) ∧ Intent (I) ∧ Evidence (E) ∧ Time (T)
+```
+
+*(Note: The agent's Mission is formally considered a subset of Context; `Mission ⊂ Context`)*
+
+An **Illegal Decision State** occurs when any condition is violated: `¬C ∨ ¬A ∨ ¬I ∨ ¬E ∨ ¬T`. Every step of the DIM validation pipeline exists to prevent exactly one of these violations:
+
+| DIM Gate | LDS Component | Prevents |
+|---|---|---|
+| Schema & Integrity (6.2 step 1) | Intent (I) | Malformed or out-of-contract intent (`¬I`) |
+| RBAC / Authority (6.2 step 2) | Authority (A) | Agent exceeding its defined permission boundaries (`¬A`) |
+| Context hash / Mission invariant (6.2 steps 3, 5) | Context (C) | Acting on stale, manipulated, or mission-drifted context (`¬C`) |
+| TTL / Decision Validity Window (6.4) | Time (T) | Executing decisions whose temporal window has expired (`¬T`) |
+| JIT State Re-verification (6.5) | Time (T) + Context (C) | TOCTOU drift between reasoning and execution (`¬T`, `¬C`) |
+| Semantic Alignment / Evidence (6.3) | Evidence (E) | Compliant lies — syntactically valid but hallucinated rationale (`¬E`) |
+
+This reframes the DIM's role: it is not merely a validator that applies business rules. It is an **Illegal State Preventer** in the formal sense — a construct aligned with TLA+, formal verification, and proof-carrying code. The DIM does not judge the agent's creativity; it mathematically ensures the system cannot transition into a state where any of the five invariants is false.
+
+```mermaid
+---
+title: "Legal Decision State (LDS) Architecture"
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
+flowchart TB
+    classDef ldsNode fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef compNode fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef gateNode fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+
+    subgraph Theory ["Legal Decision State (LDS) Equation"]
+        direction LR
+        LDS["LDS = C ∧ A ∧ I ∧ E ∧ T"]:::ldsNode
+    end
+
+    subgraph Components ["State Protections"]
+        direction TB
+        C["Context (C)<br/>Protected by CaC & Context Store"]:::compNode
+        A["Authority (A)<br/>Protected by ROA"]:::compNode
+        I["Intent (I)<br/>Protected by SDS Grammars"]:::compNode
+        E["Evidence (E)<br/>Protected by Evidence Governance"]:::compNode
+        T["Time (T)<br/>Protected by EOAM & JIT"]:::compNode
+    end
+
+    subgraph DIM ["Decision Integrity Module (DIM)"]
+        Preventer{"Illegal State<br/>Preventer"}:::gateNode
+    end
+
+    LDS --> C & A & I & E & T
+    C & A & I & E & T --> Preventer
+    Preventer -->|"Valid LDS (Execution)"| Exec["Decision Ledger / Execution"]:::ldsNode
+    Preventer -.->|"Illegal State (¬C ∨ ¬A ∨ ¬I ∨ ¬E ∨ ¬T)"| Reject(("Abort")):::gateNode
+```
+
 ## 7. Execution: Idempotency and Side Effects
 
 Once a policy is accepted, the system must cross the "Rubicon" into the real world. This is where we encounter the messy reality of external APIs: timeouts, network partitions, and 500 errors.
@@ -599,18 +659,25 @@ DIR rejects the "all-or-nothing" fantasy.
 
 ## 8. Context Management: Compilation over Conversation
 
-In standard chatbots, "context" is simply the chat history. In an autonomous system like AIvestor, treating the entire event log as context is dangerous. It leads to **Context Window Overflow** and "distraction."
+In standard chatbots, "context" is simply the chat history. In an autonomous system like AIvestor, treating the entire event log as context is dangerous. It leads to **Context Window Overflow** and "distraction," but more importantly, it blurs architectural boundaries.
 
-DIR treats context not as a log, but as a **Compiled Artifact**.
+If the Context as Code (CaC) pattern applies to "context", we must formally define where context ends. Does it include the policy history? The mission? The human escalation chain?
 
-### 8.1 The 4 Layers of Context
+To resolve this, DIR provides a strict formal definition:
+> **Context is all information required to evaluate the legality of a decision.**
 
-To organize information effectively, the **Context Store** is structured into four distinct layers, each with different persistence and retrieval properties:
+Anything that is not strictly required to determine if a decision violates the Legal Decision State (`¬C ∨ ¬A ∨ ¬I ∨ ¬E ∨ ¬T`) is noise and should be excluded from the authoritative context boundary.
 
-1. **Session (Ephemeral):** The append-only record of the current DecisionFlow (observations, proposals, validation results). It resets when the flow closes.
-2. **State (Authoritative):** The current, trusted view of the world (e.g., wallet balance, open positions). This is often a read-replica of the external system state.
-3. **Memory (Long-Lived):** Curated insights that persist across sessions (e.g., "Strategy A failed in high volatility").
-4. **Artifacts (Reference):** Large blobs referenced by pointers (e.g., PDF reports, datasets) that are too large to fit in the prompt but available for tool-use retrieval.
+### 8.1 The 4 Domains of Context
+
+To organize this information effectively, the **Context Store** manages four distinct domains of information:
+
+1. **Operational Context:** The state of the system and its environment (e.g., wallet balance, open positions, live prices).
+2. **Business Context:** The goals and strategy (e.g., the agent's Mission and long-term memory/insights). **Crucially: `Mission ⊂ Context`.** This formalizes that an agent operating outside its mission (Mission Drift) is structurally equivalent to acting on corrupted data, generating an Illegal Context State (`¬C`).
+3. **Governance Context:** The boundaries and rules (e.g., the Responsibility Contract, human escalation chains, allowed instruments).
+4. **Execution Context:** The ephemeral state of the current flow (e.g., previous steps in the current DecisionFlow, immediate validation feedback).
+
+These four domains collectively form the boundary of CaC. If information does not fit into one of these buckets, it is not part of the system's formal Context.
 
 ### 8.2 Context Compilation Pipeline
 

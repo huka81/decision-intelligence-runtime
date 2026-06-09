@@ -116,6 +116,66 @@ flowchart LR
 
 ---
 
+### 1.4 Theoretical Model — Illegal State Theory
+
+Large Language Models are semantic engines, not formal state machines. They can propose actions that violate logic, permissions, or temporal realities. DIR is not merely a collection of components — it is an architecture designed to prevent a system from ever reaching an **Illegal Decision State**.
+
+A **Legal Decision State (LDS)** is the conjunction of five simultaneously valid conditions:
+
+```
+LDS = Context (C) ∧ Authority (A) ∧ Intent (I) ∧ Evidence (E) ∧ Time (T)
+```
+
+*   **Context (C)**: All information required to evaluate the legality of a decision (Operational, Business, Governance, and Execution context). **Note: The agent's Mission is formally a subset of Context (`Mission ⊂ Context`). An agent optimizing for the wrong goal triggers a `¬C` violation.**
+*   **Authority (A)**: The agent has the explicit permission and boundaries to act (Responsibility Contract).
+*   **Intent (I)**: The proposed action matches the mission and syntactic constraints.
+*   **Evidence (E)**: A reproducible justification generated independently from the policy proposal.
+*   **Time (T)**: The decision is executed before the underlying reality drifts.
+
+An **Illegal Decision State** occurs when any condition is violated:
+
+```
+¬LDS = ¬C ∨ ¬A ∨ ¬I ∨ ¬E ∨ ¬T
+```
+
+### Component Mapping: What Each DIR Element Protects
+
+| LDS Component | Violation | DIR Protection Mechanism |
+|---|---|---|
+| **Context (C)** | Agent acts on stale, incomplete, or manipulated data | Context Store + CaC (Context as Code) — Context Integrity Layer |
+| **Authority (A)** | Agent proposes action beyond its defined limits | ROA Responsibility Contract — Authority Boundary Generator |
+| **Intent (I)** | Proposed action violates contractual or syntactic bounds | SDS Constrained Decoding — Intent Integrity Topology |
+| **Evidence (E)** | Rationale is hallucinated or emotionally manipulated | Evidence Governance (Differential Heuristics, Bidirectional Reconstruction) — Lie Detector |
+| **Time (T)** | Decision executes after the underlying reality has drifted | EOAM Drift Envelopes + JIT Verification — Temporal Integrity |
+
+### Topology Mapping: Each Topology Protects a Different LDS Component
+
+| Topology | Primary Protection | Mechanism |
+|---|---|---|
+| **EOAM** | ¬T and ¬C | Drift Envelopes + JIT State Verification prevent execution against expired reality |
+| **SDS** | ¬I | Constrained Decoding makes generating an illegal intent physically impossible |
+| **DL+PCI** | C ∧ A ∧ I ∧ E ∧ T (certificate) | PCI demands cryptographic proof that all five conditions held simultaneously |
+
+### The DIM as Illegal State Preventer
+
+The **Decision Integrity Module (DIM)** must be understood not as a simple validator but as a formal **Illegal State Preventer**:
+
+> *"The DIM does not judge agent creativity. It mathematically ensures the system cannot transition into a state where ¬C ∨ ¬A ∨ ¬I ∨ ¬E ∨ ¬T is true."*
+
+Each DIM validation step maps directly to an LDS component:
+
+| DIM Gate | LDS Component Protected |
+|---|---|
+| Schema & Integrity check | ¬I — malformed intent is blocked |
+| RBAC / Authority check | ¬A — unauthorized proposals are rejected |
+| Context hash / Mission invariant | ¬C — agent cannot act on a phantom reality |
+| JIT State Verification / TTL | ¬T — stale decisions cannot execute |
+| Semantic Alignment / Evidence check | ¬E — compliant lies are surfaced before signing |
+
+This elevates DIR from an API gateway pattern to a formal engineering construct aligned with TLA+, proof-carrying code, and formal verification methodology. Every component exists because one of C, A, I, E, or T must be guaranteed.
+
+---
+
 ## 2. ARCHITECTURE OVERVIEW
 
 ### 2.1 The Three-Layer Model
@@ -215,67 +275,90 @@ ROA defines agents not by their *capabilities* (what tools they can call) but by
 
 ### 3.1 Responsibility Contract
 
-Every ROA agent is governed by a **Responsibility Contract**  -  a formal, machine-readable definition registered with the Agent Registry. Contracts are loaded from a trusted source (CI/CD pipeline or cryptographically signed repository) at deployment. Agents MUST NOT self-register at runtime.
+Every ROA agent is governed by a **Responsibility Contract** — a formal, machine-readable definition registered with the Agent Registry. Contracts are loaded from a trusted source (CI/CD pipeline or cryptographically signed repository) at deployment. Agents MUST NOT self-register at runtime.
+
+The contract is composed of three typed blocks: **Mission**, **Authority**, and **Responsibility**. Each block is a validated Pydantic sub-model — not an opaque dict.
 
 ```python
 from pydantic import BaseModel, Field
 from typing import List, Literal, Dict
 
+class AuthoritySpec(BaseModel):
+    # What the agent is permitted to do and the hard limits on that permission.
+    # Enforced deterministically by the Decision Integrity Module (DIM) in Kernel Space.
+    authorized_instruments: List[str]
+    allowed_policy_types: List[str]
+    max_order_size_usd: float
+    max_drawdown_limit_pct: float
+
+class ResponsibilitySpec(BaseModel):
+    # Governance requirements the agent must meet.
+    # Enforced by the Evidence Governance Layer (User Space) and Post-Execution Monitors.
+    explainability: Literal["required", "optional"]
+    evidence_level: Literal["high", "medium", "low"]
+    escalation: Literal["mandatory", "conditional", "disabled"]
+    escalate_on_uncertainty: float = Field(
+        default=0.7,
+        description="Confidence threshold below which escalation is triggered"
+    )
+    aggregate_thresholds: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Day-Three defense: limits for Post-Execution Monitors"
+    )
+
 class ResponsibilityContract(BaseModel):
     agent_id: str = Field(description="Unique identifier for this agent instance")
     role: Literal["STRATEGIST", "EXECUTOR", "MONITOR"] = Field(default="EXECUTOR")
+    version: str = Field(description="Immutable versioning for audit trails")
+    owner: str = Field(description="Named human accountable for this agent's behavior")
+
+    # 1. Mission — the agent's optimization target
     mission: str = Field(description="The agent's optimization target or guiding principle")
-    
-    # Authority Boundaries (What the agent can touch)
-    authorized_instruments: List[str] = Field(default_factory=list)
-    max_drawdown_limit: float = Field(default=0.05, description="Maximum drawdown limit (5%)")
-    
-    # Capability Manifest (What the agent can output)
-    allowed_policy_types: List[str] = Field(default_factory=list)
-    
-    # Escalation Triggers (When the agent must stop)
-    escalate_on_uncertainty: float = Field(default=0.7, description="Confidence threshold < 0.7 triggers escalation")
-    
-    # Aggregate Governance (Thresholds for Post-Execution Monitors)
-    aggregate_thresholds: Dict[str, float] = Field(default_factory=dict, description="Limits for aggregate behavior (e.g., max_average_discount_30d: 0.10)")
-    
-    version: str = Field(default="1.0.0", description="Contract version for schema compatibility")
+
+    # 2. Authority — deterministic boundaries enforced by DIM in Kernel Space
+    authority: AuthoritySpec
+
+    # 3. Responsibility — governance requirements enforced by Evidence Governance Layer
+    responsibility: ResponsibilitySpec
 ```
 
-**Why contract as code, not constraints as prompt:** Prompts are suggestions. Code is enforcement. A prompt saying "do not exceed $10,000 exposure" can be ignored or creatively reinterpreted. A contract field `max_position_size: 10000.0` validated by deterministic code cannot be bypassed.
+**Why contract as code, not constraints as prompt:** Prompts are suggestions. Code is enforcement. A prompt saying "do not exceed $10,000 exposure" can be ignored or creatively reinterpreted. A contract field `max_order_size_usd: 50000.0` validated by deterministic code cannot be bypassed.
 
-**YAML deployment format  -  how contracts are configured at deployment time:**
+**YAML deployment format — how contracts are configured at deployment time:**
 
 ```yaml
-# agent_contract.yaml  -  registered via CI/CD pipeline, NOT self-registered by agent
+# agent_contract.yaml — registered via CI/CD pipeline, NOT self-registered by agent
 agent_id: "crypto_position_manager_01"
-version: "1.2.0"                       # Immutable versioning for audit trails
-owner: "jane.doe@example.com"          # Human accountability  -  who is responsible?
+version: "1.2.0"
+owner: "jane.doe@example.com"          # Human accountability — who answers for this agent?
 effective_from: "2026-02-01"           # Temporal validity of this contract version
 role: "EXECUTOR"
-mission: "Manage crypto positions. Protect capital while seeking alpha." # The agent's optimization target
 
-# Deterministic Boundaries (enforced by DIM in Kernel Space)
-permissions:
-  allowed_instruments: ["ETH-USD", "BTC-USD"]
+# 1. Mission — why this agent exists
+mission: "Manage crypto positions. Protect capital while seeking alpha."
+
+# 2. Authority — what the agent is permitted to do (enforced by DIM in Kernel Space)
+authority:
+  authorized_instruments: ["ETH-USD", "BTC-USD"]
   allowed_policy_types: ["TAKE_PROFIT", "CLOSE_POSITION", "REDUCE_SIZE", "HOLD", "BUY", "SELL"]
   max_order_size_usd: 50000.00
+  max_drawdown_limit_pct: 4.0
 
-# Safety and Economic Triggers (escalation and intervention logic)
-safety_rules:
-  min_confidence_threshold: 0.85      # Don't act on low-certainty reasoning
-  max_drawdown_limit_pct: 4.0         # Hard stop-loss enforced by Runtime
-  wake_up_threshold_pnl_pct: 2.5     # Cost optimization: suppress noise signals
-  escalate_on_uncertainty: 0.70       # If confidence < 70%, escalate to human
-
-# Aggregate Governance (Thresholds for Post-Execution Monitors)
-aggregate_thresholds:
-  max_average_discount_30d: 0.10      # Monitors will suspend agent if average discount > 10% over 30 days
+# 3. Responsibility — governance requirements (enforced by Evidence Governance Layer)
+responsibility:
+  explainability: required            # Explain stage is mandatory before Policy
+  evidence_level: high                # Both Evidence Generators required before signing
+  escalation: mandatory               # Must escalate when uncertainty threshold is crossed
+  escalate_on_uncertainty: 0.70       # Confidence < 70% triggers human escalation
+  aggregate_thresholds:
+    max_average_discount_30d: 0.10    # Post-Execution Monitor suspends agent if exceeded
 ```
 
-Note the `owner` field: every contract MUST have a named human accountable for its behavior. This prevents "agent accountability vacuum"  -  the situation where no person is responsible for an agent's decisions.
+Note the `owner` field: every contract MUST have a named human accountable for its behavior. This prevents "agent accountability vacuum" — the situation where no person is responsible for an agent's decisions.
 
-The Agent Registry also maintains the **Runtime Status** of each agent (e.g., `ACTIVE`, `SUSPENDED`). Post-Execution Governance monitors can trigger Circuit Breakers to switch an agent to `SUSPENDED` if Agent Drift is detected, instantly blocking further proposals. Reverting an agent from `SUSPENDED` back to `ACTIVE` is strictly the domain of a human operator (Human-in-the-Loop) following a Post-Incident Review; an agent cannot "un-suspend" itself.
+The `evidence_level` field bridges the contract to the Evidence Governance Layer (§3.4): `high` = both Evidence Generators required; `medium` = one sufficient; `low` = Self-Check only.
+
+The Agent Registry also maintains the **Runtime Status** of each agent
 
 ### 3.2 The Decision Lifecycle: Explain → Policy → Self-Check → Emit
 
@@ -472,7 +555,36 @@ flowchart TB
 | **`justification`** | Present | Absent (Execution engine does not execute text) |
 | **Can agent construct?** | Yes | **No  -  DIM only** |
 
-### 3.4 Context Store  -  The Four Layers
+### 3.4 The Evidence Governance Layer (User Space)
+
+While the DIR Kernel guarantees structural integrity, the system is still vulnerable to **"The Compliant Lie"** — a scenario where an LLM generates a structurally valid but semantically erroneous decision (e.g., hallucinating "5 personal cars" instead of "50 heavy trucks").
+
+To address this, the architecture defines the **Evidence Governance Layer** as a first-class citizen in User Space. If the DIR Kernel provides **Execution Governance** (structural and deterministic safety), the Evidence Governance Layer provides **Semantic Governance** (verifiable claims and evidence).
+
+The fundamental shift is moving from *governance of answers* (AI validating AI) to *governance of evidence*. We do not ask "Is the answer correct?", because that is impossible to prove deterministically. Instead, we ask "Does there exist a sufficient evidence package to make this decision?".
+
+In this paradigm, an LLM does not produce *truth*; it produces a **Claim**. The system must then produce an **Evidence Package** to support that claim. Only when the claim and the evidence are combined can a valid output artifact — a `PolicyProposal`, a `Decision Atom`, or a `Proof-Carrying Intent (PCI)` — be submitted to the DIR wall.
+
+DIR formalizes this through an **Evidence Hierarchy** of three tiers:
+1. **Heuristic Evidence**: Legacy deterministic checks (SQL View, Regex, Business Rules) verifying narrow parameters.
+2. **Reconstructed Evidence**: Independent semantic verification (Bidirectional Reconstruction) ensuring reasoning is stable.
+3. **Cryptographic Evidence**: The PCI Hash (SHA256) ensuring identity, state, and contract binding.
+
+The formal pipeline focuses on generating the first two tiers before creating the third:
+`Context` $\rightarrow$ `Claim` $\rightarrow$ `Evidence Generators` $\rightarrow$ `Evidence Package` $\rightarrow$ `PCI`
+
+1. **Differential Heuristics (Heuristic Evidence):**
+   - **Pattern:** A cheap LLM agent and a legacy deterministic heuristic (e.g., regex, SQL view) process the same context snapshot in parallel.
+   - **Mechanism:** The LLM generates a structured *claim*. The heuristic generates baseline *evidence*. The system compares them. If a delta exists, the system halts and escalates. The Kernel does not decide who is right; the User Space simply fails to produce the required evidence package.
+2. **Bidirectional Reconstruction:**
+   - **Pattern:** Based on *Reconstructable Logic Slices*. Agent A synthesizes context into a JSON *claim*. Agent C (Evidence Generator) reconstructs the original narrative solely from the JSON claim to produce *evidence*.
+   - **Mechanism:** The original context and the reconstructed narrative (evidence) are compared. Divergence indicates a Compliant Lie, preventing PCI generation and triggering escalation.
+
+These patterns ensure that by the time an intent reaches the DIR (The Wall), it carries a verifiable, evidence-backed claim rather than a raw probabilistic guess. Note these are *Evidence Generators*, not formal proofs — the only cryptographic proof is a signed PCI's `evidence_hash`, which binds identity and state, not semantic truth. They apply to any agent output artifact (`PolicyProposal`, `Decision Atom`, or `PCI`), the signed PCI being the strongest form. The Compliant Lie is distinct from **Semantic Drift** (§4.6): the former is a single pre-execution hallucination caught in User Space; the latter is an aggregate post-execution failure caught by Monitors.
+
+### 3.5 Defining Context  -  The Four Domains
+
+**Formal Definition:** Context is all information required to evaluate the legality of a decision. Anything else is noise and must be excluded from the authoritative boundary. `Mission ⊂ Context`.
 
 Agents MUST NOT query external systems directly. All data comes from the Context Store, assembled by the Context Compiler (Kernel Space).
 
@@ -493,12 +605,12 @@ class ContextSnapshot(BaseModel):
     source: str = Field(default="context_store", description="Origin of context")
 ```
 
-| Layer | Persistence | Contents | Purpose |
+| Domain | Persistence | Contents | Purpose |
 |-------|------------|----------|---------|
-| **Session (Ephemeral)** | Resets at DecisionFlow close | Current trigger, intermediate reasoning, prompt chain for this interaction | The "now"  -  immediate stimuli |
-| **State (Authoritative)** | Live, synced from external systems | Real-time signals, derived metrics, resource state (balances, positions), agent metadata from Registry | The "truth"  -  ground truth for validation |
-| **Memory (Long-term)** | Persists across sessions | Decision trajectory, prior policy rationales, escalation history, policy version evolution | The "experience"  -  continuity |
-| **Artifacts (Reference)** | Static / slow-changing | Business rules, compliance rulebooks, strategy whitepapers, RAG-retrievable large documents | The "library"  -  reference data |
+| **Operational Context** | Live, synced from external systems | Real-time signals, resource state (balances), external API states | The "truth" — ground truth for validation |
+| **Business Context** | Persists across sessions | The agent's Mission (`Mission ⊂ Context`), long-term memory, prior policy rationales, reference data | The "goal and experience" |
+| **Governance Context** | Static / versioned | The Responsibility Contract, human escalation chains, allowed instruments | The "boundaries" — limits of authority |
+| **Execution Context** | Resets at DecisionFlow close | Current trigger, intermediate reasoning, prompt chain, validation feedback | The "now" — ephemeral flow state |
 
 **Shared Reality Invariant:** The Context Store is the single authoritative reality for all agents. Agents MUST NOT synchronize via dialogue, local world models, or inferred memory. Shared context prevents conflicting state, reasoning drift, "echo chambers," and emergent inconsistencies. Synchronization is explicit via Kernel-assembled context, never emergent via agent interaction.
 
@@ -545,7 +657,7 @@ This distinction is frequently confused in agent system design:
 
 **Critical rule:** Agents MUST NOT rely on LLM "knowledge" (pre-training data) as a source of business facts, rules, or real-time data. All business-relevant information MUST enter via the Context Store. LLM knowledge provides linguistic reasoning capability; Context Store provides domain facts.
 
-### 3.5 Dynamic Agents, Hierarchy, and the Agent Registry
+### 3.6 Dynamic Agents, Hierarchy, and the Agent Registry
 
 **Dynamic instantiation:** Agents are NOT pre-compiled static roles. They are instantiated when a new unit of responsibility is identified and retired when that responsibility ends.
 
@@ -562,7 +674,7 @@ This distinction is frequently confused in agent system design:
 - **Lifecycle Management:** Create, initialize, persist, retire agents
 - **Schema Versioning:** SemVer alignment required; version mismatch → registration rejected at handshake
 - **Resource Locking:** Registry grants temporary Reservation Locks to prevent horizontal resource contention
-- **SPOE Mitigation:** Local Manifest Caching with TTL (e.g., 60s); degraded mode serves cached definitions during Registry outage
+- **SPOE Mitigation:** Local Responsibility Contract Caching with TTL (e.g., 60s); degraded mode serves cached definitions during Registry outage
 
 **The Four Conceptual Authorities of the Agent Registry:**
 
@@ -1070,7 +1182,11 @@ DIM is the **Policy Enforcement Point (PEP)** of the Runtime. It is the kernel's
 
 > **"Training alignment does not constitute cryptographic provenance."** The DIM does not trust that a model is "aligned." It evaluates five explicit, deterministic criteria against registered authority. A hallucinating model, a prompt-injected agent, and a well-aligned model all traverse the same pipeline. Security derives from structural enforcement, not behavioral trust.
 
-**Crucial Limitation:** DIM evaluates decisions *individually and statelessly* (except for resource locks). It enforces **Kernel Compliance** but is blind to aggregate trends, meaning it cannot detect Agent Drift (e.g., an agent offering the max allowed discount on every transaction). Protecting long-term Business Health requires asynchronous Post-Execution Governance (see 4.6).
+DIR recognizes two fundamental classes of assurance:
+- **Ex-Ante Assurance (Pre-Execution):** Formal, deterministic safety provided by the DIM and PCI. It ensures **Kernel Compliance** — every individual decision passes the hard gates.
+- **Ex-Post Assurance (Post-Execution):** Heuristic, observational safety provided by Governance and Drift Monitoring. It ensures **Business Health** — the aggregate outcome of these decisions aligns with long-term strategic and financial goals.
+
+**Crucial Limitation:** DIM provides only Ex-Ante Assurance. It evaluates decisions *individually and statelessly* (except for resource locks) to enforce Kernel Compliance. It is blind to aggregate trends, meaning it cannot detect Agent Drift (e.g., an agent offering the max allowed discount on every transaction, which violates the `T` and `E` invariants over time). Protecting long-term Business Health requires asynchronous Ex-Post Assurance via Post-Execution Governance (see 4.6).
 
 ```mermaid
 %%{init: {'theme': 'neutral'}}%%
@@ -1827,6 +1943,8 @@ DL+PCI addresses all three: **each decision artifact cryptographically proves it
 - **SDS guarantees:** "This intent was structurally valid at the moment of generation."
 - **DL+PCI guarantees:** "This intent was formally compliant, and *anyone can verify this at any time*, without trusting or accessing the system that produced it."
 
+> **Ontological Limits of PCI (Binding vs. Truth):** PCI is *Proof-Carrying Intent*, not *Proof-Carrying Code*. It does **NOT** prove semantic truth. It formally proves: **State binding, Contract binding, Rule binding, and Identity binding.** Do not conflate the formal verification of constraints with the verification of semantic correctness. To protect semantic truth, rely on the Evidence Governance Layer (§3.4).
+
 **When to use:** Compliance-heavy operations requiring offline verifiability; inter-organizational settlements; high-value irreversible transfers; regulatory reporting where proof must outlive the system.
 
 ```mermaid
@@ -1980,7 +2098,7 @@ class ProofChecker:
 **Resilience (Topology C specific):**
 - **Deterministic Replay:** On system failure, Ledger enables exact replay to identify which proof failed
 - **Immutable Compensation:** Post-Ledger-commit execution failure → deterministic compensation action from pre-defined menu (`REVERT_STATE`, `ALERT_HUMAN`). Agent MUST NOT re-reason about the failure.
-- **Registry Outage:** Proof Checker uses Local Manifest Cache. New PCIs requiring authority updates are rejected until connectivity restored (prevents Stale Authority Exploitation)
+- **Registry Outage:** Proof Checker uses Local Responsibility Contract Cache. New PCIs requiring authority updates are rejected until connectivity restored (prevents Stale Authority Exploitation)
 
 **PCI vs. Decision Atom  -  Key Distinction:**
 
@@ -2225,7 +2343,7 @@ class ExternalAPIError(InfrastructureException):
 
 class RegistryUnavailable(InfrastructureException):
     """
-    Agent Registry unreachable. Kernel falls back to Local Manifest Cache.
+    Agent Registry unreachable. Kernel falls back to Local Responsibility Contract Cache.
     If cache is stale (TTL exceeded), new DecisionFlows are rejected.
     """
 
@@ -2557,199 +2675,7 @@ Before considering an implementation complete, verify:
 
 ---
 
-## 7. REFERENCE IMPLEMENTATIONS
-
-All samples are in `samples/` from the repository root. Run with `python samples/<folder>/run.py` after `pip install -e .`.
-
-### 7.1 Core Mechanics Samples
-
-| Sample | Pattern / Focus | Key Demonstration |
-|--------|----------------|------------------|
-| `00_quick_start` | DIR full overview | "Comma Catastrophe": agent misparses 15.500 ETH → 15,500 ETH (~$38M); DIM blocks ORDER_VALUE_EXCEEDED. Also shows prompt injection protection. |
-| `01_roa_agent` | ROA pattern | Responsibility Contract, Explain → Policy → Proposal lifecycle |
-| `02_dfid_propagation` | DFID | DecisionFlow ID generation, propagation through pipeline, log correlation |
-| `03_idempotency_guard` | Idempotency | SHA256 key formula, cache hit/miss behavior, duplicate side-effect prevention |
-| `04_context_store` | Context Store | All 4 layers (Session/State/Memory/Artifacts), Context Compilation Pipeline |
-| `05_dim_validation` | DIM | Deterministic validation gate, all 5 hard gates, rejection codes |
-| `06_agent_registry` | Agent Registry | Capability contracts, version handshake, schema sync |
-| `07_event_bus_swappable` | Infrastructure | In-memory Event Bus; pattern for swapping to Kafka/PubSub |
-| `08_custom_repo_psql` | Infrastructure | PostgreSQL `StorageBundle` via `setup_environment` / shared `pg_repo`; minimal classic ROA + DIM to exercise registry, context, and audit on the external adapter |
-| `09_topology_a_eoam` | Topology A | Event-Oriented Agent Mesh, parallel reasoning, priority arbitration |
-| `10_topology_b_sds` | Topology B | Sovereign Decision Stream, constrained decoding |
-| `11_topology_c_dl_pci` | Topology C | Decision Ledger, Proof-Carrying Intents, Proof Checker |
-
-### 7.2 Business Use Case Samples
-
-| Sample | Topology | Domain | Scenario |
-|--------|----------|--------|---------|
-| `31_finance_trading` | Topology A (EOAM) | Finance/Trading | Market quotes, news feeds, parallel agents (Risk+Strategy+Sentiment), dynamic PositionAgent spawning |
-| `32_fraud_gate` | Topology B (SDS) | Fraud Detection | Real-time payment fraud gate; constrained decoding, JIT state drift, drift-attack demonstration |
-| `33_insurance_underwriting` | Topology C (DL+PCI) | Insurance | Risk evaluation with cryptographic Proof-Carrying Intents |
-| `34_langchain_roa_wrapper` | ROA + DIR | FinOps (Cloud) | LangChain ReAct wrapped as ROA; cloud cost management; verifies mission injection blocks PROD termination |
-| `35_crewai_roa_wrapper` | ROA + DIR | E-commerce (Refunds) | CrewAI Crew wrapped as ROA; verifies ACCEPT/ESCALATE/REJECT by category, return window, amount; NL intake |
-
-### 7.3 Meta-Context Engineering Sample
-
-`88_meta_context_engineering` demonstrates DIR applied to the *construction* of systems, not only their runtime execution. Markdown specifications are active implementation inputs, not passive documentation.
-
-**Three input artifact classes:**
-
-| Artifact Class | Contract Function |
-|----------------|-------------------|
-| **Engineering Rules** | Define non-negotiable coding, typing, separation, and verification constraints |
-| **Problem Specification** | Define the domain model, required components, topology choice, and `WorkingContext` contract |
-| **Execution Prompt** | Invoke generation against the above constraints; it orchestrates implementation but does NOT define authority |
-
-**Minimal workflow:**
-1. Define engineering rules.
-2. Define the problem specification.
-3. Invoke generation with an execution prompt/template.
-4. Review the generated implementation against the specification.
-
-**Critical rule:** generated code is a **Claim**, not source of truth. The specification remains authoritative; review acts as proof checking for implementation alignment.
-
----
-
-## 7b. PROJECT FILE STRUCTURE
-
-> **Purpose:** Provide LLM agents with a canonical directory layout that enforces The Wall at the module system level. When an LLM generates a new file, it MUST place it in the correct package. A linter rule enforces that agents cannot import from infrastructure.
-
-### Canonical Layout
-
-```
-dir_project/
-│
-├── kernel/                         # KERNEL SPACE  -  deterministic only; no LLM calls
-│   ├── __init__.py
-│   ├── interfaces.py               # §6.14: Protocol definitions  -  import source for all consumers
-│   ├── exceptions.py               # §6.15: Full DIRException tree  -  single import source
-│   │
-│   ├── dim/                        # Decision Integrity Module
-│   │   ├── __init__.py
-│   │   ├── validator.py            # Hard gates 1–5 (pure functions, no I/O)
-│   │   └── rules.py                # DIM rule set; versioned; produces validation_gate_version
-│   │
-│   ├── context/                    # Context Store + Compiler
-│   │   ├── __init__.py
-│   │   ├── store.py                # ContextStore implementation (SQLite MVP / Postgres prod)
-│   │   └── compiler.py             # Context Compiler: assembles WorkingContext from 4 layers
-│   │
-│   ├── registry/                   # Agent Registry
-│   │   ├── __init__.py
-│   │   └── agent_registry.py       # AgentRegistry + lifecycle state machine (§3.5a)
-│   │
-│   ├── execution/                  # Execution pipeline
-│   │   ├── __init__.py
-│   │   ├── intent.py               # ExecutionIntent schema (§3.3a)  -  created ONLY by DIM
-│   │   ├── executor.py             # ExecutionEngine: verifies signature, dispatches API call
-│   │   └── idempotency.py          # Idempotency key computation + cache
-│   │
-│   └── ledger/                     # Topology C only
-│       ├── __init__.py
-│       └── decision_ledger.py      # Append-only Ledger; ProofCarryingIntent persistence
-│
-├── agents/                         # USER SPACE  -  probabilistic; NO API keys; NO external imports
-│   ├── __init__.py
-│   ├── base.py                     # ResponsibleAgent ABC: receive context, emit PolicyProposal
-│   ├── contracts/                  # Responsibility Contract definitions
-│   │   ├── __init__.py
-│   │   └── *.yaml                  # Per-agent YAML contracts (loaded at deployment, not runtime)
-│   └── implementations/            # Concrete agent classes
-│       ├── __init__.py
-│       └── *.py                    # One file per agent role
-│
-├── topologies/                     # Topology-specific orchestration (routing + coordination)
-│   ├── __init__.py
-│   ├── eoam/                       # Topology A: Event-Oriented Agent Mesh
-│   │   ├── __init__.py
-│   │   ├── mesh.py                 # Event Bus wiring, wake-up predicates, arbitration
-│   │   └── arbitration.py          # Priority-based conflict resolution
-│   ├── sds/                        # Topology B: Sovereign Decision Stream
-│   │   ├── __init__.py
-│   │   └── stream.py               # Grammar builder, constrained inference pipeline
-│   └── dl_pci/                     # Topology C: Decision Ledger + Proof-Carrying Intents
-│       ├── __init__.py
-│       ├── proof_builder.py        # Evidence hash computation; PCI construction
-│       └── proof_checker.py        # Stateless verifier; no LLM; deterministic
-│
-├── infrastructure/                 # INFRASTRUCTURE  -  external system adapters
-│   ├── __init__.py
-│   ├── broker_api.py               # Exchange / broker integration
-│   ├── event_bus_kafka.py          # Kafka adapter implementing EventBusProtocol
-│   ├── event_bus_inmemory.py       # In-memory adapter for Single-Process MVP
-│   └── persistence/
-│       ├── sqlite_store.py         # SQLite ContextStore (MVP)
-│       └── postgres_store.py       # PostgreSQL ContextStore (production)
-│
-└── tests/
-    ├── kernel/                     # 100% branch coverage required (TE-1)
-    │   ├── test_dim_validator.py   # All 5 hard gates; boundary cases
-    │   ├── test_jit.py             # JIT drift scenarios
-    │   ├── test_idempotency.py     # Cache hit/miss; duplicate suppression
-    │   └── test_proof_checker.py   # Evidence hash; tamper detection
-    ├── agents/
-    │   └── test_escalation.py      # Every EscalationTrigger condition (TE-4)
-    └── integration/
-        └── test_dim_proposal_flow.py  # Full PolicyProposal → ExecutionIntent pipeline (TE-3)
-```
-
-### Import Rules  -  Enforcing The Wall
-
-**Forbidden imports** that violate the User/Kernel Space separation:
-
-| Location | MAY import from | MUST NOT import from |
-|----------|----------------|----------------------|
-| `agents/` | `kernel.interfaces`, `kernel.exceptions` | `infrastructure/`, `kernel.execution`, `kernel.dim` |
-| `kernel/dim/` | `kernel.exceptions`, `kernel.interfaces` | `infrastructure/`, `agents/`, `topologies/` |
-| `kernel/execution/` | `kernel.exceptions`, `kernel.interfaces` | `agents/`, any LLM library |
-| `topologies/` | `kernel/`, `agents/`, `infrastructure/` |  -  (orchestration layer; may import all) |
-| `infrastructure/` | `kernel.interfaces`, `kernel.exceptions` | `agents/` |
-
-**Ruff configuration** (`pyproject.toml`) to enforce The Wall statically:
-
-```toml
-[tool.ruff]
-src = ["kernel", "agents", "topologies", "infrastructure"]
-
-[tool.ruff.lint.per-file-ignores]
-# agents/ must not import execution infrastructure or LLM-external systems directly
-"agents/**/*.py" = ["TID251"]  # use flake8-tidy-imports banned-api
-
-[tool.ruff.lint.flake8-tidy-imports.banned-api]
-"infrastructure".msg = "agents/ must not import from infrastructure/. Submit PolicyProposal to Runtime."
-"kernel.execution".msg = "agents/ must not import from kernel.execution. Execution is Kernel-only."
-"openai".msg = "LLM clients must be instantiated in agents/, not kernel/."
-"anthropic".msg = "LLM clients must be instantiated in agents/, not kernel/."
-```
-
-**Additional `mypy` check** (optional, strict mode):
-
-```ini
-# mypy.ini
-[mypy-kernel.*]
-disallow_any_generics = True
-disallow_untyped_defs = True
-no_implicit_reexport = True
-
-[mypy-agents.*]
-# Prevent agents from accidentally importing concrete kernel implementations
-# (they should only use Protocol types)
-disallow_any_explicit = False
-```
-
-### File Placement Decision Rules
-
-When an LLM generates a new file, apply these rules in order:
-
-1. Does it contain **LLM inference, probability, or prompt logic**? → `agents/`
-2. Does it contain **deterministic validation, hashing, or state machine logic**? → `kernel/`
-3. Does it contain **external API calls, DB connections, message broker clients**? → `infrastructure/`
-4. Does it contain **routing, orchestration, or topology-specific coordination**? → `topologies/`
-5. Is it a **data schema / DTO** shared across layers? → `kernel/interfaces.py` or inline in the relevant `kernel/` module
-
----
-
-## 8. GLOSSARY
+## 7. GLOSSARY
 
 | Term | Definition |
 |------|-----------|
@@ -2820,7 +2746,7 @@ When an LLM generates a new file, apply these rules in order:
 
 ---
 
-## 9. KEY PRINCIPLES  -  QUICK REFERENCE
+## 8. KEY PRINCIPLES  -  QUICK REFERENCE
 
 These principles MUST be applied in all DIR-compliant implementations:
 

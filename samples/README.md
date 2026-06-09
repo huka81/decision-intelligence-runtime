@@ -39,6 +39,7 @@ Proste syntetyczne przykłady ilustrujące implementacje poszczególnych mechani
 | 09 | [09_topology_a_eoam](09_topology_a_eoam/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | Topology A: Event-Oriented Agent Mesh |
 | 10 | [10_topology_b_sds](10_topology_b_sds/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | Topology B: Sovereign Decision Stream |
 | 11 | [11_topology_c_dl_pci](11_topology_c_dl_pci/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | Topology C: Decision Ledger & Proof-Carrying Intents |
+| 12 | [12_compliant_lie](12_compliant_lie/) | [Topologies](../docs/03-topologies/DIR_Topologies.md) | **Evidence Hierarchy**: Heuristic, Reconstructed, and Cryptographic evidence tiers catching the "Compliant Lie" before PCI reaches DIM |
 | 88 | [88_meta_context_engineering](88_meta_context_engineering/) | [Context as Code](../docs/08-conclusion/Context_as_Code.md), [Topologies](../docs/03-topologies/DIR_Topologies.md) | **Meta-Context Engineering**: System Prompt Toolkit: no executable Python. Markdown as compiler instruction set for AI agents. Paste `3_meta_architect_prompt.md` into Cursor/Claude to generate the Autonomous Flight Delay Refund System (Topology C, DL+PCI). |
 
 ---
@@ -56,6 +57,7 @@ Przykłady typu biznesowy use case, łączące mechanizmy w pełne scenariusze.
 | 36 | [36_drift_optimization_discount](36_drift_optimization_discount/) | DIR + DIM + Monitor | **Retention discounts** | **Drift Vector 1 — The agent games its own goal.** This sample demonstrates *Optimization Drift*, where the agent slowly erodes profit margins to maximize customer retention. Because every single decision stays under the hard DIM cap, the kernel blindly accepts them, proving that technical compliance does not guarantee business health. |
 | 37 | [37_drift_semantic_refund](37_drift_semantic_refund/) | DIR + DIM + Monitor | **Support refunds** | **Drift Vector 2 — The agent is manipulated by the user.** This sample demonstrates *Semantic Drift*, where the agent breaks core business rules because it yields to emotional language. DIM accepts these actions because the refund amounts are within legal limits, highlighting that hard constraints cannot prevent empathy-driven rule breaking. |
 | 38 | [38_drift_environmental_bidding](38_drift_environmental_bidding/) | DIR + DIM + Monitor | **AdTech / bidding** | **Drift Vector 3 — The environment changes around the agent.** This sample demonstrates *Environmental Drift*, where the agent acts perfectly but market costs escalate. While bids remain under the DIM contract cap, the ROI turns negative, showing how static rules fail when the outside world shifts and why dynamic ROI monitors are essential. |
+| 39 | [39_fintech_evidence_governance](39_fintech_evidence_governance/) | [Topology C](../docs/03-topologies/DIR_Topologies.md) | **Fintech / credit limits** | **Full §8 defense-in-depth:** Evidence Hierarchy (Compliant Lie), Semantic Alignment (proxy gaming), and rolling approval-rate drift monitor for automated credit-limit chat decisions. |
 
 ---
 
@@ -79,6 +81,7 @@ python samples/31_finance_trading/run.py
 python samples/36_drift_optimization_discount/run.py
 python samples/37_drift_semantic_refund/run.py
 python samples/38_drift_environmental_bidding/run.py
+python samples/39_fintech_evidence_governance/run.py
 ```
 
 Each sample has its own `README.md` with goal, how to run, and expected output.

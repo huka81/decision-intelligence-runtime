@@ -13,7 +13,7 @@ In the context of autonomous AI decision-making, ensuring that a single transact
 
 This document introduces the concept of **Agent Drift** and the necessity of **Post-Execution Governance**. It outlines a taxonomy of drift vectors - Optimization, Semantic, and Environmental - and describes how the Decision Intelligence Runtime (DIR) extends its safety model beyond single decisions to aggregate trends using Continuous Monitoring and Circuit Breaking.
 
-It further introduces the **Contract Lifecycle** - a disciplined approach to iterative contract design that acknowledges the impossibility of complete upfront specification, and instead provides a structured path from a minimum viable Bootstrap Contract through telemetry-guided observation to human-gated versioning.
+It further introduces the **Responsibility Contract Lifecycle** - a disciplined approach to iterative contract design that acknowledges the impossibility of complete upfront specification, and instead provides a structured path from a minimum viable Bootstrap Responsibility Contract through telemetry-guided observation to human-gated versioning.
 
 ## 1. The Limitation of Kernel Compliance
 
@@ -23,13 +23,20 @@ However, the DIM evaluates decisions **individually and statelessly** (excluding
 
 It cannot answer the question: *"Is the trend of these proposals healthy for the business?"*
 
-This discrepancy highlights the difference between **Kernel Compliance** and **Business Health**:
-- **Kernel Compliance:** Every individual decision passes the hard gates.
-- **Business Health:** The aggregate outcome of these decisions aligns with long-term strategic and financial goals.
+This discrepancy highlights the difference between **Kernel Compliance** and **Business Health**. To address this, DIR recognizes two fundamental classes of assurance:
 
-If an agent learns to optimize its primary goal (e.g., customer retention) by consistently offering a 14.9% discount, it remains 100% compliant with the 15% DIM limit. Yet, over hundreds of decisions, this behavior will destroy business profitability. 
+- **Ex-Ante Assurance (Pre-Execution):** Formal, deterministic safety provided by the DIM and Proof-Carrying Intents (PCI). It ensures **Kernel Compliance** — every individual decision passes the hard gates.
+- **Ex-Post Assurance (Post-Execution):** Heuristic, observational safety provided by Governance and Drift Monitoring. It ensures **Business Health** — the aggregate outcome of these decisions aligns with long-term strategic and financial goals.
 
-## 2. The Contract Lifecycle: From Bootstrap to Production
+This is not an asymmetry where Governance is the "weaker sibling" of PCI. It is a natural architectural separation: PCI formally proves the validity of the current step, while Governance evaluates the heuristic health of the trajectory.
+
+If an agent learns to optimize its primary goal (e.g., customer retention) by consistently offering a 14.9% discount, it remains 100% compliant with the 15% DIM limit (Ex-Ante Assurance passes). Yet, over hundreds of decisions, this behavior will destroy business profitability (Ex-Post Assurance fails).
+
+Formally, the DIM enforces the Legal Decision State invariant `LDS = Context (C) ∧ Authority (A) ∧ Intent (I) ∧ Evidence (E) ∧ Time (T)` per individual transaction. But Kernel Compliance cannot protect the Time invariant across the **aggregate** dimension. Each transaction is executed before its reality drifts (`¬T` is blocked at execution time), yet the business reality itself erodes over time through cumulative agent behavior — a process this document terms **Agent Drift**. In LDS terms, drift is a slow-motion `¬T` violation: the agent's model of "what is appropriate" gradually detaches from the actual business environment.
+
+The same logic applies to the Evidence invariant (`E`). Semantic Drift (see Section 3.2) does not cause individual proposals to fail evidence checks — each one may be internally consistent. But in aggregate, the pattern of rationalization diverges from sound judgment, producing a system-wide `¬E` condition that no single-transaction gate can detect. Post-Execution Governance exists precisely to close this gap: extending LDS protection from individual decisions to the entire decision trajectory over time.
+
+## 2. The Responsibility Contract Lifecycle: From Bootstrap to Production
 
 Defining a Responsibility Contract is non-trivial. Unlike traditional RBAC policies, where the permission space is well-understood before deployment, an agent's authority envelope must reflect a business domain that is often only partially understood at the start. Demanding a complete, finalized contract before the first sprint is a form of waterfall thinking applied to a probabilistic system.
 
@@ -320,8 +327,8 @@ flowchart LR
 
 Building an autonomous system requires acknowledging that artificial intelligence will find ways to fail that are syntactically correct and legally permissible. 
 
-By introducing the Contract Lifecycle, the concept of Agent Drift, and Post-Execution Governance, the DIR architecture completes its defense-in-depth strategy:
-1. **Before Deployment:** Bootstrap Contract covering irreversible events, evolved iteratively through telemetry-guided observation and human-gated versioning (Contract Lifecycle).
+By introducing the Responsibility Contract Lifecycle, the concept of Agent Drift, and Post-Execution Governance, the DIR architecture completes its defense-in-depth strategy:
+1. **Before Deployment:** Bootstrap Responsibility Contract covering irreversible events, evolved iteratively through telemetry-guided observation and human-gated versioning (Responsibility Contract Lifecycle).
 2. **At Reasoning:** Grammar and mission alignment (Agent constraints).
 3. **At Transaction:** DIM hard gates and JIT drift checks (Real-time safety).
 4. **Over Time:** Rolling window monitors and circuit breaking (Long-term business health).

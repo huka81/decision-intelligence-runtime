@@ -30,7 +30,7 @@ In the early phases of AI adoption, engineers often seek a "Universal Agent Arch
 
 To solve this, we decouple the **Identity Layer** from the **Topology Layer**:
 
-*   **The Identity Layer (ROA):** Who acts? (Defined by Mission, Authority, and Responsibility Contracts).
+*   **The Identity Layer (ROA):** Who acts? (Defined by Responsibility Contracts).
 *   **The Execution Kernel (DIR):** How is it validated? (Defined by DFIDs, Hard Gates, and Idempotency).
 *   **The Topology (EOAM / SDS / DL):** How do signals flow, and where does trust originate?
 
@@ -45,6 +45,8 @@ Each topology defines two orthogonal properties:
 This separation allows a single systems architecture to support deliberate mesh networks, hyper-fast singular streams, and formally verified ledgers side-by-side. The three topologies are not incremental layers of the same pattern; they represent fundamentally different answers to the question: *"Where does safety come from?"*
 
 A key motivation for this pluralistic approach is the limitation of conventional multi-agent frameworks, which typically rely on unstructured LLM-to-LLM dialogue or manager-led hierarchies. While powerful for creative synthesis, these patterns produce non-deterministic outcomes that are difficult to audit in regulated environments. The topologies defined here replace **dialogue with choreography** (typed signals, not chat), **democracy with priority** (deterministic preemption, not negotiation), and **mystery with audit** (DFID-bound causal chains, not opaque chat logs).
+
+Viewed through the lens of formal state integrity, the three topologies are not merely operational alternatives — they are **specialized protectors of different Legal Decision State (LDS) components**. A decision is only valid when five invariants hold simultaneously: `LDS = Context (C) ∧ Authority (A) ∧ Intent (I) ∧ Evidence (E) ∧ Time (T)`. EOAM guards temporal and contextual integrity (`¬T`, `¬C`); SDS enforces intent integrity (`¬I`); DL+PCI acts as the cryptographic certificate that all five held at once. The pluralism is not a matter of taste — it is a consequence of the different threat models each LDS component faces.
 
 ```mermaid
 ---
@@ -109,6 +111,8 @@ flowchart TB
 **Ideal For:** Complex Strategy, Multi-Perspective Analysis, Resilience
 
 EOAM is a decentralized architectural pattern where autonomous agents collaborate through a reactive event substrate. It defines a system that is **"Decentralized in activation, centralized in authority."** EOAM trades the conceptual simplicity of linear orchestration for the power of **parallelism** and **resilience**.
+
+> **LDS Role — Temporal and Contextual Integrity (`¬T`, `¬C`):** EOAM's primary formal function is to prevent the system from executing a decision against an expired or drifted reality. Drift Envelopes define the maximum tolerable divergence between the context snapshot used for reasoning and the live system state at execution time. JIT Verification enforces this boundary immediately before any side effect. If the reality has moved beyond the envelope, the execution is rejected — ensuring the Time (T) and Context (C) invariants of the Legal Decision State are never violated.
 
 ### 2.1 Scope-Based Choreography
 
@@ -280,6 +284,8 @@ While the **Event-Oriented Agent Mesh (EOAM)** excels at multi-perspective coord
 
 The **Sovereign Decision Stream (SDS)** is an alternative architectural pattern designed for low-latency, cost-efficient, and structurally safe decision-making. SDS treats the decision process as a "straight-line" function rather than a choreographic dialogue. It achieves structural safety not through post-generation validation (the "Audit" model), but through **Constrained Decoding**-embedding the deterministic rules of the **Decision Intelligence Runtime (DIR)** directly into the probabilistic sampling of the Large Language Model.
 
+> **LDS Role — Intent Integrity (`¬I`):** SDS is the only topology that enforces the Intent invariant at the generation layer. By compiling the Responsibility Contract and schema constraints into a formal grammar and applying it during LLM sampling, SDS makes it **physically impossible** to generate an intent that violates contractual bounds. A `¬Intent` condition — an out-of-bounds or malformed proposal — cannot be emitted as output, because the grammar masks non-compliant tokens before they are ever sampled. Safety is not a post-generation check; it is a structural property of inference itself.
+
 ### 3.1 The SDS Philosophy: "Syntactically Bound by Design"
 
 > **Mandatory Disclaimer:** Constrained Decoding (Grammar-based sampling) ensures structural integrity and boundary adherence but **DOES NOT** guarantee semantic alignment with the ROA Mission. Final semantic and safety validation remains the exclusive responsibility of the DIR Decision Integrity Module (DIM).
@@ -449,6 +455,8 @@ In older aircraft (like standard scripts), the pilot's stick was mechanically co
 
 **Topology C** represents the ultimate stage of formal verification within the Decision Intelligence Runtime framework. It shifts the focus from "trusting the agent" (EOAM) or "constraining the agent" (SDS) to **"verifying the artifact."**
 
+> **LDS Role — Cryptographic State Certificate (`C ∧ A ∧ I ∧ E ∧ T`):** DL+PCI does not protect a single LDS component — it demands cryptographic proof that **all five held simultaneously** at the moment the intent was formed. The Proof-Carrying Intent is not a request for trust; it is a self-contained certificate asserting that Context was authentic, Authority was in scope, Intent was within bounds, Evidence was verifiable, and Time had not expired. The Proof Checker verifies this certificate deterministically, without reasoning. The Decision Ledger stores the certificate immutably. The result is a topology where safety is a structural property of the data artifact itself — independent of the agent, the runtime, or any network condition.
+
 ### 4.1 The Philosophy: Proof-Carrying Intents (PCI)
 
 In this model, the system operates on a "Zero-Trust" basis regarding the agent's reasoning process. The **Decision Ledger** does not execute an intent because an agent "said so"; it executes it only if the intent carries an immutable proof of compliance.
@@ -481,6 +489,8 @@ In Topology C, the **Decision Integrity Module (DIM)** acts as a minimalist **Pr
 *   **Proof-Carrying Intent:** Contains **What**, **Why** (Semantic Rationale), and **Proof** (Deterministic evidence). Guaranteed to be *formally* compliant against the Ledger's history.
 
 While SDS ensures the agent stays within *syntactic* bounds (e.g., "produce valid JSON"), DL+PCI ensures **formal compliance** (e.g., "this transfer is valid because the balance was X at block Y, and policy Z allows transfers under limit L").
+
+> **Ontological Limits of PCI:** PCI is *Proof-Carrying Intent*, not *Proof-Carrying Code*. It does NOT prove semantic truth. It formally proves: **State binding, Contract binding, Rule binding, and Identity binding.** To address semantic truth (the "Compliant Lie"), the system relies on the Evidence Governance Layer in User Space (see Section 8).
 
 ```mermaid
 ---
@@ -567,7 +577,7 @@ The distinction mirrors the difference between **runtime type-checking** (safe w
 
 ### 4.6 Design Intent: The "Notarized Execution" Paradigm
 
-To better understand Topology C, consider the banking concept of a **Letter of Credit (L/C)** (PL: *Akredytywa*).
+To better understand Topology C, consider the banking concept of a **Letter of Credit (L/C)**.
 
 In a standard transaction, a buyer might promise to pay. In an L/C, a **Bank** (The Runtime) guarantees payment to a **Beneficiary** (Execution) on behalf of a **Buyer** (The Agent), *provided that* specific documents (Proofs) are presented.
 
@@ -581,7 +591,25 @@ This transforms the system from **"Trust but Verify"** (classic agent monitoring
 
 ---
 
-## 5. Comparative Analysis: The Decision Matrix
+## 5. Economic Governance: Cost-Aware Topologies
+
+A critical, yet often overlooked, dimension of agentic architecture is the theory of cost. The current industry discourse is dominated by concerns over "token burn," expensive evaluation harnesses, and the prohibitive cost of running massive agent swarms. The prevailing narrative is simply: *AI is too expensive.*
+
+The Decision Intelligence Runtime (DIR) challenges this by positing that **governance lowers token consumption**. By decoupling the topology from the agent, DIR introduces **Economic Governance**—the ability to deliberately select a topology based on the required intelligence-to-cost ratio for a specific class of decisions.
+
+Not every decision requires a swarm of high-intelligence agents debating strategy. By matching the topology to the problem, organizations can optimize their token expenditure without sacrificing safety or capability (see the Cost and Intelligence profiles in the Decision Matrix in Section 6).
+
+### 5.1 The Cost-Intelligence Trade-off
+
+*   **EOAM (High Intelligence, High Cost):** When a decision is ambiguous, strategic, or requires multiple perspectives, the high token cost of EOAM is justified. The mesh allows agents to debate and synthesize, producing high-quality proposals at the expense of latency and compute.
+*   **SDS (Medium Intelligence, Low Cost):** When a decision is well-defined and tactical, SDS is the economic choice. By using Constrained Decoding and single-agent streams, SDS minimizes token usage and latency. It is the "fast path" for routine operations.
+*   **DL+PCI (Low Intelligence, High Assurance):** When the cost of a mistake is catastrophic (e.g., regulatory fines, massive financial loss), the system shifts to DL+PCI. Here, the economic calculation is not about maximizing intelligence or minimizing token burn, but about maximizing assurance and auditability. The agent's reasoning is less important than its ability to package a cryptographically verifiable proof.
+
+By treating cost as an architectural variable rather than an unavoidable penalty, DIR allows organizations to deploy AI at scale sustainably. Economic Governance ensures that expensive cognitive cycles are reserved for problems that actually require them.
+
+---
+
+## 6. Comparative Analysis: The Decision Matrix
 
 The choice between EOAM, SDS, and DL+PCI is a strategic decision based on the trade-off between **Coordination**, **Velocity**, and **Integrity**. These three dimensions form a "pick-two" triangle analogous to the **CAP Theorem** in distributed systems: optimizing for one axis necessarily constrains the others.
 
@@ -619,22 +647,24 @@ flowchart LR
 | :--- | :--- | :--- | :--- |
 | **Primary Goal** | **Coordinated Strategic Reasoning** | Atomic execution velocity | **Formal Verification / Absolute Integrity** |
 | **Topology Type** | Decentralized Choreography (Many-to-Many) | Linear Pipeline (One-to-One) | Append-Only Log (State-to-State) |
+| **Intelligence Profile** | **High Intelligence** (Multi-agent synthesis, debate, strategy) | **Medium Intelligence** (Single-agent, constrained generation) | **Low Intelligence** (Minimal reasoning, focused on proof generation) |
 | **Trust Locus** | **Process** — Runtime validates after generation | **Generation** — Grammar constrains during inference | **Artifact** — PCI carries self-contained proof |
+| **Assurance Profile** | Process-based | Generation-based | **High Assurance** (Artifact-based cryptographic verification) |
 | **Offline Verifiability** | No (requires live DIM) | No (requires live JIT) | **Yes** (self-contained cryptographic proof) |
 | **Concurrency** | High (Parallel Reasoning) | Low (Linear Atomic Decision) | Serialized (Ledger Ordering) |
 | **Latency** | Significant (Priority-Based Preemption) | **Minimal** (Single Inference Pass) | Medium (Log persistence & proof verification) |
-| **Cost** | High (Multi-agent activation) | **Low** (Token-optimized single call) | Medium (Proof generation overhead) |
+| **Cost Profile** | **High Cost** (High token burn, multiple LLM calls, complex context) | **Low Cost** (Single pass, grammar-constrained, fast inference) | **Medium Cost** (Cost shifted from reasoning to cryptographic proof) |
 | **Recovery Model** | Re-arbitrate (select new proposal winner) | Re-reason (new LLM inference) | **Deterministic Replay** (from immutable Ledger) |
 | **Inter-Org Use** | No (single trust domain) | No (internal Grammar & JIT) | **Yes** (PCI verifiable by external party) |
-| **Ideal Case** | Strategic Portfolio Rebalancing | Tactical Automation / Risk Stops | **Compliance-heavy ops, Settlements** |
+| **Primary Use Case** | Strategic planning, complex problem solving, organizational choreography | High-velocity tactical execution, atomic operations, high-frequency trading | Regulated actions, irreversible financial transfers, formal audits |
 
 ---
 
-## 6. Implementation Blueprints
+## 7. Implementation Blueprints
 
 A robust **Decision Intelligence** system can support all topologies simultaneously within the same **Agent Registry**.
 
-### 6.1 Topology A: Mesh Handler (EOAM)
+### 7.1 Topology A: Mesh Handler (EOAM)
 
 ```python
 # agents/trader_mesh_agent.py
@@ -659,7 +689,7 @@ class TacticalTrader(ResponsibleAgent):
         EventBus.publish(proposal) 
 ```
 
-### 6.2 Topology B: Stream Handler (SDS)
+### 7.2 Topology B: Stream Handler (SDS)
 
 ```python
 # sds/core_handler.py
@@ -695,7 +725,7 @@ def execute_sovereign_stream(dfid: str, context_snapshot: dict):
     return DIR.jit_execute(dfid, policy_proposal, context_snapshot.hash)
 ```
 
-### 6.3 Topology C: Ledger Handler (DL+PCI)
+### 7.3 Topology C: Ledger Handler (DL+PCI)
 
 ```python
 # sds/ledger_intent_compiler.py
@@ -725,7 +755,7 @@ class ProofChecker:
         return True
 ```
 
-### 6.4 Kernel-User Space Integrity Constraints (All Topologies)
+### 7.4 Kernel-User Space Integrity Constraints (All Topologies)
 
 The following constraints apply **regardless of topology**. They are properties of the DIR Kernel, not of any specific signal flow pattern. They are included here because they govern the boundary between all Implementation Blueprints above and the Execution Engine.
 
@@ -734,7 +764,122 @@ The following constraints apply **regardless of topology**. They are properties 
 
 ---
 
-## 7. Conclusion
+## 8. The Evidence Governance Layer & The Compliant Lie
+
+While the Decision Intelligence Runtime (DIR) enforces structural integrity and prevents operational chaos (loops, drift), it introduces a specific vulnerability within probabilistic systems known as **"The Compliant Lie"**.
+
+To address this, the architecture defines the **Evidence Governance Layer** as a first-class citizen in User Space. If the DIR Kernel provides **Execution Governance** (structural and deterministic safety), the Evidence Governance Layer provides **Semantic Governance** (verifiable claims and evidence).
+
+### 8.1 The Compliant Lie
+
+A "Compliant Lie" occurs when a Large Language Model generates a decision that is **structurally perfect, fully within the contract limits, but semantically entirely wrong** based on the input context. 
+
+> **The Commercial Insurance Scenario:** A client requests an insurance policy for "50 heavy trucks" in an email. A small, fast LLM hallucinates and parses this as "5 personal cars." 
+> * Did it break the YAML contract? No, the field `vehicle_count = 5` is structurally valid.
+> * Did it enter an unbounded loop? No.
+> * Will the DIR Kernel catch it? No. The Kernel Space executes validated intents; it does not judge the agent's wisdom.
+
+If the DIR executes this, the system functions flawlessly from an infrastructure perspective, but fails completely from a business perspective.
+
+> **Compliant Lie vs. Semantic Drift:** The Compliant Lie is a *synchronous, single-decision* hallucination, caught *before* execution. It must not be confused with **Semantic Drift** — an *aggregate, post-execution* failure (the "Day Three" problem) in which an agent gradually yields to contextual manipulation while each individual action stays within limits. The two demand different defenses: pre-submission evidence generation (this chapter) versus Post-Execution Governance monitors.
+
+### 8.2 The Evidence Governance Pipeline
+
+To solve the Compliant Lie without violating the fundamental separation of User Space and Kernel Space, we elevate Evidence Governance from a set of ad-hoc patterns to a formal architectural pipeline.
+
+The fundamental shift is moving from *governance of answers* (AI validating AI) to *governance of evidence*. We do not ask "Is the answer correct?", because that is impossible to prove deterministically. Instead, we ask "Does there exist a sufficient evidence package to make this decision?".
+
+### 8.2.1 The Evidence Hierarchy
+
+Evidence is not a monolith; it is a spectrum of assurance defined by the Responsibility Contract. DIR formalizes an **Evidence Hierarchy** with three distinct tiers:
+
+1. **Heuristic Evidence**: Legacy deterministic checks (e.g., SQL Views, Regex, Business Rules). These verify narrow parameters and structured fields but cannot validate semantic nuances.
+2. **Reconstructed Evidence**: Independent semantic verification (e.g., Bidirectional Reconstruction). This ensures the reasoning is stable and the claim maps logically back to the original context.
+3. **Cryptographic Evidence**: The PCI Hash (SHA256). This provides deterministic proof of identity, state, and contract binding, ensuring the intent artifact is structurally unforgeable.
+
+In this paradigm, an LLM does not produce *truth*; it produces a **Claim**. The system must then produce an **Evidence Package** (utilizing tiers 1 and 2) to support that claim. Only when the claim and the evidence are combined can a valid output artifact — a `Proof-Carrying Intent (PCI)`, representing tier 3 — be submitted to the DIR wall.
+
+The formal pipeline is:
+`Context` $\rightarrow$ `Claim` $\rightarrow$ `Evidence Generators` $\rightarrow$ `Evidence Package` $\rightarrow$ `PCI`
+
+```mermaid
+---
+title: "The Evidence Governance Layer"
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
+flowchart LR
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    
+    Context["`**Context**<br/>(Snapshot)`"]:::kernelSpace
+    
+    subgraph Evidence_Layer ["`**EVIDENCE GOVERNANCE LAYER (User Space)**`"]
+        direction LR
+        Agent(["`**LLM Agent**`"]):::userSpace
+        Claim["`**Claim**<br/>(Proposed Intent)`"]:::userSpace
+        Generators{"`**Evidence<br/>Generators**`"}:::userSpace
+        Package["`**Evidence Package**<br/>(Claim + Proofs)`"]:::userSpace
+        
+        Agent -->|Synthesizes| Claim
+        Claim --> Generators
+        Generators -->|Validates & Appends| Package
+    end
+    
+    PCI["`**PCI**<br/>(Signed Artifact)`"]:::userSpace
+    DIR{"`**DIR Kernel**<br/>(Execution Gov)`"}:::kernelSpace
+    
+    Context --> Agent
+    Context --> Generators
+    Package -->|Signed| PCI
+    PCI --> DIR
+    
+    style Evidence_Layer fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px
+```
+
+> **A note on rigor:** The Evidence Governance Layer acts as an **Evidence Generator**, not a formal prover. It sharply reduces the probability of an undetected Compliant Lie by requiring independent confirmation, but it cannot mathematically guarantee its absence. The only *cryptographic* proof in this framework is the `evidence_hash` of a signed PCI (see Topology C and the Technical Annex), which attests to identity and state-binding, not semantic truth.
+
+### 8.3 Evidence Generators (Synthesis Patterns)
+
+The DIR architecture dictates that we do not build massive, slow telemetry systems to grade the LLM's "confidence." Instead, we rely on the principle of differential separation to generate evidence:
+
+#### Pattern 1: Differential Heuristics
+**Definition:** A parallel processing pattern binding probabilistic LLM inference to deterministic rules (e.g., regex, SQL views) to generate supporting evidence.
+* **Mechanism:**
+  1. Input context $C$ is processed by Agent $A_{LLM}$ yielding a structured claim $I_{LLM}$.
+  2. Concurrently, $C$ is processed by Heuristic $H_{Det}$ yielding baseline evidence $I_H$.
+* **Evidence Logic:** Compute $\Delta(I_{LLM}, I_H)$ on critical fields.
+* **Escalation Trigger:** IF $\Delta \neq 0$, THEN ABORT PCI generation AND flag as `COMPLIANT_LIE_SUSPECTED`.
+> **Example:** $C$ = "insure 50 heavy trucks". Heuristic $H_{Det}$ uses regex to extract `vehicle_type: "heavy_trucks"` (evidence). Agent $A_{LLM}$ hallucinates `vehicle_type: "personal_cars"` (claim). Delta detected ($\Delta \neq 0$) $\rightarrow$ ABORT.
+
+#### Pattern 2: Bidirectional Reconstruction
+**Definition:** A verification pipeline leveraging functional inversion (Reconstructable Logic Slices). It generates evidence by forcing a secondary agent to blindly reconstruct the original context from the proposed JSON claim.
+* **Mechanism:**
+  1. **Synthesis:** Agent $A_{syn}$ processes context $C$ yielding a structured JSON claim $I$.
+  2. **Reconstruction:** Agent $A_{rec}$ (Evidence Generator) processes ONLY claim $I$ yielding reconstructed narrative $C_{rec}$ (evidence).
+* **Evidence Logic:** Evaluate semantic equivalence between $C$ and $C_{rec}$.
+* **Escalation Trigger:** IF $C \not\approx C_{rec}$, THEN ABORT PCI generation AND flag as `COMPLIANT_LIE_SUSPECTED`.
+> **Example:** Agent $A_{syn}$ hallucinates $I = \{\text{"vehicle_type": "personal_cars"}\}$ (claim). Agent $A_{rec}$ reads $I$ and reconstructs $C_{rec}$ = "User wants to insure personal cars." (evidence). Semantic comparison between $C_{rec}$ and the original $C$ ("heavy trucks") fails $\rightarrow$ ABORT.
+
+**System Invariant:** Generation of the agent's output artifact in User Space MUST require a sufficient evidence package from the defined Evidence Generators before signing. The DIR Kernel verifies the PCI's cryptographic signature and structural proofs but **cannot judge semantic correctness**; it only checks if the required evidence package exists. Therefore, the Evidence Governance Layer is solely responsible for catching the Compliant Lie before signing.
+
+### 8.4 Relationship to Kernel-Side Semantic Checks
+
+Evidence Governance is the **first** of three complementary semantic defenses in the DIR framework. They operate at different points in the decision lifecycle and must not be conflated:
+
+| Defense | Layer | Timing | Target | Blocking? |
+| :--- | :--- | :--- | :--- | :--- |
+| **Evidence Governance Layer** (this chapter) | User Space | Pre-submission (before signing) | The Compliant Lie (single hallucination) | Yes — no evidence package, no signed artifact |
+| **Semantic Alignment Check** (Soft Guard) | DIM-adjacent | Validation-time | Proxy gaming (narrative ≠ policy) | Audit-only by default; optional strict mode |
+| **Asynchronous Semantic Auditing** | Post-Execution Monitors | After execution (rolling window) | Semantic Drift (Day Three aggregate) | No — triggers circuit breaker / `SUSPENDED` |
+
+The architectural distinction: The Evidence Governance Layer operates **entirely in User Space and adds no latency or LLM calls to the deterministic Kernel path**, preserving Invariant 1 (Determinism). The Semantic Alignment Check is an optional Kernel-adjacent soft guard; Asynchronous Semantic Auditing runs off the critical path entirely. Together they form a defense-in-depth posture — catch the lie before signing, flag misalignment at the gate, and detect drift over time.
+
+---
+
+## 9. Conclusion
 
 The development of **Decision Intelligence Topologies** marks the maturation of agentic engineering. We are moving beyond the era of treating Large Language Models as meaningful entities in themselves, and towards an era where they are components within rigorous system architectures.
 
@@ -745,10 +890,13 @@ The inclusion of **Topology C (DL+PCI)** completes the triad-not as an increment
 
 Sophisticated organizations will employ all three topologies in concert. The Mesh (EOAM) thinks deeply about strategy and risk; the Stream (SDS) executes those strategies with precision; and the Ledger (DL) records the irrevocable truth of every action-a truth that can be verified by any party, at any time, without access to the system that produced it. In all cases, the future belongs to architectures that prioritize **auditability over creativity** and **constraints over capabilities**.
 
+Viewed through the Illegal State Theory, the triad is complete and non-redundant: EOAM prevents `¬T` and `¬C`, SDS prevents `¬I`, and DL+PCI certifies `C ∧ A ∧ I ∧ E ∧ T`. Together they cover every dimension of the Legal Decision State — ensuring that no matter how the system is composed, an Illegal Decision State remains unreachable by design.
+
 ---
 
-## 8. Glossary
+## 10. Glossary
 
+*   **Economic Governance:** The architectural capability to select an agent topology based on the required intelligence-to-cost ratio, optimizing token expenditure without sacrificing safety.
 *   **Priority-Based Preemption (EOAM):** A mechanism where the Runtime selects the "winning" proposal based on the **Agent Registry Priority Matrix** (e.g., Risk > Strategy) rather than just a time window.
 *   **Constrained Decoding (SDS):** Using grammar-based sampling to physically prevent an LLM from generating non-compliant tokens.
 *   **Drift Envelope:** A contract-level parameter specifying the maximum allowable deviation (e.g., price slippage, latency) for JIT Verification before a PolicyProposal is rejected.
@@ -764,6 +912,10 @@ Sophisticated organizations will employ all three topologies in concert. The Mes
 *   **Proof Checker:** A minimalist verification module that validates PCI proofs without reasoning.
 *   **Immutable Narrative:** The unchangeable history of decisions and states stored in the Decision Ledger.
 *   **Trust Locus:** The architectural location where safety is guaranteed within a given topology: the **Process** (EOAM — runtime validates after generation), the **Generation** (SDS — grammar constrains during inference), or the **Artifact** (DL+PCI — the PCI carries self-contained, cryptographically verifiable proof).
+*   **The Compliant Lie:** A vulnerability where an LLM generates a decision that is structurally perfect and within limits, but semantically erroneous or hallucinated based on the context.
+*   **Evidence Governance:** Architectural patterns deployed in User Space to generate sufficient evidence for an LLM's claim before submitting a Proof-Carrying Intent to the Kernel.
+*   **Differential Heuristics:** An Evidence Governance pattern that compares a probabilistic LLM's claim against a deterministic legacy heuristic's evidence to detect and escalate discrepancies.
+*   **Bidirectional Reconstruction:** An Evidence Governance pattern that generates evidence by having a secondary agent reconstruct the original narrative from the synthesized JSON claim.
 
 ---
 
@@ -774,6 +926,8 @@ Sophisticated organizations will employ all three topologies in concert. The Mes
 This technical annex defines the protocol for generating and verifying the **Evidence Hash** and **Proof-Carrying Intents (PCI)** within the **Decision Ledger** topology. As established in the **Decision Intelligence Topologies** whitepaper, Topology C moves the system from "Active Reasoning" to "Formal Verification," where safety is a structural property of the intent artifact itself.
 
 The primary objective is to ensure that every entry in the **Decision Ledger** is cryptographically bound to a specific version of reality (**Context Snapshot**), a specific authority (**Responsibility Contract**), and a deterministic result from the **Proof Checker**.
+
+> **Crucial Disclaimer:** This cryptographic protocol proves constraints and bindings, not semantic truth. It formally proves State binding, Contract binding, Rule binding, and Identity binding. It does not mathematically guarantee the semantic correctness of the reasoning.
 
 ---
 
@@ -864,11 +1018,18 @@ Topology C utilizes the **Decision Ledger** to manage failures without relying o
 
 * **Audit Trait:** Because every intent is a PCI, the Ledger provides a "Zero-Trust" audit trail. If a system failure occurs, the Ledger allows for a **Deterministic Replay** to identify exactly which proof failed.
 * **Immutable Compensation:** If an execution fails after the Ledger commitment (e.g., Infrastructure error), the system triggers a **Deterministic Compensation Action** from a pre-defined menu (e.g., `REVERT_STATE`), rather than asking the agent to re-reason about the failure.
-* **Registry Outage:** During a Registry outage, the Proof Checker relies on **Local Manifest Caching**. However, new PCIs requiring authority updates are rejected to prevent **Stale Authority Exploitation**.
+* **Registry Outage:** During a Registry outage, the Proof Checker relies on **Local Responsibility Contract Caching**. However, new PCIs requiring Responsibility Contract updates are rejected to prevent **Stale Responsibility Contract Exploitation**.
 
 ---
 
 ## 6. Conclusion
 
 The **Evidence Hash** and **Proof-Carrying Intent** represent the most rigorous layer of the **Decision Intelligence Runtime**. By treating safety as a cryptographic requirement of the artifact, Topology C ensures that even the most advanced Large Language Models remain "Provers" of intent rather than "Owners" of execution. This annex provides the technical substrate for a system where truth is found in the **Ledger**, and agents are held to an immutable standard of formal compliance.
+
+---
+
+## References
+
+1. McKeeman, W. M. (1998). *Differential Testing for Software*. Digital Technical Journal, 10(1), 100–107. (Theoretical foundation for the comparative testing method used to detect semantic divergence between systems).
+2. Goldberg, A. V., & Harrelson, C. (2005). *Computing the shortest path: A\* search meets graph theory*. In Proceedings of the sixteenth annual ACM-SIAM symposium on Discrete algorithms (SODA), 156–165. (Origin of the term "Differential Heuristics" / ALT in classical AI pathfinding, conceptually adapted in DIR to use deterministic rules as "anchors" to measure probabilistic LLM drift).
 
