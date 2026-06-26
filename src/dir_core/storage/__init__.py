@@ -35,6 +35,7 @@ from .base import (
     AuditStore,
     ContextStorage,
     DecisionAuditStorage,
+    DecisionLedgerStorage,
     EscalationStorage,
     IdempotencyStorage,
     IntentRetryStorage,
@@ -48,6 +49,7 @@ from .memory import (
     MemoryAgentRegistryStorage,
     MemoryContextStorage,
     MemoryDecisionAuditStorage,
+    MemoryDecisionLedgerStorage,
     MemoryEscalationStorage,
     MemoryIdempotencyStorage,
     MemoryIntentRetryStorage,
@@ -60,6 +62,7 @@ from .sqlite import (
     SqliteAgentRegistryStorage,
     SqliteContextStorage,
     SqliteDecisionAuditStorage,
+    SqliteDecisionLedgerStorage,
     SqliteEscalationStorage,
     SqliteIdempotencyStorage,
     SqliteIntentRetryStorage,
@@ -82,6 +85,7 @@ class StorageBundle:
     context: ContextStorage
     idempotency: IdempotencyStorage
     decision_audit: DecisionAuditStorage
+    decision_ledger: DecisionLedgerStorage
     saga: SagaStorage
     resource_lock: ResourceLockStorage
     intent_retry: IntentRetryStorage
@@ -100,6 +104,7 @@ def sqlite_storage(db_path: str) -> StorageBundle:
         context=SqliteContextStorage(db_path),
         idempotency=SqliteIdempotencyStorage(db_path),
         decision_audit=SqliteDecisionAuditStorage(db_path),
+        decision_ledger=SqliteDecisionLedgerStorage(db_path),
         saga=SqliteSagaStorage(db_path),
         resource_lock=SqliteResourceLockStorage(db_path),
         intent_retry=SqliteIntentRetryStorage(db_path),
@@ -118,6 +123,7 @@ def memory_storage() -> StorageBundle:
         context=MemoryContextStorage(),
         idempotency=MemoryIdempotencyStorage(),
         decision_audit=MemoryDecisionAuditStorage(),
+        decision_ledger=MemoryDecisionLedgerStorage(),
         saga=MemorySagaStorage(),
         resource_lock=MemoryResourceLockStorage(),
         intent_retry=MemoryIntentRetryStorage(),
@@ -132,6 +138,7 @@ __all__ = [
     "AuditStore",
     "ContextStorage",
     "DecisionAuditStorage",
+    "DecisionLedgerStorage",
     "IdempotencyStorage",
     "SagaStorage",
     "ResourceLockStorage",
@@ -148,6 +155,7 @@ __all__ = [
     "SqliteAgentRegistryStorage",
     "SqliteContextStorage",
     "SqliteDecisionAuditStorage",
+    "SqliteDecisionLedgerStorage",
     "SqliteIdempotencyStorage",
     "SqliteSagaStorage",
     "SqliteResourceLockStorage",
@@ -158,6 +166,7 @@ __all__ = [
     "MemoryAgentRegistryStorage",
     "MemoryContextStorage",
     "MemoryDecisionAuditStorage",
+    "MemoryDecisionLedgerStorage",
     "MemoryIdempotencyStorage",
     "MemorySagaStorage",
     "MemoryResourceLockStorage",

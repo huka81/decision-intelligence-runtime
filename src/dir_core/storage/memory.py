@@ -176,6 +176,58 @@ class MemoryDecisionAuditStorage:
 
 
 # ---------------------------------------------------------------------------
+# Decision Ledger (Topology C / DL+PCI)
+# ---------------------------------------------------------------------------
+
+
+class MemoryDecisionLedgerStorage:
+    """In-memory backend for verified PCI ledger entries."""
+
+    def __init__(self) -> None:
+        self._entries: List[Dict[str, Any]] = []
+
+    def init_schema(self) -> None:
+        pass
+
+    def append(
+        self,
+        pci: Any,
+        *,
+        agent_id: str,
+        root_dfid: Optional[str] = None,
+    ) -> None:
+        rd = root_dfid or pci.dfid
+        if any(e["dfid"] == pci.dfid for e in self._entries):
+            return
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        self._entries.append(
+            {
+                "dfid": pci.dfid,
+                "root_dfid": rd,
+                "agent_id": agent_id,
+                "intent_payload": dict(pci.intent_payload),
+                "context_ref": pci.context_ref,
+                "evidence_hash": pci.evidence_hash,
+                "signature": pci.signature or "",
+                "committed_at": ts,
+            }
+        )
+
+    def get_by_dfid(self, dfid: str) -> Optional[Dict[str, Any]]:
+        for entry in self._entries:
+            if entry["dfid"] == dfid:
+                return dict(entry)
+        return None
+
+    def entries_for_dfid(self, dfid: str) -> List[Dict[str, Any]]:
+        entry = self.get_by_dfid(dfid)
+        return [entry] if entry else []
+
+    def all_entries_chronological(self) -> List[Dict[str, Any]]:
+        return [dict(e) for e in self._entries]
+
+
+# ---------------------------------------------------------------------------
 # Saga
 # ---------------------------------------------------------------------------
 

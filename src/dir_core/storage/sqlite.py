@@ -434,6 +434,99 @@ class SqliteDecisionAuditStorage:
 
 
 # ---------------------------------------------------------------------------
+# Decision Ledger (Topology C / DL+PCI)
+# ---------------------------------------------------------------------------
+
+
+class SqliteDecisionLedgerStorage:
+    """SQLite backend for append-only decision_ledger_entries."""
+
+    def __init__(self, db_path: str) -> None:
+        self.db_path = db_path
+        self.init_schema()
+
+    def init_schema(self) -> None:
+        with _connect(self.db_path) as conn:
+            _apply_schema(conn)
+
+    @staticmethod
+    def _row_to_entry(r: sqlite3.Row) -> Dict[str, Any]:
+        return {
+            "dfid": r["dfid"],
+            "root_dfid": r["root_dfid"],
+            "agent_id": r["agent_id"],
+            "intent_payload": json.loads(r["intent_payload"] or "{}"),
+            "context_ref": r["context_ref"],
+            "evidence_hash": r["evidence_hash"],
+            "signature": r["signature"],
+            "committed_at": r["committed_at"],
+        }
+
+    def append(
+        self,
+        pci: Any,
+        *,
+        agent_id: str,
+        root_dfid: Optional[str] = None,
+    ) -> None:
+        rd = root_dfid or pci.dfid
+        payload = dumps_json_dict(pci.intent_payload)
+        with _connect(self.db_path) as conn:
+            _ensure_decision_flow_for_dfid(conn, pci.dfid, agent_id=agent_id)
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO decision_ledger_entries
+                    (dfid, root_dfid, agent_id, intent_payload, context_ref,
+                     evidence_hash, signature)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    pci.dfid,
+                    rd,
+                    agent_id,
+                    payload,
+                    pci.context_ref,
+                    pci.evidence_hash,
+                    pci.signature or "",
+                ),
+            )
+            conn.commit()
+
+    def get_by_dfid(self, dfid: str) -> Optional[Dict[str, Any]]:
+        with _connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT dfid, root_dfid, agent_id, intent_payload, context_ref,
+                       evidence_hash, signature, committed_at
+                FROM decision_ledger_entries
+                WHERE dfid = ?
+                """,
+                (dfid,),
+            )
+            row = cursor.fetchone()
+        return self._row_to_entry(row) if row else None
+
+    def entries_for_dfid(self, dfid: str) -> List[Dict[str, Any]]:
+        entry = self.get_by_dfid(dfid)
+        return [entry] if entry else []
+
+    def all_entries_chronological(self) -> List[Dict[str, Any]]:
+        with _connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT dfid, root_dfid, agent_id, intent_payload, context_ref,
+                       evidence_hash, signature, committed_at
+                FROM decision_ledger_entries
+                ORDER BY id ASC
+                """
+            )
+            rows = cursor.fetchall()
+        return [self._row_to_entry(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
 # Saga
 # ---------------------------------------------------------------------------
 

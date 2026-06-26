@@ -136,14 +136,22 @@ agents:
 | Key | Purpose |
 |-----|---------|
 | `emails_dir` | Subfolder of the sample with markdown email fixtures |
-| *(persistence)* | Use **`database.db_path`** — canonical `decision_audit_events` and idempotency tables |
+| *(persistence)* | Use **`database.db_path`** — canonical `decision_ledger_entries`, `decision_audit_events`, and idempotency tables |
 | `currency_fx_to_usd` | Rates for **MockLLM** / helpers when turning table TiV into USD (demo uses `1.0` for GBP fixtures) |
 | `prohibited_territories` | Case-insensitive substrings vs **agent-extracted** territories **after** extraction. If both territory and `max_tiv` fail, the kernel returns **`CONTRACT_VIOLATION`**; territory-only → **`PROHIBITED_TERRITORY`**. |
 | `injection_patterns` | Optional substrings for **ABORTED** (`PROMPT_INJECTION`) before any LLM call; default config leaves this empty so injection is handled by extraction contract + kernel |
 
 ### Persistence (canonical `schema.sql`)
 
-The sample uses the built-in SQLite bundle from `setup_environment`. Each email **DFID** has a **root** row in `decision_flows` (`root_dfid = dfid`, `dfid_parent` null) before `flow_context` or `decision_audit_events` rows are written. Compiled session JSON is stored in **`flow_context`**. Append-only telemetry uses **`decision_audit_events`** (`event_type`, `detail_json`, `root_dfid`, `severity`). Mock bind idempotency uses **`idempotency_cache`** (`idempotency_key`, `request_hash`, `result`, `expires_at`).
+The sample uses the built-in SQLite bundle from `setup_environment`. Each email **DFID** has a **root** row in `decision_flows` (`root_dfid = dfid`, `dfid_parent` null) before `flow_context`, `decision_audit_events`, or `decision_ledger_entries` rows are written. Compiled session JSON is stored in **`flow_context`**. Verified PCIs (after DIM approval) are persisted append-only in **`decision_ledger_entries`** (`intent_payload`, `context_ref`, `evidence_hash`, `signature`). Append-only process telemetry uses **`decision_audit_events`** (`event_type`, `detail_json`, `root_dfid`, `severity`). Mock bind idempotency uses **`idempotency_cache`** (`idempotency_key`, `request_hash`, `result`, `expires_at`).
+
+**SQLite — verified PCI ledger (Topology C source of truth):**
+
+```sql
+SELECT dfid, evidence_hash, committed_at
+FROM decision_ledger_entries
+ORDER BY id;
+```
 
 **SQLite — audit rows for one `simulation_id`:**
 

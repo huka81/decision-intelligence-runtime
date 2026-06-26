@@ -377,6 +377,41 @@ CREATE INDEX IF NOT EXISTS idx_flow_transitions_created_at ON flow_transitions(c
 
 
 -- -----------------------------------------------------------------------------
+-- DIR §5.4 — Decision Ledger (Topology C / DL+PCI)
+--
+-- Append-only store of verified Proof-Carrying Intents. Only DIM-approved PCIs
+-- are persisted. One row per decision flow (idempotent replay via UNIQUE dfid).
+--
+-- Key columns:
+--   dfid            Decision-Flow Identifier (immutable, one verified PCI per flow).
+--   intent_payload  Full domain proposal bound in the PCI artifact.
+--   context_ref     ContextSnapshotID hash used during evidence_hash derivation.
+--   evidence_hash   SHA256(DFID || Context_Hash || Contract_Hash || Proposal_Params).
+--   signature       Cryptographic signature binding PCI to agent identity.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS decision_ledger_entries (
+    id              INTEGER   PRIMARY KEY AUTOINCREMENT,
+    dfid            TEXT      NOT NULL UNIQUE,
+    root_dfid       TEXT      NOT NULL,
+    agent_id        TEXT      NOT NULL,
+
+    intent_payload  JSON      NOT NULL DEFAULT '{}' CHECK(json_valid(intent_payload)),
+    context_ref     TEXT      NOT NULL,
+    evidence_hash   TEXT      NOT NULL,
+    signature       TEXT      NOT NULL DEFAULT '',
+
+    committed_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (dfid) REFERENCES decision_flows(dfid) ON DELETE CASCADE,
+    FOREIGN KEY (agent_id) REFERENCES agent_registry(agent_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_decision_ledger_entries_dfid ON decision_ledger_entries(dfid);
+CREATE INDEX IF NOT EXISTS idx_decision_ledger_entries_agent_id ON decision_ledger_entries(agent_id);
+CREATE INDEX IF NOT EXISTS idx_decision_ledger_entries_committed_at ON decision_ledger_entries(committed_at);
+
+
+-- -----------------------------------------------------------------------------
 -- Observability — append-only decision audit events (core data model)
 --
 -- DFID-scoped audit rows for compliance and debugging. Exposed as 

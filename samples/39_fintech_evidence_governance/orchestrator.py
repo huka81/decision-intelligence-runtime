@@ -224,7 +224,7 @@ def process_credit_request(
             alignment_flag=alignment.flag,
         )
 
-    ledger.append(pci)
+    ledger.append(pci, agent_id=AGENT_ID)
 
     payload = pci.intent_payload
     proposal = PolicyProposal(

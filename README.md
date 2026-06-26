@@ -20,52 +20,51 @@ This repository contains the architectural concepts, formal specifications, and 
 
 ---
 
-## Architectural Convergence & Validation
+## Why Another Agent Runtime?
 
-The publication of *Intelligent AI Delegation* by Google DeepMind (February 2026, arXiv:2602.11865) confirms the architectural direction we have been developing since early 2025. Their formalization of "Responsibility Transfer," "Auditability," and "Permission Handling" as fundamental requirements for agentic systems aligns with the patterns we have been validating in production environments.
+The current discussion around Agentic AI is rapidly converging on a common observation: production systems require governance beyond prompt engineering.
 
-The independent convergence is notable:
+Different communities describe different aspects of the problem:
 
-* **Google's "Responsibility Transfer"** ≈ **ROA Responsibility Contracts**
-* **Google's "Auditability"** ≈ **DecisionFlow ID (DFID)**
-* **Google's "Permission Handling"** ≈ **Decision Integrity Module (DIM)**
+- **Principal Drift** emphasizes authority, delegation, and accountability.
+- **Agent Experience (AX)** focuses on exposing the right context and capabilities to autonomous systems.
+- **Enterprise AI Governance** emphasizes policy enforcement, auditability, and human oversight.
+- **Evaluation frameworks** measure reliability after deployment.
+- **Workflow and orchestration platforms** focus on execution and coordination.
 
-This alignment reinforces that these patterns are not vendor-specific abstractions-they are architectural necessities for production-grade agentic systems.
+Notably, this convergence is confirmed by recent research such as Google DeepMind's *Intelligent AI Delegation* (2026), which formalizes "Responsibility Transfer", "Auditability", and "Permission Handling" as core requirements for agentic systems. We have observed that these theoretical requirements map directly to DIR's architectural primitives (ROA Contracts, DFID tracing, and the DIM gate). **[Read the full framework comparison: Google DeepMind vs. DIR/ROA](./docs/00-introduction/Intelligent_Delegation_Framework_Mapping.md)**
 
-### Industry Validation: Google DeepMind vs. DIR Implementation
+Decision Intelligence Runtime starts from a core question:
 
-While Google's *Intelligent AI Delegation* (2026) outlines the *theoretical* requirements for safe agentic systems, **DIR provides the open-source architectural implementation available today.**
+> *What are the minimal conditions that must simultaneously hold before an autonomous decision is allowed to execute?*
 
-| Requirement (Google DeepMind) | DIR Implementation (This Repo) | Status |
-| :--- | :--- | :--- |
-| **Verifiable Task Completion** | **Topology C (DL+PCI)** <br> *Cryptographic Proof-Carrying Intents* | ✅ Implemented |
-| **Transfer of Authority** | **Responsibility Contracts** <br> *Machine-readable scope definitions* | ✅ Implemented |
-| **Permission Handling** | **Kernel Space (DIM)** <br> *Deterministic policy enforcement* | ✅ Implemented |
-| **Structural Transparency** | **DecisionFlow ID (DFID)** <br> *End-to-end distributed tracing* | ✅ Implemented |
+DIR proposes that many of these discussions can be viewed through a common architectural lens called the **Legal Decision State (LDS)**.
 
+### The Core Philosophy: Legal Decision State (LDS)
 
-**[Read the full framework comparison: Google DeepMind vs. DIR/ROA](./docs/00-introduction/Intelligent_Delegation_Framework_Mapping.md)**
+DIR is built on the formal premise that an AI agent cannot be trusted to maintain system integrity probabilistically. Instead, the runtime ensures that the system never enters an **Illegal Decision State**.
 
----
+A decision is considered execution-safe—and allowed to pass through the runtime—only when five independent dimensions are simultaneously satisfied. We call this the **Legal Decision State (LDS)**:
 
-## Quick Start
+$$LDS = C \wedge A \wedge I \wedge E \wedge T$$
 
-The fastest way to see the DIR architecture in action:
+![Legal Decision State Invariants](./assets/images/lds-octagon.png)
 
-```bash
-pip install -e .
-python samples/00_quick_start/run.py
-```
+If any of these components is false ($\neg C \vee \neg A \vee \neg I \vee \neg E \vee \neg T$), the decision is structurally illegal and must be aborted. Every component in the DIR ecosystem exists exclusively to protect one of these invariants:
 
-This sample demonstrates protection against catastrophic actions (e.g. parsing error turning 15.5 ETH into 15,500 ETH) and prompt injection in external data. High-level overview of the full architecture. See [samples/00_quick_start](samples/00_quick_start/README.md).
+- **Context (C):** Protected by the **Context Store** & **Context-as-Code (CaC)**. Ensures the agent is not acting on stale, hallucinated, or mission-drifted data.
+- **Authority (A):** Protected by **Responsibility-Oriented Agents (ROA)**. Ensures the agent's proposed action does not exceed its explicitly registered contractual limits.
+- **Intent (I):** Protected by **SDS Grammars** & **DIM Schema Validation**. Ensures the action is syntactically valid and structurally executable.
+- **Evidence (E):** Protected by the **Evidence Governance Layer**. Detects "Compliant Lies" by ensuring the action is backed by deterministically reproducible reasoning.
+- **Time (T):** Protected by **JIT State Verification** & **Drift Envelopes**. Prevents Time-of-Check to Time-of-Use (TOCTOU) races by ensuring reality hasn't shifted between LLM reasoning and API execution.
 
----
+*The Decision Integrity Module (DIM) is the deterministic gatekeeper that mathematically enforces this equation before any side effect occurs.*
 
-## Start Here
+Rather than embedding these guarantees inside prompts or increasingly capable language models, DIR externalizes them into deterministic runtime infrastructure.
 
-If you are new to DIR/ROA, begin with the introduction article. It explains the core motivation ("Day Two" failures in production systems), the Kernel Space vs. User Space architectural boundary, and why traditional agentic loops are insufficient for high-stakes environments.
+The goal is not to make language models perfectly intelligent.
 
-**[Read: Beyond Prompt Engineering - Building a Deterministic Runtime for Responsible AI Agents](./docs/00-introduction/DIR-introduction.md)**
+The goal is to make imperfect language models economically and operationally safe to deploy.
 
 ## Why use DIR today?
 
@@ -78,6 +77,8 @@ Big Tech providers are beginning to theorize about "Agent Runtimes" as proprieta
 * **Context as Code:** Documentation is the new compiler - Markdown files act as system prompts for AI agents. *([Context as Code](./docs/08-conclusion/Context_as_Code.md))*
 
 ## Core Concepts
+
+If you are new to DIR/ROA, begin with the **[Introduction Article](./docs/00-introduction/DIR-introduction.md)** to understand the "Day Two" failures in production systems, the Kernel Space vs. User Space architectural boundary, and why traditional agentic loops are insufficient for high-stakes environments. Then, explore the core pillars below:
 
 ### 1. Responsibility-Oriented Agents (ROA)
 *Current Status: Published*
@@ -121,6 +122,12 @@ An architectural defense against "Day Three" problems, where an agent's individu
 
 **[Read Governance & Agent Drift](./docs/04-governance/DIR_Governance.md)**
 
+### 5. Machine-Optimized Specification
+
+**[DIR-minified.md](./docs/07-dir-minified/DIR-minified.md)** is a **single-file, machine-optimized** version of the framework specification. It is intended **for use as context** by LLMs and code-generation agents (e.g. Cursor, Claude, Devin), not as primary reading for humans. If you are feeding this repo to an AI to implement or extend DIR, attach this file as the main spec; the human-oriented docs remain the narrative and tutorial layer.
+
+For short answers to common engineering questions, see the **[FAQ](./FAQ.md)**.
+
 ---
 
 # Getting Started
@@ -132,39 +139,58 @@ An architectural defense against "Day Three" problems, where an agent's individu
 
 ## Installation
 
-1. Clone the repository.
-2. Install the package in editable mode:
+Install the published package:
 
 ```bash
+pip install dir-core
+```
+
+Or clone this repository if you want to run the samples or work with the source code:
+
+```bash
+git clone https://github.com/huka81/decision-intelligence-runtime.git
+cd decision-intelligence-runtime
 pip install -e .
 ```
+
 *This installs the `dir_core` package (source in `src/dir_core`), making it available to all sample implementations.*
+
+## Quick Start
+
+From the cloned repository, run the Quick Start sample to see the DIR architecture in action:
+
+```bash
+python samples/00_quick_start/run.py
+```
+
+This sample demonstrates protection against catastrophic actions (e.g. parsing error turning 15.5 ETH into 15,500 ETH) and prompt injection in external data. It gives a high-level overview of the full architecture. See [samples/00_quick_start](samples/00_quick_start/README.md).
 
 ## Repository Structure
 
 ```text
 decision-intelligence-runtime/
-├── README.md
-├── FAQ.md                    # Frequently asked questions (architecture, adoption, compliance)
-├── pyproject.toml            # pip install -e . installs dir_core (incl. dir_core.utils for samples)
-├── requirements.txt          # Shared dependencies
-├── src/
-│   └── dir_core/             # Core DIR/ROA components (per docs spec)
-│       # DFID, EventBus, DIM, Context Store, models, arbitration, PCI, etc.
-│       └── utils/            # Supporting utilities for samples
-│           # logging_utils, config_loader, llm_client (synthetic market: samples/31_finance_trading/mocks/)
-├── samples/                  # Reference implementations (01–11 mechanics, 31+ use cases)
-│   ├── README.md             # Sample catalog and run instructions
-│   ├── 00_quick_start/ … 08_custom_repo_psql/ … 11_topology_c_dl_pci/
-│   ├── 31_finance_trading/ … 35_crewai_roa_wrapper/ … 36_drift_optimization_discount/ … 37_drift_semantic_refund/ … 38_drift_environmental_bidding/
-│   └── 88_meta_context_engineering/   # Meta-sample: System Prompt Toolkit
 ├── docs/                     # Architectural documentation
 │   ├── 00-introduction/      # DIR intro, framework mapping
 │   ├── 01-roa-manifesto/
 │   ├── 02-decision-runtime/
 │   ├── 03-topologies/
+│   ├── 04-governance/
 │   ├── 07-dir-minified/      # Machine-optimized single-file spec (DIR-minified.md)
 │   └── 08-conclusion/        # Context as Code concept
+├── src/
+│   └── dir_core/             # Core DIR/ROA components (per docs spec)
+│       │                     # DFID, EventBus, DIM, Context Store, models, arbitration, PCI, etc.
+│       └── utils/            # Supporting utilities for samples
+│                             # logging_utils, config_loader, llm_client (synthetic market: samples/31_finance_trading/mocks/)
+├── samples/                  # Reference implementations (01–11 mechanics, 31+ use cases)
+│   ├── README.md             # Sample catalog and run instructions
+│   ├── 00_quick_start/ … 08_custom_repo_psql/ … 11_topology_c_dl_pci/
+│   ├── 31_finance_trading/ … 38_drift_environmental_bidding/
+│   └── 88_meta_context_engineering/   # Meta-sample: System Prompt Toolkit
+├── README.md
+├── FAQ.md                    # Frequently asked questions (architecture, adoption, compliance)
+├── pyproject.toml            # pip install -e . installs dir_core (incl. dir_core.utils for samples)
+├── requirements.txt          # Shared dependencies
 └── assets/                   # Images, diagrams
 ```
 
@@ -177,24 +203,6 @@ The project includes a comprehensive set of reference implementations, divided i
 Execute any sample from the repository root: `python samples/<folder>/run.py`
 
 **[View the full catalog of Samples & Reference Implementations](samples/README.md)**
-
----
-## Documentation
-
-- **[DIR Introduction](./docs/00-introduction/DIR-introduction.md)** - Architectural motivation and Kernel Space / User Space boundary.
-- **[ROA Manifesto](./docs/01-roa-manifesto/ROA_Manifesto.md)** - Responsibility-oriented agent design.
-- **[DIR Architecture](./docs/02-decision-runtime/DIR_Architectural_Pattern.md)** - Runtime components and invariants.
-- **[Topologies](./docs/03-topologies/DIR_Topologies.md)** - Operational modes (EOAM, SDS, DL+PCI).
-- **[Governance & Drift](./docs/04-governance/DIR_Governance.md)** - Managing aggregate safety and business health over time.
-- **[Context as Code](./docs/08-conclusion/Context_as_Code.md)** - Treating documentation as a system prompt.
-- **[FAQ](./FAQ.md)** - Answers to common engineering questions about DIR/ROA: "Day Two" failure modes, Kernel vs User Space, comparison with orchestration frameworks, JIT state verification, idempotency, compliance (e.g. EU AI Act and Proof-Carrying Intents), and incremental adoption.
-
-
-### Machine-optimized specification: DIR-minified.md
-
-**[DIR-minified](./docs/07-dir-minified/DIR-minified.md)** is a **single-file, machine-optimized** version of the framework specification. It is intended **for use as context** by LLMs and code-generation agents (e.g. Cursor, Claude, Devin), not as primary reading for humans.
-
-The document is intentionally **radical** (dense, exhaustive) and **redundant** (repeats key constraints and examples in multiple places) so that a model loading it as context has a complete, self-contained picture of ROA, DIR, and the three topologies without chasing links. If you are feeding this repo to an AI to implement or extend DIR, attach **DIR-minified.md** as the main spec; the human-oriented docs in `docs/` remain the narrative and tutorial layer.
 
 ---
 

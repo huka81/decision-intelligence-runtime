@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 # dir-core keeps pip install name and import path aligned (frictionless adoption).
 name = "dir-core"
-version = "0.2.0"
+version = "0.3.0"
 description = "Decision Intelligence Runtime - deterministic Kernel Space for agentic AI"
 readme = "README.md"
 license = "Apache-2.0"
-authors = [{ name = "Artur Huk" }]
+authors = [{ name = "Artur Huk", email = "artur.huk.it@gmail.com" }]
 # Per LS-1 rule in DIR-minified.md
 requires-python = ">=3.12"
 keywords = ["ai", "agents", "decision-intelligence", "roa", "dir", "llm", "governance"]

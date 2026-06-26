@@ -164,6 +164,7 @@ def build_repository(
         context=PgContextStorage(conn),
         idempotency=PgIdempotencyStorage(conn),
         decision_audit=PgDecisionAuditStorage(conn),
+        decision_ledger=PgDecisionLedgerStorage(conn),
         saga=PgSagaStorage(conn),
         resource_lock=PgResourceLockStorage(conn),
         intent_retry=PgIntentRetryStorage(conn),
@@ -501,6 +502,100 @@ class PgDecisionAuditStorage:
             )
             rows = cur.fetchall()
         return [self._row_to_event(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# DIR §5.4 — Decision Ledger (Topology C / DL+PCI)
+# ---------------------------------------------------------------------------
+
+
+class PgDecisionLedgerStorage:
+    """PostgreSQL backend for decision_ledger_entries."""
+
+    def __init__(self, conn: psycopg2.extensions.connection) -> None:
+        self._conn = conn
+
+    def init_schema(self) -> None:
+        pass
+
+    @staticmethod
+    def _row_to_entry(row: tuple[Any, ...]) -> Dict[str, Any]:
+        committed = row[7]
+        if hasattr(committed, "isoformat"):
+            committed = committed.isoformat().replace("+00:00", "Z")
+        else:
+            committed = str(committed)
+        return {
+            "dfid": row[0],
+            "root_dfid": row[1],
+            "agent_id": row[2],
+            "intent_payload": json.loads(row[3] or "{}"),
+            "context_ref": row[4],
+            "evidence_hash": row[5],
+            "signature": row[6],
+            "committed_at": committed,
+        }
+
+    def append(
+        self,
+        pci: Any,
+        *,
+        agent_id: str,
+        root_dfid: Optional[str] = None,
+    ) -> None:
+        rd = root_dfid or pci.dfid
+        with self._conn.cursor() as cur:
+            _ensure_decision_flow_for_dfid(cur, pci.dfid, agent_id=agent_id)
+            cur.execute(
+                """
+                INSERT INTO decision_ledger_entries
+                    (dfid, root_dfid, agent_id, intent_payload, context_ref,
+                     evidence_hash, signature)
+                VALUES (%s, %s, %s, %s::jsonb, %s, %s, %s)
+                ON CONFLICT (dfid) DO NOTHING
+                """,
+                (
+                    pci.dfid,
+                    rd,
+                    agent_id,
+                    dumps_json_dict(pci.intent_payload),
+                    pci.context_ref,
+                    pci.evidence_hash,
+                    pci.signature or "",
+                ),
+            )
+        self._conn.commit()
+
+    def get_by_dfid(self, dfid: str) -> Optional[Dict[str, Any]]:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT dfid, root_dfid, agent_id, intent_payload::text,
+                       context_ref, evidence_hash, signature, committed_at
+                FROM decision_ledger_entries
+                WHERE dfid = %s
+                """,
+                (dfid,),
+            )
+            row = cur.fetchone()
+        return self._row_to_entry(row) if row else None
+
+    def entries_for_dfid(self, dfid: str) -> List[Dict[str, Any]]:
+        entry = self.get_by_dfid(dfid)
+        return [entry] if entry else []
+
+    def all_entries_chronological(self) -> List[Dict[str, Any]]:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT dfid, root_dfid, agent_id, intent_payload::text,
+                       context_ref, evidence_hash, signature, committed_at
+                FROM decision_ledger_entries
+                ORDER BY id ASC
+                """
+            )
+            rows = cur.fetchall()
+        return [self._row_to_entry(r) for r in rows]
 
 
 # ---------------------------------------------------------------------------

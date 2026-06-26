@@ -1,5 +1,5 @@
 """
-Storage Protocols for dir_core modules (DIR §2.3, §6.2, §7, §8, §9).
+Storage Protocols for dir_core modules (DIR ?2.3, ?6.2, ?7, ?8, ?9).
 
 Implement any Protocol to create a custom storage backend (PostgreSQL, Redis,
 CSV, cloud KV store, etc.). Pass the instance via the ``storage=`` kwarg of the
@@ -9,7 +9,7 @@ For JSON columns (audit ``details``, idempotency ``result``), implementations
 should use :func:`~dir_core.storage.json_util.dumps_json_dict` so custom
 backends match the built-in SQLite and sample PostgreSQL encodings.
 
-Example — custom PostgreSQL backend for AgentRegistry::
+Example ? custom PostgreSQL backend for AgentRegistry::
 
     class MyPgAgentStorage:
         def init_schema(self) -> None: ...
@@ -34,7 +34,7 @@ class ResourceContentionError(StorageError):
 
 
 # ---------------------------------------------------------------------------
-# Agent Registry (DIR §2.3)
+# Agent Registry (DIR ?2.3)
 # ---------------------------------------------------------------------------
 
 
@@ -77,7 +77,7 @@ class AgentRegistryStorage(Protocol):
 
 
 # ---------------------------------------------------------------------------
-# Context Store (DIR §8)
+# Context Store (DIR ?8)
 # ---------------------------------------------------------------------------
 
 
@@ -109,7 +109,7 @@ class ContextStorage(Protocol):
 
 
 # ---------------------------------------------------------------------------
-# Idempotency (DIR §7)
+# Idempotency (DIR ?7)
 # ---------------------------------------------------------------------------
 
 
@@ -172,7 +172,7 @@ class DecisionAuditStorage(Protocol):
 
 
 class AuditStore:
-    """Repository helper: append-only audit rows plus idempotent replay (DIR §7).
+    """Repository helper: append-only audit rows plus idempotent replay (DIR ?7).
 
     Combines :class:`DecisionAuditStorage` (``decision_audit_events``) and
     :class:`IdempotencyStorage` (``idempotency_cache``). Construct from a
@@ -235,7 +235,7 @@ class AuditStore:
 
 
 # ---------------------------------------------------------------------------
-# Saga Compensation (DIR §7, Topologies §6.4)
+# Saga Compensation (DIR ?7, Topologies ?6.4)
 # ---------------------------------------------------------------------------
 
 
@@ -261,7 +261,7 @@ class SagaStorage(Protocol):
 
 
 # ---------------------------------------------------------------------------
-# Resource Locking (DIR §6.2)
+# Resource Locking (DIR ?6.2)
 # ---------------------------------------------------------------------------
 
 
@@ -312,7 +312,7 @@ class ResourceLockStorage(Protocol):
 
 
 # ---------------------------------------------------------------------------
-# Intent Retry Governor (DIR §6.2)
+# Intent Retry Governor (DIR ?6.2)
 # ---------------------------------------------------------------------------
 
 
@@ -332,7 +332,7 @@ class IntentRetryStorage(Protocol):
 
 
 # ---------------------------------------------------------------------------
-# Escalation Manager (DIR §9)
+# Escalation Manager (DIR ?9)
 # ---------------------------------------------------------------------------
 
 
@@ -377,7 +377,39 @@ class EscalationStorage(Protocol):
 
 
 # ---------------------------------------------------------------------------
-# Lifecycle (DIR §4.3)
+# Decision Ledger (DIR 5.4, Topology C / DL+PCI)
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class DecisionLedgerStorage(Protocol):
+    def init_schema(self) -> None: ...
+
+    def append(
+        self,
+        pci: "ProofCarryingIntent",
+        *,
+        agent_id: str,
+        root_dfid: Optional[str] = None,
+    ) -> None:
+        """Append a verified PCI. Implementations MUST be append-only (DIR-2)."""
+        ...
+
+    def get_by_dfid(self, dfid: str) -> Optional[Dict[str, Any]]:
+        """Return one ledger entry dict for *dfid*, or None."""
+        ...
+
+    def entries_for_dfid(self, dfid: str) -> List[Dict[str, Any]]:
+        """Return ledger entries for *dfid* (0 or 1 row per flow)."""
+        ...
+
+    def all_entries_chronological(self) -> List[Dict[str, Any]]:
+        """Return all ledger entries in insertion order."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle (DIR ?4.3)
 # ---------------------------------------------------------------------------
 
 

@@ -387,7 +387,7 @@ def run_email_pipeline(
 
     if context_store is None:
         context_store = ContextStore(storage=bundle.context)
-    ledger = DecisionLedger()
+    ledger = DecisionLedger(storage=bundle.decision_ledger)
     dim = DecisionIntegrityModule(registry, context_store, ledger)
     agent = ROAUnderwriterAgent(registry, agent_id, llm)
 

@@ -162,7 +162,7 @@ def _submit(
         use_registry_contract=False,
     )
     if verdict == ValidationVerdict.ACCEPT:
-        ledger.append(pci)
+        ledger.append(pci, agent_id=_AGENT_ID)
         log_with_dfid(logger, dfid, logging.INFO, "ACCEPT ledger_append")
         return True
 

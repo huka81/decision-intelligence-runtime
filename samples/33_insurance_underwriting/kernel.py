@@ -134,7 +134,7 @@ class DecisionIntegrityModule:
             return "TIV Exceeds Contract Max"
 
         # All checks passed: commit to Ledger
-        self.ledger.append(pci)
+        self.ledger.append(pci, agent_id=agent_id)
         logger.info("[DFID=%s] Policy Bound.", pci.dfid[:8])
         return "Policy Bound"
 
