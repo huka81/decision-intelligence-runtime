@@ -44,11 +44,13 @@ DIR proposes that many of these discussions can be viewed through a common archi
 
 DIR is built on the formal premise that an AI agent cannot be trusted to maintain system integrity probabilistically. Instead, the runtime ensures that the system never enters an **Illegal Decision State**.
 
+<p align="center">
+	<img src="./assets/images/lds-octagon.jpg" alt="Legal Decision State Invariants" width="60%">
+</p>
+
 A decision is considered execution-safe—and allowed to pass through the runtime—only when five independent dimensions are simultaneously satisfied. We call this the **Legal Decision State (LDS)**:
 
 $$LDS = C \wedge A \wedge I \wedge E \wedge T$$
-
-![Legal Decision State Invariants](./assets/images/lds-octagon.png)
 
 If any of these components is false ($\neg C \vee \neg A \vee \neg I \vee \neg E \vee \neg T$), the decision is structurally illegal and must be aborted. Every component in the DIR ecosystem exists exclusively to protect one of these invariants:
 
