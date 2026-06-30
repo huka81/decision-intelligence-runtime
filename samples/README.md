@@ -58,6 +58,7 @@ Przykłady typu biznesowy use case, łączące mechanizmy w pełne scenariusze.
 | 37 | [37_drift_semantic_refund](37_drift_semantic_refund/) | DIR + DIM + Monitor | **Support refunds** | **Drift Vector 2 — The agent is manipulated by the user.** This sample demonstrates *Semantic Drift*, where the agent breaks core business rules because it yields to emotional language. DIM accepts these actions because the refund amounts are within legal limits, highlighting that hard constraints cannot prevent empathy-driven rule breaking. |
 | 38 | [38_drift_environmental_bidding](38_drift_environmental_bidding/) | DIR + DIM + Monitor | **AdTech / bidding** | **Drift Vector 3 — The environment changes around the agent.** This sample demonstrates *Environmental Drift*, where the agent acts perfectly but market costs escalate. While bids remain under the DIM contract cap, the ROI turns negative, showing how static rules fail when the outside world shifts and why dynamic ROI monitors are essential. |
 | 39 | [39_fintech_evidence_governance](39_fintech_evidence_governance/) | [Topology C](../docs/03-topologies/DIR_Topologies.md) | **Fintech / credit limits** | **Full §8 defense-in-depth:** Evidence Hierarchy (Compliant Lie), Semantic Alignment (proxy gaming), and rolling approval-rate drift monitor for automated credit-limit chat decisions. |
+| 40 | [40_retention_airlock](40_retention_airlock/) | classic + `scenarios.yaml` | **Customer retention** | **Architecture of Trust implementation:** end-to-end multi-layer airlock — Syntactic + Fact + Evidence governance, Intent Retry Governor, escalation on Compliant Lie, and Temporal circuit breaker on margin drift. |
 
 ---
 
@@ -82,6 +83,7 @@ python samples/36_drift_optimization_discount/run.py
 python samples/37_drift_semantic_refund/run.py
 python samples/38_drift_environmental_bidding/run.py
 python samples/39_fintech_evidence_governance/run.py
+python samples/40_retention_airlock/run.py
 ```
 
 Each sample has its own `README.md` with goal, how to run, and expected output.

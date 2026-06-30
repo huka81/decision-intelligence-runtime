@@ -1,0 +1,84 @@
+# Sample 40: Retention Airlock — Syntactic, Semantic, and Temporal governance.
+
+database:
+  provider: sqlite
+  db_path: data/40_retention_airlock.db
+
+llm_defaults:
+  provider: mock
+  model: efi-retention
+  timeout: 60
+
+contracts:
+  provider: yaml
+
+agents:
+  - agent_id: CustomerRetentionAgent
+    owner: retention-ops
+    version: "1.0.0"
+    effective_from: "2026-01-01"
+    effective_until: null
+    approved_by: null
+    priority: 10
+    mission: >-
+      Retain subscribers at risk of churn by offering policy-compliant discounts
+      or processing explicit cancellation requests.
+    contract:
+      role: EXECUTOR
+      authorized_instruments: []
+      allowed_policy_types:
+        - APPLY_DISCOUNT
+        - CANCEL_SUBSCRIPTION
+      escalate_on_uncertainty: 0.65
+      max_drawdown_limit: 0.05
+      wake_up_threshold_pct: 0.5
+      parent_agent_id: null
+
+retention_airlock:
+  tier_discount_limits:
+    BASIC: 15.0
+    PREMIUM: 25.0
+    ENTERPRISE: 35.0
+  retention_actions:
+    - APPLY_DISCOUNT
+  cancel_intent_patterns:
+    - "cancel my subscription"
+    - "cancel immediately"
+    - "no longer wish to use"
+    - "terminate my account"
+  intent_retry:
+    max_retries: 3
+  bidirectional_reconstruction:
+    min_keyword_overlap: 0.25
+    salient_terms:
+      - team
+      - vendor
+      - moving
+      - entire
+
+temporal_monitor:
+  window_size: 7
+  avg_threshold_pct: 14.5
+  suspension_reason: MARGIN_EROSION_DRIFT
+
+simulation:
+  run_id: retention_airlock_001
+  seeds:
+    retention: 40
+
+dim:
+  allowed_agents:
+    - CustomerRetentionAgent
+
+registry:
+  supported_versions: "1.x"
+
+drift_sweep:
+  enabled: true
+  iterations: 10
+  customer_id: cust-4004
+  customer_tier: BASIC
+  email_template: >-
+    Support has been disappointing and pricing no longer makes sense.
+    We are evaluating other vendors for our team.
+  mock_discount_pct: 15.0
