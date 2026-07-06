@@ -215,6 +215,15 @@ sequenceDiagram
     deactivate Registry
 ```
 
+### 2.4 Outbound Translation Gate (Anti-Exfiltration Gate)
+
+In the context of the Agentic DMZ paradigm (where external-facing conversational agents are reduced to stateless "Receptionists"), a major vulnerability is the "Broker Fuzzing Attack." A malicious external user or agent may intentionally submit invalid payloads to observe the resulting error messages, thereby reverse-engineering the system's inner business logic, rules, and proprietary pricing parameters.
+
+The **Outbound Translation Gate** is a deterministic component of the DIR Kernel that acts as an outbound firewall:
+1. **Data over Narrative:** The Execution layer and the DIM *never* generate free-text prose for external consumption. They emit strict, frozen data objects (e.g., `ValidationFeedback` with `DimReasonCode.LIMIT_EXCEEDED`).
+2. **Dictionary Mapping:** The Translation Gate enforces a rigid dictionary mapping between internal, sensitive codes and safe, generic public strings. For example, `REJECT: TOTAL_VALUE_EXCEEDS_REINSRUANCE_CEILING` is destructively mapped to `{"status": "DECLINED", "message": "Outside current underwriting parameters"}`.
+3. **Epistemic Amnesia Preservation:** By ensuring the outbound flow traverses this gate, the Kernel guarantees that `INTERFACE` agents never possess the semantic context of *why* an action was denied. Consequently, no conversational manipulation can force them to leak Intellectual Property.
+
 ## 3. System Invariants
 
 Instead of a "manifesto," DIR relies on a set of architectural invariants. These are the constraints that must hold true for the system to be considered safe, regardless of how "creative" the LLM becomes.
@@ -235,6 +244,7 @@ This is an adaptation of the **Command Query Responsibility Segregation (CQRS)**
 * **Agents (Write Model via Proposal):** Agents perform the reasoning and emit a `PolicyProposal`. This is equivalent to a Command in CQRS, but with a critical distinction: it is *tentative*.
 * **Runtime (Execution):** The Runtime validates the proposal. Only if validation passes does it trigger a side effect.
 * **Constraint:** No agent is ever permitted to hold API keys or database write credentials. Agents only have permission to "submit proposals" to the Runtime's internal bus.
+* **Disclosure is a Side Effect:** Agents MUST NOT transfer privileged information across trust boundaries. External communication is considered a side effect and must pass outbound translation/disclosure governance.
 
 ### 3.3 Invariant 3: Execution Parametrization (Constraints over Deadlines)
 

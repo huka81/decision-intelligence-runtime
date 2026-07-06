@@ -254,6 +254,7 @@ flowchart LR
 **The Wall is absolute:**
 - Agents MUST NOT hold API keys or database write credentials
 - Agents MUST NOT execute side effects directly
+- Agents MUST NOT transfer privileged information across trust boundaries (Disclosure is a side effect)
 - No prompt grants execution privilege  -  `Prompts are not permissions`
 - No "trusted agent" bypasses validation
 - LLMs MUST NOT exist in Kernel Space
@@ -308,7 +309,7 @@ class ResponsibilitySpec(BaseModel):
 
 class ResponsibilityContract(BaseModel):
     agent_id: str = Field(description="Unique identifier for this agent instance")
-    role: Literal["STRATEGIST", "EXECUTOR", "MONITOR"] = Field(default="EXECUTOR")
+    role: Literal["STRATEGIST", "EXECUTOR", "MONITOR", "INTERFACE"] = Field(default="EXECUTOR")
     version: str = Field(description="Immutable versioning for audit trails")
     owner: str = Field(description="Named human accountable for this agent's behavior")
 
@@ -358,7 +359,16 @@ Note the `owner` field: every contract MUST have a named human accountable for i
 
 The `evidence_level` field bridges the contract to the Evidence Governance Layer (§3.4): `high` = both Evidence Generators required; `medium` = one sufficient; `low` = Self-Check only.
 
-The Agent Registry also maintains the **Runtime Status** of each agent
+The Agent Registry also maintains the **Runtime Status** of each agent.
+
+### 3.1.1 The Four Canonical Roles
+
+The `role` field in the Responsibility Contract aligns an agent with its structural purpose in the system. ROA defines four canonical roles:
+
+1. **`INTERFACE` (The Receptionist):** Operates at the edge (DMZ) communicating with external systems or users. Its `Working Context` is deliberately starved of business logic to prevent IP exfiltration. It possesses zero execution authority and can only emit normalized Input Artifacts (bounded JSON payloads) to the internal Event Bus. It is explicitly forbidden from generating a `PolicyProposal`, an `EvidencePackage`, or a `PCI`.
+2. **`STRATEGIST` (The Planner):** A high-level agent operating in the Internal Core. It synthesizes broad context over long horizons. It delegates specific tasks to Executors, monitors macro trends, and manages parent DecisionFlows (Sagas).
+3. **`EXECUTOR` (The Operator):** The standard tactical agent. Reads parsed payloads from `INTERFACE` agents or delegates from a `STRATEGIST`. Analyzes specific scenarios against rich business rules in its Context Store and produces `PolicyProposals` aimed at the Kernel Space validator (DIM).
+4. **`MONITOR` (The Auditor):** A specialized read-only or post-execution governance agent. It audits the `explain` histories of other agents asynchronously to detect phenomena like Semantic Drift. It cannot execute business actions, but it can trigger circuit breakers to suspend other agents.
 
 ### 3.2 The Decision Lifecycle: Explain → Policy → Self-Check → Emit
 
@@ -426,6 +436,58 @@ This trajectory enables coherent multi-cycle reasoning: the agent's current prop
 **Without Epistemic Longevity:** Agent proposes BUY → rejected (position limit) → re-triggered → proposes BUY again → rejected again → infinite loop. The agent has no memory of being rejected.
 
 **With Epistemic Longevity:** Agent proposes BUY → rejected → Memory Context records rejection + reason → next cycle, agent sees "last BUY rejected: POSITION_LIMIT_EXCEEDED" → proposes HOLD instead.
+
+### 3.2b User Space Anatomy: The Agentic DMZ and Epistemic Amnesia
+
+A semantic design pattern in ROA is the **Agentic DMZ (Contextual Air-Gap)**, neutralizing conversational attacks (prompt leaking, reverse-engineering of IP) by leveraging the `INTERFACE` role.
+
+The principle is **Information Hiding**:
+1. **The `INTERFACE` Agent (Edge / DMZ):** Suffering from extreme **Epistemic Amnesia** (implemented as Context Starvation), its `WorkingContext` contains zero proprietary business rules or logic—only instructions on how to parse an external conversational prompt into a JSON payload. An attacker cannot extract secrets because the agent simply does not know them.
+2. **The `STRATEGIST` / `EXECUTOR` (Internal Core):** Does not talk to external users. It reads the sterile JSON off the Event Bus, queries the Context Store containing the actual business logic, generates bounds-checked decisions, and emits a `PolicyProposal` towards the Kernel Space (DIM) for execution.
+
+This intentionally degrades the agent's conversational "nuance" regarding business decisions to mathematically guarantee trade secrets (Pricing Models, Risk Appetites) cannot be exfiltrated.
+
+```mermaid
+flowchart LR
+    classDef dmz fill:#FFEBEE,stroke:#C62828,stroke-width:2px,color:#B71C1C,font-weight:bold
+    classDef core fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold
+
+    User((External User))
+
+    subgraph UserSpace ["USER SPACE"]
+        direction TB
+        subgraph DMZ ["DMZ (Edge Zone)"]
+            direction LR
+            InterfaceAgent(["INTERFACE Agent<br/>(Receptionist)"]):::dmz
+            InterfaceNote["Role: Data Collection<br/>Context: ZERO Business Logic"]:::dmz
+            InterfaceAgent -.- InterfaceNote
+        end
+
+        subgraph Internal_Core ["INTERNAL CORE (Air-gapped)"]
+            direction LR
+            ExecutorAgent(["STRATEGIST / EXECUTOR Agent<br/>(The Brain)"]):::core
+            ExecutorNote["Role: Business Logic<br/>Context: Pricing, Rules, Strategy"]:::core
+            ExecutorAgent -.- ExecutorNote
+        end
+    end
+
+    subgraph KernelSpace ["KERNEL SPACE (The Wall)"]
+        direction LR
+        OutboundGate{"Outbound Translation Gate<br/>(Redacts PII / Proprietary Rules)"}:::kernelSpace
+        DIM{"Decision Integrity Module (DIM)"}:::kernelSpace
+    end
+    
+    ExecutionEngine["Execution Engine"]:::infraSpace
+
+    User <-->|Conversational Chat| InterfaceAgent
+    InterfaceAgent -->|"Raw JSON Payload (via Event Bus)"| ExecutorAgent
+    ExecutorAgent -->|PolicyProposal| DIM
+    DIM -->|Validated Intent| ExecutionEngine
+    DIM -.->|Raw Rejection Code| OutboundGate
+    OutboundGate -.->|Sanitized Public Error| InterfaceAgent
+```
 
 ### 3.3 Policy Proposal  -  The Output Contract
 
@@ -1242,6 +1304,14 @@ This check may invoke a lightweight LLM call — it is intentionally placed **ou
 
 **Time as a Hard Constraint:** If `current_time > policy.valid_until`, the proposal is rejected immediately. Prevents "queued command" problem where a backlog of old decisions executes hours later.
 
+### 4.4a Outbound Translation Gate (Anti-Exfiltration Gate)
+
+In systems with an Agentic DMZ, a major vulnerability is the "Broker Fuzzing Attack"—external agents submitting invalid payloads to observe Kernel errors, effectively stealing internal logic (e.g. knowing exactly what the upper limit for discounts is).
+The Outbound Translation Gate sits in Kernel Space and prevents this:
+1. **Data over Narrative:** The Kernel never generates free-text prose for the outward response; only frozen data objects.
+2. **Dictionary Mapping:** It uses a static dictionary mapping to translate sensitive internal codes (e.g. `LIMIT_EXCEEDED_TIER_4`) into vague public errors (`DECLINED: Outside parameters`), simultaneously scrubbing PII. 
+3. **Preserving Epistemic Amnesia:** Because this mapping is managed inside the Kernel, the `INTERFACE` agent in the DMZ never receives the explanation of *why* the underlying action was denied, making it immune to conversational manipulation.
+
 ### 4.5 JIT State Verification  -  Anti-TOCTOU
 
 LLM latency makes TOCTOU (Time-of-Check to Time-of-Use) races inevitable. The Runtime mitigates this with Just-In-Time State Verification executed **immediately before** the external API call.
@@ -1620,7 +1690,10 @@ flowchart TB
 
 **When to use:** Complex decisions requiring multi-perspective analysis where multiple domain experts should reason in parallel (Risk + Strategy + Sentiment), and the "best" outcome requires synthesis or priority-based preemption.
 
-**EOAM Interface Constraint:** EOAM uses typed events and structured proposals, not free-form inter-agent conversation. The transport layer is a dumb pipe; routing decisions come from Registry-defined rules. Activation MUST follow least-privilege subscription and routing constraints. Agent-to-agent dialogue MUST NOT be treated as a synchronization or authority mechanism.
+**EOAM Semantic Security Limits & The EventBus Protocol:**
+
+1. **Semantic Security Limits (Epistemic Amnesia):** Agents operating at the edge (`INTERFACE` in the DMZ) must have zero knowledge of deep business logic, pricing models, or internal thresholds (e.g., maximum discount limits). By physically excluding these secrets from their `WorkingContext`, the system achieves algorithmic immunity against prompt-leaking and Intellectual Property (IP) extraction techniques (e.g., fuzzing or roleplay jailbreaks). Semantic security is enforced not via NLP filters, but via strict **Information Hiding**.
+2. **EventBus Protocol (Observation vs. Action Boundaries):** The Event Bus in User Space facilitates structured data passing and observation sharing, not direct execution. Because the EventBus has ZERO execution authority, messages flowing across it do not require DIM validation. However, to prevent data leaks, the bus requires strict **information-flow control** managed by the Agent Registry (Least Privilege subscription). DIM protects the mutation boundary, while Registry and Event Bus protect the disclosure boundary. This protocol strictly separates **Observation Boundaries** (signals flowing safely through the Event Bus) from **Action Boundaries** (state-mutating `PolicyProposals` that must strike The Wall and pass DIM). Agent-to-agent dialogue MUST NOT be treated as a synchronization, execution, or authority mechanism.
 
 ```mermaid
 ---

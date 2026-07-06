@@ -193,7 +193,19 @@ flowchart LR
     style Execution fill:#FAFAFA,stroke:#F57C00,stroke-width:3px
 ```
 
-### 2.5 Holistic EOAM Architecture (Example Implementation)
+### 2.5 The Agent DMZ (Semantic Design Pattern)
+
+Within the EOAM topology, a critical semantic design pattern is the **Agentic DMZ (Demilitarized Zone)**. This pattern mitigates the profound threat of conversational AI: the extraction of Intellectual Property (IP), proprietary pricing algorithms, or internal policy rules via "fuzzing" attacks or prompt injections from external users or autonomous broker bots.
+
+Instead of introducing a new topology, the DMZ acts as a strict arrangement of agents within the Event-Oriented Agent Mesh, leveraging the fundamental division of **Action (Write) boundaries vs. Observation (Read) boundaries**:
+
+1. **The `INTERFACE` Agent (The Receptionist):** Positioned at the Edge. This agent interacts directly with external entities. Under the principle of Context Starvation (Epistemic Amnesia), it has absolute zero knowledge of the business logic. It simply parses noisy conversational input into clean structural events. It is explicitly forbidden from generating a `PolicyProposal`, an `EvidencePackage`, or a `PCI`.
+2. **The Event Bus (Observation Boundary):** The Event Bus facilitates communication between the Edge Zone and the Internal Core without activating the Decision Integrity Module (DIM). **Crucially:** Communications across the bus do not require DIM validation because the bus carries signal distribution—not execution intent. It holds no *executable* authority. However, to prevent data leaks (like a DMZ agent intercepting sensitive internal payloads), the bus requires strict **information-flow control** managed by the Agent Registry (Least Privilege subscription). DIM protects the mutation boundary, while the Registry and Event Bus protect the disclosure boundary.
+3. **The `STRATEGIST` / `EXECUTOR` Agent (The Brain):** Positioned in the Internal Core, structurally "air-gapped" from the external world. It subscribes to the Event Bus, reads the structural JSON payload emitted by the Receptionist, and applies its proprietary business intelligence to emit a true `PolicyProposal`. Since it does not interact directly with external prompts, its contextual knowledge remains secure.
+
+This pattern demonstrates the EOAM philosophy: the mesh handles the distribution of non-executable signals safely under static least-privilege rules (the Event Bus), while the DIM stands guard exclusively at the final Rubicon of state mutation (the The Wall / Outbound Execution).
+
+### 2.6 Holistic EOAM Architecture (Example Implementation)
 
 The following diagram illustrates a complete "Event-Oriented Agent Mesh" implementation, derived from the **AIvestor** reference system. It demonstrates how Data Sources, Agents, and Execution components map to the DIR architectural spaces (Infrastructure, User, Kernel).
 

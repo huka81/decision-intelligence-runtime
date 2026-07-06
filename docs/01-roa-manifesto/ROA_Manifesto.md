@@ -207,7 +207,7 @@ class ResponsibilitySpec(BaseModel):
 
 class ResponsibilityContract(BaseModel):
     agent_id: str
-    role: Literal["STRATEGIST", "EXECUTOR", "MONITOR"]
+    role: Literal["STRATEGIST", "EXECUTOR", "MONITOR", "INTERFACE"]
     version: str = Field(description="Immutable versioning for audit trails")
     owner: str = Field(description="Named human accountable for this agent's behavior")
 
@@ -228,7 +228,7 @@ The canonical deployment form is a YAML file registered via a CI/CD pipeline —
 agent_id: "crypto_position_manager_01"
 version: "1.2.0"
 owner: "jane.doe@example.com"          # Human accountability — who answers for this agent?
-role: "EXECUTOR"
+role: "EXECUTOR" # Can be STRATEGIST, EXECUTOR, MONITOR, or INTERFACE
 
 # 1. Mission — why this agent exists
 mission: "Manage crypto positions. Protect capital while seeking alpha."
@@ -251,6 +251,17 @@ responsibility:
 ```
 
 This explicit, typed definition allows the Runtime to validate the agent's behavior *before* any action is taken — and allows auditors to inspect the governance requirements independently of the agent's code.
+
+### 3.1.1 The Four Canonical Roles
+
+The `role` field in the Responsibility Contract aligns an agent with its structural purpose in the system. ROA defines four canonical roles:
+
+1. **`INTERFACE` (The Receptionist):** Operates at the edge (DMZ) communicating with external systems or users. Its `Working Context` is deliberately starved of business logic to prevent IP exfiltration. It possesses zero execution authority and can only emit normalized Input Artifacts (bounded JSON payloads) to the internal Event Bus. It is explicitly forbidden from generating a `PolicyProposal`, an `EvidencePackage`, or a `PCI`.
+2. **`STRATEGIST` (The Planner):** A high-level agent operating in the Internal Core. It synthesizes broad context over long horizons. It delegates specific tasks to Executors, monitors macro trends, and manages parent DecisionFlows (Sagas).
+3. **`EXECUTOR` (The Operator):** The standard tactical agent. Reads parsed payloads from `INTERFACE` agents or delegates from a `STRATEGIST`. Analyzes specific scenarios against rich business rules in its Context Store and produces `PolicyProposals` aimed at the Kernel Space validator (DIM).
+4. **`MONITOR` (The Auditor):** A specialized read-only or post-execution governance agent. It audits the `explain` histories of other agents asynchronously to detect phenomena like Semantic Drift. It cannot execute business actions, but it can trigger circuit breakers to suspend other agents.
+
+These roles ensure that agents are explicitly engineered for their topological function, heavily enforcing the principle of Least Privilege on their Context Stores and Authority Levels.
 
 ---
 
@@ -374,6 +385,61 @@ The actor model solves **how to execute concurrent behaviors**.
 ROA addresses **what these behaviors mean**, **why they exist**, and **how they should be governed within a decision system**.
 
 Where actors are primarily technical constructs, ROA introduces a *semantic layer* that aligns agents with organizational logic - bringing structure, constraints, and accountability to LLM-driven reasoning.
+
+---
+
+## **3.7 User Space Anatomy: The Agentic DMZ and Epistemic Amnesia**
+
+A powerful pattern enabled by the ROA framework is the **Agentic DMZ (Demilitarized Zone)** or **Contextual Air-Gap**. This addresses a fundamental vulnerability in text-based agent systems: the extraction of Intellectual Property (IP) and business logic through advanced prompt injection or conversational negotiation. 
+
+If a conversational agent knows the negotiation limits (e.g., maximum discount, pricing algorithms), a malicious actor can often manipulate it into revealing them. The Agentic DMZ solves this by applying the principle of **Information Hiding**:
+
+1. **The `INTERFACE` Agent (The Receptionist):** Placed in the DMZ (the outer edge of User Space). This agent converses with the outside world. Crucially, it suffers from **Epistemic Amnesia** (implemented as Context Starvation). Its `Working Context` contains ONLY rules for parsing user intent into a structural JSON payload. It knows *zero* business logic, pricing limits, or strategic rules. It cannot leak IP because it simply does not possess it. Its `AuthorityLevel` is strictly zero for structural mutation—it can only emit the parsed payload to the internal Event Bus.
+2. **The `STRATEGIST` / `EXECUTOR` Agent (The Brain):** Placed in the Internal Core (Air-Gapped). This agent never speaks to the external user. It reads the clean JSON payload from the Event Bus, queries the Context Store, applies proprietary business logic, and generates a `PolicyProposal` towards the Kernel Space (DIM) for execution.
+
+By separating the conversational frontend from the authorized backend, the architecture trades some conversational fluidity (UX friction) for absolute protection of Intellectual Property and business rules against conversational attacks.
+
+```mermaid
+flowchart LR
+    classDef dmz fill:#FFEBEE,stroke:#C62828,stroke-width:2px,color:#B71C1C,font-weight:bold
+    classDef core fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold
+
+    User((External User))
+
+    subgraph UserSpace ["USER SPACE"]
+        direction TB
+        subgraph DMZ ["DMZ (Edge Zone)"]
+            direction LR
+            InterfaceAgent(["INTERFACE Agent<br/>(Receptionist)"]):::dmz
+            InterfaceNote["Role: Data Collection<br/>Context: ZERO Business Logic"]:::dmz
+            InterfaceAgent -.- InterfaceNote
+        end
+
+        subgraph Internal_Core ["INTERNAL CORE (Air-gapped)"]
+            direction LR
+            ExecutorAgent(["STRATEGIST / EXECUTOR Agent<br/>(The Brain)"]):::core
+            ExecutorNote["Role: Business Logic<br/>Context: Pricing, Rules, Strategy"]:::core
+            ExecutorAgent -.- ExecutorNote
+        end
+    end
+
+    subgraph KernelSpace ["KERNEL SPACE (The Wall)"]
+        direction LR
+        OutboundGate{"Outbound Translation Gate<br/>(Redacts PII / Proprietary Rules)"}:::kernelSpace
+        DIM{"Decision Integrity Module (DIM)"}:::kernelSpace
+    end
+    
+    ExecutionEngine["Execution Engine"]:::infraSpace
+
+    User <-->|Conversational Chat| InterfaceAgent
+    InterfaceAgent -->|"Raw JSON Payload (via Event Bus)"| ExecutorAgent
+    ExecutorAgent -->|PolicyProposal| DIM
+    DIM -->|Validated Intent| ExecutionEngine
+    DIM -.->|Raw Rejection Code| OutboundGate
+    OutboundGate -.->|Sanitized Public Error| InterfaceAgent
+```
 
 ---
 
