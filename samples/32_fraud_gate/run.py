@@ -14,6 +14,7 @@ strategy, fake PSP). Run from repo root: ``python samples/32_fraud_gate/run.py``
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -364,12 +365,12 @@ def main() -> None:
     logger.info("SUMMARY: finished %d scenarios (simulation_id=%s)", len(scenarios), simulation_id)
     logger.info("Report: %s", report_path)
 
-    # Open HTML report in browser
-    print(f"\nOpening report in browser: {report_path}")
-    try:
-        webbrowser.open(str(report_path.resolve()))
-    except Exception as e:
-        logger.error("Failed to open report in browser: %s", e)
+    print(f"\nReport written: {report_path}")
+    if os.environ.get("DIR_OPEN_BROWSER") == "1":
+        try:
+            webbrowser.open(str(report_path.resolve()))
+        except Exception as e:
+            logger.error("Failed to open report in browser: %s", e)
 
 
 if __name__ == "__main__":

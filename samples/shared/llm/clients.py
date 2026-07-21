@@ -68,7 +68,7 @@ class OllamaClient(LLMClient):
             raise
 
 class GeminiClient(LLMClient):
-    """Sync client for Google Gemini API using google-generativeai SDK."""
+    """Sync client for Google Gemini API using the google-genai SDK."""
 
     def __init__(
         self,
@@ -86,11 +86,12 @@ class GeminiClient(LLMClient):
             timeout: Request timeout in seconds
         """
         try:
-            import google.generativeai as genai
+            from google import genai
+            from google.genai import types
         except ImportError:
             raise ImportError(
-                "google-generativeai package is not installed. "
-                "Please install it using 'pip install google-generativeai'."
+                "google-genai package is not installed. "
+                "Please install it using 'pip install google-genai'."
             )
 
         self.model_name = model
@@ -105,46 +106,39 @@ class GeminiClient(LLMClient):
                 "Gemini API key not provided. Set api_key parameter or "
                 "GOOGLE_API_KEY/GEMINI_API_KEY environment variable."
             )
-        
-        genai.configure(api_key=self.api_key)
-        self.client = genai.GenerativeModel(model_name=self.model_name)
+
         self.timeout = timeout
+        self._client = genai.Client(
+            api_key=self.api_key,
+            http_options=types.HttpOptions(timeout=timeout * 1000),
+        )
 
     def generate(self, prompt: str, system: Optional[str] = None) -> str:
+        from google.genai import types
+
         logger.debug(
             "Gemini request (SDK): model=%s, prompt_len=%d, system_len=%d",
             self.model_name, len(prompt), len(system or ""),
         )
 
         try:
-            # Prepare contents
-            history = []
+            config_kwargs: dict = {
+                "temperature": 0.7,
+                "top_k": 40,
+                "top_p": 0.95,
+                "max_output_tokens": 2048,
+            }
             if system:
-                # System instructions in SDK are best handled via system_instruction 
-                # during model initialization, but for compatibility with this interface 
-                # we can use a multi-turn approach or re-init model.
-                # Here we use the simplified multi-turn injection if needed or 
-                # just initialize with system instruction if possible.
-                import google.generativeai as genai
-                model = genai.GenerativeModel(
-                    model_name=self.model_name,
-                    system_instruction=system
-                )
-            else:
-                model = self.client
+                config_kwargs["system_instruction"] = system
 
-            response = model.generate_content(
-                prompt,
-                generation_config={
-                    "temperature": 0.7,
-                    "top_k": 40,
-                    "top_p": 0.95,
-                    "max_output_tokens": 2048,
-                }
+            response = self._client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(**config_kwargs),
             )
 
-            res_text = response.text.strip()
-            
+            res_text = (response.text or "").strip()
+
             preview = (
                 res_text[:200] + "..." if len(res_text) > 200 else res_text
             )
@@ -159,12 +153,12 @@ class GeminiClient(LLMClient):
             logger.warning("Gemini SDK request failed: %s", e)
             raise
 
-    def list_available_models(self):
+    def list_available_models(self) -> None:
         """List available models from Google Generative AI."""
-        import google.generativeai as genai
         print("Available models:")
-        for model in genai.list_models():
-            print(model.name)
+        for model in self._client.models.list():
+            name = getattr(model, "name", None) or str(model)
+            print(name)
 
 
 class MockLLMClient(LLMClient):

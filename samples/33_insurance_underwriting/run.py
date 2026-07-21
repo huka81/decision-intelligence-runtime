@@ -222,7 +222,8 @@ def main() -> None:
         )
         logger.info("")
         logger.info("  HTML report: %s", report_path.resolve())
-        webbrowser.open(report_path.resolve().as_uri())
+        if os.environ.get("DIR_OPEN_BROWSER") == "1":
+            webbrowser.open(report_path.resolve().as_uri())
     except Exception as exc:
         run_status = "error"
         logger.exception("Run failed: %s", exc)
