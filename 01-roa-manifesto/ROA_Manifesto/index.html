@@ -1,0 +1,3801 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Deterministic execution kernel for autonomous AI agents.">
+      
+      
+      
+        <link rel="canonical" href="https://huka81.github.io/decision-intelligence-runtime/01-roa-manifesto/ROA_Manifesto/">
+      
+      
+        <link rel="prev" href="../../00-introduction/DIR-introduction/">
+      
+      
+        <link rel="next" href="../../02-decision-runtime/DIR_Architectural_Pattern/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Responsible-Oriented Agents - Decision Intelligence Runtime (DIR)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#responsibility-oriented-agents-roa-manifesto" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Decision Intelligence Runtime (DIR)" class="md-header__button md-logo" aria-label="Decision Intelligence Runtime (DIR)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Decision Intelligence Runtime (DIR)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Responsible-Oriented Agents
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/huka81/decision-intelligence-runtime" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../00-introduction/DIR-introduction/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../09-pages/package/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Package
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../10-api-reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../09-pages/samples/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Samples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../09-pages/faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../09-pages/author/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  About
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Decision Intelligence Runtime (DIR)" class="md-nav__button md-logo" aria-label="Decision Intelligence Runtime (DIR)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Decision Intelligence Runtime (DIR)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/huka81/decision-intelligence-runtime" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../00-introduction/DIR-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Responsible-Oriented Agents
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Responsible-Oriented Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#an-architectural-pattern-for-reliable-accountable-ai-decision-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        An architectural pattern for reliable, accountable AI decision systems
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-decision-runtime/DIR_Architectural_Pattern/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Intelligence Runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-topologies/DIR_Topologies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topologies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-governance/DIR_Governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance & Agent Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-conclusion/Context_as_Code/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context as code
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../00-introduction/Intelligent_Delegation_Framework_Mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligent AI delegation framework mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../09-pages/package/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Package
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/package/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/package/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/package/ports_and_adapters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ports & Adapters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/package/core_components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/package/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models & DTOs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../10-api-reference/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kernel Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/topology_a/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topology A (EOAM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/topology_c/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topology C (DL+PCI)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/database_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../09-pages/samples/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Samples
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Samples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/00_quick_start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 - Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/01_roa_agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 - ROA agent
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/02_dfid_propagation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 - DFID propagation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/03_idempotency_guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 - Idempotency guard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/04_context_store/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 - Context store
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/05_dim_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 - DIM validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/06_agent_registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 - Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/07_event_bus_swappable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 - Event bus (swappable)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/08_custom_repo_psql/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 - Custom repo (PostgreSQL)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/09_topology_a_eoam/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 - Topology A (EOAM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/10_topology_b_sds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 - Topology B (SDS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/11_topology_c_dl_pci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 - Topology C (DL+PCI)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/12_compliant_lie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 - Compliant Lie (Evidence Governance)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/31_finance_trading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31 - Finance trading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/32_fraud_gate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32 - Fraud gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/33_insurance_underwriting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33 - Insurance underwriting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/34_langchain_roa_wrapper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34 - LangChain ROA wrapper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/35_crewai_roa_wrapper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35 - CrewAI ROA wrapper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/36_drift_optimization_discount/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    36 - Drift optimization discount
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/37_drift_semantic_refund/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    37 - Drift semantic refund
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/38_drift_environmental_bidding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    38 - Drift environmental bidding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/39_fintech_evidence_governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    39 - Fintech evidence governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/88_meta_context_engineering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    88 - Meta context engineering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/author/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About the author
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#an-architectural-pattern-for-reliable-accountable-ai-decision-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        An architectural pattern for reliable, accountable AI decision systems
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<p><sup> Author: Artur Huk | <a href="https://github.com/huka81/decision-intelligence-runtime">GitHub</a> | Created: 2025-12-11 | Last updated: 2026-02-20 </sup></p>
+<hr />
+<h1 id="responsibility-oriented-agents-roa-manifesto">Responsibility-Oriented Agents (ROA) Manifesto</h1>
+<p><img alt="The Evolution of Agent Architecture" src="../../assets/images/1_roa_scratch.png" /></p>
+<h3 id="an-architectural-pattern-for-reliable-accountable-ai-decision-systems">An architectural pattern for reliable, accountable AI decision systems</h3>
+<h1 id="0-abstract"><strong>0. Abstract</strong></h1>
+<p>Large Language Models have enabled a new generation of AI systems-flexible, expressive, and capable of synthesizing insights across domains. Yet despite this progress, building reliable <strong>decision-making</strong> systems on top of LLMs remains surprisingly fragile. Most current “agent” frameworks wrap LLM calls in orchestration layers, hoping that structure will translate into coherent behavior. In practice, these systems often lack determinism, boundaries, accountability, and a clear separation between <em>reasoning</em> and <em>execution</em>.</p>
+<p>This article introduces <strong>Responsibility-Oriented Agents (ROA)</strong>: a conceptual architecture derived from practical experiments with LLM-driven systems. ROA does not attempt to replace existing tools but to address a fundamental gap: agents today do not have <strong>responsibility</strong>-a defining property of any real decision-making unit. The ROA model introduces explicit responsibility contracts, missions, authority boundaries, stateful long-lived agents, and a clean separation between policy formation and deterministic runtime execution.</p>
+<p>The goal is not to present a definitive solution, but to offer a structured perspective on how LLM-based agents might evolve into systems that behave predictably, can be audited, and can be trusted to act-not just generate text.</p>
+<blockquote>
+<p><strong>ROA agents are epistemic entities.
+They interpret, explain, and propose.
+They provide no safety, correctness, or enforcement guarantees.</strong></p>
+</blockquote>
+<hr />
+<blockquote>
+<p><strong>A Note on Nomenclature:</strong> Readers familiar with RESTful architectures will recognize ROA as Resource-Oriented Architecture[^1]. In the context of Autonomous AI, we consciously repurpose this acronym to stand for Responsibility-Oriented Agents. Just as classic ROA treats Resources as the primary addressable entities, our architecture treats Responsibilities (bounded scopes of authority) as the primary primitives of the system. We believe that in the age of probabilistic AI, defining "Who is responsible?" is as foundational as defining "What is the resource?" in the age of the web.</p>
+</blockquote>
+<hr />
+<h1 id="1-introduction-when-powerful-models-are-not-enough"><strong>1. Introduction - When Powerful Models Are Not Enough</strong></h1>
+<p>Over the past few years, advances in Large Language Models have created the impression that AI systems are on the verge of autonomous decision-making. Models can reason, explain, plan, and interact across APIs with surprising fluency. It is tempting to assume that wrapping an LLM in an “agent framework” is enough to turn it into a functional decision-maker.</p>
+<p>My experience suggests otherwise.</p>
+<p>LLM-based systems are undeniably powerful, but they also exhibit characteristics that make them difficult to use as the foundation for reliable operational decisions: they are slow, non-deterministic, sensitive to prompt phrasing, and lack a stable, well-defined interface. LLMs excel at <strong>interpreting context</strong> and <strong>proposing actions</strong>, but they struggle when used as the sole mechanism for executing, validating, or governing decisions.</p>
+<p>Meanwhile, the industry’s response has mostly been to build increasingly elaborate agent frameworks on top of LLMs. These frameworks typically coordinate chains of reasoning, tool calls, or multi-agent dialogues, hoping that emergent structure will produce consistent decision-making. In practice, these systems often behave unpredictably: decisions lack justification, state is ephemeral, boundaries are unclear, and repeated executions of identical workflows may diverge sharply.</p>
+<p>This is not a critique of any single tool. Many of these frameworks are impressive engineering efforts, and they solve real problems. But taken together, they reveal a deeper architectural gap:</p>
+<blockquote>
+<p><strong>Our agents do not have responsibility. And responsibility-not raw capability-is what makes a system intelligent in a way we can rely on.</strong></p>
+</blockquote>
+<p>In human organizations, responsibilities are explicit:
+someone owns risk, someone owns execution, someone owns strategy.
+This separation is not a limitation-it is the foundation of coherent decision-making.</p>
+<p>In current AI systems, this structure is largely absent. Agents are treated as generic orchestrators of LLM calls. They do not have a mission, boundaries, or persistent memory of what they decided before. They do not escalate when reaching the limits of their authority. They do not participate in a governance model that regulates how decisions propagate.</p>
+<p>The purpose of this article is to explore a different architectural direction-one rooted in <strong>responsibility</strong>, not emergent complexity. Over the last year, while building LLM-driven prototypes such as <em>AIvestor</em>, I began shaping an approach that feels more aligned with how decision-making actually works in real systems:</p>
+<p><strong>Responsibility-Oriented Agents (ROA)</strong>.</p>
+<p>This article presents the foundational ideas behind ROA-
+not as a final answer, but as a structured attempt to address the limitations I repeatedly encountered.</p>
+<p>If LLMs are the engine, ROA tries to define the steering, the brakes, and the structure that lets us use that engine responsibly.</p>
+<blockquote>
+<p><em>Responsibility is the only abstraction that simultaneously binds authority, memory, escalation, and accountability into a single, governable unit.
+Capability, intent, or role alone cannot do this.</em></p>
+</blockquote>
+<hr />
+<h1 id="2-the-core-problem-a-lack-of-responsibility-in-todays-agents"><strong>2. The Core Problem: A Lack of Responsibility in Today’s Agents</strong></h1>
+<p>The recent wave of “agent frameworks” has created an appealing narrative: if an LLM can reason and call tools, then wrapping it in loops, roles, or workflows should transform it into an autonomous decision-maker. In practice, however, most of these systems struggle with the same underlying issue:</p>
+<blockquote>
+<p><strong>they lack a clear notion of responsibility.</strong></p>
+</blockquote>
+<p>This is not just a missing feature - it is an architectural void.</p>
+<h2 id="21-agents-today-are-orchestration-not-decision-makers"><strong>2.1 Agents today are orchestration, not decision-makers</strong></h2>
+<p>Most existing agent implementations operate as thin abstractions over LLM inference:</p>
+<ul>
+<li>They generate tasks.</li>
+<li>They call tools.</li>
+<li>They chain thoughts using prompts.</li>
+<li>They sometimes coordinate with other agents through scripted patterns.</li>
+</ul>
+<p>But none of these mechanisms provide what real decision-makers require:</p>
+<ul>
+<li><em>accountability</em>,</li>
+<li><em>defined authority</em>,</li>
+<li><em>consistency</em>,</li>
+<li><em>stateful reasoning over time</em>,</li>
+<li>or <em>the ability to justify and stand behind a decision</em>.</li>
+</ul>
+<p>Instead, agents tend to behave as ephemeral event processors, with each step delegated to a non-deterministic, stateless model. This creates a subtle but important mismatch: we use a system designed for <strong>semantic synthesis</strong> to perform <strong>operational decision-making</strong>, without giving it the structure such work demands.</p>
+<h2 id="22-missing-mission-missing-boundaries"><strong>2.2 Missing mission, missing boundaries</strong></h2>
+<p>When agents lack:</p>
+<ul>
+<li>a mission (what they optimize),</li>
+<li>boundaries (what they may or may not decide),</li>
+<li>escalation paths (what happens when they reach their limits),</li>
+<li>and authority constraints (which actions they are allowed to take),</li>
+</ul>
+<p>they effectively become free-floating processes.
+They act <em>somewhere</em> between “chatbot,” “workflow engine,” and “assistant,”
+without truly being any of these.</p>
+<p>The result is systems where:</p>
+<ul>
+<li>outcomes change unpredictably across runs,</li>
+<li>tool use is inconsistent,</li>
+<li>reasoning paths drift,</li>
+<li>unexpected behaviors accumulate over time,</li>
+<li>and no one can answer the question:
+  <strong>“Who was responsible for this decision?”</strong></li>
+</ul>
+<h2 id="23-the-cost-of-non-deterministic-decision-loops"><strong>2.3 The cost of non-deterministic decision loops</strong></h2>
+<p>LLMs excel at interpreting context on demand, but relying on them inside tight decision loops creates several problems:</p>
+<ul>
+<li><strong>Latency</strong>: every decision becomes expensive and slow.</li>
+<li><strong>Non-determinism</strong>: repeated runs diverge, making testing and auditing difficult.</li>
+<li><strong>State loss</strong>: without explicit memory, agents forget their own reasoning history.</li>
+<li><strong>Unbounded autonomy</strong>: agents may take actions that make sense locally but violate system-wide constraints.</li>
+</ul>
+<p>These issues are not signs of flawed engineering - they are natural consequences of building decision-making systems <em>around</em> an LLM rather than <em>on top of a structured architecture</em>.</p>
+<h2 id="24-emergence-is-not-a-substitute-for-structure"><strong>2.4 Emergence is not a substitute for structure</strong></h2>
+<p>Some agent frameworks rely on emergent behavior: multiple agents communicating, negotiating, or collaborating through LLM-mediated conversation. While interesting for research, this pattern does not scale into predictable enterprise systems. Emergent dynamics can be impressive in demos but are difficult to govern, reproduce, or integrate into safety-critical or compliance-heavy environments.</p>
+<p>If agents do not know <em>what they own</em>, <em>what they optimize</em>, or <em>what they are accountable for</em>, then emergent collaboration tends toward instability rather than intelligence.</p>
+<h2 id="25-responsibility-as-the-missing-primitive"><strong>2.5 Responsibility as the missing primitive</strong></h2>
+<p>Looking at real organizations, one observation is striking:</p>
+<blockquote>
+<p><strong>Intelligence arises not from individuals doing everything,
+but from individuals doing specific things - with clarity.</strong></p>
+</blockquote>
+<p>Responsibility defines:</p>
+<ul>
+<li>who decides,</li>
+<li>who acts,</li>
+<li>who evaluates,</li>
+<li>who escalates,</li>
+<li>and who learns from the outcome.</li>
+</ul>
+<p>Current agent frameworks lack this foundational element.
+They treat agents as general-purpose wrappers around LLMs rather than as accountable units of a decision system.</p>
+<p>Responsibility is not a constraint - it is what <em>enables</em> intelligence to scale.</p>
+<p>ROA is an attempt to make this principle explicit.</p>
+<hr />
+<h1 id="3-what-is-a-responsibility-oriented-agent"><strong>3. What Is a Responsibility-Oriented Agent?</strong></h1>
+<p>A Responsibility-Oriented Agent (ROA) is not a wrapper around an LLM and not a conversational interface with tool access. It is a <em>long-lived, bounded decision-making unit</em> with an explicit mission, authority, memory, and contractual limits on what it may or may not decide.</p>
+<p>If most contemporary agents answer the question <em>“What can the model do next?”</em>, ROA answers a different, more structural question:</p>
+<blockquote>
+<p><strong>“What is this agent responsible for - and what would it mean to perform that responsibility well?”</strong></p>
+</blockquote>
+<p>The distinction is subtle but profound.
+Instead of trying to make LLMs behave like autonomous generalists, ROA organizes the system around clearly defined responsibilities, just as real-world organizations do.</p>
+<p>Below are the foundational elements of a Responsibility-Oriented Agent.</p>
+<hr />
+<h2 id="31-responsibility-contract"><strong>3.1 Responsibility Contract</strong></h2>
+<p>Each agent in ROA is defined not by its personality or its toolset, but by a <strong>Responsibility Contract</strong> - a formal description of its role in the decision architecture.</p>
+<p>A Responsibility Contract specifies:</p>
+<ul>
+<li><strong>Mission:</strong> The agent's optimization target or guiding principle. What does success look like?</li>
+<li><strong>Authority boundaries:</strong> Which actions it is allowed to take, the maximum impact of those actions (e.g., financial limits), and which actions it must not take.</li>
+<li><strong>Responsibility (Governance):</strong> The operational requirements the agent must meet, such as required evidence levels, explainability mandates, and explicit escalation criteria (when it must defer to a higher-level agent or human).</li>
+</ul>
+<p>This contract acts as the "job description" and transforms ROA from a conceptual idea into <strong>machine-readable governance</strong>. Each of the three blocks maps directly to a typed schema — not an opaque dict, but a validated, versioned, machine-evaluable object:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Dict</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AuthoritySpec</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;What the agent is permitted to do and the hard limits on that permission.</span>
+<span class="sd">    Enforced deterministically by the Decision Integrity Module (DIM) in Kernel Space.&quot;&quot;&quot;</span>
+    <span class="n">authorized_instruments</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">allowed_policy_types</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">max_order_size_usd</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">max_drawdown_limit_pct</span><span class="p">:</span> <span class="nb">float</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ResponsibilitySpec</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Governance requirements the agent must meet.</span>
+<span class="sd">    Enforced by the Evidence Governance Layer (User Space) and Post-Execution Monitors.&quot;&quot;&quot;</span>
+    <span class="n">explainability</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;required&quot;</span><span class="p">,</span> <span class="s2">&quot;optional&quot;</span><span class="p">]</span>
+    <span class="n">evidence_level</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">,</span> <span class="s2">&quot;medium&quot;</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">]</span>
+    <span class="n">escalation</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;mandatory&quot;</span><span class="p">,</span> <span class="s2">&quot;conditional&quot;</span><span class="p">,</span> <span class="s2">&quot;disabled&quot;</span><span class="p">]</span>
+    <span class="n">escalate_on_uncertainty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Confidence threshold below which escalation is triggered&quot;</span>
+    <span class="p">)</span>
+    <span class="n">aggregate_thresholds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Day-Three defense: limits for Post-Execution Monitors&quot;</span>
+    <span class="p">)</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ResponsibilityContract</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">role</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;STRATEGIST&quot;</span><span class="p">,</span> <span class="s2">&quot;EXECUTOR&quot;</span><span class="p">,</span> <span class="s2">&quot;MONITOR&quot;</span><span class="p">,</span> <span class="s2">&quot;INTERFACE&quot;</span><span class="p">]</span>
+    <span class="n">version</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Immutable versioning for audit trails&quot;</span><span class="p">)</span>
+    <span class="n">owner</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Named human accountable for this agent&#39;s behavior&quot;</span><span class="p">)</span>
+
+    <span class="c1"># 1. Mission — the agent&#39;s optimization target</span>
+    <span class="n">mission</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="c1"># 2. Authority — deterministic boundaries enforced by DIM in Kernel Space</span>
+    <span class="n">authority</span><span class="p">:</span> <span class="n">AuthoritySpec</span>
+
+    <span class="c1"># 3. Responsibility — governance requirements enforced by Evidence Governance Layer</span>
+    <span class="n">responsibility</span><span class="p">:</span> <span class="n">ResponsibilitySpec</span>
+</code></pre></div>
+<p>The canonical deployment form is a YAML file registered via a CI/CD pipeline — never self-registered by the agent at runtime:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># agent_contract.yaml — registered via CI/CD pipeline, NOT self-registered by agent</span>
+<span class="nt">agent_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;crypto_position_manager_01&quot;</span>
+<span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1.2.0&quot;</span>
+<span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;jane.doe@example.com&quot;</span><span class="w">          </span><span class="c1"># Human accountability — who answers for this agent?</span>
+<span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;EXECUTOR&quot;</span><span class="w"> </span><span class="c1"># Can be STRATEGIST, EXECUTOR, MONITOR, or INTERFACE</span>
+
+<span class="c1"># 1. Mission — why this agent exists</span>
+<span class="nt">mission</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Manage</span><span class="nv"> </span><span class="s">crypto</span><span class="nv"> </span><span class="s">positions.</span><span class="nv"> </span><span class="s">Protect</span><span class="nv"> </span><span class="s">capital</span><span class="nv"> </span><span class="s">while</span><span class="nv"> </span><span class="s">seeking</span><span class="nv"> </span><span class="s">alpha.&quot;</span>
+
+<span class="c1"># 2. Authority — what the agent is permitted to do (enforced by DIM in Kernel Space)</span>
+<span class="nt">authority</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">authorized_instruments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;ETH-USD&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;BTC-USD&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">allowed_policy_types</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;TAKE_PROFIT&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;CLOSE_POSITION&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;REDUCE_SIZE&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;HOLD&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;BUY&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;SELL&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">max_order_size_usd</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50000.00</span>
+<span class="w">  </span><span class="nt">max_drawdown_limit_pct</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4.0</span>
+
+<span class="c1"># 3. Responsibility — governance requirements (enforced by Evidence Governance Layer)</span>
+<span class="nt">responsibility</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">explainability</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span><span class="w">            </span><span class="c1"># Explain stage is mandatory before Policy</span>
+<span class="w">  </span><span class="nt">evidence_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span><span class="w">                </span><span class="c1"># Both Evidence Generators required before signing</span>
+<span class="w">  </span><span class="nt">escalation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mandatory</span><span class="w">               </span><span class="c1"># Must escalate when uncertainty threshold is crossed</span>
+<span class="w">  </span><span class="nt">escalate_on_uncertainty</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.70</span><span class="w">       </span><span class="c1"># Confidence &lt; 70% triggers human escalation</span>
+<span class="w">  </span><span class="nt">aggregate_thresholds</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">max_average_discount_30d</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.10</span><span class="w">    </span><span class="c1"># Post-Execution Monitor suspends agent if exceeded</span>
+</code></pre></div>
+<p>This explicit, typed definition allows the Runtime to validate the agent's behavior <em>before</em> any action is taken — and allows auditors to inspect the governance requirements independently of the agent's code.</p>
+<h3 id="311-the-four-canonical-roles">3.1.1 The Four Canonical Roles</h3>
+<p>The <code>role</code> field in the Responsibility Contract aligns an agent with its structural purpose in the system. ROA defines four canonical roles:</p>
+<ol>
+<li><strong><code>INTERFACE</code> (The Receptionist):</strong> Operates at the edge (DMZ) communicating with external systems or users. Its <code>Working Context</code> is deliberately starved of business logic to prevent IP exfiltration. It possesses zero execution authority and can only emit normalized Input Artifacts (bounded JSON payloads) to the internal Event Bus. It is explicitly forbidden from generating a <code>PolicyProposal</code>, an <code>EvidencePackage</code>, or a <code>PCI</code>.</li>
+<li><strong><code>STRATEGIST</code> (The Planner):</strong> A high-level agent operating in the Internal Core. It synthesizes broad context over long horizons. It delegates specific tasks to Executors, monitors macro trends, and manages parent DecisionFlows (Sagas).</li>
+<li><strong><code>EXECUTOR</code> (The Operator):</strong> The standard tactical agent. Reads parsed payloads from <code>INTERFACE</code> agents or delegates from a <code>STRATEGIST</code>. Analyzes specific scenarios against rich business rules in its Context Store and produces <code>PolicyProposals</code> aimed at the Kernel Space validator (DIM).</li>
+<li><strong><code>MONITOR</code> (The Auditor):</strong> A specialized read-only or post-execution governance agent. It audits the <code>explain</code> histories of other agents asynchronously to detect phenomena like Semantic Drift. It cannot execute business actions, but it can trigger circuit breakers to suspend other agents.</li>
+</ol>
+<p>These roles ensure that agents are explicitly engineered for their topological function, heavily enforcing the principle of Least Privilege on their Context Stores and Authority Levels.</p>
+<hr />
+<h2 id="32-mission-goal-function"><strong>3.2 Mission (Goal Function)</strong></h2>
+<p>Responsibility describes <em>what</em> the agent owns.
+<strong>Mission describes <em>why</em> the agent exists.</strong></p>
+<p>A mission is the optimization target or guiding principle the agent follows. Different agents serve different missions:</p>
+<ul>
+<li>An instrument-level agent may aim to detect opportunities or anomalies.</li>
+<li>A portfolio-level agent may aim to balance risk and reward.</li>
+<li>A position-specific agent may aim to manage exposure according to a particular strategy.</li>
+</ul>
+<blockquote>
+<p><em>Mission in ROA is </em><em>not executable intent</em><em>.
+It is an interpretive constraint used exclusively during Explain and Policy formation.
+ROA agents may misunderstand or partially misapply their mission.</em>
+In <em>AIvestor</em>, this was explicit: the agent’s mission was to operationalize the user’s strategy on a given financial instrument while respecting risk constraints and contextual signals.</p>
+</blockquote>
+<p>A mission provides continuity, coherence, and direction - elements missing from most contemporary agent patterns, where behavior is dominated by the short-term semantics of a single prompt.</p>
+<blockquote>
+<p><strong>Formal Grounding (<code>Mission ⊂ Context</code>):</strong> In the Legal Decision State (LDS) framework, Mission is not a standalone variable. Formally, <code>Mission ⊂ Context</code>. An agent optimizing for the wrong goal (e.g., maximizing revenue instead of retention) is acting on a mutated context, triggering a <code>¬C</code> violation. The mission anchors the context; abandoning the mission is structurally equivalent to reading corrupted data.</p>
+</blockquote>
+<hr />
+<h2 id="33-role-authority-and-boundaries"><strong>3.3 Role, Authority, and Boundaries</strong></h2>
+<p>In ROA, no agent has unlimited freedom.</p>
+<p>Every agent operates within <strong>authority boundaries</strong>:</p>
+<ul>
+<li>It may propose certain actions but not execute them.</li>
+<li>It may interpret context but not alter global state directly.</li>
+<li>It may decide within its domain but escalate when the decision exceeds its mandate.</li>
+</ul>
+<p>Boundaries serve two purposes:</p>
+<ol>
+<li><strong>Safety</strong> - preventing agents from taking actions beyond their intended scope.</li>
+<li><strong>Clarity</strong> - enabling stable collaboration between agents without emergent conflicts.</li>
+</ol>
+<p>Boundaries do not weaken the agent; they make it <em>useful</em>.
+Without explicit authority, every agent becomes a free-floating generalist - and the system becomes ungovernable.</p>
+<h3 id="formal-grounding-roa-as-authority-boundary-generator">Formal Grounding: ROA as Authority Boundary Generator</h3>
+<p>Viewed through formal state integrity, the ROA authority definition is not merely a configuration concern — it is the architectural mechanism that prevents <code>¬Authority</code> conditions. A decision is only legally valid when five invariants hold simultaneously: <code>LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)</code>. If an agent proposes an action beyond its defined <code>AuthoritySpec</code> — for instance, an insurance underwriting agent proposing a premium of $200,000 when its <code>max_order_size_usd</code> is $100,000 — it creates a <code>¬A</code> condition. The decision cannot be legal regardless of how sound the reasoning was.</p>
+<p>ROA is, by this definition, the <strong>Authority Boundary Generator</strong> of the system. Without a formally registered Responsibility Contract, the Decision Integrity Module (DIM) has no machine-readable definition of <code>A</code> against which to evaluate proposals. ROA's existence is what makes the <code>¬A</code> invariant enforceable — not aspirational.</p>
+<hr />
+<h2 id="34-responsibility-governance"><strong>3.4 Responsibility (Governance)</strong></h2>
+<p>If Mission answers <em>why</em> the agent exists and Authority answers <em>what</em> it may do, Responsibility answers <strong>how</strong> it must behave while doing it.</p>
+<p>This is the governance block — the set of operational requirements the system enforces on the agent's reasoning and output pipeline, regardless of the decision content. It is machine-readable: every field in <code>ResponsibilitySpec</code> is evaluated deterministically, not interpreted by the LLM.</p>
+<h3 id="the-responsibilityspec-fields">The <code>ResponsibilitySpec</code> fields</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Enforced by</th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>explainability</code></td>
+<td style="text-align: left;"><code>"required"</code> / <code>"optional"</code></td>
+<td style="text-align: left;">ROA Decision Lifecycle</td>
+<td style="text-align: left;">Whether the Explain stage is mandatory before Policy formation</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>evidence_level</code></td>
+<td style="text-align: left;"><code>"high"</code> / <code>"medium"</code> / <code>"low"</code></td>
+<td style="text-align: left;">Evidence Governance Layer</td>
+<td style="text-align: left;">How many Evidence Generators must agree before signing the artifact</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>escalation</code></td>
+<td style="text-align: left;"><code>"mandatory"</code> / <code>"conditional"</code> / <code>"disabled"</code></td>
+<td style="text-align: left;">DIR Runtime</td>
+<td style="text-align: left;">Whether escalation to human is mandatory, conditional on threshold, or disabled</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>escalate_on_uncertainty</code></td>
+<td style="text-align: left;"><code>float</code> (0.0–1.0)</td>
+<td style="text-align: left;">DIR Runtime (DIM Gate)</td>
+<td style="text-align: left;">Confidence score below which the agent must escalate rather than emit a proposal</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>aggregate_thresholds</code></td>
+<td style="text-align: left;"><code>Dict[str, float]</code></td>
+<td style="text-align: left;">Post-Execution Monitors</td>
+<td style="text-align: left;">Rolling-window limits that trigger Circuit Breaking if exceeded (Day-Three defense)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="why-evidence_level-matters">Why <code>evidence_level</code> matters</h3>
+<p><code>evidence_level</code> is the bridge between the Responsibility Contract and the Evidence Governance Layer. It specifies the minimum rigor the User Space pipeline must achieve before signing the output artifact:</p>
+<ul>
+<li><strong><code>high</code></strong> — both Evidence Generators must agree: Differential Heuristics AND Bidirectional Reconstruction.</li>
+<li><strong><code>medium</code></strong> — one Evidence Generator sufficient.</li>
+<li><strong><code>low</code></strong> — Self-Check only; no external Evidence Generator required.</li>
+</ul>
+<p>This means the agent's contract directly governs the strength of its semantic verification pipeline. A high-stakes agent (e.g., one issuing irreversible financial transfers) declares <code>evidence_level: high</code>; a low-stakes monitoring agent may declare <code>evidence_level: low</code>.</p>
+<h3 id="why-this-is-governance-not-just-configuration">Why this is governance, not just configuration</h3>
+<p>The distinction is architectural. Configuration is read by the agent and followed as a suggestion. Governance is read by the Runtime and enforced as a constraint. The <code>ResponsibilitySpec</code> fields are evaluated by mechanisms that operate independently of the LLM:</p>
+<ul>
+<li><code>explainability</code> is enforced by the ROA Decision Lifecycle structure.</li>
+<li><code>evidence_level</code> is enforced by the Evidence Governance Layer before any artifact is signed.</li>
+<li><code>escalation</code> and <code>escalate_on_uncertainty</code> are enforced by the DIM gate in Kernel Space.</li>
+<li><code>aggregate_thresholds</code> are enforced by asynchronous Post-Execution Monitors.</li>
+</ul>
+<p>The agent cannot override these requirements by reasoning differently. They are the contract.</p>
+<hr />
+<h2 id="35-long-lived-agents-with-memory"><strong>3.5 Long-Lived Agents with Memory</strong></h2>
+<p>Unlike stateless LLM loops, ROA agents are <strong>persistent entities</strong>.
+Each agent maintains:</p>
+<ul>
+<li><strong>State</strong> - the current situation or environment it manages.</li>
+<li><strong>Decision trajectory</strong> - a record of previous choices and rationales.</li>
+<li><strong>Policy history</strong> - the evolution of its decision-making logic.</li>
+<li><strong>Contextual memory</strong> - relevant facts, constraints, or events.</li>
+</ul>
+<p>This continuity matters.
+Without it, agents lack self-awareness, cannot improve, and cannot reason about the consequences of their past actions. With it, they can function as stable decision participants rather than isolated inference calls.</p>
+<p>Persistence also allows agents to be auditable - a critical requirement for systems that must justify their decisions.</p>
+<hr />
+<h2 id="36-relationship-to-the-actor-model"><strong>3.6 Relationship to the Actor Model</strong></h2>
+<p>Responsibility-Oriented Agents build on top of principles familiar from the actor model[^2]: isolation, message passing, and concurrency. But ROA adds something the actor model does not attempt to provide:</p>
+<ul>
+<li><strong>semantics of responsibility</strong>,</li>
+<li><strong>missions</strong>,</li>
+<li><strong>authority boundaries</strong>,</li>
+<li><strong>policy formation</strong>,</li>
+<li><strong>governance</strong>,</li>
+<li><strong>and lifecycle structure</strong>.</li>
+</ul>
+<p>The actor model solves <strong>how to execute concurrent behaviors</strong>.
+ROA addresses <strong>what these behaviors mean</strong>, <strong>why they exist</strong>, and <strong>how they should be governed within a decision system</strong>.</p>
+<p>Where actors are primarily technical constructs, ROA introduces a <em>semantic layer</em> that aligns agents with organizational logic - bringing structure, constraints, and accountability to LLM-driven reasoning.</p>
+<hr />
+<h2 id="37-user-space-anatomy-the-agentic-dmz-and-epistemic-amnesia"><strong>3.7 User Space Anatomy: The Agentic DMZ and Epistemic Amnesia</strong></h2>
+<p>A powerful pattern enabled by the ROA framework is the <strong>Agentic DMZ (Demilitarized Zone)</strong> or <strong>Contextual Air-Gap</strong>. This addresses a fundamental vulnerability in text-based agent systems: the extraction of Intellectual Property (IP) and business logic through advanced prompt injection or conversational negotiation. </p>
+<p>If a conversational agent knows the negotiation limits (e.g., maximum discount, pricing algorithms), a malicious actor can often manipulate it into revealing them. The Agentic DMZ solves this by applying the principle of <strong>Information Hiding</strong>:</p>
+<ol>
+<li><strong>The <code>INTERFACE</code> Agent (The Receptionist):</strong> Placed in the DMZ (the outer edge of User Space). This agent converses with the outside world. Crucially, it suffers from <strong>Epistemic Amnesia</strong> (implemented as Context Starvation). Its <code>Working Context</code> contains ONLY rules for parsing user intent into a structural JSON payload. It knows <em>zero</em> business logic, pricing limits, or strategic rules. It cannot leak IP because it simply does not possess it. Its <code>AuthorityLevel</code> is strictly zero for structural mutation—it can only emit the parsed payload to the internal Event Bus.</li>
+<li><strong>The <code>STRATEGIST</code> / <code>EXECUTOR</code> Agent (The Brain):</strong> Placed in the Internal Core (Air-Gapped). This agent never speaks to the external user. It reads the clean JSON payload from the Event Bus, queries the Context Store, applies proprietary business logic, and generates a <code>PolicyProposal</code> towards the Kernel Space (DIM) for execution.</li>
+</ol>
+<p>By separating the conversational frontend from the authorized backend, the architecture trades some conversational fluidity (UX friction) for absolute protection of Intellectual Property and business rules against conversational attacks.</p>
+<pre class="mermaid"><code>flowchart LR
+    classDef dmz fill:#FFEBEE,stroke:#C62828,stroke-width:2px,color:#B71C1C,font-weight:bold
+    classDef core fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold
+
+    User((External User))
+
+    subgraph UserSpace ["USER SPACE"]
+        direction TB
+        subgraph DMZ ["DMZ (Edge Zone)"]
+            direction LR
+            InterfaceAgent(["INTERFACE Agent&lt;br/&gt;(Receptionist)"]):::dmz
+            InterfaceNote["Role: Data Collection&lt;br/&gt;Context: ZERO Business Logic"]:::dmz
+            InterfaceAgent -.- InterfaceNote
+        end
+
+        subgraph Internal_Core ["INTERNAL CORE (Air-gapped)"]
+            direction LR
+            ExecutorAgent(["STRATEGIST / EXECUTOR Agent&lt;br/&gt;(The Brain)"]):::core
+            ExecutorNote["Role: Business Logic&lt;br/&gt;Context: Pricing, Rules, Strategy"]:::core
+            ExecutorAgent -.- ExecutorNote
+        end
+    end
+
+    subgraph KernelSpace ["KERNEL SPACE (The Wall)"]
+        direction LR
+        OutboundGate{"Outbound Translation Gate&lt;br/&gt;(Redacts PII / Proprietary Rules)"}:::kernelSpace
+        DIM{"Decision Integrity Module (DIM)"}:::kernelSpace
+    end
+
+    ExecutionEngine["Execution Engine"]:::infraSpace
+
+    User &lt;--&gt;|Conversational Chat| InterfaceAgent
+    InterfaceAgent --&gt;|"Raw JSON Payload (via Event Bus)"| ExecutorAgent
+    ExecutorAgent --&gt;|PolicyProposal| DIM
+    DIM --&gt;|Validated Intent| ExecutionEngine
+    DIM -.-&gt;|Raw Rejection Code| OutboundGate
+    OutboundGate -.-&gt;|Sanitized Public Error| InterfaceAgent</code></pre>
+<hr />
+<h1 id="4-the-decision-lifecycle-from-explain-to-policy"><strong>4. The Decision Lifecycle: From Explain to Policy</strong></h1>
+<p>In Responsibility-Oriented Agents, the process of forming a decision is deliberately separated into clear, interpretable stages. This separation is necessary because LLMs are uniquely strong at certain cognitive tasks - contextual interpretation and generative reasoning - and equally unsuited for others, such as deterministic validation or operational execution.</p>
+<p>To prevent these roles from blending into a single opaque loop, ROA adopts a structured decision lifecycle:</p>
+<p><strong>Explain → Policy → (Self-Check) → Emit Policy Proposal</strong></p>
+<p>The remaining stages - <strong>Validate</strong> and <strong>Execute</strong> - are handled not by the agent but by the deterministic runtime. This division ensures that the agent remains responsible for <em>reasoning</em>, while the system remains responsible for <em>safety and correctness</em>.</p>
+<p><img alt="Responsibility-Oriented Agents" src="../../assets/images/context-store.svg" /></p>
+<hr />
+<h2 id="41-explain-interpreting-context-and-making-sense-of-the-situation"><strong>4.1 Explain - Interpreting Context and Making Sense of the Situation</strong></h2>
+<p>The <strong>Explain</strong> stage is where the agent answers a simple but fundamental question:</p>
+<blockquote>
+<p><em>“What is happening, and why does it matter for my mission?”</em></p>
+</blockquote>
+<p>An agent synthesizes signals from its context store, historical state, and external events.
+Explain is not just a description - it is interpretation:</p>
+<ul>
+<li>identifying relevant patterns,</li>
+<li>ignoring irrelevant noise,</li>
+<li>articulating risks and opportunities,</li>
+<li>framing the situation in a way that aligns with the agent’s responsibility.</li>
+</ul>
+<p>LLMs excel at this task. They translate complex, multi-source data into coherent narratives that can anchor subsequent decision-making.</p>
+<p>Explain does <strong>not</strong> prescribe action.
+It prepares the ground for it.</p>
+<hr />
+<h2 id="42-policy-proposing-a-course-of-action"><strong>4.2 Policy - Proposing a Course of Action</strong></h2>
+<p>Once the agent understands the situation, it formulates a <strong>Policy</strong>:</p>
+<blockquote>
+<p><em>“Given my mission and boundaries, what should be done next?”</em></p>
+</blockquote>
+<p>A Policy is not an action.
+It is a structured, interpretable recommendation that includes:</p>
+<ul>
+<li>a proposed action or plan,</li>
+<li>justification rooted in the Explain stage,</li>
+<li>confidence or uncertainty indicators,</li>
+<li>required assumptions,</li>
+<li>expected outcomes or risks.</li>
+</ul>
+<p>Policies make the reasoning <em>auditable</em>.
+They provide a clear link between context (“Explain”) and intent (“Policy”), which is essential for trust and governance.</p>
+<p>In ROA, the agent’s responsibility ends here.</p>
+<hr />
+<blockquote>
+<p><em>Self-Check is a </em><em>cost-optimization and noise-reduction heuristic</em><em>.
+It exists solely to reduce invalid or low-quality Policy Proposals before they reach the Runtime.
+Self-Check has no authority, no security value, and no correctness guarantees.</em>
+* reduce the noise of invalid proposals sent to the Runtime,
+* catch obvious hallucinations early (saving token costs),
+* ensure the Policy aligns with the agent’s mission,
+* recognizing when escalation is required.</p>
+</blockquote>
+<p>Self-checks prevent agents from taking inappropriate or overly ambitious roles. They function as a form of introspective governance: <em>“Is this still my job?”</em></p>
+<p>If the answer is no, the agent must escalate instead of producing a Policy.</p>
+<hr />
+<h2 id="44-policy-proposal-output-of-the-roa-decision-process"><strong>4.4 Policy Proposal - Output of the ROA Decision Process</strong></h2>
+<p>After Explain → Policy → Self-Check, the agent emits a <strong>Policy Proposal</strong>, which is:</p>
+<ul>
+<li>structured,</li>
+<li>interpretable,</li>
+<li>grounded in mission and responsibility,</li>
+<li>and explicitly scoped.</li>
+</ul>
+<p>This proposal is then passed to the deterministic runtime for validation and execution.</p>
+<p>At this point, the agent’s work is complete.
+This is an intentional boundary:</p>
+<blockquote>
+<p><strong>ROA agents think.
+The runtime ensures that thinking results in safe and correct action.</strong></p>
+</blockquote>
+<p><img alt="Explain → Policy decision lifecycle" src="../../assets/images/explain-policy.png" /></p>
+<hr />
+<h2 id="45-why-this-separation-matters"><strong>4.5 Why This Separation Matters</strong></h2>
+<p>In many existing agent architectures, reasoning and execution are intertwined in a single LLM loop. This creates several problems:</p>
+<ul>
+<li>repeated LLM calls within the execution loop introduce non-determinism,</li>
+<li>errors or hallucinations propagate into critical actions,</li>
+<li>auditing becomes nearly impossible,</li>
+<li>system-wide constraints are hard to enforce,</li>
+<li>safety must somehow emerge rather than being designed.</li>
+</ul>
+<p>ROA eliminates these issues by assigning responsibility carefully:</p>
+<ul>
+<li>The agent <strong>interprets</strong> and <strong>proposes</strong>.</li>
+<li>The runtime <strong>verifies</strong> and <strong>executes</strong>.</li>
+</ul>
+<p>This simple separation mirrors real organizations:
+those who analyze and propose decisions are not necessarily those who execute them.</p>
+<p>The result is a system that is more predictable, more auditable, and better aligned with how decision-making works in practice.</p>
+<hr />
+<h1 id="5-what-roa-does-not-do-the-role-of-the-runtime"><strong>5. What ROA Does <em>Not</em> Do: The Role of the Runtime</strong></h1>
+<p>Responsibility-Oriented Agents are designed to <strong>reason, interpret context, and propose policies</strong>. They do not execute actions, enforce safety, or validate decisions.</p>
+<p>This separation is intentional. A system in which the same entity both <em>proposes</em> and <em>validates</em> actions quickly becomes brittle, ungovernable, and difficult to audit.</p>
+<p>The relationship between ROA and its runtime can be best understood through an operating system analogy:</p>
+<blockquote>
+<p><strong>User Space vs. Kernel Space</strong>[^4]
+Think of ROA as defining the application logic running in <strong>User Space</strong>-where creativity, reasoning, and synthesis happen. This space is powerful but potentially unstable (hallucinations, loops).
+The Runtime, described in the companion <strong>Decision Intelligence Runtime (DIR)</strong> architecture, acts as the <strong>Kernel</strong>. It enforces memory protection, process isolation, and permission boundaries. An Agent crashing or hallucinating in User Space must never bring down the System (Kernel) or violate global safety invariants.</p>
+</blockquote>
+<p>The Runtime exists to provide exactly those guarantees. It is the part of the system that transforms <em>policy proposals</em> into <em>reliable, safe, and consistent actions</em>.</p>
+<blockquote>
+<p><em>Any notion of safety, correctness, auditability, or governance attributed to ROA is accidental unless enforced by the Runtime.
+ROA agents are not trusted components.</em></p>
+</blockquote>
+<hr />
+<h2 id="51-validation-ensuring-decision-integrity"><strong>5.1 Validation - Ensuring Decision Integrity</strong></h2>
+<p>Before any policy is executed, the Runtime performs <strong>Validation</strong>, handled by a dedicated, deterministic component often referred to as the <strong>Decision Integrity Module (DIM)</strong>[^5].</p>
+<p>Validation is fundamentally different from the agent’s self-check:</p>
+<ul>
+<li>Self-check checks for <em>alignment with mission and boundaries</em>.</li>
+<li>Validation ensures <em>alignment with system-wide constraints and safety</em>.</li>
+</ul>
+<p>DIM answers questions such as:</p>
+<ul>
+<li>Is this action allowed under current system rules?</li>
+<li>Does it violate risk limits, compliance requirements, or global constraints?</li>
+<li>Is the proposed action internally consistent and executable?</li>
+<li>Does it interfere with responsibilities of other agents?</li>
+<li>Has the environment changed since the policy was proposed?</li>
+</ul>
+<p>This module is deliberately <strong>non-LLM</strong>, deterministic, and auditable.
+Its purpose is to prevent both accidental and emergent misbehavior - a problem inherent to LLM-based decision flows.</p>
+<p>Unless a proposal passes validation, it cannot move to execution.</p>
+<p>This is the system’s equivalent of brakes and safety interlocks.</p>
+<blockquote>
+<p><strong>A note on model confidence and execution authority:</strong> A high confidence score or low perplexity in the agent's output is not an execution boundary. In ROA, authority is defined by the Agent Registry and validated deterministically by the Runtime - not inferred from the agent's self-assessed certainty. An agent may be highly confident in a proposal that violates schema, exceeds its authority scope, references stale state, or breaches resource limits. The Runtime will reject it regardless. Confidence may inform escalation thresholds (see Section 3.1), but it never grants execution privilege. <em>Prompts are not permissions.</em></p>
+</blockquote>
+<hr />
+<h2 id="52-execution-deterministic-action-handling"><strong>5.2 Execution - Deterministic Action Handling</strong></h2>
+<p>Once a policy is validated, it is handed off to the <strong>Execution layer</strong>.</p>
+<p>Execution is:</p>
+<ul>
+<li>deterministic,</li>
+<li>stateful,</li>
+<li>operational,</li>
+<li>predictable,</li>
+<li>loggable,</li>
+<li>and fast.</li>
+</ul>
+<p>It is intentionally <em>not</em> handled by the agent.
+Execution belongs to actors, workers, services, or external systems that carry out real actions in the world.</p>
+<p>Examples:</p>
+<ul>
+<li>placing an order on a market,</li>
+<li>adjusting a configuration,</li>
+<li>triggering an alert,</li>
+<li>updating system state.</li>
+</ul>
+<p>The agent does not “send orders” directly.
+The agent proposes - the runtime executes.</p>
+<p>This division ensures that decision-making remains interpretable and explainable, while execution remains safe and controlled.</p>
+<p><img alt="Deterministic Runtime Execution" src="../../assets/images/execution.png" /></p>
+<hr />
+<h2 id="53-escalation-what-happens-when-limits-are-reached"><strong>5.3 Escalation - What Happens When Limits Are Reached</strong></h2>
+<p>Not every policy is safe to execute, and not every situation fits neatly within an agent’s responsibility.
+This is why the Runtime must implement <strong>explicit escalation paths</strong>.</p>
+<p>Escalation can take several forms:</p>
+<ul>
+<li><strong>Soft-stop</strong>: return the policy to the agent with a request for revision.</li>
+<li><strong>Hard-stop</strong>: reject the policy and require manual or supervisory intervention.</li>
+<li><strong>Delegation</strong>: forward the decision to a higher-level or broader-scope agent.</li>
+<li><strong>Alerting</strong>: notify a human operator when the system encounters ambiguous or high-risk situations.</li>
+</ul>
+<p>Escalation is not a failure mode -
+it is an essential part of any architecture where responsibility is taken seriously.</p>
+<hr />
+<h2 id="54-decisionflow-and-correlation-tracking-the-lifecycle-of-a-decision"><strong>5.4 DecisionFlow and Correlation - Tracking the Lifecycle of a Decision</strong></h2>
+<p>Policies do not exist in isolation.
+A single decision may involve several agents, multiple states, and multiple steps of reasoning and execution.</p>
+<p>To make this process traceable, the Runtime introduces <strong>DecisionFlow</strong>, identified by a <strong>DecisionFlowId (DFID)</strong>. This concept draws from <strong>Distributed Tracing</strong>[^6] and principles of <strong>Data Provenance</strong>[^9].</p>
+<p>A DecisionFlow is the logical container for:</p>
+<ul>
+<li>the initial context,</li>
+<li>all policy proposals,</li>
+<li>validation results,</li>
+<li>escalations,</li>
+<li>execution events,</li>
+<li>and final outcomes.</li>
+</ul>
+<p>In earlier prototypes (such as AIvestor), this concept emerged naturally as <em>recommendation_id</em>. ROA generalizes it into a system-level abstraction.</p>
+<p>DFID allows:</p>
+<ul>
+<li>auditability,</li>
+<li>debugging,</li>
+<li>compliance reporting,</li>
+<li>causal reasoning,</li>
+<li>replaying decisions for analysis or simulation,</li>
+<li>and clean separation of concurrent decision processes.</li>
+</ul>
+<p>Without a correlation mechanism, a multi-agent system quickly becomes opaque.</p>
+<hr />
+<h2 id="55-why-roa-needs-the-runtime"><strong>5.5 Why ROA Needs the Runtime</strong></h2>
+<p>This architectural separation reflects a simple principle:</p>
+<blockquote>
+<p><strong>Agents think - the Runtime guarantees that thinking leads to correct, safe, and reliable outcomes.</strong></p>
+</blockquote>
+<p>The Runtime:</p>
+<ul>
+<li>enforces integrity,</li>
+<li>executes deterministically,</li>
+<li>controls side effects,</li>
+<li>maintains global constraints,</li>
+<li>manages lifecycle and identity of agents,</li>
+<li>resolves conflicts between responsibilities,</li>
+<li>ensures immutability and traceability of decisions.</li>
+</ul>
+<p>ROA without a Runtime becomes unpredictable.
+A Runtime without ROA becomes inflexible.</p>
+<p>Together, they form a complete decision architecture -
+balancing the creativity and contextual intelligence of LLMs
+with the structure, governance, and reliability required in real systems.</p>
+<hr />
+<h1 id="6-dynamic-agents-hierarchy-and-registry"><strong>6. Dynamic Agents, Hierarchy, and Registry</strong></h1>
+<p>In traditional software architectures, components tend to be static: they are instantiated at startup, configured once, and remain stable throughout the system's lifetime.
+Decision-making systems, however, rarely behave this way. Problems emerge dynamically, contexts shift, responsibilities change, and units of work evolve as decisions unfold.</p>
+<p>Responsibility-Oriented Agents reflect this reality.
+They are not monolithic “super-agents” but <strong>dynamic, context-dependent entities</strong> that arise when a new responsibility emerges-then persist as long as they are needed.</p>
+<p>This section introduces three architectural pillars that enable this behavior:</p>
+<ol>
+<li><strong>Dynamic instantiation of agents</strong></li>
+<li><strong>Hierarchy and delegation</strong></li>
+<li><strong>The Agent Registry</strong></li>
+</ol>
+<p>Together, these elements allow ROA-based systems to scale, maintain clarity, and operate coherently across complex decision flows.</p>
+<hr />
+<h2 id="61-dynamic-agents-created-when-responsibility-appears"><strong>6.1 Dynamic Agents - Created When Responsibility Appears</strong></h2>
+<p>In ROA, agents are not precompiled lists of roles.
+They are <strong>instantiated when a new unit of responsibility is identified</strong>.</p>
+<p>This pattern emerged naturally in early experiments such as AIvestor:</p>
+<ul>
+<li>An <strong>InstrumentAgent</strong> existed as a “class-level” agent, responsible for interpreting signals and maintaining an understanding of the instrument.</li>
+<li>
+<p>A <strong>PositionAgent</strong> was created dynamically when a position was opened.
+  Each instance had:</p>
+</li>
+<li>
+<p>its own mission (managing one specific position),</p>
+</li>
+<li>its own trajectory of decisions,</li>
+<li>its own state and history,</li>
+<li>its own boundary conditions.</li>
+</ul>
+<p>This mirrors real-world organizational behavior:
+when a new project, risk, or scenario arises, new responsible roles are created-not arbitrarily, but because the system requires them.</p>
+<p>Dynamic agents offer several benefits:</p>
+<ul>
+<li><strong>Local reasoning</strong> - each agent holds only the state relevant to its responsibility.</li>
+<li><strong>Isolation of risk</strong> - one agent’s failure does not cascade into unrelated domains.</li>
+<li><strong>Scalability</strong> - thousands of agents can operate concurrently, each focused on a narrow mission.</li>
+<li><strong>Traceability</strong> - every decision belongs to an identifiable entity with a clear scope.</li>
+</ul>
+<p>The opposite approach-embedding all responsibilities into one “general-purpose” agent-quickly becomes unmanageable.</p>
+<p><img alt="Dynamic Agents and Hierarchy" src="../../assets/images/dynamic-agents.png" /></p>
+<hr />
+<h2 id="62-agent-hierarchies-structure-instead-of-emergence"><strong>6.2 Agent Hierarchies - Structure Instead of Emergence</strong></h2>
+<p>When agents are dynamic and responsibility-bound, a natural question arises:</p>
+<p><strong>How do they coordinate?
+Who supervises whom?
+How does escalation work?</strong></p>
+<p>ROA introduces <strong>hierarchies of responsibility</strong>, not unlike those seen in human organizations. Examples include:</p>
+<ul>
+<li><strong>InstrumentAgent</strong> (broad domain view)
+  → supervises</li>
+<li><strong>PositionAgent</strong> (narrow, instance-specific responsibility)</li>
+</ul>
+<p>Or in a more general system:</p>
+<ul>
+<li><strong>StrategyAgent</strong>
+  → supervises → <strong>ExecutionAgent</strong>
+  → supervises → <strong>MonitorAgent</strong></li>
+</ul>
+<p>Hierarchies serve three purposes:</p>
+<h3 id="1-delegation">1. <strong>Delegation</strong></h3>
+<p>Higher-level agents delegate specific responsibilities to lower-level agents when the granularity of the problem demands specialization.</p>
+<h3 id="2-escalation">2. <strong>Escalation</strong></h3>
+<p>If a lower-level agent encounters a situation beyond its authority, it escalates the issue upward.</p>
+<h3 id="3-governance">3. <strong>Governance</strong></h3>
+<p>Higher-level agents can override, revise, or contextualize the policies of subordinate agents-<em>not arbitrarily, but within the governance model defined by the system</em>.</p>
+<p>This avoids emergent chaos commonly observed in free-form multi-agent conversations.
+Agents do not negotiate endlessly or compete for control; instead, they follow structured, predictable relationships grounded in their responsibility contracts.</p>
+<hr />
+<h2 id="63-class-agents-vs-instance-agents"><strong>6.3 Class Agents vs Instance Agents</strong></h2>
+<p>ROA distinguishes between <strong>class-level agents</strong> and <strong>instance-level agents</strong>:</p>
+<ul>
+<li>
+<p><strong>Class Agents</strong>
+  Represent a general capability or role.
+  They exist throughout the system’s lifetime.</p>
+</li>
+<li>
+<p><strong>Instance Agents</strong>
+  Represent specific occurrences of responsibility.
+  They are created when needed and retired when their lifecycle ends.</p>
+</li>
+</ul>
+<p>This distinction keeps the system both flexible and structured.
+It allows a single conceptual role (e.g., “Position Manager”) to spawn many parallel instance agents-each independently managing its own decision context.</p>
+<hr />
+<h2 id="64-the-agent-registry-identity-lifecycle-boundaries"><strong>6.4 The Agent Registry - Identity, Lifecycle, Boundaries</strong></h2>
+<p>To coordinate a dynamic, hierarchical system, ROA relies on a <strong>Runtime Agent Registry</strong>-a form of <strong>Service Discovery</strong>[^7].</p>
+<p>The registry is not merely a directory of names; it serves as the <strong>Capabilities Contract</strong> for the entire system. It is the source of truth for:</p>
+<ul>
+<li><strong>Which agents exist</strong></li>
+<li><strong>What they are responsible for</strong> (their Mission)</li>
+<li><strong>What they are allowed to do</strong> (their Policies)</li>
+<li><strong>Their current state</strong></li>
+</ul>
+<p>The Registry allows the Runtime to validate not just <em>who</em> the agent is, but whether strictly defined capabilities match the Policy they are trying to emit. Without this, the system cannot effectively enforce RBAC (Role-Based Access Control) on intelligence.</p>
+<p>The registry enables:</p>
+<ul>
+<li><strong>Lifecycle management</strong> - Create, initialize, persist, retire, and suspend agents (e.g., via Circuit Breakers during Agent Drift).</li>
+<li><strong>Routing</strong> - Send policies, context updates, or escalations to the correct agent.</li>
+<li><strong>Governance</strong> - Enforce global rules about who is allowed to act on what.</li>
+<li><strong>Traceability</strong> - Link every decision to a responsible entity.</li>
+</ul>
+<p><em>(For details on agent suspension and aggregate drift management, see <a href="../../04-governance/DIR_Governance/">Governance and Agent Drift</a>.)</em></p>
+<p>Think of the registry as the <strong>organizing principle</strong> that binds the agent ecosystem together.
+Without it, a multi-agent system becomes an emergent swarm.
+With it, it becomes a structured, governed decision architecture.</p>
+<hr />
+<h2 id="65-why-dynamic-agents-and-hierarchy-matter"><strong>6.5 Why Dynamic Agents and Hierarchy Matter</strong></h2>
+<p>Dynamic agents and hierarchies are not aesthetic choices.
+They address real architectural needs:</p>
+<ul>
+<li>Decisions occur at different scales and require different scopes of responsibility.</li>
+<li>Not all responsibilities exist at system startup.</li>
+<li>Some responsibilities persist for minutes, others for months.</li>
+<li>Systems need a way to isolate failures and clarify accountability.</li>
+<li>Governance requires predictable relationships between decision-makers.</li>
+</ul>
+<p>Responsibility-Oriented Agents embrace these realities rather than abstracting them away.</p>
+<p>By combining dynamic instantiation, hierarchical delegation, and a runtime registry, ROA forms a coherent substrate for decision-making-one where responsibilities are explicit, traceable, and manageable.</p>
+<hr />
+<h1 id="7-context-store-how-agents-understand-the-world"><strong>7. Context Store - How Agents Understand the World</strong></h1>
+<p>For an agent to act responsibly, it must have a clear, structured view of the world it operates in.
+Not a hallucinated one.
+Not an improvised one built from a single prompt window.
+But a <strong>shared, persistent, system-governed representation of relevant facts and signals</strong>.</p>
+<p>This is the purpose of the <strong>Context Store</strong>.</p>
+<p>The Context Store is not a prompt buffer and not a memory log.
+It is the <strong>source of truth</strong> from which agents derive meaning, constraints, and situational awareness.
+It separates <em>semantic interpretation</em> (where LLMs excel) from <em>state management</em> (where determinism, reliability, and auditability matter).</p>
+<p>In ROA, an agent does not “just know things.”
+It reads them from context.</p>
+<hr />
+<h2 id="71-why-llms-cannot-be-the-systems-memory"><strong>7.1 Why LLMs Cannot Be the System’s Memory</strong></h2>
+<p>LLMs are powerful at explaining patterns and proposing actions, but they are unsuitable for storing or recalling consistent state:</p>
+<ul>
+<li>They forget their own reasoning across calls.</li>
+<li>Their internal representations are non-addressable and non-auditable.</li>
+<li>They cannot reliably recall specific facts.</li>
+<li>Their outputs drift with temperature, phrasing, or system updates.</li>
+<li>They cannot guarantee immutability or compliance.</li>
+</ul>
+<p>Treating an LLM as durable memory leads to inconsistency and untraceable decision paths.</p>
+<p>To anchor decisions in something stable, <strong>state must live in a deterministic store</strong>, not in transient model context.</p>
+<hr />
+<h2 id="72-what-the-context-store-contains"><strong>7.2 What the Context Store Contains</strong></h2>
+<p>While the exact schema depends on the domain, ROA aligns context into four distinct layers. This structure ensures that agents differentiate between transient signals, authoritative facts, and long-term history.</p>
+<h3 id="1-session-context-ephemeral"><strong>1. Session Context (Ephemeral)</strong></h3>
+<p>The "now." A short-lived, append-only record of the current decision loop. It captures the immediate stream of consciousness and stimuli that triggered the agent. It resets when the DecisionFlow closes.</p>
+<ul>
+<li><strong>Events and Observations:</strong> The specific trigger (e.g., "Price crossed MA-50") or user action that woke the agent.</li>
+<li><strong>Intermediate Reasoning:</strong> Scratchpad thoughts, "Explain" outputs, and temporary calculations generated during the current analysis.</li>
+<li><strong>Immediate History:</strong> The prompt chain relevant only to this specific interaction.</li>
+</ul>
+<h3 id="2-state-context-authoritative"><strong>2. State Context (Authoritative)</strong></h3>
+<p>The system's "truth." This is the live, deterministic view of the world, synced from external systems or read-replicas. It acts as the ground truth against which validation occurs.</p>
+<ul>
+<li><strong>Live Data:</strong> Real-time signals from the environment (e.g., market quotes, order book depth).</li>
+<li><strong>Derived Metrics:</strong> Pre-calculated analytical signals (e.g., RSI, Volatility Index) or behavioral patterns provided by instrument-level agents.</li>
+<li><strong>Resource State:</strong> The hard facts of the system (e.g., current wallet balance, open positions, active locks).</li>
+<li><strong>Agent Metadata:</strong> The current operational status and boundaries of the agent, fetched dynamically from the <strong>Agent Registry</strong>.</li>
+</ul>
+<h3 id="3-memory-context-long-term"><strong>3. Memory Context (Long-term)</strong></h3>
+<p>The agent's "experience." Curated, persistent insights that survive across sessions. This layer ensures continuity and prevents the agent from repeating past mistakes.</p>
+<ul>
+<li><strong>Decision Trajectory:</strong> A log of <em>Prior Decisions and Policies</em>, including rationales for why previous proposals were accepted or rejected.</li>
+<li><strong>Policy Versions:</strong> How the agent's strategy has evolved over time (e.g., "Shifted to defensive mode after drawdown").</li>
+<li><strong>Escalation History:</strong> Records of past authority breaches or manual interventions.</li>
+</ul>
+<h3 id="4-artifacts-context-reference"><strong>4. Artifacts Context (Reference)</strong></h3>
+<p>The "library." Large, static, or reference data that is too voluminous to fit in a prompt but can be retrieved via tools or <strong>RAG (Retrieval-Augmented Generation)</strong>[^8] mechanisms.</p>
+<ul>
+<li><strong>Global Rules and Constraints:</strong> Static business logic, compliance rulebooks, and safety definitions (e.g., "Wash Trading Prohibition").</li>
+<li><strong>Reference Datasets:</strong> Historical backtest data, strategy whitepapers, or large unstructured documents.</li>
+</ul>
+<h2 id="this-structured-approach-ensures-that-agents-always-operate-on-a-coherent-slice-of-reality-rather-than-a-noisy-stream-of-raw-events">This structured approach ensures that agents always operate on a coherent slice of reality, rather than a noisy stream of raw events.</h2>
+<h2 id="73-how-agents-use-the-context-store"><strong>7.3 How Agents Use the Context Store</strong></h2>
+<p>Agents do not “query the world” arbitrarily.
+Instead, they use the Context Store as the lens through which they interpret their environment.</p>
+<h3 id="agents-read-from-the-context-to">Agents read from the context to:</h3>
+<ul>
+<li>perform Explain,</li>
+<li>interpret their situation,</li>
+<li>ground their policies in actual data,</li>
+<li>maintain continuity of reasoning,</li>
+<li>validate whether their mission or boundaries are still applicable.</li>
+</ul>
+<h3 id="agents-write-to-the-context-to">Agents write to the context to:</h3>
+<ul>
+<li>update state after reflection,</li>
+<li>append decision rationales,</li>
+<li>store explanations,</li>
+<li>mark policy progress or completion,</li>
+<li>extend their memory trajectory.</li>
+</ul>
+<p>This allows the system to remain consistent even when the agent’s internal reasoning is non-deterministic.</p>
+<hr />
+<h2 id="74-the-context-store-as-shared-reality"><strong>7.4 The Context Store as Shared Reality</strong></h2>
+<p>In multi-agent systems, one of the biggest challenges is ensuring that agents do not diverge into incompatible interpretations of the same situation.</p>
+<p>ROA addresses this by giving all agents access to a <strong>shared, structured, authoritative reality</strong> rather than allowing each to build its own model.</p>
+<p>This avoids:</p>
+<ul>
+<li>conflicting states,</li>
+<li>race conditions in reasoning,</li>
+<li>emergent inconsistencies,</li>
+<li>“echo chambers” formed by agent dialogue,</li>
+<li>and duplicated or misaligned decision chains.</li>
+</ul>
+<p>Instead of emergent synchronization, the Context Store provides <strong>explicit synchronization</strong>.</p>
+<hr />
+<h2 id="75-how-the-context-store-enables-auditing-and-explainability"><strong>7.5 How the Context Store Enables Auditing and Explainability</strong></h2>
+<p>Because every decision traces back to:</p>
+<ul>
+<li>explicit context inputs,</li>
+<li>versioned policy proposals,</li>
+<li>state transitions,</li>
+<li>and agent responsibilities,</li>
+</ul>
+<p>the entire decision process can be reconstructed:</p>
+<ul>
+<li>Why did the agent act this way?</li>
+<li>Which signals triggered the decision?</li>
+<li>What was its mission at the time?</li>
+<li>Which constraints were active?</li>
+<li>How did the context evolve before execution?</li>
+</ul>
+<p>This is critical for:</p>
+<ul>
+<li>compliance,</li>
+<li>safety,</li>
+<li>debugging,</li>
+<li>post-incident analysis,</li>
+<li>scientific reproducibility.</li>
+</ul>
+<p>Without a Context Store, decisions are ephemeral and untraceable.</p>
+<p>With it, decisions form a coherent, inspectable narrative.</p>
+<hr />
+<h2 id="76-context-store-vs-memory-vs-knowledge"><strong>7.6 Context Store vs Memory vs Knowledge</strong></h2>
+<p>To reduce ambiguity:</p>
+<ul>
+<li><strong>Context Store</strong> → structured, mutable state specific to the decision environment.</li>
+<li><strong>Memory</strong> → agent-specific trajectory of responsibilities and past decisions.</li>
+<li><strong>Knowledge</strong> → static, domain-general information (could be external or embedded in the model).</li>
+</ul>
+<p>These layers serve different purposes; ROA deliberately keeps them distinct.</p>
+<hr />
+<h2 id="77-summary-why-context-matters"><strong>7.7 Summary: Why Context Matters</strong></h2>
+<p>Responsibility without context is blind.
+Policy without state is unstable.
+LLM reasoning without a shared reality is unpredictable.</p>
+<p>The Context Store provides the grounding, continuity, and determinism required for ROA agents to behave coherently across time.</p>
+<p>It is not an optional component -
+it is the substrate against which responsibility becomes actionable.</p>
+<hr />
+<h1 id="8-case-study-aivestor-as-an-early-roa-prototype"><strong>8. Case Study: AIvestor as an Early ROA Prototype</strong></h1>
+<p>The ideas behind Responsibility-Oriented Agents did not emerge from theory alone.
+They grew out of practical experimentation with a system designed to support real-time decision-making in financial contexts: <strong>AIvestor</strong>.</p>
+<p>AIvestor was not intended to be a full ROA implementation.
+Instead, it served as a proving ground - a place where the strengths and limitations of LLM-driven agents could be observed under realistic constraints.
+Many of the ROA principles described in this article surfaced organically as responses to concrete engineering challenges.</p>
+<p>Below is a structured summary of what AIvestor revealed and how those insights shaped ROA.</p>
+<hr />
+<h2 id="81-the-setting-decisions-under-uncertainty"><strong>8.1 The Setting: Decisions Under Uncertainty</strong></h2>
+<p>AIvestor’s goal was conceptually simple:</p>
+<blockquote>
+<p><strong>Operationalize a user-defined trading strategy on a specific instrument,
+while interpreting signals, managing risk, and acting consistently.</strong></p>
+</blockquote>
+<p>This required:</p>
+<ul>
+<li>context interpretation,</li>
+<li>policy generation,</li>
+<li>managing dynamic entities (positions),</li>
+<li>ensuring continuity across time,</li>
+<li>deterministic execution,</li>
+<li>and safety constraints.</li>
+</ul>
+<p>Very quickly, it became clear that simply looping an LLM over price updates or tool calls was not sufficient.
+The system needed <em>structure</em>.</p>
+<hr />
+<h2 id="82-explain-and-policy-natural-separation-of-concerns"><strong>8.2 Explain and Policy - Natural Separation of Concerns</strong></h2>
+<p>AIvestor’s first architectural insight was the emergence of a stable two-step reasoning pattern:</p>
+<ol>
+<li><strong>Explain:</strong> interpret the current market conditions, signals, and anomalies.</li>
+<li><strong>Policy:</strong> propose the next course of action based on the user’s strategy.</li>
+</ol>
+<p>This separation occurred because trying to collapse interpretation + decision into a single LLM call produced:</p>
+<ul>
+<li>inconsistent outcomes,</li>
+<li>loss of traceability,</li>
+<li>mixing of concerns,</li>
+<li>and increased sensitivity to prompts.</li>
+</ul>
+<p>Explain + Policy became the conceptual backbone of ROA’s decision lifecycle.</p>
+<hr />
+<h2 id="83-runtime-validation-the-need-for-deterministic-safety"><strong>8.3 Runtime Validation - The Need for Deterministic Safety</strong></h2>
+<p>When AIvestor attempted to rely solely on LLM-based reasoning inside the execution loop, several practical problems surfaced:</p>
+<ul>
+<li>inconsistent triggers for actions,</li>
+<li>invalid orders due to edge-case market conditions,</li>
+<li>difficulty enforcing risk constraints,</li>
+<li>divergence in reasoning across repeated runs.</li>
+</ul>
+<p>This led to the introduction of a deterministic <strong>validation layer</strong> - effectively the early form of what ROA now calls the <strong>Decision Integrity Module (DIM)</strong>.</p>
+<p>DIM ensured:</p>
+<ul>
+<li>compliance with system-wide rules,</li>
+<li>respect for boundaries,</li>
+<li>deterministic gating of actions before execution.</li>
+</ul>
+<p>This reinforced a key ROA principle:
+<strong>LLMs should not be responsible for validating or executing decisions.</strong></p>
+<hr />
+<h2 id="84-dynamic-agents-instrumentagent-and-positionagent"><strong>8.4 Dynamic Agents - InstrumentAgent and PositionAgent</strong></h2>
+<p>One of the most important lessons came from managing trading positions.</p>
+<p>AIvestor initially attempted to have a single agent manage:</p>
+<ul>
+<li>the instrument context,</li>
+<li>the strategy interpretation,</li>
+<li>position lifecycle,</li>
+<li>and all related decisions.</li>
+</ul>
+<p>This became unmanageable.</p>
+<p>Instead, the architecture evolved into:</p>
+<ul>
+<li>
+<p><strong>InstrumentAgent</strong></p>
+</li>
+<li>
+<p>long-lived, domain-oriented, responsible for interpreting market conditions.</p>
+</li>
+<li>
+<p><strong>PositionAgent</strong> (dynamically instantiated)</p>
+</li>
+<li>
+<p>created when a new position is opened,</p>
+</li>
+<li>carries its own mission (managing this specific position),</li>
+<li>maintains its unique state,</li>
+<li>persists until the position closes.</li>
+</ul>
+<p>This structure solved several issues:</p>
+<ul>
+<li>responsibilities became clear,</li>
+<li>decisions were isolated per position,</li>
+<li>agents gained meaningful boundaries,</li>
+<li>historical reasoning became traceable.</li>
+</ul>
+<p>This experience directly influenced ROA’s notion of <strong>class agents</strong> and <strong>instance agents</strong>.</p>
+<hr />
+<h2 id="85-decisionflow-the-necessity-of-correlation"><strong>8.5 DecisionFlow - The Necessity of Correlation</strong></h2>
+<p>AIvestor introduced the concept of a <strong>recommendation_id</strong>, which later evolved into the more general <strong>DecisionFlowId (DFID)</strong>.</p>
+<p>This ID linked together:</p>
+<ul>
+<li>observations,</li>
+<li>Explain outputs,</li>
+<li>Policy recommendations,</li>
+<li>position lifecycle events,</li>
+<li>validation outcomes,</li>
+<li>and execution results.</li>
+</ul>
+<p>Without this correlation mechanism, the system became opaque and difficult to debug.
+With it, every decision had a traceable narrative.</p>
+<p>This is now a foundational element of ROA runtime design.</p>
+<hr />
+<h2 id="86-memory-and-trajectory-why-agents-must-be-long-lived"><strong>8.6 Memory and Trajectory - Why Agents Must Be Long-Lived</strong></h2>
+<p>In AIvestor, PositionAgents maintained:</p>
+<ul>
+<li>a history of previous decisions,</li>
+<li>rationale for each move,</li>
+<li>evolving assessments of risk,</li>
+<li>versioned policies,</li>
+<li>and context transitions.</li>
+</ul>
+<p>This continuity was critical to avoiding:</p>
+<ul>
+<li>contradictory decisions,</li>
+<li>flip-flopping behavior,</li>
+<li>or inconsistent risk management.</li>
+</ul>
+<p>This reinforced the idea that ROA agents must be <strong>persistent, stateful, and historically aware</strong> - not ephemeral LLM calls.</p>
+<hr />
+<h2 id="87-the-limitations-lessons-learned-honestly"><strong>8.7 The Limitations - Lessons Learned Honestly</strong></h2>
+<p>AIvestor was not perfect, and several limitations informed ROA design:</p>
+<ul>
+<li>relying on LLMs in tight real-time loops was too slow and too expensive,</li>
+<li>complex strategies required consistent long-horizon state tracking,</li>
+<li>prompt-based orchestration became brittle,</li>
+<li>the absence of explicit missions caused incoherent decisions,</li>
+<li>lack of boundaries led to unintended overreach by reasoning loops.</li>
+</ul>
+<p>These issues were not “bugs” but architectural indicators.
+They pointed toward a deeper idea:</p>
+<blockquote>
+<p><strong>Decision-making requires structure.
+And structure requires responsibility.</strong></p>
+</blockquote>
+<hr />
+<h2 id="88-what-aivestor-demonstrated"><strong>8.8 What AIvestor Demonstrated</strong></h2>
+<p>Most importantly, AIvestor demonstrated that:</p>
+<ul>
+<li>LLMs are excellent at <em>explaining</em> and <em>proposing</em>.</li>
+<li>Deterministic runtimes are essential for <em>validating</em> and <em>executing</em>.</li>
+<li>Agents must be <em>responsibility-bound</em>.</li>
+<li>Dynamic instantiation is not optional.</li>
+<li>Memory and governance are prerequisites for consistency.</li>
+<li>Traceability requires correlation.</li>
+</ul>
+<p>AIvestor was not ROA.
+But it was the <strong>first empirical argument</strong> that ROA could work.</p>
+<hr />
+<h1 id="9-comparison-to-current-industry-approaches-respectfully"><strong>9. Comparison to Current Industry Approaches (Respectfully)</strong></h1>
+<p>The goal of Responsibility-Oriented Agents is not to criticize existing frameworks or to dismiss the significant progress made in the field. Agent tooling has advanced rapidly, and many of these systems solve real engineering problems. Instead, the intention here is to highlight where current approaches succeed, where they fall short, and why ROA proposes a different architectural path.</p>
+<p>LLMs are still relatively new as decision-making components, and our collective understanding of how to integrate them into reliable systems is evolving. ROA is one contribution to that conversation - informed by practical experience and grounded in the need for structure, responsibility, and governance.</p>
+<p>Below is a high-level comparison of the most common patterns in current agent frameworks.</p>
+<hr />
+<h2 id="91-tool-oriented-agents-strength-in-execution-weakness-in-coherence"><strong>9.1 Tool-Oriented Agents - Strength in Execution, Weakness in Coherence</strong></h2>
+<p>Many frameworks organize agents as entities that:</p>
+<ul>
+<li>receive a prompt,</li>
+<li>call a series of tools,</li>
+<li>and return a result.</li>
+</ul>
+<p>This pattern is excellent for:</p>
+<ul>
+<li>lightweight automation,</li>
+<li>API orchestration,</li>
+<li>extending LLM capabilities with external actions.</li>
+</ul>
+<p>However, these agents often lack:</p>
+<ul>
+<li>a persistent identity,</li>
+<li>a mission,</li>
+<li>boundaries on behavior,</li>
+<li>long-term memory,</li>
+<li>or responsibility for outcomes.</li>
+</ul>
+<p>They function as stateless orchestrators rather than accountable decision-makers.
+In ROA terms, these agents resemble <em>executors</em> more than <em>reasoners</em>.</p>
+<hr />
+<h2 id="92-multi-agent-conversations-emergence-without-governance"><strong>9.2 Multi-Agent Conversations - Emergence Without Governance</strong></h2>
+<p>Another trend is to let multiple agents communicate via LLM-mediated dialogue. This can produce interesting behaviors, and in research settings, emergent cooperation can be a desirable phenomenon.</p>
+<p>But without:</p>
+<ul>
+<li>explicit responsibilities,</li>
+<li>authority hierarchies,</li>
+<li>consistent memory,</li>
+<li>and constraints on decision space,</li>
+</ul>
+<p>the interactions can become unstable or unpredictable.</p>
+<p>Dialogue does not guarantee alignment.
+Emergence does not guarantee correctness.
+And conversation is not the same as governance.</p>
+<p>ROA approaches this differently by enforcing clear boundaries and structured escalation paths rather than relying on negotiation as the primary coordination mechanism.</p>
+<hr />
+<h2 id="93-workflow-driven-agents-structure-without-semantics"><strong>9.3 Workflow-Driven Agents - Structure Without Semantics</strong></h2>
+<p>Some frameworks focus on deterministic workflow graphs (DAGs or state machines), with LLMs filling in steps along the path. This provides:</p>
+<ul>
+<li>excellent reproducibility,</li>
+<li>clear control flow,</li>
+<li>strong engineering ergonomics.</li>
+</ul>
+<p>But workflows often assume:</p>
+<ul>
+<li>all responsibilities are static,</li>
+<li>decision-makers do not evolve,</li>
+<li>state is centralized,</li>
+<li>reasoning is ephemeral.</li>
+</ul>
+<p>Such systems excel at executing predefined processes but struggle when reasoning must adapt dynamically, persist over time, or operate under changing missions.</p>
+<p>ROA complements structured workflow execution but adds a layer of semantic responsibility that workflows alone cannot express.</p>
+<hr />
+<h2 id="94-persona-based-agents-useful-for-interaction-limited-for-decision-making"><strong>9.4 Persona-Based Agents - Useful for Interaction, Limited for Decision-Making</strong></h2>
+<p>Assigning a persona to an agent (“act as an analyst”, “act as a strategist”) can improve conversational grounding and style consistency. But a persona is not the same as responsibility.</p>
+<p>Persona-based agents typically lack:</p>
+<ul>
+<li>a mission they optimize,</li>
+<li>a bounded authority domain,</li>
+<li>deterministic behavior across time,</li>
+<li>long-lived state tied to decisions,</li>
+<li>auditability and traceable commitments.</li>
+</ul>
+<p>They are valuable in user-facing contexts but insufficient for systems that need to <em>act</em> rather than simply <em>converse</em>.</p>
+<hr />
+<h2 id="95-why-these-patterns-struggle-with-decision-systems"><strong>9.5 Why These Patterns Struggle With Decision Systems</strong></h2>
+<p>Across the industry, a recurring theme emerges:</p>
+<blockquote>
+<p><strong>Most agent frameworks assume that adding structure <em>around</em> an LLM
+will produce coherent decision-making behavior.</strong></p>
+</blockquote>
+<p>But without responsibility:</p>
+<ul>
+<li>agents do not know what they own,</li>
+<li>decisions do not accumulate into trajectories,</li>
+<li>boundaries do not constrain behavior,</li>
+<li>governance becomes emergent instead of explicit,</li>
+<li>and systems cannot reliably be audited or trusted.</li>
+</ul>
+<p>This is not a failure of framework design - it is a reflection of the fact that LLMs are fundamentally <strong>semantic engines</strong>, not decision engines.</p>
+<p>They are excellent at:</p>
+<ul>
+<li>explaining,</li>
+<li>interpreting,</li>
+<li>suggesting,</li>
+<li>synthesizing.</li>
+</ul>
+<p>But they need a structured environment - missions, boundaries, context, state, escalation, governance - to behave as part of a stable decision ecosystem.</p>
+<hr />
+<h2 id="96-where-roa-fits-in"><strong>9.6 Where ROA Fits In</strong></h2>
+<p>ROA does not replace these tools.
+It provides the <strong>architecture</strong> within which they can be used safely and coherently.</p>
+<p>Tool-based execution modules still matter.
+Workflows still matter.
+LLM reasoning still matters.
+Even multi-agent patterns can exist within boundaries.</p>
+<p>But ROA introduces what most frameworks lack:</p>
+<ul>
+<li><strong>clear responsibility contracts</strong>,</li>
+<li><strong>missions defined at the level of agents</strong>,</li>
+<li><strong>stateful long-lived decision-makers</strong>,</li>
+<li><strong>semantic hierarchies</strong>,</li>
+<li><strong>boundaries and authority constraints</strong>,</li>
+<li><strong>deterministic validation before action</strong>,</li>
+<li><strong>DecisionFlow correlation for traceability</strong>,</li>
+<li><strong>an architecture where reasoning and execution are explicitly separated</strong>.</li>
+</ul>
+<p>These are not optional features.
+They are prerequisites for building systems we can trust.</p>
+<hr />
+<h2 id="97-an-architectural-rather-than-competitive-perspective"><strong>9.7 An Architectural Rather Than Competitive Perspective</strong></h2>
+<p>The intent is not to propose ROA as “better” or a competitor to existing frameworks.
+Rather, ROA reframes the problem:</p>
+<ul>
+<li>Not <em>“How do we give LLMs more tools?”</em></li>
+<li>but <em>“How do we give decisions more structure?”</em></li>
+</ul>
+<p>This reframing clarifies where LLMs excel and where deterministic systems must take over.
+It aligns with how real organizations operate: through distributed but accountable responsibilities, not unstructured collaboration.</p>
+<p>ROA is simply one step toward making LLM-driven systems more coherent, governed, and dependable.</p>
+<hr />
+<h1 id="10-roa-as-a-governance-wrapper-for-generative-frameworks"><strong>10. ROA as a Governance Wrapper for Generative Frameworks</strong></h1>
+<p>The distinction between "Task-Oriented" frameworks (like LangChain, CrewAI, AutoGen) and "Responsibility-Oriented" architecture (ROA) is not a binary choice. In fact, they act as powerful complements when arranged in a specific hierarchy.</p>
+<p>We propose a hybrid pattern: <strong>Using generative frameworks as the "Brain" (Reasoning Engine) and ROA as the "Body" (Governance &amp; Execution Runtime).</strong></p>
+<h2 id="101-the-boxed-intelligence-pattern"><strong>10.1 The "Boxed Intelligence" Pattern</strong></h2>
+<p>In this pattern, an ROA Agent does not necessarily act as a single prompt loop. Instead, the Agent acts as a <strong>Governance Wrapper</strong> around a more complex subsystem-such as a LangGraph workflow or a CrewAI swarm.</p>
+<p>The fundamental rule of this pattern is <strong>Input/Output Sanitation</strong>:</p>
+<ol>
+<li><strong>Inbound (Context):</strong> The ROA Wrapper injects the <em>Context Store</em> and <em>Mission</em> into the generative framework, grounding its reasoning in authoritative state.</li>
+<li><strong>Processing (Emergence):</strong> The internal swarm (e.g., a "Researcher" and "Writer" agent in CrewAI) collaborates freely, leveraging the emergent creativity these tools excel at.</li>
+<li><strong>Outbound (Proposal):</strong> Crucially, the internal agents are <strong>stripped of all execution tools</strong>. They cannot call APIs, write to databases, or execute trades. Their <em>only</em> available tool is <code>emit_policy_proposal()</code>.</li>
+</ol>
+<p>This effectively "sandboxes" the swarm. It allows for high-variance, creative reasoning while ensuring zero-variance, safe execution.</p>
+<h2 id="102-from-unconfirmed-tasks-to-validated-policies"><strong>10.2 From Unconfirmed Tasks to Validated Policies</strong></h2>
+<p>Standard agent frameworks operate on a "Trigger → Action" loop.
+The ROA Wrapper transforms this into a "Trigger → Proposal → Validation → Action" pipeline.</p>
+<ul>
+<li><strong>Without ROA:</strong> A trading agent analyzes market data, identifies a "strong buy" signal, and immediately executes <code>exchange.create_order(symbol="BTC-USD", amount=100)</code>. If the decimal separator was misinterpreted or the model hallucinated the position size, a catastrophic financial loss occurs instantly.</li>
+<li><strong>With ROA:</strong> The same agent produces a <code>PolicyProposal(action="BUY", instrument="BTC-USD", amount=100)</code>. The ROA Runtime receives this, checks the <strong>Responsibility Contract</strong>, sees that this agent has a hard limit of <code>max_order_size=5.0 BTC</code>, and rejects the proposal <em>before</em> it reaches the exchange.</li>
+</ul>
+<p><em>Implementation Note:</em> In practice, this is achieved by providing the internal agent with a <strong>single</strong> tool: <code>submit_policy_proposal</code>. When the agent calls this tool, the wrapper intercepts the payload, terminates the agent's execution loop, and passes the structured proposal to the DIR Runtime for validation (see <code>samples/34_langchain_roa_wrapper</code>).</p>
+<h2 id="103-strategic-advantage-compliance-by-design"><strong>10.3 Strategic Advantage: Compliance by Design</strong></h2>
+<p>This architecture offers a bridge for enterprises adopting AI:</p>
+<ul>
+<li><strong>For Data Scientists:</strong> You can continue using familiar tools (LangChain, Python eco-system) to build sophisticated reasoning logic.</li>
+<li><strong>For DevOps/Security:</strong> You do not need to audit the probabilistic "Brain". You only need to audit the deterministic "Body" (The Contract and the Runtime).</li>
+</ul>
+<p>By treating popular frameworks as <strong>untrusted reasoning modules</strong> inside a <strong>trusted ROA container</strong>, we solve the "Last Mile" problem of AI deployment: how to put stochastic models into deterministic production environments.</p>
+<hr />
+<h1 id="11-limitations-and-open-questions"><strong>11. Limitations and Open Questions</strong></h1>
+<p>No architectural model is complete, and ROA is no exception.
+It is an evolving perspective shaped by real-world experiments, personal exploration, and gaps observed in current agent systems.
+What follows is a candid look at ROA’s limitations and the open questions that remain.</p>
+<p>These are not flaws as much as areas where further work, research, or shared experimentation is needed.
+An architecture intended for decision-making must not pretend to be finished.</p>
+<hr />
+<h2 id="111-the-boundaries-of-llm-reasoning-are-still-unsettled"><strong>11.1 The Boundaries of LLM Reasoning Are Still Unsettled</strong></h2>
+<p>ROA leans heavily on LLMs for <em>Explain</em> and <em>Policy</em> generation.
+This raises open questions:</p>
+<ul>
+<li>How well can LLMs generalize reasoning across long time horizons?</li>
+<li>How stable are policies across model versions and updates?</li>
+<li>What constraints are necessary to prevent reasoning drift?</li>
+<li>How should LLM reasoning be governed when missions evolve?</li>
+</ul>
+<p>ROA does not solve these questions; it mitigates them by placing LLM reasoning inside clear boundaries.
+But understanding the long-term behavior of LLMs remains an open research area.</p>
+<hr />
+<h2 id="112-designing-responsibility-contracts-is-non-trivial"><strong>11.2 Designing Responsibility Contracts Is Non-Trivial</strong></h2>
+<p>Responsibility sounds simple in theory.
+In practice, defining:</p>
+<ul>
+<li>the exact boundaries of authority,</li>
+<li>the right level of granularity,</li>
+<li>the scope of each domain,</li>
+<li>and escalation triggers</li>
+</ul>
+<p>is difficult and domain-specific.</p>
+<p>If contracts are too broad, agents become unfocused.
+If too narrow, the system becomes fragmented.</p>
+<p>Methodologies for designing and validating good responsibility contracts are still emerging.</p>
+<hr />
+<h2 id="113-mission-alignment-is-not-fully-solved"><strong>11.3 Mission Alignment Is Not Fully Solved</strong></h2>
+<p>Having a mission is essential, but several questions remain:</p>
+<ul>
+<li>How do we encode missions so they are interpretable yet precise?</li>
+<li>Should missions themselves evolve over time?</li>
+<li>How do we detect mission conflicts between agents?</li>
+<li>Can an LLM interpret a mission consistently across context shifts?</li>
+</ul>
+<p>ROA provides a conceptual structure, but mission alignment is an area where rigorous formalism and empirical work are still needed.</p>
+<hr />
+<h2 id="114-memory-and-state-management-need-more-research"><strong>11.4 Memory and State Management Need More Research</strong></h2>
+<p>Long-lived agents require long-lived memory - but:</p>
+<ul>
+<li>How much memory should be stored?</li>
+<li>Which elements should be persisted versus computed on demand?</li>
+<li>How do we avoid agents becoming “state-heavy” and slow?</li>
+<li>How should memory be versioned when models or strategies evolve?</li>
+</ul>
+<p>AIvestor provided early lessons, but systematic approaches are still required.</p>
+<hr />
+<h2 id="115-validation-and-governance-are-difficult-to-generalize"><strong>11.5 Validation and Governance Are Difficult to Generalize</strong></h2>
+<p>Validation (DIM) and governance logic are highly domain-specific:</p>
+<ul>
+<li>financial risk systems look very different from medical decision systems,</li>
+<li>safety constraints vary drastically across industries,</li>
+<li>escalation policies depend on organizational norms.</li>
+</ul>
+<p>ROA provides a template for separating validation from reasoning,
+but not a universal validation mechanism.</p>
+<p>Building reusable governance modules remains an open challenge.</p>
+<hr />
+<h2 id="116-runtime-complexity-may-grow-rapidly"><strong>11.6 Runtime Complexity May Grow Rapidly</strong></h2>
+<p>Dynamic instantiation, hierarchical agents, and persistent state introduce operational overhead:</p>
+<ul>
+<li>How do we scale large numbers of agents?</li>
+<li>How do we handle failures gracefully?</li>
+<li>How should agents be distributed across compute resources?</li>
+<li>What level of monitoring is required for agent lifecycles?</li>
+</ul>
+<p>These are engineering questions that deserve dedicated exploration beyond conceptual modeling.</p>
+<hr />
+<h2 id="117-debugging-llm-driven-systems-is-still-hard"><strong>11.7 Debugging LLM-Driven Systems Is Still Hard</strong></h2>
+<p>Even with responsibility, boundaries, and DecisionFlow correlation, systems that rely on generative reasoning face intrinsic debugging challenges:</p>
+<ul>
+<li>reasoning steps may vary slightly across runs,</li>
+<li>textual explanations can be descriptive rather than causal,</li>
+<li>subtle prompt interactions may influence policy generation.</li>
+</ul>
+<p>ROA improves traceability, but robust debugging practices for LLM-based systems still need to mature.</p>
+<hr />
+<h2 id="118-formal-guarantees-are-limited"><strong>11.8 Formal Guarantees Are Limited</strong></h2>
+<p>ROA brings structure and governance, but:</p>
+<ul>
+<li>it does not provide formal verification of policies,</li>
+<li>does not guarantee global consistency of decisions,</li>
+<li>and does not resolve fundamental model uncertainty.</li>
+</ul>
+<p>Future work could explore hybrid approaches combining ROA with formal methods, symbolic reasoning, or constraint solvers.</p>
+<hr />
+<h2 id="119-roa-requires-a-cultural-shift-in-how-we-think-about-agents"><strong>11.9 ROA Requires a Cultural Shift in How We Think About Agents</strong></h2>
+<p>Many existing agent frameworks focus on emergent behavior, autonomy, or conversational collaboration.
+ROA shifts the focus to responsibility, structure, and governance.</p>
+<p>This raises questions:</p>
+<ul>
+<li>Will developers adopt a more architectural, constraint-driven mindset?</li>
+<li>How should ROA integrate with existing ecosystems without replacing them entirely?</li>
+<li>Can ROA coexist with more experimental or creative agent paradigms?</li>
+</ul>
+<p>These questions will only be answered as more implementations emerge.</p>
+<hr />
+<h2 id="1110-roa-is-early-and-that-is-its-strength-and-its-limitation"><strong>11.10 ROA Is Early - and That Is Its Strength and Its Limitation</strong></h2>
+<p>ROA is not a finished blueprint.
+It is a proposal for how LLM-driven systems <em>might</em> mature into something more robust, accountable, and operationally trustworthy.</p>
+<p>Its limitations reflect the reality that we are still collectively figuring out:</p>
+<ul>
+<li>how LLMs behave in long-lived systems,</li>
+<li>how responsibility structures map onto artificial agents,</li>
+<li>and what architectures will allow AI to act reliably, not just speak fluently.</li>
+</ul>
+<p>The hope is that ROA offers a conceptual foundation that others can refine, extend, and challenge.</p>
+<hr />
+<h2 id="1111-the-absence-of-reinforcement-learning-and-online-policy-improvement"><strong>11.11 The Absence of Reinforcement Learning and Online Policy Improvement</strong></h2>
+<p>ROA provides structure for <em>deploying</em> agent reasoning, but it does not improve the <em>quality</em> of that reasoning over time. There is no built-in mechanism for:</p>
+<ul>
+<li>reinforcement learning from execution outcomes,</li>
+<li>online policy improvement based on feedback signals,</li>
+<li>latent coordination learned across agent interactions,</li>
+<li>or model-level adaptation to system-specific behavior.</li>
+</ul>
+<p>This is a conscious scoping decision, not an oversight. ROA and RL address different layers of the same problem:</p>
+<ul>
+<li><strong>RL</strong> improves the quality of agent proposals - reducing hallucinations, stabilizing behavior, and adapting to domain-specific use cases.</li>
+<li><strong>DIR</strong> ensures that whatever the agent proposes, the system executes safely - regardless of proposal quality.</li>
+</ul>
+<p>Even an RL-trained agent can generate proposals that violate authority boundaries, reference stale state, trigger duplicate execution, or exceed resource limits. DIR's deterministic validation gates remain necessary at any level of agent quality.</p>
+<p>Notably, the ROA/DIR architecture is <em>RL-ready</em> by design. The Memory Context, Decision Trajectory, and DFID-linked audit trail constitute a structured experience record - the equivalent of an experience replay buffer. This data substrate can directly feed offline RL or supervised fine-tuning pipelines aimed at improving agent behavior over time.</p>
+<p>The integration of RL-based policy improvement - frameworks such as rLLM or ART - with the DIR runtime layer is an open and valuable research direction. The two approaches are complementary, not competing: RL makes agents smarter; DIR makes their deployment safe enough to trust in production.</p>
+<hr />
+<h2 id="summary"><strong>Summary</strong></h2>
+<p>ROA is not presented as <em>the solution</em>.
+It is a step - one that acknowledges both the promise of LLMs and the architectural gaps that prevent them from functioning as true decision-makers today.</p>
+<p>Its limitations are an invitation:</p>
+<ul>
+<li>for experimentation,</li>
+<li>for critique,</li>
+<li>for refinement,</li>
+<li>and for collaboration.</li>
+</ul>
+<p>The open questions are significant.
+But they are the right questions - the questions any system must confront if we expect AI to participate in decisions that carry real consequences.</p>
+<hr />
+<h1 id="12-conclusion-toward-decision-making-systems-we-can-trust"><strong>12. Conclusion - Toward Decision-Making Systems We Can Trust</strong></h1>
+<p>Large Language Models have transformed what software can understand and express.
+They interpret context, generalize across domains, and produce reasoning that often feels surprisingly human. But turning these capabilities into <strong>reliable decision-making systems</strong> requires more than chaining prompts or orchestrating tool calls.</p>
+<p>It requires structure.
+It requires boundaries.
+It requires responsibility.</p>
+<p>Responsibility-Oriented Agents (ROA) are an attempt to move in that direction - not by overpowering LLMs with more complexity, but by giving them <strong>a role</strong> within a broader architecture. Instead of treating the model as a free-form problem solver, ROA treats it as a participant in a governed decision process: one that explains, proposes, and reasons within clearly defined limits.</p>
+<p>Throughout this article, several principles emerged:</p>
+<ul>
+<li><strong>Responsibility</strong> is a first-class architectural concept.</li>
+<li><strong>Missions and boundaries</strong> give agents purpose and prevent overreach.</li>
+<li><strong>Long-lived, stateful agents</strong> create continuity and reduce drift.</li>
+<li><strong>Context Stores</strong> ground reasoning in a shared, deterministic reality.</li>
+<li><strong>Validation and execution</strong> belong to a runtime designed for safety, not to the agent.</li>
+<li><strong>Dynamic instantiation and hierarchy</strong> reflect the way real systems organize work.</li>
+<li><strong>DecisionFlow correlation</strong> makes decisions traceable and auditable.</li>
+</ul>
+<p>None of these ideas are radical on their own.
+What is new is the combination - the shift from “let the agent figure it out” to “define what the agent is responsible for, and let architecture do the rest.”</p>
+<p>ROA is far from complete.
+It has limitations, open questions, and areas where stronger theoretical or empirical grounding is needed. But it offers a direction - a way to bring the creativity of LLM reasoning into structured, predictable, and trustworthy systems.</p>
+<p>If we expect AI to participate in decisions that matter, we cannot rely on emergence or improvisation.
+We need systems where reasoning is interpretable, actions are validated, responsibilities are explicit, and outcomes are governable.</p>
+<p>ROA does not claim to provide the final answer.
+It simply proposes that <strong>responsibility</strong> - the same concept that underpins human organizations - may also be the missing foundation for AI systems that must not only converse, but act.</p>
+<p>The hope is that this article contributes to a broader conversation about how to design such systems.
+Feedback, critique, and alternative perspectives are welcome.
+No one will solve decision-making AI in isolation.</p>
+<p>What we can do, however, is take the next step - together - toward architectures that make intelligence not only possible, but trustworthy.</p>
+<hr />
+<h1 id="13-glossary"><strong>13. Glossary</strong></h1>
+<ul>
+<li><strong>Responsibility-Oriented Agents (ROA)</strong>: An architectural pattern where agents are defined by their specific responsibilities, boundaries, and missions rather than generic capabilities.</li>
+<li><strong>Responsibility Contract</strong>: A formal, machine-readable definition of an agent's governance, composed of three typed blocks: <code>mission</code> (optimization target), <code>authority</code> (permitted actions and hard limits), and <code>responsibility</code> (governance requirements). Registered via CI/CD pipeline; never self-registered by the agent.</li>
+<li><strong>AuthoritySpec</strong>: The typed sub-model of a Responsibility Contract specifying what the agent is permitted to do (<code>authorized_instruments</code>, <code>allowed_policy_types</code>, <code>max_order_size_usd</code>, <code>max_drawdown_limit_pct</code>). Enforced deterministically by the DIM in Kernel Space.</li>
+<li><strong>ResponsibilitySpec</strong>: The typed sub-model of a Responsibility Contract specifying governance requirements (<code>explainability</code>, <code>evidence_level</code>, <code>escalation</code>, <code>escalate_on_uncertainty</code>, <code>aggregate_thresholds</code>). Enforced by the Evidence Governance Layer and Post-Execution Monitors.</li>
+<li><strong>evidence_level</strong>: A <code>ResponsibilitySpec</code> field declaring the minimum rigor required from the Evidence Governance Layer before signing an output artifact. <code>high</code> = both Evidence Generators required; <code>medium</code> = one sufficient; <code>low</code> = Self-Check only.</li>
+<li><strong>Decision Intelligence Runtime (DIR)</strong>: The deterministic system that orchestrates, validates, and executes the policies proposed by ROA agents.</li>
+<li><strong>Mission</strong>: The fundamental optimization target or goal function of an agent (e.g., "Minimize risk while maintaining market exposure"). Stored as a typed <code>str</code> in the Responsibility Contract; used as an interpretive constraint during Explain and Policy formation.</li>
+<li><strong>Policy</strong>: A structured object emitted by an agent representing a proposed course of action, subject to validation by the Runtime.</li>
+<li><strong>Context Store</strong>: A structured, layered data store (Session, State, Memory, Artifacts) that serves as the single source of truth for an agent's reasoning.</li>
+<li><strong>DecisionFlow</strong>: A traceable container for the entire lifecycle of a decision, linking context, reasoning, proposals, and execution results via a unique ID (DFID).</li>
+<li><strong>Agent Registry</strong>: A system service that maintains the canonical list of active agents, their contracts, and their current operational state.</li>
+<li><strong>Decision Integrity Module (DIM)</strong>: The component of the Runtime responsible for deterministic validation of Policy Proposals against safety and business rules.</li>
+<li><strong>Explain Stage</strong>: The initial phase of an agent's reasoning process where it interprets context into a natural language narrative before formulating a structured Policy.</li>
+</ul>
+<h1 id="14-references"><strong>14. References</strong></h1>
+<p>[^1]: <strong>Resource-Oriented Architecture (ROA)</strong> - Richardson, L., &amp; Ruby, S. (2007). <em>RESTful Web Services</em>. O'Reilly Media. <a href="https://www.oreilly.com/library/view/restful-web-services/9780596529260/ch04.html">oreilly.com/library/view/restful-web-services/9780596529260/ch04.html</a>.</p>
+<p>[^2]: <strong>Actor Model</strong> - Hewitt, C., Bishop, P., &amp; Steiger, R. (1973). <em>A Universal Modular ACTOR Formalism for Artificial Intelligence</em>. <a href="https://www.researchgate.net/publication/220812785_A_Universal_Modular_ACTOR_Formalism_for_Artificial_Intelligence">researchgate.net/publication/220812785</a>.</p>
+<p>[^3]: <strong>Zero Trust Architecture</strong> - NIST Special Publication 800-207. <a href="https://csrc.nist.gov/publications/detail/sp/800-207/final">csrc.nist.gov/publications/detail/sp/800-207/final</a>.</p>
+<p>[^4]: <strong>Kernel Space/User Space</strong> - Operating System Access Control Rings. <a href="https://en.wikipedia.org/wiki/Protection_ring">en.wikipedia.org/wiki/Protection_ring</a>.</p>
+<p>[^5]: <strong>Policy Enforcement Point (PEP)</strong> - RFC 2753. <a href="https://datatracker.ietf.org/doc/html/rfc2753">datatracker.ietf.org/doc/html/rfc2753</a>.</p>
+<p>[^6]: <strong>Distributed Tracing</strong> - Dapper, a Large-Scale Distributed Systems Tracing Infrastructure. <a href="https://research.google/pubs/pub36356/">research.google/pubs/pub36356/</a>.</p>
+<p>[^7]: <strong>Service Discovery</strong> - Microservices Patterns. <a href="https://microservices.io/patterns/client-side-discovery.html">microservices.io/patterns/client-side-discovery.html</a>.</p>
+<p>[^8]: <strong>Retrieval-Augmented Generation (RAG)</strong> - Lewis, P., et al. (2020). <em>Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks</em>. <a href="https://arxiv.org/abs/2005.11401">arxiv.org/abs/2005.11401</a>.</p>
+<p>[^9]: <strong>Data Provenance</strong> - Buneman, P., Khanna, S., &amp; Tan, W. C. (2001). <em>Why and Where: A Characterization of Data Provenance</em>. ICDT.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

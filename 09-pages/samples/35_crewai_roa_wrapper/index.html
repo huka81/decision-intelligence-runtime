@@ -1,0 +1,3657 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Deterministic execution kernel for autonomous AI agents.">
+      
+      
+      
+        <link rel="canonical" href="https://huka81.github.io/decision-intelligence-runtime/09-pages/samples/35_crewai_roa_wrapper/">
+      
+      
+        <link rel="prev" href="../34_langchain_roa_wrapper/">
+      
+      
+        <link rel="next" href="../36_drift_optimization_discount/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>35 - CrewAI ROA wrapper - Decision Intelligence Runtime (DIR)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#35-crewai-roa-wrapper" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Decision Intelligence Runtime (DIR)" class="md-header__button md-logo" aria-label="Decision Intelligence Runtime (DIR)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Decision Intelligence Runtime (DIR)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              35 - CrewAI ROA wrapper
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/huka81/decision-intelligence-runtime" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../00-introduction/DIR-introduction/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../package/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Package
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../10-api-reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Samples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../author/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  About
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Decision Intelligence Runtime (DIR)" class="md-nav__button md-logo" aria-label="Decision Intelligence Runtime (DIR)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Decision Intelligence Runtime (DIR)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/huka81/decision-intelligence-runtime" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../00-introduction/DIR-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../01-roa-manifesto/ROA_Manifesto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Responsible-Oriented Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../02-decision-runtime/DIR_Architectural_Pattern/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Intelligence Runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../03-topologies/DIR_Topologies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topologies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../04-governance/DIR_Governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance & Agent Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../08-conclusion/Context_as_Code/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context as code
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../00-introduction/Intelligent_Delegation_Framework_Mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligent AI delegation framework mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../package/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Package
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../package/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../package/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../package/ports_and_adapters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ports & Adapters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../package/core_components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../package/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models & DTOs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../10-api-reference/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kernel Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/topology_a/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topology A (EOAM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/topology_c/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topology C (DL+PCI)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/database_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Samples
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Samples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../00_quick_start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 - Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_roa_agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 - ROA agent
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_dfid_propagation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 - DFID propagation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_idempotency_guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 - Idempotency guard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_context_store/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 - Context store
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_dim_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 - DIM validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_agent_registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 - Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_event_bus_swappable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 - Event bus (swappable)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_custom_repo_psql/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 - Custom repo (PostgreSQL)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_topology_a_eoam/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 - Topology A (EOAM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_topology_b_sds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 - Topology B (SDS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_topology_c_dl_pci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 - Topology C (DL+PCI)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../12_compliant_lie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 - Compliant Lie (Evidence Governance)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../31_finance_trading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31 - Finance trading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../32_fraud_gate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32 - Fraud gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../33_insurance_underwriting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33 - Insurance underwriting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../34_langchain_roa_wrapper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34 - LangChain ROA wrapper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35 - CrewAI ROA wrapper
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35 - CrewAI ROA wrapper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use cases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-core-concept-taming-the-task-oriented-crew" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Core Concept: Taming the Task-Oriented Crew
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#diagram-1-system-overview-crewai-wrapped-by-roa-processed-by-dir" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagram 1 - System Overview: CrewAI wrapped by ROA, processed by DIR
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#execution-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution flow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Execution flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#diagram-2-end-to-end-sequence-for-a-single-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagram 2 — end-to-end sequence for a single claim
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diagram-3-test-scenarios-6-claims-through-the-dim-validation-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagram 3 - Test Scenarios: 6 claims through the DIM validation pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-difference-from-a-naive-crew" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Difference from a Naive Crew
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-claims-agent-scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Claims Agent Scenario
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Claims Agent Scenario">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#analyst-vs-dim-who-validates-what" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Analyst vs DIM - Who Validates What?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mission" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mission
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#responsibility-contract-claimscontract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Responsibility Contract (ClaimsContract)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#natural-language-intake-scenarios-e-f" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Natural Language Intake (Scenarios E, F)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenarios
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layout-sample-guide-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layout (Sample Guide §3)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to run
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How to run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mock-no-network-no-ollama-no-crewai-llm-calls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mock (no network, no Ollama, no CrewAI LLM calls)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ollama-crewai-full-user-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ollama + CrewAI (full User Space)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gemini" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gemini
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#database-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database storage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-interception-works-output_json-instead-of-tool-calling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the Interception Works (output_json instead of tool-calling)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Components
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#html-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTML report
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expected-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../36_drift_optimization_discount/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    36 - Drift optimization discount
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../37_drift_semantic_refund/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    37 - Drift semantic refund
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../38_drift_environmental_bidding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    38 - Drift environmental bidding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../39_fintech_evidence_governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    39 - Fintech evidence governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../88_meta_context_engineering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    88 - Meta context engineering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../author/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About the author
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use cases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-core-concept-taming-the-task-oriented-crew" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Core Concept: Taming the Task-Oriented Crew
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#diagram-1-system-overview-crewai-wrapped-by-roa-processed-by-dir" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagram 1 - System Overview: CrewAI wrapped by ROA, processed by DIR
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#execution-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution flow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Execution flow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#diagram-2-end-to-end-sequence-for-a-single-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagram 2 — end-to-end sequence for a single claim
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diagram-3-test-scenarios-6-claims-through-the-dim-validation-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagram 3 - Test Scenarios: 6 claims through the DIM validation pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-difference-from-a-naive-crew" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Difference from a Naive Crew
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-claims-agent-scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Claims Agent Scenario
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Claims Agent Scenario">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#analyst-vs-dim-who-validates-what" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Analyst vs DIM - Who Validates What?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mission" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mission
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#responsibility-contract-claimscontract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Responsibility Contract (ClaimsContract)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#natural-language-intake-scenarios-e-f" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Natural Language Intake (Scenarios E, F)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenarios
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layout-sample-guide-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layout (Sample Guide §3)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to run
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How to run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mock-no-network-no-ollama-no-crewai-llm-calls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mock (no network, no Ollama, no CrewAI LLM calls)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ollama-crewai-full-user-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ollama + CrewAI (full User Space)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gemini" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gemini
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#database-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database storage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-interception-works-output_json-instead-of-tool-calling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the Interception Works (output_json instead of tool-calling)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Components
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#html-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTML report
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expected-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="35-crewai-roa-wrapper">35 - CrewAI ROA Wrapper</h1>
+<p><strong>Goal:</strong> Demonstrate that <strong>Task-Oriented Agents (CrewAI) and Mission-Oriented Agents (ROA) can coexist</strong>. Wrap a real CrewAI Crew in an ROA interface, producing structured JSON output (<code>output_json</code>) and converting it to DIR <code>PolicyProposal</code> (Claim) instead of direct execution (Fact). Prove the pattern with a <strong>Customer Claims Agent</strong> use case where the DIR Kernel rejects or escalates refund proposals based on return window, amount limits, and category boundaries.</p>
+<p><strong>Topology:</strong> classic (wrapper). <strong>Mechanisms:</strong> <code>AgentRegistry.handshake</code>, <code>ContextStore</code> sessions, <code>validate_proposal</code> from <code>dir_core</code> plus claims-specific rules in <code>dim.py</code>, <code>idempotency_key</code> on ACCEPT execution, <code>StorageBundle.decision_audit</code> via <code>telemetry.py</code>, scenario batch from <code>scenarios.yaml</code> (<code>schemas.load_scenarios</code>).</p>
+<p><strong>DIR alignment:</strong> ROA Manifesto §4–5 (Explain → Policy → Self-Check → Proposal; User Space vs. Kernel Space), §10 (Boxed Intelligence), DIR Architectural Pattern §6 (Decision Integrity Module).</p>
+<h2 id="use-cases">Use cases</h2>
+<pre class="mermaid"><code>flowchart TB
+    subgraph Actors[" "]
+        C[Customer / intake channel]
+        O[Operator / batch runner]
+    end
+    subgraph System["DIR sample 35"]
+        R[run.py scenario loop]
+        A[agent: CrewAI or mock ROA]
+        D[DIM + StorageBundle telemetry]
+    end
+    C --&gt;|claim text or structured claim| R
+    O --&gt;|runs python samples/35.../run.py| R
+    R --&gt; A
+    A --&gt;|PolicyProposal| D</code></pre>
+<hr />
+<h2 id="the-core-concept-taming-the-task-oriented-crew">The Core Concept: Taming the Task-Oriented Crew</h2>
+<p>CrewAI Crews are <strong>collaborative, task-driven agents</strong> (e.g., Analyst + Decision Maker). They receive inputs, reason, call tools, and execute. They have no mission, no boundaries, no persistent responsibility. They are optimized for <em>"What can the crew do next?"</em>-not <em>"What is this crew responsible for?"</em> (ROA Manifesto §3).</p>
+<p>This creates a fundamental mismatch. In production, Crews:</p>
+<ul>
+<li>Execute side effects directly (API calls, database writes)</li>
+<li>Lack authority boundaries (they may act outside their intended scope)</li>
+<li>Provide no deterministic safety guarantees</li>
+</ul>
+<p><strong>The solution:</strong> Wrap the Crew in an ROA shell. The Crew retains its reasoning power but is <strong>forced</strong> to output via structured JSON (<code>output_json</code> / <code>RefundProposalOutput</code>). That output does not execute. It passes intent over "The Wall" to the DIR Kernel Space.</p>
+<p>The result: a mission-oriented Crew whose outputs are <strong>Claims</strong>, not <strong>Facts</strong>. A Claim becomes a Fact only after the Decision Integrity Module validates it and the Execution Engine runs it (DIR §6-7).</p>
+<hr />
+<h2 id="architecture">Architecture</h2>
+<h3 id="diagram-1-system-overview-crewai-wrapped-by-roa-processed-by-dir">Diagram 1 - System Overview: CrewAI wrapped by ROA, processed by DIR</h3>
+<pre class="mermaid"><code>---
+config:
+  layout: elk
+---
+flowchart TB
+    subgraph CFG["config.yaml"]
+        LLMCFG["`llm_defaults&lt;br/&gt;gemma3:4b @ localhost:11434`"]
+        CONTRACT["`agent.contract - ClaimsContract&lt;br/&gt;allowed_categories - max_refund - return_window`"]
+        CTXSTORE["`context_store - Orders&lt;br/&gt;purchase_date - category - amount`"]
+    end
+
+    subgraph US["USER SPACE - Probabilistic - Ollama / Gemma3"]
+        subgraph ROA["ROA Wrapper - CrewAIROAWrapper"]
+            subgraph CREW["CrewAI Crew - sequential"]
+                ANA["`Claims Analyst&lt;br/&gt;LLM text reasoning`"]
+                DM["`Decision Maker&lt;br/&gt;output_json = RefundProposalOutput`"]
+                ANA --&gt;|eligibility summary| DM
+            end
+        end
+        DM --&gt;|JSON Claim| WALL
+    end
+
+    WALL{{"`THE WALL&lt;br/&gt;Claim to PolicyProposal`"}}
+
+    subgraph KS["KERNEL SPACE - Deterministic - DIR"]
+        DIM["`dir_core.validate_proposal + dim.py&lt;br/&gt;L1: Schema + RBAC + contract&lt;br/&gt;L2: Order existence&lt;br/&gt;L3: Category boundary&lt;br/&gt;L4: Return window&lt;br/&gt;L5: Amount limit`"]
+        ACCEPT["ACCEPT"]
+        ESC["`ESCALATE&lt;br/&gt;human review`"]
+        REJ["REJECT"]
+        DIM --&gt; ACCEPT &amp; ESC &amp; REJ
+    end
+
+    WALL --&gt; DIM
+    CTXSTORE -.-&gt;|order data| DIM
+    CONTRACT -.-&gt;|boundaries| DIM
+    LLMCFG -.-&gt;|model / endpoint| CREW
+
+    style US fill:#fffde7,stroke:#f9a825,color:#333
+    style KS fill:#e8f5e9,stroke:#388e3c,color:#333
+    style ROA fill:#fff9c4,stroke:#f57f17,color:#333
+    style CREW fill:#fff3e0,stroke:#e65100,color:#333
+    style WALL fill:#37474f,color:#fff
+    style ACCEPT fill:#c8e6c9,stroke:#2e7d32,color:#1b5e20
+    style ESC fill:#fff9c4,stroke:#f57f17,color:#e65100
+    style REJ fill:#ffcdd2,stroke:#c62828,color:#b71c1c</code></pre>
+<h2 id="execution-flow">Execution flow</h2>
+<h3 id="diagram-2-end-to-end-sequence-for-a-single-claim">Diagram 2 — end-to-end sequence for a single claim</h3>
+<pre class="mermaid"><code>sequenceDiagram
+    actor Caller as run.py
+    participant CFG as config.yaml
+    participant Agent as agent.run_claims_roa_cycle
+    participant Analyst as Claims Analyst (CrewAI / Gemma3)
+    participant DM as Decision Maker (CrewAI / Gemma3)
+    participant DIM as DIM Validator (Kernel Space)
+    participant CS as Context Store (config.yaml)
+
+    Caller -&gt;&gt; CFG: load_yaml_config + load_scenarios()
+    CFG --&gt;&gt; Caller: agents, context_store, scenarios.yaml rows
+
+    loop for each scenario (6 rows in scenarios.yaml)
+        Note over Caller, Agent: E,F: NL intake via extract_claim (Crew or mock regex)
+        Caller -&gt;&gt; Agent: run_claims_roa_cycle(dfid, claim, ...)
+
+        rect rgb(255, 253, 231)
+            Note over Agent, DM: USER SPACE - probabilistic
+
+            Agent -&gt;&gt; Analyst: Task: analyze claim eligibility
+            Analyst -&gt;&gt; Analyst: Gemma3 reasoning
+            Analyst --&gt;&gt; DM: eligibility summary (text)
+
+            DM -&gt;&gt; DM: Gemma3 reasoning (output_json)
+            DM --&gt;&gt; Agent: RefundProposalOutput JSON
+        end
+
+        Note over Agent, DIM: THE WALL - Claim to PolicyProposal
+
+        rect rgb(232, 245, 233)
+            Note over DIM, CS: KERNEL SPACE - deterministic
+
+            Caller -&gt;&gt; DIM: validate_claims_proposal(proposal, dim_ctx, contract, dim_contract)
+            DIM -&gt;&gt; CS: lookup order (purchase_date, category)
+            CS --&gt;&gt; DIM: order record
+
+            alt L1-L4 pass AND amount &lt;= 500 EUR
+                DIM --&gt;&gt; Caller: ACCEPT
+            else L1-L4 pass AND amount &gt; 500 EUR
+                DIM --&gt;&gt; Caller: ESCALATE
+            else L2 fail - order not found
+                DIM --&gt;&gt; Caller: REJECT (order unknown)
+            else L3 fail - prohibited category
+                DIM --&gt;&gt; Caller: REJECT (category boundary)
+            else L4 fail - outside return window
+                DIM --&gt;&gt; Caller: REJECT (return window)
+            end
+        end
+    end</code></pre>
+<h3 id="diagram-3-test-scenarios-6-claims-through-the-dim-validation-pipeline">Diagram 3 - Test Scenarios: 6 claims through the DIM validation pipeline</h3>
+<pre class="mermaid"><code>---
+config:
+  layout: elk
+---
+flowchart TD
+    subgraph SCENARIOS["scenarios.yaml"]
+        SA["`A - claim dict&lt;br/&gt;ord_001 - 299.99 EUR`"]
+        SB["`B - claim dict&lt;br/&gt;ord_002 - 1200 EUR`"]
+        SC["`C - claim dict&lt;br/&gt;ord_005 - 500 EUR`"]
+        SD["`D - claim dict&lt;br/&gt;ord_004 - 50 EUR`"]
+        SE["`E - claim_text NL&lt;br/&gt;ord_001 - 299.99 EUR`"]
+        SF["`F - claim_text NL&lt;br/&gt;ord_002 - 1200 EUR`"]
+    end
+
+    subgraph EXTRACT["NL intake (E, F only)"]
+        EX["`extract_claim_from_text()&lt;br/&gt;LLM → structured claim`"]
+    end
+
+    subgraph CREW_US["CrewAI Crew - User Space - Gemma3"]
+        PROP["`Analyst to Decision Maker&lt;br/&gt;output: REFUND proposal JSON`"]
+    end
+
+    SA &amp; SB &amp; SC &amp; SD --&gt; PROP
+    SE &amp; SF --&gt; EX
+    EX --&gt; PROP
+
+    WALL{{"THE WALL"}}
+    PROP --&gt; WALL
+
+    subgraph DIM_KS["DIM - Kernel Space - validate_claims_proposal + dir_core"]
+        L1["L1 Schema + RBAC - pass"]
+        L2["L2 Order exists - pass"]
+        L3{"`L3 Category&lt;br/&gt;in allowed list?`"}
+        L4{"`L4 Purchase date&lt;br/&gt;within 14 days?`"}
+        L5{"`L5 Amount&lt;br/&gt;max 500 EUR?`"}
+    end
+
+    WALL --&gt; L1 --&gt; L2 --&gt; L3
+
+    L3 --&gt;|electronics / clothing / home| L4
+    L3 --&gt;|prohibited_category - D| RD
+
+    L4 --&gt;|within window - A, B, E, F| L5
+    L4 --&gt;|2026-01-01 expired - C| RC
+
+    L5 --&gt;|299.99 - A, E| RA
+    L5 --&gt;|1200.00 - B, F| RB
+
+    RA["`**ACCEPT**&lt;br/&gt;A, E`"]
+    RB["`**ESCALATE**&lt;br/&gt;B, F - human review`"]
+    RC["`**REJECT**&lt;br/&gt;C - return window expired`"]
+    RD["`**REJECT**&lt;br/&gt;D - category not allowed`"]
+
+    style SCENARIOS fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    style EXTRACT fill:#e1f5fe,stroke:#0288d1,color:#01579b
+    style CREW_US fill:#fffde7,stroke:#f9a825,color:#333
+    style DIM_KS fill:#e8f5e9,stroke:#388e3c,color:#333
+    style WALL fill:#37474f,color:#fff
+    style RA fill:#c8e6c9,stroke:#2e7d32,color:#1b5e20
+    style RB fill:#fff9c4,stroke:#f57f17,color:#e65100
+    style RC fill:#ffcdd2,stroke:#c62828,color:#b71c1c
+    style RD fill:#ffcdd2,stroke:#c62828,color:#b71c1c</code></pre>
+<h3 id="key-difference-from-a-naive-crew">Key Difference from a Naive Crew</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Naked CrewAI Crew</th>
+<th>ROA-Wrapped Crew</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Actions</td>
+<td>Any tool, any API, any DB</td>
+<td>Only structured JSON (<code>output_json</code>)</td>
+</tr>
+<tr>
+<td>Enforcement</td>
+<td>None (trust the LLM)</td>
+<td>Deterministic DIM in Kernel Space</td>
+</tr>
+<tr>
+<td>Output</td>
+<td>Side effects (Facts)</td>
+<td>Proposals (Claims)</td>
+</tr>
+<tr>
+<td>Authority</td>
+<td>Unbounded</td>
+<td><code>ClaimsContract</code> boundaries</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="the-claims-agent-scenario">The Claims Agent Scenario</h2>
+<h3 id="analyst-vs-dim-who-validates-what">Analyst vs DIM - Who Validates What?</h3>
+<p>The <strong>Claims Analyst</strong> (LLM) analyzes only the <strong>claim data</strong> provided in the scenario - it has no access to Context Store. It can reason about boundaries (categories, limits) from the prompt text, but it may err (e.g., wrong return-window assessment). The <strong>DIM</strong> (Kernel Space) is the source of truth: it reads <code>purchase_date</code> and <code>category</code> from Context Store and enforces rules deterministically. If the Analyst says "OK" but the data contradicts - DIM rejects. This separation is intentional: User Space proposes, Kernel Space decides.</p>
+<h3 id="mission">Mission</h3>
+<p>Process customer claims fairly, within policy boundaries, without exceeding authority or escalating unnecessarily.</p>
+<h3 id="responsibility-contract-claimscontract">Responsibility Contract (ClaimsContract)</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>allowed_refund_categories</code></td>
+<td>Product categories agent may propose refunds for (e.g., electronics, clothing)</td>
+</tr>
+<tr>
+<td><code>max_refund_without_escalation</code></td>
+<td>EUR threshold-above requires human approval (ESCALATE)</td>
+</tr>
+<tr>
+<td><code>return_window_days</code></td>
+<td>Max days from purchase for automatic eligibility</td>
+</tr>
+</tbody>
+</table>
+<h3 id="natural-language-intake-scenarios-e-f">Natural Language Intake (Scenarios E, F)</h3>
+<p>In production, customers write free-form text in English (e.g. <em>"I bought ord_001 for 299 EUR, defective product"</em>), not JSON. The LLM <strong>extracts</strong> structured claim data (<code>order_id</code>, <code>amount_eur</code>, <code>category</code>, <code>reason</code>) in a single call before the Crew processes it. This justifies the LLM: deterministic rules alone cannot parse natural language.</p>
+<h3 id="scenarios">Scenarios</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Input</th>
+<th>DIM Verdict</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A</strong></td>
+<td>Valid claim: within return window, amount ≤ 500 EUR</td>
+<td>ACCEPT</td>
+<td>All criteria met</td>
+</tr>
+<tr>
+<td><strong>B</strong></td>
+<td>Valid claim: amount &gt; 500 EUR</td>
+<td>ESCALATE</td>
+<td>Human approval required</td>
+</tr>
+<tr>
+<td><strong>C</strong></td>
+<td>Claim outside return window (purchased 2026-01-01)</td>
+<td>REJECT</td>
+<td>Outside return_window_days</td>
+</tr>
+<tr>
+<td><strong>D</strong></td>
+<td>Claim for prohibited category</td>
+<td>REJECT</td>
+<td>Category not in allowed_refund_categories</td>
+</tr>
+<tr>
+<td><strong>E</strong></td>
+<td>NL text: valid claim (ord_001, 299.99 EUR)</td>
+<td>ACCEPT</td>
+<td>LLM extracts → DIM validates</td>
+</tr>
+<tr>
+<td><strong>F</strong></td>
+<td>NL text: amount &gt; 500 EUR (ord_002, 1200 EUR)</td>
+<td>ESCALATE</td>
+<td>LLM extracts → DIM escalates</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="layout-sample-guide-3">Layout (Sample Guide §3)</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run.py</code></td>
+<td>Bootstrap, handshake, <code>ContextStore</code>, scenario loop, DIM, telemetry, idempotent execution</td>
+</tr>
+<tr>
+<td><code>config.yaml</code></td>
+<td><code>database</code>, <code>llm_defaults</code>, <code>simulation</code>, <code>agents[]</code>, <code>context_store</code></td>
+</tr>
+<tr>
+<td><code>scenarios.yaml</code></td>
+<td>Scenario rows with <code>context.claim</code> or <code>context.claim_text</code> and <code>expected</code></td>
+</tr>
+<tr>
+<td><code>schemas.py</code></td>
+<td><code>load_scenarios</code>, <code>parse_llm_json</code>, <code>CrewConfig</code>, contract payload helper</td>
+</tr>
+<tr>
+<td><code>contracts.py</code></td>
+<td><code>ClaimsContract</code> built from YAML + <code>ResponsibilityContract</code></td>
+</tr>
+<tr>
+<td><code>agent.py</code></td>
+<td>CrewAI Explain→Policy path, mock deterministic path, Self-Check, <code>PolicyProposal</code></td>
+</tr>
+<tr>
+<td><code>dim.py</code></td>
+<td><code>validate_claims_proposal</code> (wraps <code>dir_core.validate_proposal</code> + claims rules)</td>
+</tr>
+<tr>
+<td><code>telemetry.py</code></td>
+<td><code>SIMULATION_*</code>, <code>AGENT_DECISION</code>, <code>CLAIM_REFUND_EXECUTED</code>, self-check failures</td>
+</tr>
+<tr>
+<td><code>mocks/llm_mock_strategy.py</code></td>
+<td><code>make_mock_strategy</code> for <code>setup_environment</code> when mock is selected</td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration">Configuration</h2>
+<p>Runtime settings are split between <strong><code>config.yaml</code></strong> (persistence, LLM defaults, agents, authoritative <code>context_store</code>) and <strong><code>scenarios.yaml</code></strong> (batch inputs and expected DIM verdicts). <code>context_store.orders[*].purchase_date</code> must fall within <code>claims_bounds.return_window_days</code> of the wall-clock date you run against, or ACCEPT scenarios will see REJECT from the return-window rule.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">database</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqlite</span>
+<span class="w">  </span><span class="nt">db_path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;data/crewai_roa.db&quot;</span>
+
+<span class="nt">llm_defaults</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gemma3:4b&quot;</span>
+<span class="w">  </span><span class="nt">base_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://localhost:11434&quot;</span>
+<span class="w">  </span><span class="nt">temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+
+<span class="nt">simulation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">run_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;crewai_claims_batch_001&quot;</span>
+
+<span class="nt">agents</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">agent_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;claims_agent_v1&quot;</span>
+<span class="w">    </span><span class="nt">contract</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">EXECUTOR</span>
+<span class="w">      </span><span class="nt">authorized_instruments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">electronics</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">clothing</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">home</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">allowed_policy_types</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">REFUND</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">REPLACE</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">ESCALATE</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">escalate_on_uncertainty</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
+<span class="w">      </span><span class="nt">max_drawdown_limit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+<span class="w">      </span><span class="nt">wake_up_threshold_pct</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+<span class="w">      </span><span class="nt">parent_agent_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
+<span class="w">    </span><span class="nt">claims_bounds</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">max_refund_without_escalation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500.0</span>
+<span class="w">      </span><span class="nt">return_window_days</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">14</span>
+
+<span class="nt">context_store</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">orders</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ord_001</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> purchase_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;...&quot;</span><span class="p p-Indicator">,</span><span class="nt"> category</span><span class="p">:</span><span class="w"> </span><span class="nv">electronics</span><span class="p p-Indicator">,</span><span class="nt"> amount</span><span class="p">:</span><span class="w"> </span><span class="nv">299.99</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>database</code></td>
+<td>SQLite path anchored next to <code>config.yaml</code> via <code>setup_environment</code></td>
+</tr>
+<tr>
+<td><code>llm_defaults</code></td>
+<td>Default Ollama endpoint; overridden by <code>OLLAMA_*</code> env vars when set</td>
+</tr>
+<tr>
+<td><code>simulation.run_id</code></td>
+<td><code>simulation_id</code> in every telemetry <code>details</code> payload</td>
+</tr>
+<tr>
+<td><code>agents[].contract</code></td>
+<td>Canonical <code>ResponsibilityContract</code> fields for <code>YamlContractProvider</code></td>
+</tr>
+<tr>
+<td><code>agents[].claims_bounds</code></td>
+<td>Claims-only limits read into <code>ClaimsContract</code></td>
+</tr>
+<tr>
+<td><code>context_store</code></td>
+<td>Authoritative orders for DIM (not injected into the Crew prompt)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-to-run">How to run</h2>
+<h3 id="mock-no-network-no-ollama-no-crewai-llm-calls">Mock (no network, no Ollama, no CrewAI LLM calls)</h3>
+<p>Deterministic claim→proposal path and regex NL extraction for scenarios E–F.</p>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+<span class="nv">$env</span>:PYTHONPATH<span class="o">=</span><span class="s2">&quot;src;samples&quot;</span><span class="p">;</span><span class="w"> </span><span class="nv">$env</span>:USE_MOCK_LLM<span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="w">   </span><span class="c1"># PowerShell</span>
+python<span class="w"> </span>samples/35_crewai_roa_wrapper/run.py
+</code></pre></div>
+<h3 id="ollama-crewai-full-user-space">Ollama + CrewAI (full User Space)</h3>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[crewai]&quot;</span>
+ollama<span class="w"> </span>serve
+ollama<span class="w"> </span>pull<span class="w"> </span>gemma3:4b
+<span class="nv">$env</span>:PYTHONPATH<span class="o">=</span><span class="s2">&quot;src;samples&quot;</span>
+python<span class="w"> </span>samples/35_crewai_roa_wrapper/run.py
+</code></pre></div>
+<p>Unset <code>USE_MOCK_LLM</code> (or set it to <code>0</code>) so <code>configured_live_llm_is_reachable</code> can succeed; otherwise the sample stays on the mock path.</p>
+<h3 id="gemini">Gemini</h3>
+<p>This sample wires <strong>CrewAI</strong> to the OpenAI-compatible <strong>Ollama</strong> endpoint. Gemini is not configured here; use mock or Ollama as above.</p>
+<p><strong>Env var overrides</strong> (Ollama):</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$env:OLLAMA_BASE_URL</span> <span class="p">=</span> <span class="s2">&quot;http://localhost:11434&quot;</span>
+<span class="nv">$env:OLLAMA_MODEL</span>    <span class="p">=</span> <span class="s2">&quot;gemma3:4b&quot;</span>
+</code></pre></div>
+<h2 id="database-storage">Database storage</h2>
+<p>Events are written only through <code>bundle.decision_audit</code> (see <code>telemetry.py</code>). Typical <code>event</code> values for this sample: <code>SIMULATION_START</code>, <code>SIMULATION_END</code>, <code>AGENT_DECISION</code>, <code>CLAIM_REFUND_EXECUTED</code>, <code>CLAIMS_SELF_CHECK_FAILED</code>.</p>
+<p>Group a run by <code>simulation_id</code> stored inside JSON <code>details</code> (Sample Guide §9.4):</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- SQLite</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">dfid</span><span class="p">,</span><span class="w"> </span><span class="n">event</span><span class="p">,</span><span class="w"> </span><span class="n">detail_json</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">decision_audit_events</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">json_extract</span><span class="p">(</span><span class="n">detail_json</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;$.simulation_id&#39;</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;crewai_claims_batch_001&#39;</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">id</span><span class="p">;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1">-- PostgreSQL</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">dfid</span><span class="p">,</span><span class="w"> </span><span class="n">event</span><span class="p">,</span><span class="w"> </span><span class="n">detail_json</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">decision_audit_events</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">detail_json</span><span class="o">-&gt;&gt;</span><span class="s1">&#39;simulation_id&#39;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;crewai_claims_batch_001&#39;</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">id</span><span class="p">;</span>
+</code></pre></div>
+<p><strong>Why <code>provider="openai"</code>?</strong>
+CrewAI's LLM class routes <code>provider="openai"</code> to the native OpenAI Python SDK.
+Ollama exposes an OpenAI-compatible API at <code>/v1</code>, so no LiteLLM or extra dependencies needed:
+<div class="highlight"><pre><span></span><code><span class="n">LLM</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;gemma3:4b&quot;</span><span class="p">,</span> <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;openai&quot;</span><span class="p">,</span>
+    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://localhost:11434/v1&quot;</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;ollama&quot;</span><span class="p">)</span>
+</code></pre></div></p>
+<hr />
+<h2 id="how-the-interception-works-output_json-instead-of-tool-calling">How the Interception Works (output_json instead of tool-calling)</h2>
+<p>Gemma3 (and most local Ollama models) <strong>do not support OpenAI-style function calling</strong>.
+The original <code>Submit_Policy_Proposal</code> tool approach requires the model to call functions - Ollama returns HTTP 400 for such requests.</p>
+<p><strong>Solution: <code>output_json</code> on the Decision Maker's Task.</strong></p>
+<p>CrewAI's <code>output_json</code> parameter instructs the LLM to format its entire response as JSON matching a Pydantic schema, then validates and parses it automatically:</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RefundProposalOutput</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">action</span><span class="p">:</span> <span class="nb">str</span>       <span class="c1"># always &quot;REFUND&quot;</span>
+    <span class="n">order_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">amount_eur</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">category</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="n">decide_task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Based on the analyst&#39;s findings, produce a refund proposal...&quot;</span><span class="p">,</span>
+    <span class="n">output_json</span><span class="o">=</span><span class="n">RefundProposalOutput</span><span class="p">,</span>  <span class="c1"># ← no tool-calling needed</span>
+    <span class="n">agent</span><span class="o">=</span><span class="n">decision_maker</span><span class="p">,</span>              <span class="c1"># ← no tools=[] on the agent</span>
+<span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">crew</span><span class="o">.</span><span class="n">kickoff</span><span class="p">()</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">json_dict</span>  <span class="c1"># parsed + validated dict</span>
+<span class="n">proposal</span> <span class="o">=</span> <span class="n">PolicyProposal</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Architecturally equivalent</strong>: the LLM still produces a <strong>Claim</strong> (JSON proposal), which crosses "The Wall" to the DIM for deterministic validation before any <strong>Fact</strong> (execution) occurs. The boundary holds.</p>
+<hr />
+<h2 id="key-components">Key Components</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ClaimsContract</code></td>
+<td>Defines authority boundaries (categories, amount limit, return window)</td>
+</tr>
+<tr>
+<td><code>extract_claim_from_text()</code></td>
+<td><strong>NL intake:</strong> extracts structured claim from customer text (single LLM call)</td>
+</tr>
+<tr>
+<td><code>ClaimExtractionOutput</code></td>
+<td>Pydantic schema for NL extraction output</td>
+</tr>
+<tr>
+<td><code>RefundProposalOutput</code></td>
+<td>Pydantic schema for <code>output_json</code> - structured proposal from Decision Maker</td>
+</tr>
+<tr>
+<td><code>_extract_proposal_from_text()</code></td>
+<td>Fallback: parses JSON from raw LLM output when <code>output_json</code> parse fails</td>
+</tr>
+<tr>
+<td><code>agent.CrewAIROAWrapper</code></td>
+<td>Builds Crew per call, runs <code>kickoff()</code>, returns policy dict for Self-Check</td>
+</tr>
+<tr>
+<td><code>agent.run_claims_roa_cycle</code></td>
+<td>Mock or Crew path, Self-Check, emits <code>PolicyProposal</code></td>
+</tr>
+<tr>
+<td><code>dim.validate_claims_proposal</code></td>
+<td><code>dir_core.validate_proposal</code> then order, category, window, amount</td>
+</tr>
+<tr>
+<td><code>report_generator.py</code></td>
+<td>Dark-theme HTML audit report (Sample Guide §17) from <code>decision_audit</code> only</td>
+</tr>
+<tr>
+<td>Context Store</td>
+<td>Authoritative order data (source of truth for DIM, not for the agent)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="html-report">HTML report</h2>
+<p>After a successful batch run, <code>run.py</code> writes
+<code>results/report_&lt;UTC&gt;_&lt;N&gt;scenarios.html</code> and opens it in the default browser. The report
+is self-contained (embedded CSS), uses only <code>bundle.decision_audit.all_events_chronological()</code>
+plus registry and context snapshots, and follows §17 section order (summary, authored prose,
+empty-state Section 3 charts, trace table, ROA blocks, authoritative orders table, kernel artefacts).</p>
+<p>Regenerate without re-running the simulation:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$env</span>:PYTHONPATH<span class="o">=</span><span class="s2">&quot;src;samples&quot;</span>
+python<span class="w"> </span>samples/35_crewai_roa_wrapper/report_generator.py
+python<span class="w"> </span>samples/35_crewai_roa_wrapper/report_generator.py<span class="w"> </span>--simulation-id<span class="w"> </span>crewai_claims_batch_001
+python<span class="w"> </span>samples/35_crewai_roa_wrapper/report_generator.py<span class="w"> </span>--output-path<span class="w"> </span>samples/35_crewai_roa_wrapper/results/custom.html
+</code></pre></div>
+<hr />
+<h2 id="expected-output">Expected Output</h2>
+<div class="highlight"><pre><span></span><code>======================================================================
+35_crewai_roa_wrapper  -  CrewAI + Ollama + DIR Kernel
+======================================================================
+  Config : config.yaml
+  LLM    : gemma3:4b @ http://localhost:11434
+  Agent  : claims_agent_v1
+  Crew   : Claims Analyst → Decision Maker (sequential, output_json)
+  DIM    : 5-layer validation (RBAC, order, window, category, amount)
+  Scenarios: 6
+
+[SCENARIO A - Valid: within window &amp; limit]
+----------------------------------------------------------------------
+  Claim:  order=ord_001  amount=299.99 EUR  cat=electronics
+  Crew:   thinking... done.
+  Proposal:   REFUND ord_001 299.99 EUR
+  DIM Verdict: ACCEPT
+  Reason:      Validation passed
+
+[SCENARIO B - Amount &gt; 500 EUR (human approval required)]
+----------------------------------------------------------------------
+  Claim:  order=ord_002  amount=1200.0 EUR  cat=electronics
+  Crew:   thinking... done.
+  Proposal:   REFUND ord_002 1200.0 EUR
+  DIM Verdict: ESCALATE
+  Reason:      Amount 1200.0 EUR exceeds max_refund_without_escalation (500.0 EUR)...
+
+[SCENARIO C - Outside return window (purchased 2026-01-01)]
+----------------------------------------------------------------------
+  Claim:  order=ord_005  amount=500.0 EUR  cat=electronics
+  Crew:   thinking... done.
+  Proposal:   REFUND ord_005 500.0 EUR
+  DIM Verdict: REJECT
+  Reason:      Order ord_005 outside return window...
+
+[SCENARIO D - Prohibited category]
+----------------------------------------------------------------------
+  Claim:  order=ord_004  amount=50.0 EUR  cat=prohibited_category
+  Crew:   thinking... done.
+  Proposal:   REFUND ord_004 50.0 EUR
+  DIM Verdict: REJECT
+  Reason:      Category &#39;prohibited_category&#39; not in allowed_refund_categories...
+
+[SCENARIO E - NL intake: valid claim (ord_001)]
+----------------------------------------------------------------------
+  Input (NL): I bought electronics order ord_001 for 299.99 EUR on 20 February 2026...
+  Extracted: order=ord_001  amount=299.99 EUR  cat=electronics
+  Crew:   thinking... done.
+  Proposal:   REFUND ord_001 299.99 EUR
+  DIM Verdict: ACCEPT
+  Reason:      Validation passed
+
+[SCENARIO F - NL intake: amount &gt; 500 EUR (ord_002)]
+----------------------------------------------------------------------
+  Input (NL): Order ord_002 - laptop for 1200 EUR, 25 February 2026...
+  Extracted: order=ord_002  amount=1200.0 EUR  cat=electronics
+  Crew:   thinking... done.
+  Proposal:   REFUND ord_002 1200.0 EUR
+  DIM Verdict: ESCALATE
+  Reason:      Amount 1200.0 EUR exceeds max_refund_without_escalation (500.0 EUR)...
+
+======================================================================
+[SUMMARY]
+======================================================================
+  ✓ ACCEPT      SCENARIO A - Valid: within window &amp; limit
+  ✓ ESCALATE    SCENARIO B - Amount &gt; 500 EUR (human approval required)
+  ✓ REJECT      SCENARIO C - Outside return window (purchased 2026-01-01)
+  ✓ REJECT      SCENARIO D - Prohibited category
+  ✓ ACCEPT      SCENARIO E - NL intake: valid claim (ord_001)
+  ✓ ESCALATE    SCENARIO F - NL intake: amount &gt; 500 EUR (ord_002)
+</code></pre></div>
+<hr />
+<h2 id="references">References</h2>
+<ul>
+<li><a href="../../../01-roa-manifesto/ROA_Manifesto/">ROA Manifesto</a> §3 (Responsibility Contract), §4-5 (Explain → Policy → Proposal), §10 (Boxed Intelligence)</li>
+<li><a href="../../../02-decision-runtime/DIR_Architectural_Pattern/">DIR Architectural Pattern</a> §6 (Decision Integrity Module), §5 (Policies as Contracts)</li>
+<li><a href="../34_langchain_roa_wrapper/">Sample 34 - LangChain ROA Wrapper</a> (same pattern, different framework)</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,51 @@
+---
+title: Context Compilation Pipeline
+config:
+  theme: neutral
+  look: classic
+---
+flowchart LR
+ subgraph Compilation_Pipeline["**COMPILATION PIPELINE**<br>Context Assembly"]
+        Step1_Snapshot["**Step 1**<br>Snapshot State<br>Optimistic Lock"]
+        Step2_TimeFilter["**Step 2**<br>Time Window Filter<br>Relevance Scope"]
+        Step3_Retrieval["**Step 3**<br>RAG Retrieval<br>Semantic Search"]
+        Step4_Format["**Step 4**<br>Assembly<br>Token Budgeting"]
+  end
+ subgraph Context_Store["**CONTEXT STORE**<br>Source of Truth"]
+        State_DB["**State Context**<br>Authoritative Snapshot"]
+        Session_DB["**Session Context**<br>Event Log"]
+        Memory_DB["**Memory Context**<br>Long-term History"]
+        Artifact_DB["**Artifacts Context**<br>Static Rules &amp; Docs"]
+  end
+    Trigger(["**Trigger**<br>Invoked"]) ==> Step1_Snapshot
+    State_DB -. Read .-> Step1_Snapshot
+    Step1_Snapshot ==> Step2_TimeFilter
+    Session_DB L_Session_DB_Step2_TimeFilter_0@-. Read .-> Step2_TimeFilter
+    Step2_TimeFilter ==> Step3_Retrieval
+    Memory_DB L_Memory_DB_Step3_Retrieval_0@-. Query .-> Step3_Retrieval
+    Artifact_DB L_Artifact_DB_Step3_Retrieval_0@-. Query .-> Step3_Retrieval
+    Step3_Retrieval ==> Step4_Format
+    Step4_Format ==> Output_Object["**Working Context**<br>Immutable View"]
+    Output_Object --> Agent_Reasoning(["**Agent Reasoning**<br>LLM"])
+
+    State_DB@{ shape: db}
+    Session_DB@{ shape: db}
+    Memory_DB@{ shape: db}
+    Artifact_DB@{ shape: db}
+     State_DB:::storage
+     Session_DB:::storage
+     Memory_DB:::storage
+     Artifact_DB:::storage
+     Trigger:::process
+     Step1_Snapshot:::process
+     Step2_TimeFilter:::process
+     Step3_Retrieval:::process
+     Step4_Format:::process
+     Output_Object:::artifact
+     Agent_Reasoning:::agent
+    classDef storage fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold
+    classDef process fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold
+    classDef artifact fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold
+    classDef agent fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold
+    style Context_Store fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style Compilation_Pipeline fill:#FAFAFA,stroke:#F57C00,stroke-width:3px

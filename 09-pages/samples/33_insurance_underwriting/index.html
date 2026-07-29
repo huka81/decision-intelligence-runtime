@@ -1,0 +1,3368 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Deterministic execution kernel for autonomous AI agents.">
+      
+      
+      
+        <link rel="canonical" href="https://huka81.github.io/decision-intelligence-runtime/09-pages/samples/33_insurance_underwriting/">
+      
+      
+        <link rel="prev" href="../32_fraud_gate/">
+      
+      
+        <link rel="next" href="../34_langchain_roa_wrapper/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>33 - Insurance underwriting - Decision Intelligence Runtime (DIR)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#33-business-case-insurance-underwriting-topology-c" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Decision Intelligence Runtime (DIR)" class="md-header__button md-logo" aria-label="Decision Intelligence Runtime (DIR)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Decision Intelligence Runtime (DIR)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              33 - Insurance underwriting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/huka81/decision-intelligence-runtime" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../00-introduction/DIR-introduction/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../package/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Package
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../10-api-reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Samples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../author/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  About
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Decision Intelligence Runtime (DIR)" class="md-nav__button md-logo" aria-label="Decision Intelligence Runtime (DIR)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Decision Intelligence Runtime (DIR)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/huka81/decision-intelligence-runtime" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../00-introduction/DIR-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../01-roa-manifesto/ROA_Manifesto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Responsible-Oriented Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../02-decision-runtime/DIR_Architectural_Pattern/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Intelligence Runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../03-topologies/DIR_Topologies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topologies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../04-governance/DIR_Governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance & Agent Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../08-conclusion/Context_as_Code/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context as code
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../00-introduction/Intelligent_Delegation_Framework_Mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligent AI delegation framework mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../package/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Package
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../package/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../package/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../package/ports_and_adapters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ports & Adapters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../package/core_components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../package/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models & DTOs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../10-api-reference/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kernel Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/topology_a/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topology A (EOAM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/topology_c/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topology C (DL+PCI)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../10-api-reference/database_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Samples
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Samples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../00_quick_start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 - Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01_roa_agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 - ROA agent
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02_dfid_propagation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 - DFID propagation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03_idempotency_guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 - Idempotency guard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04_context_store/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 - Context store
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05_dim_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 - DIM validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_agent_registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 - Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_event_bus_swappable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 - Event bus (swappable)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_custom_repo_psql/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 - Custom repo (PostgreSQL)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_topology_a_eoam/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 - Topology A (EOAM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_topology_b_sds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 - Topology B (SDS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_topology_c_dl_pci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 - Topology C (DL+PCI)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../12_compliant_lie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 - Compliant Lie (Evidence Governance)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../31_finance_trading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31 - Finance trading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../32_fraud_gate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32 - Fraud gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33 - Insurance underwriting
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33 - Insurance underwriting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#email-pipeline-flow-and-what-is-tested" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Email pipeline: flow and what is tested
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Email pipeline: flow and what is tested">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#london-marketstyle-fixtures-included-fictional-names-urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        London Market–style fixtures (included, fictional names &amp; URLs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to Run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-configyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration (config.yaml)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration (config.yaml)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#email_processing-default-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        email_processing (default path)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#persistence-canonical-schemasql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persistence (canonical schema.sql)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-explain-policy-pci-appear-dir" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When Explain / Policy / PCI appear (DIR)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#diagram-1-system-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagram 1: System overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diagram-2-one-email-decisionflow-happy-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagram 2: One email DecisionFlow (happy path)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kernel-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kernel Space
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Space
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#roa-lifecycle-explain-policy-self-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ROA Lifecycle (Explain → Policy → Self-Check)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evidence-hash-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evidence Hash Formula
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#html-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTML report
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expected-console-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected console output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example runs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#technical-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../34_langchain_roa_wrapper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34 - LangChain ROA wrapper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../35_crewai_roa_wrapper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35 - CrewAI ROA wrapper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../36_drift_optimization_discount/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    36 - Drift optimization discount
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../37_drift_semantic_refund/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    37 - Drift semantic refund
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../38_drift_environmental_bidding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    38 - Drift environmental bidding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../39_fintech_evidence_governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    39 - Fintech evidence governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../88_meta_context_engineering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    88 - Meta context engineering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../author/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About the author
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#email-pipeline-flow-and-what-is-tested" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Email pipeline: flow and what is tested
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Email pipeline: flow and what is tested">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#london-marketstyle-fixtures-included-fictional-names-urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        London Market–style fixtures (included, fictional names &amp; URLs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to Run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-configyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration (config.yaml)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration (config.yaml)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#email_processing-default-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        email_processing (default path)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#persistence-canonical-schemasql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persistence (canonical schema.sql)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-explain-policy-pci-appear-dir" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When Explain / Policy / PCI appear (DIR)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#diagram-1-system-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagram 1: System overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diagram-2-one-email-decisionflow-happy-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagram 2: One email DecisionFlow (happy path)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kernel-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kernel Space
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Space
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#roa-lifecycle-explain-policy-self-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ROA Lifecycle (Explain → Policy → Self-Check)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evidence-hash-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evidence Hash Formula
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#html-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTML report
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#expected-console-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected console output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example runs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#technical-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="33-business-case-insurance-underwriting-topology-c">33 - Business Case: Insurance Underwriting (Topology C)</h1>
+<p><strong>Goal:</strong> Demonstrate the <strong>Digital Underwriter</strong> use case with a <strong>full ROA agent</strong> (Explain → Policy → Self-Check) backed by LLM. Config-driven via <code>config.yaml</code> (same convention as samples 31, 32, 35). The system commits to the Decision Ledger only when the agent provides a valid cryptographic <strong>Evidence Hash</strong> proving compliance with the Responsibility Contract.</p>
+<p><strong>Day Two prevention:</strong> Unverified agent decisions (hallucinations, rule violations, forged proofs) never become binding contracts. The DIM (Proof Checker) recalculates the Evidence Hash using authoritative sources and rejects any mismatch (Zero Trust).</p>
+<p><strong>ROA/DIR:</strong> DIR Topologies §3 C (DL+PCI) - suited to compliance-heavy operations, high-value transfers, and formal verification where every decision must be cryptographically provable.</p>
+<p><strong>Configuration:</strong> Underwriting rules, LLM, agent contract, and <strong><code>email_processing</code></strong> (gates, paths, FX stub) live in <strong><code>config.yaml</code></strong>, same convention as <code>samples/31_finance_trading</code> and <code>samples/32_fraud_gate</code>.</p>
+<p><strong>Bindable TiV ceiling (<code>max_tiv</code>):</strong> <code>run.py</code> and <code>orchestrator.py</code> build <code>UnderwritingContract</code> with <code>max_tiv</code> from <strong><code>agents[0].contract.max_tiv</code></strong>, then <strong><code>underwriting.max_tiv</code></strong>, then code default <strong><code>2_000_000</code></strong>. The committed sample uses <strong>3,000,000</strong> on the agent contract (see <code>config.yaml</code>).</p>
+<p><strong>What <code>run.py</code> does:</strong> bootstraps LLM and canonical <code>StorageBundle</code> via <code>samples.shared.bootstrap.setup_environment</code>, performs <code>AgentRegistry.handshake</code>, loads every matching <code>*.md</code> under <code>emails/</code>, runs the email orchestrator (SQLite under <code>database.db_path</code> + HTML report under <code>results/</code>), and opens the new report in the browser.</p>
+<hr />
+<h2 id="email-pipeline-flow-and-what-is-tested">Email pipeline: flow and what is tested</h2>
+<p>Each markdown fixture is one <strong>DecisionFlow</strong> with its own <strong>DFID</strong>, from ingest through optional <strong>mock policy bind</strong>.</p>
+<p><strong>Order of steps</strong></p>
+<ol>
+<li><strong>Ingest</strong> — <code>email_fixture_ingest</code> loads the markdown and builds a coarse <code>ClientApplication</code> (subject, body, industry hints, revenue proxy from table TiV × FX). Broker <strong>TiV for authority</strong> is <strong>not</strong> taken from these table regexes; the kernel waits for LLM extraction (<code>requested_tiv_usd</code> is filled after extraction).</li>
+<li><strong>Pre-agent gates</strong> — Only configurable <strong><code>injection_patterns</code></strong> on the raw email body (default config: empty). The audit/timeline event <strong><code>KERNEL_GATES_PASSED</code></strong> means this step only; territory and <code>max_tiv</code> are <strong>not</strong> evaluated until after extraction (step 4).</li>
+<li><strong>Submission extraction (LLM)</strong> — <code>BROKER_REQUESTED_TIV_USD</code> + <code>STATED_TERRITORIES</code>. With <strong>MockLLM</strong>, TiV is derived from the pipe-table row whose first cell is <strong>Total Insurable Values</strong> (<code>**Total: GBP …**</code> or a bold <code>**USD …**</code> amount in that row). Failure here ends as <strong><code>REJECTED</code> / <code>EXTRACTION_FAILED</code></strong>.</li>
+<li><strong>Post-extraction gates (deterministic)</strong> — On <strong>agent-extracted</strong> territory text vs <code>prohibited_territories</code>, then <strong>TiV vs <code>contract.max_tiv</code></strong>:</li>
+<li><strong>Both</strong> territory and authority fail → <strong><code>CONTRACT_VIOLATION</code></strong> (<code>REJECTED</code>).</li>
+<li><strong>Only</strong> prohibited geography → <strong><code>PROHIBITED_TERRITORY</code></strong> (<code>REJECTED</code>).</li>
+<li><strong>Only</strong> TiV above <code>max_tiv</code> → <strong><code>AUTHORITY_CEILING</code></strong> (<strong><code>ESCALATED</code></strong>, not bound).</li>
+<li>If gates pass → <strong>Explain → Policy → Self-Check → PCI</strong> → <strong>DIM</strong> → <strong>ledger</strong> → <strong>mock bind</strong> → <strong><code>BOUND</code> / <code>POLICY_BOUND</code></strong>.</li>
+</ol>
+<p>Decision-path logs use <code>log_with_dfid</code> where a DFID exists. Telemetry rows include <strong><code>simulation_id</code></strong> (from <code>simulation.run_id</code> in <code>config.yaml</code>) for run grouping. Default SQLite path: <code>data/underwriting.dir.sqlite</code> (see <code>database</code> in <code>config.yaml</code>). Override with <strong><code>UNDERWRITING_AUDIT_DB</code></strong> (sets <code>database.db_path</code> before bootstrap).</p>
+<h3 id="london-marketstyle-fixtures-included-fictional-names-urls">London Market–style fixtures (included, <strong>fictional</strong> names &amp; URLs)</h3>
+<table>
+<thead>
+<tr>
+<th>File (under <code>emails/</code>)</th>
+<th>What it exercises</th>
+<th>Typical final status</th>
+<th><code>reason_code</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>(EXT) Beaconmere Advisory Ltd - Standard Renewal.md</code></td>
+<td>TiV under <code>max_tiv</code>, UK-only wording</td>
+<td><strong>BOUND</strong></td>
+<td><code>POLICY_BOUND</code></td>
+</tr>
+<tr>
+<td><code>(EXT) Cryowest Distribution Ltd - High Limit Facility.md</code></td>
+<td>TiV far above <code>max_tiv</code>, allowed geographies</td>
+<td><strong>ESCALATED</strong></td>
+<td><code>AUTHORITY_CEILING</code></td>
+</tr>
+<tr>
+<td><code>(EXT) Nexora Commodities FZE - MENA Property Enquiry.md</code></td>
+<td>Syria/Damascus in extraction + TiV above delegated <code>max_tiv</code></td>
+<td><strong>REJECTED</strong></td>
+<td><code>CONTRACT_VIOLATION</code> (combined message)</td>
+</tr>
+<tr>
+<td><code>(EXT) Crimson Lane Retail Ltd - Renewal Broker Notes.md</code></td>
+<td>Misleading “UK-only” workflow note; <strong>embedded prompt-injection</strong> (MIME/TNEF-style junk) asking to bypass rules; factual schedule still shows <strong>Damascus, Syria</strong> + TiV above <code>max_tiv</code></td>
+<td><strong>REJECTED</strong></td>
+<td><code>CONTRACT_VIOLATION</code></td>
+</tr>
+</tbody>
+</table>
+<p><em>Exact LLM wording can vary with a real model; with </em><em>MockLLM</em><em> the outcomes above are stable. Fixtures are processed in </em><em>alphabetical</em><em> order by filename.</em></p>
+<hr />
+<h2 id="how-to-run">How to Run</h2>
+<p>From the repository root:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Install dependencies (includes PyYAML + markdown for formatted HTML report)</span>
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[samples]&quot;</span>
+
+<span class="c1"># 2. Email pipeline (default) — MockLLM, no Ollama</span>
+<span class="nv">USE_MOCK_LLM</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>python<span class="w"> </span>samples/33_insurance_underwriting/run.py
+</code></pre></div>
+<p>If you install without extras, add <code>pip install markdown</code> so the report renders broker tables and body as HTML instead of a plain <code>&lt;pre&gt;</code> fallback.</p>
+<p><strong>With Ollama (real LLM):</strong></p>
+<div class="highlight"><pre><span></span><code>ollama<span class="w"> </span>serve
+ollama<span class="w"> </span>pull<span class="w"> </span>gemma3:4b
+python<span class="w"> </span>samples/33_insurance_underwriting/run.py
+</code></pre></div>
+<p><strong>Audit database path</strong> (optional):</p>
+<div class="highlight"><pre><span></span><code><span class="nb">set</span><span class="w"> </span><span class="nv">UNDERWRITING_AUDIT_DB</span><span class="o">=</span>D:<span class="se">\t</span>mp<span class="se">\u</span>w_audit.sqlite
+python<span class="w"> </span>samples/33_insurance_underwriting/run.py
+</code></pre></div>
+<p>Each run appends DFID-tagged rows to SQLite, logs a per-email timeline, and writes a <strong>new</strong> report under <strong><code>results/report_YYYY-MM-DD_HHMM_emails.html</code></strong> (UTC).</p>
+<hr />
+<h2 id="configuration-configyaml">Configuration (config.yaml)</h2>
+<p>All underwriting rules, LLM, agent, and <strong><code>email_processing</code></strong> live in <strong><code>config.yaml</code></strong>. The block below matches the sample layout (comments may differ slightly in the repo file).</p>
+<div class="highlight"><pre><span></span><code><span class="nt">database</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqlite</span>
+<span class="w">  </span><span class="nt">db_path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;data/underwriting.dir.sqlite&quot;</span>
+
+<span class="nt">simulation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">run_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;uw_email_batch_001&quot;</span>
+
+<span class="nt">underwriting</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">max_tiv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2000000</span>
+<span class="w">  </span><span class="nt">prohibited_industries</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;Fireworks&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;CryptoMining&quot;</span><span class="p p-Indicator">]</span>
+
+<span class="nt">llm_defaults</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gemma3:4b&quot;</span>
+<span class="w">  </span><span class="nt">base_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://localhost:11434&quot;</span>
+<span class="w">  </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
+
+<span class="nt">email_processing</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">emails_dir</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;emails&quot;</span>
+<span class="w">  </span><span class="nt">currency_fx_to_usd</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> GBP</span><span class="p">:</span><span class="w"> </span><span class="nv">1.0</span><span class="p p-Indicator">,</span><span class="nt"> USD</span><span class="p">:</span><span class="w"> </span><span class="nv">1.0</span><span class="p p-Indicator">,</span><span class="nt"> EUR</span><span class="p">:</span><span class="w"> </span><span class="nv">1.0</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">prohibited_territories</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;syrian</span><span class="nv"> </span><span class="s">arab</span><span class="nv"> </span><span class="s">republic&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;syria&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;damascus&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">injection_patterns</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+
+<span class="nt">agents</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">agent_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;underwriter_agent&quot;</span>
+<span class="w">    </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1.0.0&quot;</span>
+<span class="w">    </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">    </span><span class="nt">contract</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">EXECUTOR</span>
+<span class="w">      </span><span class="nt">mission</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;You</span><span class="nv"> </span><span class="s">are</span><span class="nv"> </span><span class="s">an</span><span class="nv"> </span><span class="s">insurance</span><span class="nv"> </span><span class="s">underwriter...&quot;</span>
+<span class="w">      </span><span class="nt">authorized_instruments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+<span class="w">      </span><span class="nt">allowed_policy_types</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;BIND&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;DECLINE&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">escalate_on_uncertainty</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.65</span>
+<span class="w">      </span><span class="nt">max_drawdown_limit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+<span class="w">      </span><span class="nt">wake_up_threshold_pct</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+<span class="w">      </span><span class="nt">parent_agent_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
+<span class="w">      </span><span class="nt">max_tiv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3000000</span>
+<span class="w">      </span><span class="nt">prohibited_industries</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;Fireworks&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;CryptoMining&quot;</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>database</strong></td>
+<td>Canonical <code>StorageBundle</code> SQLite path (anchored to <code>config.yaml</code> directory)</td>
+</tr>
+<tr>
+<td><strong>simulation</strong></td>
+<td><code>run_id</code> — propagated as <code>simulation_id</code> on audit rows</td>
+</tr>
+<tr>
+<td><strong>contracts</strong></td>
+<td>Optional — defaults to the same YAML path passed to <code>setup_environment</code></td>
+</tr>
+<tr>
+<td><strong>underwriting</strong></td>
+<td><code>max_tiv</code>, <code>prohibited_industries</code> — defaults when building domain contract helpers</td>
+</tr>
+<tr>
+<td><strong>llm_defaults</strong></td>
+<td>Ollama or mock (<code>USE_MOCK_LLM=1</code>, or unreachable live LLM falls back to mock)</td>
+</tr>
+<tr>
+<td><strong>agents</strong></td>
+<td>DIR <code>ResponsibilityContract</code> fields under <code>contract</code>, plus underwriting <code>max_tiv</code></td>
+</tr>
+<tr>
+<td><strong>email_processing</strong></td>
+<td><code>emails_dir</code>, <code>currency_fx_to_usd</code>, <code>prohibited_territories</code>, <code>injection_patterns</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="email_processing-default-path">email_processing (default path)</h3>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>emails_dir</code></td>
+<td>Subfolder of the sample with markdown email fixtures</td>
+</tr>
+<tr>
+<td><em>(persistence)</em></td>
+<td>Use <strong><code>database.db_path</code></strong> — canonical <code>decision_ledger_entries</code>, <code>decision_audit_events</code>, and idempotency tables</td>
+</tr>
+<tr>
+<td><code>currency_fx_to_usd</code></td>
+<td>Rates for <strong>MockLLM</strong> / helpers when turning table TiV into USD (demo uses <code>1.0</code> for GBP fixtures)</td>
+</tr>
+<tr>
+<td><code>prohibited_territories</code></td>
+<td>Case-insensitive substrings vs <strong>agent-extracted</strong> territories <strong>after</strong> extraction. If both territory and <code>max_tiv</code> fail, the kernel returns <strong><code>CONTRACT_VIOLATION</code></strong>; territory-only → <strong><code>PROHIBITED_TERRITORY</code></strong>.</td>
+</tr>
+<tr>
+<td><code>injection_patterns</code></td>
+<td>Optional substrings for <strong>ABORTED</strong> (<code>PROMPT_INJECTION</code>) before any LLM call; default config leaves this empty so injection is handled by extraction contract + kernel</td>
+</tr>
+</tbody>
+</table>
+<h3 id="persistence-canonical-schemasql">Persistence (canonical <code>schema.sql</code>)</h3>
+<p>The sample uses the built-in SQLite bundle from <code>setup_environment</code>. Each email <strong>DFID</strong> has a <strong>root</strong> row in <code>decision_flows</code> (<code>root_dfid = dfid</code>, <code>dfid_parent</code> null) before <code>flow_context</code>, <code>decision_audit_events</code>, or <code>decision_ledger_entries</code> rows are written. Compiled session JSON is stored in <strong><code>flow_context</code></strong>. Verified PCIs (after DIM approval) are persisted append-only in <strong><code>decision_ledger_entries</code></strong> (<code>intent_payload</code>, <code>context_ref</code>, <code>evidence_hash</code>, <code>signature</code>). Append-only process telemetry uses <strong><code>decision_audit_events</code></strong> (<code>event_type</code>, <code>detail_json</code>, <code>root_dfid</code>, <code>severity</code>). Mock bind idempotency uses <strong><code>idempotency_cache</code></strong> (<code>idempotency_key</code>, <code>request_hash</code>, <code>result</code>, <code>expires_at</code>).</p>
+<p><strong>SQLite — verified PCI ledger (Topology C source of truth):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">dfid</span><span class="p">,</span><span class="w"> </span><span class="n">evidence_hash</span><span class="p">,</span><span class="w"> </span><span class="n">committed_at</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">decision_ledger_entries</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">id</span><span class="p">;</span>
+</code></pre></div>
+<p><strong>SQLite — audit rows for one <code>simulation_id</code>:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">dfid</span><span class="p">,</span><span class="w"> </span><span class="n">event_type</span><span class="p">,</span><span class="w"> </span><span class="n">json_extract</span><span class="p">(</span><span class="n">detail_json</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;$.simulation_id&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">sim</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">decision_audit_events</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">json_extract</span><span class="p">(</span><span class="n">detail_json</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;$.simulation_id&#39;</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;uw_email_batch_001&#39;</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">id</span><span class="p">;</span>
+</code></pre></div>
+<p><strong>PostgreSQL (same logical columns on a mirrored database):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">dfid</span><span class="p">,</span><span class="w"> </span><span class="n">event_type</span><span class="p">,</span><span class="w"> </span><span class="n">detail_json</span><span class="o">-&gt;&gt;</span><span class="s1">&#39;simulation_id&#39;</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">sim</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">decision_audit_events</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">detail_json</span><span class="o">-&gt;&gt;</span><span class="s1">&#39;simulation_id&#39;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;uw_email_batch_001&#39;</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">id</span><span class="p">;</span>
+</code></pre></div>
+<h3 id="when-explain-policy-pci-appear-dir">When Explain / Policy / PCI appear (DIR)</h3>
+<ol>
+<li><strong>Submission-facts extraction</strong> (broker TiV + stated territories) is a User Space LLM step; the kernel then applies <strong>deterministic</strong> post-extraction gates (<code>prohibited_territories</code>, <code>max_tiv</code>). <strong><code>injection_patterns</code></strong> run earlier, before the first LLM call.</li>
+<li><strong>Explain → Policy → Self-Check → PCI</strong> runs only if those gates pass. If the flow stops at a gate, there is no <code>PolicyProposal</code> / PCI yet—only extracted facts. The HTML report shows <strong>Agent: submission facts extraction only</strong> in that case.</li>
+<li><strong><code>PolicyProposal</code></strong> is the agent’s structured output, serialized as JSON in the PCI <strong><code>intent_payload</code></strong>. It includes <strong>binding</strong> fields (<code>total_insured_value</code>, <code>premium</code>, <code>industry</code>) and <strong>observability</strong> fields (<code>justification</code>, <code>confidence</code> per DIR-minified §3.9). In this sample, <strong>Evidence_Hash</strong> is computed from the binding subset only; justification and confidence are still stored in the PCI for audit and reporting.</li>
+</ol>
+<hr />
+<h2 id="architecture">Architecture</h2>
+<h3 id="diagram-1-system-overview">Diagram 1: System overview</h3>
+<p><strong><code>emails/*.md</code></strong> is ingested by <strong><code>orchestrator.py</code></strong> (contract and gates from <strong><code>config.yaml</code></strong>).</p>
+<pre class="mermaid"><code>---
+config:
+  layout: elk
+---
+flowchart TB
+    CFG["config.yaml"]
+
+    subgraph DEF["Email orchestrator"]
+        MD["emails/*.md"]
+        PL["orchestrator.py — ingest, gates, extract, ROA, DIM, bind"]
+        MD --&gt; PL
+    end
+
+    subgraph US["USER SPACE"]
+        ROA["ROAUnderwriterAgent"]
+    end
+
+    WALL{{"THE WALL"}}
+
+    subgraph KS["KERNEL SPACE"]
+        REG["AgentRegistry"]
+        CS["ContextStore"]
+        DIM["DIM"]
+        LEDGER["DecisionLedger"]
+    end
+
+    CFG --&gt; REG
+    CFG --&gt; PL
+    PL --&gt; ROA
+
+    ROA --&gt;|"PCI + evidence_hash"| WALL
+    WALL --&gt; DIM
+    REG --&gt;|contract_hash| DIM
+    CS --&gt;|context_hash| DIM
+    DIM --&gt;|verified| LEDGER
+
+    style US fill:#fffde7,stroke:#f9a825,color:#333
+    style KS fill:#e8f5e9,stroke:#388e3c,color:#333
+    style WALL fill:#37474f,color:#fff
+    style DEF fill:#e3f2fd,stroke:#1565c0,color:#0d47a1</code></pre>
+<h3 id="diagram-2-one-email-decisionflow-happy-path">Diagram 2: One email DecisionFlow (happy path)</h3>
+<p>If a post-extraction gate fails, the flow stops <strong>before</strong> Explain / Policy / PCI.</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant P as orchestrator
+    participant A as ROAUnderwriterAgent
+    participant D as DIM
+    participant L as DecisionLedger
+
+    P-&gt;&gt;P: parse markdown → ClientApplication
+    P-&gt;&gt;P: pre-agent gates (injection_patterns)
+    P-&gt;&gt;A: extract_submission_facts (TiV + territories)
+    P-&gt;&gt;P: post-extraction gates (territory, max_tiv)
+    alt gates OK
+        P-&gt;&gt;A: run_decision_cycle → Explain, Policy, Self-Check, PCI
+        A-&gt;&gt;D: PCI
+        D-&gt;&gt;D: hash + business rules (industry, TiV vs max_tiv)
+        D-&gt;&gt;L: append if Policy Bound
+        P-&gt;&gt;P: mock bind API
+    end</code></pre>
+<hr />
+<h2 id="components">Components</h2>
+<h3 id="kernel-space">Kernel Space</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AgentRegistry</strong></td>
+<td>Stores the Underwriting Policy (Responsibility Contract): delegated <strong><code>max_tiv</code></strong> (from config; <strong>3,000,000</strong> in the committed sample), prohibited industries from contract</td>
+</tr>
+<tr>
+<td><strong>ContextStore</strong></td>
+<td>Holds the Client Application state (business_type, revenue, industry)</td>
+</tr>
+<tr>
+<td><strong>DecisionLedger</strong></td>
+<td>Append-only list storing only verified decisions</td>
+</tr>
+<tr>
+<td><strong>DecisionIntegrityModule (DIM)</strong></td>
+<td>Proof Checker: recalculates Evidence Hash, rejects on mismatch (Zero Trust)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="user-space">User Space</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ROAUnderwriterAgent</strong></td>
+<td>Full ROA agent: Explain(LLM) → Policy(LLM) → Self-Check → PCI with evidence_hash</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="roa-lifecycle-explain-policy-self-check">ROA Lifecycle (Explain → Policy → Self-Check)</h2>
+<ol>
+<li><strong>Explain:</strong> LLM interprets client application (narrative, signals, risks, opportunities)</li>
+<li><strong>Policy:</strong> LLM proposes TOTAL_INSURED_VALUE (TiV), PREMIUM, INDUSTRY (structured output)</li>
+<li><strong>Self-Check:</strong> Deterministic check (prohibited industry, TiV vs <code>max_tiv</code>): agent may still emit; DIM enforces</li>
+<li><strong>PCI:</strong> Build ProofCarryingIntent with evidence_hash, submit to DIM</li>
+</ol>
+<hr />
+<h2 id="evidence-hash-formula">Evidence Hash Formula</h2>
+<div class="highlight"><pre><span></span><code>Evidence_Hash = SHA256(DFID || Context_Hash || Contract_Hash || Proposal_Params)
+</code></pre></div>
+<ul>
+<li><strong>Context_Hash</strong> = SHA256(canonical JSON of ClientApplication)</li>
+<li><strong>Contract_Hash</strong> = SHA256(canonical JSON of UnderwritingContract)</li>
+<li><strong>Proposal_Params</strong> = canonical JSON of policy_proposal (total_insured_value, premium, industry)</li>
+</ul>
+<p>The DIM <strong>recalculates</strong> this using authoritative Registry and ContextStore data. It never trusts the agent's claimed hash.</p>
+<hr />
+<h2 id="html-report">HTML report</h2>
+<p>Each run writes <strong><code>results/report_YYYY-MM-DD_HHMM_emails.html</code></strong> (UTC): per-email rendered markdown body, processing timeline (ingest → gates → extraction → ROA if any → DIM → bind), outcome and <code>reason_code</code>.</p>
+<p>Install <strong><code>markdown</code></strong> (or <code>pip install -e ".[samples]"</code>) so pipe tables and bold render cleanly instead of a plain <code>&lt;pre&gt;</code> fallback.</p>
+<hr />
+<h2 id="file-structure">File Structure</h2>
+<div class="highlight"><pre><span></span><code>samples/33_insurance_underwriting/
+├── README.md
+├── __init__.py
+├── config.yaml             # database, simulation, contracts, LLM, agents, email_processing
+├── run.py                  # Bootstrap, handshake, orchestrator, report
+├── orchestrator.py         # DFID per email, gates, ROA, DIM, mock bind, telemetry
+├── telemetry.py            # SIMULATION_START/END and underwriting audit helpers
+├── agent.py                # ROAUnderwriterAgent: Explain → Policy → Self-Check → PCI
+├── schemas.py              # UnderwritingContract, ClientApplication, PolicyProposal
+├── email_fixture_ingest.py
+├── gates.py
+├── kernel.py               # DecisionIntegrityModule, PCI helpers
+├── policy_binding.py
+├── mocks/
+│   ├── __init__.py
+│   └── llm_mock_strategy.py
+├── emails/
+├── data/                   # gitignored — SQLite from database.db_path
+├── results/                # gitignored — report_*.html
+└── report_generator.py
+</code></pre></div>
+<hr />
+<h2 id="expected-console-output">Expected console output</h2>
+<ul>
+<li><code>Digital Underwriter — email orchestrator (Topology C + mock bind)</code></li>
+<li>For each processed file: a <strong><code>[Email] …</code></strong> section with <code>DFID</code>, step timeline, then <strong><code>Final: BOUND (POLICY_BOUND)</code></strong> / <strong><code>ESCALATED (AUTHORITY_CEILING)</code></strong> / <strong><code>REJECTED (...)</code></strong></li>
+<li><code>Summary</code>: ledger count (verified binds only), audit DB path, path to <strong><code>results/report_*_emails.html</code></strong></li>
+<li>With mock LLM: <code>Using MockLLMClient</code> (from bootstrap) and <code>Contract loaded: ...</code></li>
+</ul>
+<p>The browser opens the generated HTML report automatically.</p>
+<hr />
+<h2 id="example-runs">Example runs</h2>
+<p><strong>Default (excerpt):</strong></p>
+<div class="highlight"><pre><span></span><code>======================================================================
+Digital Underwriter - Email pipeline (Topology C + mock bind)
+======================================================================
+
+[Email] (EXT) Beaconmere Advisory Ltd - Standard Renewal.md
+  DFID: ...
+    -&gt; ... -&gt; BIND_SUCCEEDED: CLOSED - ...
+  Final: BOUND (POLICY_BOUND)
+  Policy ref: POL-...
+
+======================================================================
+Summary
+======================================================================
+  Ledger entries (verified only): 1
+  ...
+  HTML report: .../results/simulation_report_YYYY-MM-DD_HHMM.html
+</code></pre></div>
+<hr />
+<h2 id="technical-notes">Technical notes</h2>
+<ul>
+<li><strong>Imports:</strong> <code>run.py</code> prepends the repo <code>src/</code> directory to <code>sys.path</code> so <code>dir_core.utils.config_loader</code> and <code>dir_core</code> resolve when you run <code>python samples/33_insurance_underwriting/run.py</code> without an editable install; <code>pip install -e ".[samples]"</code> is still recommended.</li>
+<li><strong>Real LLM:</strong> Ollama + model from <code>llm_defaults</code> (e.g. Gemma). Set <code>USE_MOCK_LLM=1</code> for deterministic runs without Ollama.</li>
+<li><strong>Env (see <code>run.py</code> docstring):</strong> <code>USE_MOCK_LLM</code>, <code>UNDERWRITING_AUDIT_DB</code>, <code>LOG_LEVEL</code> (e.g. <code>DEBUG</code>).</li>
+<li><strong>Zero API keys</strong> when using local Ollama only.</li>
+<li><strong>Reports:</strong> Each run creates a <strong>new</strong> timestamped file under <strong><code>results/</code></strong>.</li>
+</ul>
+<hr />
+<h2 id="summary">Summary</h2>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Topology</strong></td>
+<td>C (Decision Ledger &amp; Proof-Carrying Intents)</td>
+</tr>
+<tr>
+<td><strong>Use case</strong></td>
+<td>Digital Underwriter: TiV-aware proposals with cryptographic proof of compliance</td>
+</tr>
+<tr>
+<td><strong>Agent</strong></td>
+<td>Full ROA: Explain(LLM) → Policy(LLM) → Self-Check → PCI</td>
+</tr>
+<tr>
+<td><strong>Config</strong></td>
+<td><code>config.yaml</code>: <code>underwriting</code>, <code>llm_defaults</code>, <code>agents</code>, <code>email_processing</code></td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>Markdown emails under <code>emails/</code> + contract / gates from config</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td><strong>BOUND</strong> / <strong>ESCALATED</strong> / <strong>REJECTED</strong> with codes such as <code>POLICY_BOUND</code>, <code>AUTHORITY_CEILING</code>, <code>CONTRACT_VIOLATION</code>, <code>PROHIBITED_TERRITORY</code>, <code>EXTRACTION_FAILED</code>, or DIM strings (e.g. <strong>TIV Exceeds Contract Max</strong>, <strong>Prohibited Industry</strong>, <strong>Evidence Invalid</strong>) if the flow reaches DIM</td>
+</tr>
+<tr>
+<td><strong>Logic</strong></td>
+<td><code>email_fixture_ingest</code> → optional pre-LLM <code>injection_patterns</code> scan → LLM extraction → post-extraction territory / <code>max_tiv</code> gates → optional full ROA → DIM → ledger → <code>policy_binding</code> mock bind</td>
+</tr>
+<tr>
+<td><strong>Goal</strong></td>
+<td>Day Two prevention: unverified decisions do not reach the ledger or bind API</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

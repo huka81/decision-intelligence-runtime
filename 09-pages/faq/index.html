@@ -1,0 +1,3383 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Deterministic execution kernel for autonomous AI agents.">
+      
+      
+      
+        <link rel="canonical" href="https://huka81.github.io/decision-intelligence-runtime/09-pages/faq/">
+      
+      
+        <link rel="prev" href="../samples/88_meta_context_engineering/">
+      
+      
+        <link rel="next" href="../author/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>FAQ - Decision Intelligence Runtime (DIR)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#frequently-asked-questions-faq" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Decision Intelligence Runtime (DIR)" class="md-header__button md-logo" aria-label="Decision Intelligence Runtime (DIR)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Decision Intelligence Runtime (DIR)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              FAQ
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/huka81/decision-intelligence-runtime" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../00-introduction/DIR-introduction/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../package/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Package
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../10-api-reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../samples/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Samples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../author/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  About
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Decision Intelligence Runtime (DIR)" class="md-nav__button md-logo" aria-label="Decision Intelligence Runtime (DIR)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Decision Intelligence Runtime (DIR)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/huka81/decision-intelligence-runtime" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../00-introduction/DIR-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-roa-manifesto/ROA_Manifesto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Responsible-Oriented Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-decision-runtime/DIR_Architectural_Pattern/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Intelligence Runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-topologies/DIR_Topologies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topologies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-governance/DIR_Governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance & Agent Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-conclusion/Context_as_Code/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context as code
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../00-introduction/Intelligent_Delegation_Framework_Mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligent AI delegation framework mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../package/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Package
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package/ports_and_adapters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ports & Adapters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package/core_components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models & DTOs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../10-api-reference/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kernel Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/topology_a/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topology A (EOAM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/topology_c/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topology C (DL+PCI)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/database_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../samples/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Samples
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Samples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/00_quick_start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 - Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/01_roa_agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 - ROA agent
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/02_dfid_propagation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 - DFID propagation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/03_idempotency_guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 - Idempotency guard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/04_context_store/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 - Context store
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/05_dim_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 - DIM validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/06_agent_registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 - Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/07_event_bus_swappable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 - Event bus (swappable)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/08_custom_repo_psql/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 - Custom repo (PostgreSQL)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/09_topology_a_eoam/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 - Topology A (EOAM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/10_topology_b_sds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 - Topology B (SDS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/11_topology_c_dl_pci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 - Topology C (DL+PCI)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/12_compliant_lie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 - Compliant Lie (Evidence Governance)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/31_finance_trading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31 - Finance trading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/32_fraud_gate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32 - Fraud gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/33_insurance_underwriting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33 - Insurance underwriting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/34_langchain_roa_wrapper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34 - LangChain ROA wrapper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/35_crewai_roa_wrapper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35 - CrewAI ROA wrapper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/36_drift_optimization_discount/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    36 - Drift optimization discount
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/37_drift_semantic_refund/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    37 - Drift semantic refund
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/38_drift_environmental_bidding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    38 - Drift environmental bidding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/39_fintech_evidence_governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    39 - Fintech evidence governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../samples/88_meta_context_engineering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    88 - Meta context engineering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#i-the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I. The Problem
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="I. The Problem">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-what-exactly-are-day-two-problems-in-the-context-of-ai-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. What exactly are "Day Two" problems in the context of AI agents?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-what-is-the-semantic-comma-catastrophe-and-why-is-being-careful-insufficient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. What is the semantic "Comma Catastrophe", and why is "being careful" insufficient?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-how-does-dir-compare-to-frameworks-like-langchain-crewai-or-autogen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. How does DIR compare to frameworks like LangChain, CrewAI, or AutoGen?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-cqrs-sagas-idempotency-keys-these-patterns-arent-new-where-is-the-novelty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. CQRS, Sagas, idempotency keys - these patterns aren't new. Where is the novelty?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ii-what-dir-is-and-isnt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        II. What DIR Is (and Isn't)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="II. What DIR Is (and Isn&#39;t)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#5-how-should-i-use-this-repository-alongside-ai-coding-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. How should I use this repository alongside AI coding agents?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-is-dir-a-library-i-install-a-saas-product-or-an-architectural-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Is DIR a library I install, a SaaS product, or an architectural pattern?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#iii-engineering-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        III. Engineering Concerns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="III. Engineering Concerns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#7-is-dir-overkill-for-most-agent-use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Is DIR overkill for most agent use cases?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-wont-separating-reasoning-from-execution-slow-development-and-time-to-market" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Won't separating reasoning from execution slow development and time-to-market?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-can-dir-scale-in-real-distributed-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Can DIR scale in real distributed systems?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-do-rigid-contracts-and-execution-gates-limit-the-creativity-and-reasoning-quality-of-the-llm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Do rigid contracts and execution gates limit the creativity and reasoning quality of the LLM?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#iv-core-mechanics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IV. Core Mechanics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IV. Core Mechanics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-what-is-the-difference-between-a-responsibility-oriented-agent-roa-and-a-standard-capability-based-agent-why-does-dir-treat-agent-output-as-a-claim-rather-than-a-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. What is the difference between a Responsibility-Oriented Agent (ROA) and a standard capability-based agent? Why does DIR treat agent output as a "Claim" rather than a command?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-what-is-just-in-time-jit-state-verification-and-why-is-it-necessary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. What is Just-In-Time (JIT) State Verification, and why is it necessary?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-why-is-the-models-natural-language-explanation-structurally-excluded-from-execution-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Why is the model's natural language explanation structurally excluded from execution logic?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-how-does-dir-guarantee-idempotency-when-the-world-state-is-changing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. How does DIR guarantee idempotency when the world state is changing?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#15-how-does-dir-prevent-infinite-error-loops-and-token-burn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. How does DIR prevent infinite error loops and token burn?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#16-how-are-partial-failures-handled-in-multi-step-transactions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. How are partial failures handled in multi-step transactions?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v-compliance-topologies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V. Compliance &amp; Topologies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="V. Compliance &amp; Topologies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#17-how-does-dir-support-compliance-with-the-eu-ai-act-and-what-are-proof-carrying-intents-pci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. How does DIR support compliance with the EU AI Act, and what are Proof-Carrying Intents (PCI)?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#18-how-do-i-choose-between-the-three-topologies-eoam-sds-and-dlpci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. How do I choose between the three topologies - EOAM, SDS, and DL+PCI?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#19-is-dir-specific-to-finance-or-does-it-generalize-to-other-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. Is DIR specific to finance, or does it generalize to other domains?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vi-operations-reliability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VI. Operations &amp; Reliability
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VI. Operations &amp; Reliability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#20-isnt-the-dir-runtime-a-single-point-of-failure-what-happens-if-it-goes-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Isn't the DIR Runtime a single point of failure? What happens if it goes down?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#21-how-do-you-test-responsibility-contracts-before-deploying-them-to-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21. How do you test Responsibility Contracts before deploying them to production?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-what-is-the-decisionflow-id-dfid-and-how-do-i-use-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22. What is the DecisionFlow ID (DFID) and how do I use it?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-what-is-the-context-compiler-and-how-does-it-differ-from-standard-rag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23. What is the Context Compiler, and how does it differ from standard RAG?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-wont-faster-and-more-capable-llms-eventually-make-dir-unnecessary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24. Won't faster and more capable LLMs eventually make DIR unnecessary?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vii-human-oversight-scalability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VII. Human Oversight &amp; Scalability
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VII. Human Oversight &amp; Scalability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#25-how-does-dir-change-the-role-of-human-operators-and-does-it-still-require-approving-every-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        25. How does DIR change the role of human operators - and does it still require approving every action?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-how-does-governance-by-exception-prevent-both-alert-fatigue-and-silent-drift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        26. How does "Governance by Exception" prevent both alert fatigue and silent drift?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#viii-business-adoption" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VIII. Business &amp; Adoption
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VIII. Business &amp; Adoption">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#27-does-dir-reduce-development-cost-or-does-it-move-the-cost-from-code-to-contracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27. Does DIR reduce development cost, or does it move the cost from code to contracts?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#28-we-have-agents-in-production-how-do-we-adopt-dir-incrementally-and-what-skills-does-the-team-need" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        28. We have agents in production. How do we adopt DIR incrementally, and what skills does the team need?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../author/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About the author
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#i-the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I. The Problem
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="I. The Problem">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-what-exactly-are-day-two-problems-in-the-context-of-ai-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. What exactly are "Day Two" problems in the context of AI agents?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-what-is-the-semantic-comma-catastrophe-and-why-is-being-careful-insufficient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. What is the semantic "Comma Catastrophe", and why is "being careful" insufficient?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-how-does-dir-compare-to-frameworks-like-langchain-crewai-or-autogen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. How does DIR compare to frameworks like LangChain, CrewAI, or AutoGen?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-cqrs-sagas-idempotency-keys-these-patterns-arent-new-where-is-the-novelty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. CQRS, Sagas, idempotency keys - these patterns aren't new. Where is the novelty?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ii-what-dir-is-and-isnt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        II. What DIR Is (and Isn't)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="II. What DIR Is (and Isn&#39;t)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#5-how-should-i-use-this-repository-alongside-ai-coding-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. How should I use this repository alongside AI coding agents?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-is-dir-a-library-i-install-a-saas-product-or-an-architectural-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Is DIR a library I install, a SaaS product, or an architectural pattern?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#iii-engineering-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        III. Engineering Concerns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="III. Engineering Concerns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#7-is-dir-overkill-for-most-agent-use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Is DIR overkill for most agent use cases?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-wont-separating-reasoning-from-execution-slow-development-and-time-to-market" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Won't separating reasoning from execution slow development and time-to-market?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-can-dir-scale-in-real-distributed-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Can DIR scale in real distributed systems?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-do-rigid-contracts-and-execution-gates-limit-the-creativity-and-reasoning-quality-of-the-llm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Do rigid contracts and execution gates limit the creativity and reasoning quality of the LLM?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#iv-core-mechanics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IV. Core Mechanics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IV. Core Mechanics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-what-is-the-difference-between-a-responsibility-oriented-agent-roa-and-a-standard-capability-based-agent-why-does-dir-treat-agent-output-as-a-claim-rather-than-a-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. What is the difference between a Responsibility-Oriented Agent (ROA) and a standard capability-based agent? Why does DIR treat agent output as a "Claim" rather than a command?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-what-is-just-in-time-jit-state-verification-and-why-is-it-necessary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. What is Just-In-Time (JIT) State Verification, and why is it necessary?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-why-is-the-models-natural-language-explanation-structurally-excluded-from-execution-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Why is the model's natural language explanation structurally excluded from execution logic?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-how-does-dir-guarantee-idempotency-when-the-world-state-is-changing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. How does DIR guarantee idempotency when the world state is changing?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#15-how-does-dir-prevent-infinite-error-loops-and-token-burn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. How does DIR prevent infinite error loops and token burn?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#16-how-are-partial-failures-handled-in-multi-step-transactions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. How are partial failures handled in multi-step transactions?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v-compliance-topologies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V. Compliance &amp; Topologies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="V. Compliance &amp; Topologies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#17-how-does-dir-support-compliance-with-the-eu-ai-act-and-what-are-proof-carrying-intents-pci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. How does DIR support compliance with the EU AI Act, and what are Proof-Carrying Intents (PCI)?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#18-how-do-i-choose-between-the-three-topologies-eoam-sds-and-dlpci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. How do I choose between the three topologies - EOAM, SDS, and DL+PCI?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#19-is-dir-specific-to-finance-or-does-it-generalize-to-other-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. Is DIR specific to finance, or does it generalize to other domains?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vi-operations-reliability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VI. Operations &amp; Reliability
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VI. Operations &amp; Reliability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#20-isnt-the-dir-runtime-a-single-point-of-failure-what-happens-if-it-goes-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Isn't the DIR Runtime a single point of failure? What happens if it goes down?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#21-how-do-you-test-responsibility-contracts-before-deploying-them-to-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21. How do you test Responsibility Contracts before deploying them to production?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-what-is-the-decisionflow-id-dfid-and-how-do-i-use-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22. What is the DecisionFlow ID (DFID) and how do I use it?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-what-is-the-context-compiler-and-how-does-it-differ-from-standard-rag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23. What is the Context Compiler, and how does it differ from standard RAG?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-wont-faster-and-more-capable-llms-eventually-make-dir-unnecessary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24. Won't faster and more capable LLMs eventually make DIR unnecessary?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vii-human-oversight-scalability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VII. Human Oversight &amp; Scalability
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VII. Human Oversight &amp; Scalability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#25-how-does-dir-change-the-role-of-human-operators-and-does-it-still-require-approving-every-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        25. How does DIR change the role of human operators - and does it still require approving every action?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-how-does-governance-by-exception-prevent-both-alert-fatigue-and-silent-drift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        26. How does "Governance by Exception" prevent both alert fatigue and silent drift?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#viii-business-adoption" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VIII. Business &amp; Adoption
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VIII. Business &amp; Adoption">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#27-does-dir-reduce-development-cost-or-does-it-move-the-cost-from-code-to-contracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27. Does DIR reduce development cost, or does it move the cost from code to contracts?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#28-we-have-agents-in-production-how-do-we-adopt-dir-incrementally-and-what-skills-does-the-team-need" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        28. We have agents in production. How do we adopt DIR incrementally, and what skills does the team need?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="frequently-asked-questions-faq">Frequently Asked Questions (FAQ)</h1>
+<p>This document addresses common engineering questions and architectural concerns regarding the Decision Intelligence Runtime (DIR) and Responsibility-Oriented Agents (ROA) architecture.</p>
+<h2 id="i-the-problem">I. The Problem</h2>
+<h3 id="1-what-exactly-are-day-two-problems-in-the-context-of-ai-agents">1. What exactly are "Day Two" problems in the context of AI agents?</h3>
+<p>"Day One" is when the demo dazzles stakeholders. "Day Two" is production. Three failure classes emerge consistently:
+- <strong>Hallucination loops:</strong> The agent receives a rejection (e.g., insufficient funds), interprets it as a signal to try harder, and generates increasingly creative - and dangerous - workarounds, burning tokens with each cycle. (See Q14 for the <em>Intent Retry Governor</em>)
+- <strong>State drift (TOCTOU):</strong> Time-of-Check to Time-of-Use race conditions. A decision based on data from 10 seconds ago executes on a world that has already moved - stock price, inventory level, account balance. (See Q11 for <em>JIT State Verification</em>)
+- <strong>Execution chaos:</strong> Without exactly-once semantics, a network timeout causes the same irreversible action - a trade, a payment - to execute twice. (See Q13 for <em>Idempotency Keys</em>)
+DIR provides the deterministic infrastructure required to prevent all three.</p>
+<h3 id="2-what-is-the-semantic-comma-catastrophe-and-why-is-being-careful-insufficient">2. What is the semantic "Comma Catastrophe", and why is "being careful" insufficient?</h3>
+<p>An LLM trained on US-formatted data reads "15,500" (Polish locale: 15.5) as fifteen thousand five hundred. It emits a buy order for 15,500 SOL (~\$2.3M) instead of 15.5 SOL (~\$2,300). Instructions like "be careful" in the system prompt are statistically ignored when the model is confident in its misinterpretation. </p>
+<p>DIR protects against this by treating the agent's output as an untrusted <strong>Claim</strong>, not a command. The Policy Proposal hits the DIM, which deterministically checks the proposed value against the <code>max_order_usd</code> hard limit in the Responsibility Contract. The transaction is rejected at the Kernel boundary before any external API is touched, converting a potential $2.3M loss into a harmless validation error log.</p>
+<h3 id="3-how-does-dir-compare-to-frameworks-like-langchain-crewai-or-autogen">3. How does DIR compare to frameworks like LangChain, CrewAI, or AutoGen?</h3>
+<p>Complementary, not competing. These frameworks operate in <strong>User Space</strong> - they orchestrate reasoning, chain prompts, and coordinate multiple models. DIR operates in <strong>Kernel Space</strong> - it governs what gets executed.</p>
+<p>In the "Boxed Intelligence" pattern, a LangChain or CrewAI workflow is wrapped inside a DIR runtime. The framework loses its direct API keys and can only emit a structured "Policy Proposal." DIR acts as the deterministic gatekeeper: it validates the proposal against business logic, RBAC, and risk limits before any side effect is triggered.</p>
+<p><img alt="User Space vs Kernel Space architecture" src="../../assets/diagrams/roa-wrapper-langchain.svg" /></p>
+<h3 id="4-cqrs-sagas-idempotency-keys-these-patterns-arent-new-where-is-the-novelty">4. CQRS, Sagas, idempotency keys - these patterns aren't new. Where is the novelty?</h3>
+<p>The patterns are indeed standard distributed systems engineering. The novelty lies in their rigorous application to the probabilistic domain of LLMs, which has largely ignored them in favor of direct API access. Treating an LLM output as a direct executable command is the architectural equivalent of granting an untrusted public user process direct write access to a production database. DIR is the "missing middleware" that closes that gap.</p>
+<h2 id="ii-what-dir-is-and-isnt">II. What DIR Is (and Isn't)</h2>
+<h3 id="5-how-should-i-use-this-repository-alongside-ai-coding-agents">5. How should I use this repository alongside AI coding agents?</h3>
+<p>Instead of manually writing boilerplate, use this repository as <strong>Context as Code</strong>. Point your AI coding agent (Copilot, Cursor, Devin) at the <code>docs/</code> folder or the single-file <code>DIR-minified.md</code>. These files serve as a comprehensive "system prompt" that teaches the AI the architectural physics of your system: how to structure a Responsibility Contract, how to generate a valid Idempotency Key, and how to handle Saga compensations. </p>
+<p>In this workflow, the repository is not just a library you import, but a set of architectural constraints you feed to the AI to ensure the code it generates is safe, compliant, and architecturally sound by default.</p>
+<h3 id="6-is-dir-a-library-i-install-a-saas-product-or-an-architectural-pattern">6. Is DIR a library I install, a SaaS product, or an architectural pattern?</h3>
+<p>It is an architectural pattern - the same category as CQRS, microservices, or the Saga pattern. You do not install it or subscribe to it. The <code>src/</code> directory is a <strong>reference implementation</strong>: a minimal Python package demonstrating core interfaces (<code>DecisionIntegrityModule</code>, <code>AgentRegistry</code>) that you read, adapt, and own entirely. Production deployments use different infrastructure stacks (Kafka vs. RabbitMQ, PostgreSQL vs. Redis, on-prem vs. cloud) and different contract schemas. DIR's minimal core is designed to be adapted, not imported as a dependency. No lock-in; you own every line.</p>
+<h2 id="iii-engineering-concerns">III. Engineering Concerns</h2>
+<h3 id="7-is-dir-overkill-for-most-agent-use-cases">7. Is DIR overkill for most agent use cases?</h3>
+<p>For low-stakes tasks - email categorization, text summarization, basic RAG - yes. The correct threshold is asymmetric consequence: if the worst-case outcome of an unconstrained agent action involves financial loss, regulatory exposure, patient safety risk, or reputational damage that outweighs implementation cost, DIR's overhead is not optional - it is the minimum viable safety layer.</p>
+<h3 id="8-wont-separating-reasoning-from-execution-slow-development-and-time-to-market">8. Won't separating reasoning from execution slow development and time-to-market?</h3>
+<p>Short-term: slightly. Designing Responsibility Contracts, validation schemas, and execution intents upfront takes more thought than wiring an LLM directly to an API. Long-term: it reduces Mean Time To Recovery significantly. When a production incident occurs, the DFID (DecisionFlow ID) audit trail lets engineers immediately determine whether the failure originated in LLM reasoning (User Space), was correctly blocked at the DIM, or was a network-layer execution issue - without reconstructing intent from free-text logs.</p>
+<h3 id="9-can-dir-scale-in-real-distributed-systems">9. Can DIR scale in real distributed systems?</h3>
+<p>DIR is built on the same primitives that underpin cloud-native production systems: event buses, distributed state stores, API gateways, and policy enforcement points. Moving from the reference implementation to production means swapping in-memory queues for Kafka or NATS, and local state for Redis or a distributed SQL store. Those are I/O layer substitutions, not architectural changes. The samples use SQLite to keep the mechanics visible; the state machine transitions, JIT drift checks, and validation pipeline are identical regardless of the persistence backend.</p>
+<h3 id="10-do-rigid-contracts-and-execution-gates-limit-the-creativity-and-reasoning-quality-of-the-llm">10. Do rigid contracts and execution gates limit the creativity and reasoning quality of the LLM?</h3>
+<p>No - and this distinction is central to the design. DIR enforces a strict separation between <strong>reasoning</strong> and <strong>execution authority</strong>. The agent in User Space retains full creative latitude: it can analyze ambiguous signals, generate novel strategies, and formulate any reasoning chain it sees fit. Nothing in DIR constrains the quality or scope of the model's thinking.</p>
+<p>What DIR restricts is exclusively what the system <em>executes</em> in the real world. The agent's "mind" is unconstrained; the "hands" are gated by deterministic system physics. A useful analogy: a senior trader at a bank can think whatever strategy they want, but a trade above a certain size requires a second signature. The signing requirement does not impair thinking - it governs action.</p>
+<p>Furthermore, adding a second LLM to "evaluate" the first one is not a safe alternative: it adds another probabilistic layer without providing verifiable guarantees. If a probabilistic model validates another probabilistic model, the question remains who validates the validator.</p>
+<h2 id="iv-core-mechanics">IV. Core Mechanics</h2>
+<h3 id="11-what-is-the-difference-between-a-responsibility-oriented-agent-roa-and-a-standard-capability-based-agent-why-does-dir-treat-agent-output-as-a-claim-rather-than-a-command">11. What is the difference between a Responsibility-Oriented Agent (ROA) and a standard capability-based agent? Why does DIR treat agent output as a "Claim" rather than a command?</h3>
+<p>A capability-based agent is defined by what tools it can access. An ROA is defined by what it is <strong>accountable for</strong> - a formal Mission and Responsibility Contract specifying its optimization target, authority limits, and escalation conditions.</p>
+<p>This distinction drives the execution model. In a Zero Trust architecture, no output from a probabilistic LLM is treated as an executable command. It is a <strong>Claim</strong> - an assertion about what the agent believes should happen. It becomes an executable fact only after the DIM validates it against the contract schema, RBAC rules, and current live state. This also neutralizes prompt injection: even if an attacker hijacks the agent's reasoning, the Claim must still pass deterministic Kernel-Space validation before touching any API.</p>
+<h3 id="12-what-is-just-in-time-jit-state-verification-and-why-is-it-necessary">12. What is Just-In-Time (JIT) State Verification, and why is it necessary?</h3>
+<p>LLM inference takes 5–15 seconds. During that window, real-world state - prices, inventory, balances - can change. JIT State Verification is a direct counter to TOCTOU races. Immediately before executing a side effect, the DIR Kernel re-checks the live state against the snapshot the agent reasoned from, verifying it has not drifted outside the declared <code>drift_envelope</code> (e.g., price movement ≤ 2%). If drift is exceeded, the intent is aborted and the agent is notified with a fresh context snapshot - the Kernel does not re-ask the LLM to decide.</p>
+<h3 id="13-why-is-the-models-natural-language-explanation-structurally-excluded-from-execution-logic">13. Why is the model's natural language explanation structurally excluded from execution logic?</h3>
+<p>The execution path reads only rigidly structured JSON fields (<code>policy_kind</code>, <code>params</code>). The natural language <code>explain</code> field is metadata for human auditors only - the Kernel never parses it for commands. This is a defense against <strong>prompt injection</strong>: a hidden instruction embedded by an attacker in the <code>explain</code> field cannot influence execution, because that field has no execution authority by design.</p>
+<h3 id="14-how-does-dir-guarantee-idempotency-when-the-world-state-is-changing">14. How does DIR guarantee idempotency when the world state is changing?</h3>
+<p>The Idempotency Key is derived from the intent, not from the world state: <code>IdempotencyKey = SHA256(DFID + Step_ID + Canonical_Params)</code>. Excluding context (prices, balances) from the hash is intentional. If the world changes and a retry arrives with the same structural intent, the key is identical and the duplicate execution is suppressed. If the new world state should produce a <em>different</em> intent, the agent must generate a new Proposal with a new DFID - not resubmit the old one.</p>
+<h3 id="15-how-does-dir-prevent-infinite-error-loops-and-token-burn">15. How does DIR prevent infinite error loops and token burn?</h3>
+<p>The Intent Retry Governor limits how many times an agent can resubmit a proposal within a single DFID. After a configurable maximum (typically 3), the Runtime terminates the flow with <code>REASONING_EXHAUSTION</code> and blocks further execution. The agent cannot self-rescue from a rejection it cannot resolve - it is stopped, and the escalation path defined in the Responsibility Contract takes over.</p>
+<h3 id="16-how-are-partial-failures-handled-in-multi-step-transactions">16. How are partial failures handled in multi-step transactions?</h3>
+<p>DIR uses the <strong>Saga pattern</strong>. When a step fails mid-flow, the Runtime marks the state as <code>DIRTY</code> and surfaces a set of deterministic compensation options to the parent agent (<code>REVERT_STATE</code>, <code>ALERT_HUMAN</code>, <code>RETRY_STEP</code>). The agent selects from that pre-defined menu - it does not autonomously invent a recovery strategy. Delegating recovery to the same probabilistic reasoning loop that generated the failure is a recognized failure mode.</p>
+<h2 id="v-compliance-topologies">V. Compliance &amp; Topologies</h2>
+<h3 id="17-how-does-dir-support-compliance-with-the-eu-ai-act-and-what-are-proof-carrying-intents-pci">17. How does DIR support compliance with the EU AI Act, and what are Proof-Carrying Intents (PCI)?</h3>
+<p>The EU AI Act requires high-risk AI systems to provide transparent, traceable audit trails that cannot be retroactively altered. Standard application logs fail this: they are text records whose authenticity requires trusting the system administrator. A <strong>Proof-Carrying Intent (PCI)</strong> is a cryptographically signed artifact that binds, in a single hash: the agent's structured intent, the world-state snapshot at decision time, and the Responsibility Contract version that governed the decision.</p>
+<p>This binding can be verified <strong>offline</strong>: a regulator takes the PCI artifact and recalculates the hash from independently archived inputs. If the hashes match, compliance at decision time is mathematically proven. No access to the live database, active runtime, or LLM is required.</p>
+<h3 id="18-how-do-i-choose-between-the-three-topologies-eoam-sds-and-dlpci">18. How do I choose between the three topologies - EOAM, SDS, and DL+PCI?</h3>
+<p>Each topology places safety at a different architectural locus:
+- <strong>EOAM (Event-Oriented Agent Mesh):</strong> Safety enforced <em>after</em> generation by the DIM. Use for complex strategic consensus where multiple specialized agents (Risk, Strategy, Sentiment) must evaluate the same signal in parallel.
+- <strong>SDS (Sovereign Decision Stream):</strong> Safety enforced <em>during</em> generation via Constrained Decoding - a grammar that makes syntactically invalid outputs structurally impossible. Use for high-frequency tactical automation (fraud detection, algorithmic risk stops) where latency is the primary constraint.
+- <strong>DL+PCI (Decision Ledger):</strong> Safety carried <em>within the artifact</em> itself via cryptographic proof. Use for regulated environments where offline-verifiable auditability is a legal requirement (finance, healthcare, inter-organizational settlements).</p>
+<p><img alt="User Space vs Kernel Space architecture" src="../../assets/diagrams/topology-triangle.svg" /></p>
+<h3 id="19-is-dir-specific-to-finance-or-does-it-generalize-to-other-domains">19. Is DIR specific to finance, or does it generalize to other domains?</h3>
+<p>The mechanics are domain-agnostic; only the Responsibility Contract content changes. A medical agent proposes a drug dosage; the DIM validates it against the patient's contraindications and maximum daily limits. An industrial automation agent proposes a turbine speed adjustment; the DIM gates it against hard-coded thermal safety thresholds before signaling the PLC. The finance examples appear throughout because that is where the pattern was developed - not because the protections are finance-specific.</p>
+<h2 id="vi-operations-reliability">VI. Operations &amp; Reliability</h2>
+<h3 id="20-isnt-the-dir-runtime-a-single-point-of-failure-what-happens-if-it-goes-down">20. Isn't the DIR Runtime a single point of failure? What happens if it goes down?</h3>
+<p>The DIM is stateless middleware - it runs as horizontally scaled replicas. More critically, it defaults to <strong>fail-closed</strong>: if the validation gateway is unreachable, no side effects are permitted. Pausing execution is always preferable to executing unvalidated intents. The persistence layer (Context Store, Decision Ledger) runs on independently deployable, high-availability infrastructure (Redis Cluster, PostgreSQL with replicas, Kafka) that is decoupled from the agent processing layer.</p>
+<h3 id="21-how-do-you-test-responsibility-contracts-before-deploying-them-to-production">21. How do you test Responsibility Contracts before deploying them to production?</h3>
+<p>This is a critical part of the CI/CD pipeline. Responsibility Contracts are tested using a "Contract Test Suite" in shadow mode. 
+1. <strong>Unit Tests:</strong> Validate syntactic correctness of the YAML/JSON contract schema.
+2. <strong>Policy Tests:</strong> Feed the DIM a set of mocked Policy Proposals (both valid and invalid) and assert that the contract accepts/rejects them correctly. You specifically test boundary conditions (e.g., $49,999 vs $50,001).
+3. <strong>Shadow Mode:</strong> Run the new contract version in production alongside the old one, but disconnected from execution (the "Dark Launch" pattern). Compare the decisions it <em>would</em> have made against the live system decisions to detect regression or unintended blocks.</p>
+<h3 id="22-what-is-the-decisionflow-id-dfid-and-how-do-i-use-it">22. What is the DecisionFlow ID (DFID) and how do I use it?</h3>
+<p>The DFID is a unique correlation ID (UUIDv4) generated at the start of a decision cycle (e.g., upon receiving an Event). It is passed through every component: the Context Compiler, the Agent (User Space), the DIM (Kernel Space), and the Execution Engine. 
+Its purpose is <strong>distributed reconstruction</strong>. In case of an incident, you don't grep logs for timestamps. You query the Decision Ledger by DFID to retrieve the exact timeline: Trigger -&gt; Context Snapshot -&gt; Agent Reasoning -&gt; Policy Proposal -&gt; Validation Result -&gt; Execution Outcome by DFID. It serves as the primary key for all audit and debugging operations.</p>
+<h3 id="23-what-is-the-context-compiler-and-how-does-it-differ-from-standard-rag">23. What is the Context Compiler, and how does it differ from standard RAG?</h3>
+<p>Standard RAG retrieves documents based on semantic similarity - it is a probabilistic search tailored for relevance. The Context Compiler is a deterministic Kernel-Space component. It assembles a <strong>Context Snapshot</strong> from authoritative sources (User Session, Wallet State, Risk Parameters) based on a strict schema defined in the Responsibility Contract. It enforces TTL (Time-to-Live) requirements and validates completeness. Unlike RAG, which answers "what might be helpful?", the Context Compiler answers "what is the certified state of the world right now?" - and crucially, it hashes this state into a <code>ContextSnapshotID</code> to enable JIT verification later.</p>
+<h3 id="24-wont-faster-and-more-capable-llms-eventually-make-dir-unnecessary">24. Won't faster and more capable LLMs eventually make DIR unnecessary?</h3>
+<p>No, for two structural reasons. First, the failure modes DIR addresses - TOCTOU races, duplicate execution from network retries, and execution of semantically malformed intents - are infrastructure problems, not model quality problems. A 10× faster model still requires idempotency guarantees; a 10× smarter model still executes during a window in which state can drift. Second, as models gain more authority, the blast radius of an unconstrained failure grows. Better models justify <em>more</em> rigorous execution governance, not less.</p>
+<h2 id="vii-human-oversight-scalability">VII. Human Oversight &amp; Scalability</h2>
+<h3 id="25-how-does-dir-change-the-role-of-human-operators-and-does-it-still-require-approving-every-action">25. How does DIR change the role of human operators - and does it still require approving every action?</h3>
+<p>Requiring human sign-off on every agent action is the <strong>Human-In-The-Loop (HITL)</strong> trap. It creates a hard scalability bottleneck: the human becomes the rate limiter of the entire system, decision-making degrades to rubber-stamping, and the result is alert fatigue followed by blind approvals. You have not automated anything; you have changed the nature of the manual work.</p>
+<p>DIR is designed for <strong>Human-Over-The-Loop (HOTL)</strong>: the Runtime enforces Responsibility Contracts autonomously, and the human is summoned only when the system hits a condition that exceeds those bounds - a transaction above threshold, a confidence score below minimum, a <code>REASONING_EXHAUSTION</code> state, or an explicit regulatory escalation requirement. One operator can supervise a fleet of agents because the safety invariants are encoded in the Kernel and enforced automatically.</p>
+<p>Note that in this model, a human submitting an action via a dashboard is treated identically to an LLM-generated Proposal - as an untrusted Claim subject to DIM validation. Zero Trust applies uniformly.</p>
+<h3 id="26-how-does-governance-by-exception-prevent-both-alert-fatigue-and-silent-drift">26. How does "Governance by Exception" prevent both alert fatigue and silent drift?</h3>
+<p>Alert fatigue is addressed directly: the agent operates autonomously until it breaches a deterministic threshold, not by requesting approval for each step. The <strong>Escalation Budget</strong> adds a second layer: if an agent repeatedly hits near-boundary conditions and escalates frequently, its budget is exhausted and it is automatically demoted to a passive, read-only state pending human review.</p>
+<p>Silent drift - where individually valid decisions collectively push the system outside acceptable behavior - is addressed at the audit layer. The Decision Ledger provides a queryable history of every autonomous decision, enabling statistical monitoring for correlated patterns (e.g., an agent consistently proposing orders at 49,999 against a 50,000 limit). Exception triggers are defined deterministically in the contract in advance; they are not evaluated probabilistically at runtime.</p>
+<h2 id="viii-business-adoption">VIII. Business &amp; Adoption</h2>
+<h3 id="27-does-dir-reduce-development-cost-or-does-it-move-the-cost-from-code-to-contracts">27. Does DIR reduce development cost, or does it move the cost from code to contracts?</h3>
+<p>It moves cost - and this should be stated honestly. In a DIR architecture, code becomes cheaper: AI coding agents generate DIR-compliant boilerplate rapidly from the <code>docs/</code> context. The dominant cost shifts to <strong>defining and maintaining Responsibility Contracts</strong>: encoding business rules, risk limits, and compliance constraints correctly; versioning them as policy evolves; and validating pipeline reproducibility across contract versions.</p>
+<p>This is the correct trade-off for high-stakes domains. That cost - representing rules, limits, and compliance constraints correctly - is irreducible in any responsible system. DIR makes it explicit, versioned, and auditable rather than hidden in prompt strings or undocumented conventions. The case for DIR is not that it costs less overall. The case is that the cost DIR introduces is the cost of correctness that responsible systems always required but rarely paid.</p>
+<h3 id="28-we-have-agents-in-production-how-do-we-adopt-dir-incrementally-and-what-skills-does-the-team-need">28. We have agents in production. How do we adopt DIR incrementally, and what skills does the team need?</h3>
+<p>The "Boxed Intelligence" pattern is the entry point: strip the highest-risk existing agent's direct API keys, route its side-effect intents through a minimal DIM gate, and attach a DFID for traceability. Each subsequent agent is built DIR-native. The reference implementation in <code>src/</code> is intentionally minimal to support module-by-module adoption.</p>
+<p>Required background: CQRS and event-driven architecture, Saga-based compensation, distributed tracing (conceptually analogous to OpenTelemetry), and schema-driven contract validation (analogous to OpenAPI/JSON Schema). Teams with Kafka or Temporal experience will find the patterns immediately familiar. ML-first teams face a steeper curve on systems engineering fundamentals: idempotency, state machine design, and policy enforcement points.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

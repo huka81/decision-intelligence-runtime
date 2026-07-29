@@ -1,0 +1,4520 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Deterministic execution kernel for autonomous AI agents.">
+      
+      
+      
+        <link rel="canonical" href="https://huka81.github.io/decision-intelligence-runtime/03-topologies/DIR_Topologies/">
+      
+      
+        <link rel="prev" href="../../02-decision-runtime/DIR_Architectural_Pattern/">
+      
+      
+        <link rel="next" href="../../04-governance/DIR_Governance/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Topologies - Decision Intelligence Runtime (DIR)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#decision-intelligence-topologies-scaling-auditable-autonomy" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Decision Intelligence Runtime (DIR)" class="md-header__button md-logo" aria-label="Decision Intelligence Runtime (DIR)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Decision Intelligence Runtime (DIR)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Topologies
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/huka81/decision-intelligence-runtime" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../00-introduction/DIR-introduction/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../09-pages/package/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Package
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../10-api-reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../09-pages/samples/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Samples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../09-pages/faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../09-pages/author/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  About
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Decision Intelligence Runtime (DIR)" class="md-nav__button md-logo" aria-label="Decision Intelligence Runtime (DIR)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Decision Intelligence Runtime (DIR)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/huka81/decision-intelligence-runtime" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../00-introduction/DIR-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-roa-manifesto/ROA_Manifesto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Responsible-Oriented Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-decision-runtime/DIR_Architectural_Pattern/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decision Intelligence Runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topologies
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topologies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#agent-orchestration-patterns-for-complex-decision-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent orchestration patterns for complex decision systems
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0-abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. Abstract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-case-for-architectural-pluralism" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The Case for Architectural Pluralism
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-topology-a-the-event-oriented-agent-mesh-eoam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Topology A: The Event-Oriented Agent Mesh (EOAM)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Topology A: The Event-Oriented Agent Mesh (EOAM)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-scope-based-choreography" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Scope-Based Choreography
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-the-anatomy-of-a-mesh-event" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 The Anatomy of a Mesh Event
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-semantic-routing-economic-guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Semantic Routing &amp; Economic Guardrails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-the-mesh-decision-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 The Mesh Decision Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-the-agent-dmz-semantic-design-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 The Agent DMZ (Semantic Design Pattern)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-holistic-eoam-architecture-example-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 Holistic EOAM Architecture (Example Implementation)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-topology-b-the-sovereign-decision-stream-sds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Topology B: The Sovereign Decision Stream (SDS)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Topology B: The Sovereign Decision Stream (SDS)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-sds-philosophy-syntactically-bound-by-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The SDS Philosophy: "Syntactically Bound by Design"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3.1 The SDS Philosophy: &#34;Syntactically Bound by Design&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#311-constrained-decoding-the-safety-straightjacket" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1.1 Constrained Decoding (The Safety Straightjacket)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#312-the-atomic-context-input-to-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1.2 The "Atomic Context": Input to Inference
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-the-sds-decision-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 The SDS Decision Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-holistic-sds-architecture-high-performance-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Holistic SDS Architecture (High-Performance Implementation)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-design-intent-the-fly-by-wire-paradigm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Design Intent: The "Fly-by-Wire" Paradigm
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-topology-c-the-decision-ledger-dlpci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Topology C: The Decision Ledger (DL+PCI)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Topology C: The Decision Ledger (DL+PCI)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-the-philosophy-proof-carrying-intents-pci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 The Philosophy: Proof-Carrying Intents (PCI)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-the-decision-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 The Decision Ledger
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-the-proof-checker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 The Proof Checker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-concept-refinement-pci-vs-decision-atom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Concept Refinement: PCI vs. Decision Atom
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-addressing-the-obvious-question-is-topology-c-just-topology-b-with-extra-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Addressing the Obvious Question: "Is Topology C Just Topology B With Extra Steps?"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.5 Addressing the Obvious Question: &#34;Is Topology C Just Topology B With Extra Steps?&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-this-matters-the-regulatory-audit-scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Matters: The Regulatory Audit Scenario
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-design-intent-the-notarized-execution-paradigm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Design Intent: The "Notarized Execution" Paradigm
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-economic-governance-cost-aware-topologies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Economic Governance: Cost-Aware Topologies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Economic Governance: Cost-Aware Topologies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-the-cost-intelligence-trade-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 The Cost-Intelligence Trade-off
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-comparative-analysis-the-decision-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Comparative Analysis: The Decision Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-implementation-blueprints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Implementation Blueprints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Implementation Blueprints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-topology-a-mesh-handler-eoam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Topology A: Mesh Handler (EOAM)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-topology-b-stream-handler-sds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Topology B: Stream Handler (SDS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-topology-c-ledger-handler-dlpci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Topology C: Ledger Handler (DL+PCI)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-kernel-user-space-integrity-constraints-all-topologies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 Kernel-User Space Integrity Constraints (All Topologies)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-the-evidence-governance-layer-the-compliant-lie" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. The Evidence Governance Layer &amp; The Compliant Lie
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. The Evidence Governance Layer &amp; The Compliant Lie">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-the-compliant-lie" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 The Compliant Lie
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-the-evidence-governance-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 The Evidence Governance Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#821-the-evidence-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2.1 The Evidence Hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-evidence-generators-synthesis-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 Evidence Generators (Synthesis Patterns)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8.3 Evidence Generators (Synthesis Patterns)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-1-differential-heuristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 1: Differential Heuristics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-2-bidirectional-reconstruction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 2: Bidirectional Reconstruction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#84-relationship-to-kernel-side-semantic-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.4 Relationship to Kernel-Side Semantic Checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-glossary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Glossary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-governance/DIR_Governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance & Agent Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-conclusion/Context_as_Code/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context as code
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../00-introduction/Intelligent_Delegation_Framework_Mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligent AI delegation framework mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../09-pages/package/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Package
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Package
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/package/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/package/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/package/ports_and_adapters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ports & Adapters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/package/core_components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/package/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models & DTOs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../10-api-reference/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Framework
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kernel Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/topology_a/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topology A (EOAM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/topology_c/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topology C (DL+PCI)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Execution Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-api-reference/database_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../09-pages/samples/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Samples
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Samples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/00_quick_start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 - Quick start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/01_roa_agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 - ROA agent
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/02_dfid_propagation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 - DFID propagation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/03_idempotency_guard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 - Idempotency guard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/04_context_store/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 - Context store
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/05_dim_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 - DIM validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/06_agent_registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 - Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/07_event_bus_swappable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 - Event bus (swappable)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/08_custom_repo_psql/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 - Custom repo (PostgreSQL)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/09_topology_a_eoam/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 - Topology A (EOAM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/10_topology_b_sds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 - Topology B (SDS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/11_topology_c_dl_pci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 - Topology C (DL+PCI)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/12_compliant_lie/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 - Compliant Lie (Evidence Governance)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/31_finance_trading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31 - Finance trading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/32_fraud_gate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32 - Fraud gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/33_insurance_underwriting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33 - Insurance underwriting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/34_langchain_roa_wrapper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34 - LangChain ROA wrapper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/35_crewai_roa_wrapper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35 - CrewAI ROA wrapper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/36_drift_optimization_discount/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    36 - Drift optimization discount
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/37_drift_semantic_refund/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    37 - Drift semantic refund
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/38_drift_environmental_bidding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    38 - Drift environmental bidding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/39_fintech_evidence_governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    39 - Fintech evidence governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/samples/88_meta_context_engineering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    88 - Meta context engineering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/author/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About the author
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Version
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-pages/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#agent-orchestration-patterns-for-complex-decision-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent orchestration patterns for complex decision systems
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#0-abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. Abstract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-case-for-architectural-pluralism" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The Case for Architectural Pluralism
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-topology-a-the-event-oriented-agent-mesh-eoam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Topology A: The Event-Oriented Agent Mesh (EOAM)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Topology A: The Event-Oriented Agent Mesh (EOAM)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-scope-based-choreography" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Scope-Based Choreography
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-the-anatomy-of-a-mesh-event" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 The Anatomy of a Mesh Event
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-semantic-routing-economic-guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Semantic Routing &amp; Economic Guardrails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-the-mesh-decision-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 The Mesh Decision Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-the-agent-dmz-semantic-design-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 The Agent DMZ (Semantic Design Pattern)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-holistic-eoam-architecture-example-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 Holistic EOAM Architecture (Example Implementation)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-topology-b-the-sovereign-decision-stream-sds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Topology B: The Sovereign Decision Stream (SDS)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Topology B: The Sovereign Decision Stream (SDS)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-sds-philosophy-syntactically-bound-by-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The SDS Philosophy: "Syntactically Bound by Design"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3.1 The SDS Philosophy: &#34;Syntactically Bound by Design&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#311-constrained-decoding-the-safety-straightjacket" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1.1 Constrained Decoding (The Safety Straightjacket)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#312-the-atomic-context-input-to-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1.2 The "Atomic Context": Input to Inference
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-the-sds-decision-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 The SDS Decision Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-holistic-sds-architecture-high-performance-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Holistic SDS Architecture (High-Performance Implementation)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-design-intent-the-fly-by-wire-paradigm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Design Intent: The "Fly-by-Wire" Paradigm
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-topology-c-the-decision-ledger-dlpci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Topology C: The Decision Ledger (DL+PCI)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Topology C: The Decision Ledger (DL+PCI)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-the-philosophy-proof-carrying-intents-pci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 The Philosophy: Proof-Carrying Intents (PCI)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-the-decision-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 The Decision Ledger
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-the-proof-checker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 The Proof Checker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-concept-refinement-pci-vs-decision-atom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Concept Refinement: PCI vs. Decision Atom
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-addressing-the-obvious-question-is-topology-c-just-topology-b-with-extra-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Addressing the Obvious Question: "Is Topology C Just Topology B With Extra Steps?"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.5 Addressing the Obvious Question: &#34;Is Topology C Just Topology B With Extra Steps?&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-this-matters-the-regulatory-audit-scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Matters: The Regulatory Audit Scenario
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-design-intent-the-notarized-execution-paradigm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Design Intent: The "Notarized Execution" Paradigm
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-economic-governance-cost-aware-topologies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Economic Governance: Cost-Aware Topologies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Economic Governance: Cost-Aware Topologies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-the-cost-intelligence-trade-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 The Cost-Intelligence Trade-off
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-comparative-analysis-the-decision-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Comparative Analysis: The Decision Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-implementation-blueprints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Implementation Blueprints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Implementation Blueprints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-topology-a-mesh-handler-eoam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Topology A: Mesh Handler (EOAM)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-topology-b-stream-handler-sds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Topology B: Stream Handler (SDS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-topology-c-ledger-handler-dlpci" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Topology C: Ledger Handler (DL+PCI)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-kernel-user-space-integrity-constraints-all-topologies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 Kernel-User Space Integrity Constraints (All Topologies)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-the-evidence-governance-layer-the-compliant-lie" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. The Evidence Governance Layer &amp; The Compliant Lie
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. The Evidence Governance Layer &amp; The Compliant Lie">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-the-compliant-lie" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 The Compliant Lie
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-the-evidence-governance-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 The Evidence Governance Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#821-the-evidence-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2.1 The Evidence Hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-evidence-generators-synthesis-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 Evidence Generators (Synthesis Patterns)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8.3 Evidence Generators (Synthesis Patterns)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-1-differential-heuristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 1: Differential Heuristics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-2-bidirectional-reconstruction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern 2: Bidirectional Reconstruction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#84-relationship-to-kernel-side-semantic-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.4 Relationship to Kernel-Side Semantic Checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-glossary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Glossary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<p><sup> Author: Artur Huk | <a href="https://github.com/huka81/decision-intelligence-runtime">GitHub</a> | Created: 2026-01-15 | Last updated: 2026-02-20 </sup></p>
+<hr />
+<h1 id="decision-intelligence-topologies-scaling-auditable-autonomy">Decision Intelligence Topologies: Scaling Auditable Autonomy</h1>
+<p><img alt="Decision Intelligence Topologies" src="../../assets/images/3_topologies_scratch.png" /></p>
+<h3 id="agent-orchestration-patterns-for-complex-decision-systems">Agent orchestration patterns for complex decision systems</h3>
+<h2 id="0-abstract">0. Abstract</h2>
+<blockquote>
+<p><strong>Disclaimer:</strong> This document describes system topologies and communication patterns for autonomous agents. It assumes the existence of the <strong>Decision Intelligence Runtime (DIR)</strong> to handle deterministic execution and the <strong>Responsibility-Oriented Agents (ROA)</strong> framework to define agent identity.</p>
+</blockquote>
+<p>The transition from experimental AI scripts to production-grade decision systems requires a fundamental shift in how agents interact within an environment. A single architectural pattern cannot satisfy the conflicting requirements of complex, multi-perspective strategic reasoning, high-frequency tactical execution, and absolute compliance verification.</p>
+<p>This whitepaper introduces <strong>Decision Intelligence Topologies</strong>, a pluralistic approach to agent orchestration. We define three distinct operational modes:</p>
+<ol>
+<li><strong>Topology A: Event-Oriented Agent Mesh (EOAM)</strong> - A decentralized pattern for "Organizational Choreography," where responsibility-bound agents collaborate through a reactive event substrate to form a "Digital Twin" of professional decision-making.</li>
+<li><strong>Topology B: Sovereign Decision Stream (SDS)</strong> - A linear, high-velocity pattern for "Atomic Execution," leveraging <strong>Constrained Decoding</strong> to achieve <strong>Syntactically Bound by Design</strong> operations at machine speeds.</li>
+<li><strong>Topology C: Decision Ledger (DL+PCI)</strong> - The pattern for "Formal Verification &amp; Absolute Audit," focusing on the integrity of the intent artifact rather than the behavior of the agent.</li>
+</ol>
+<p>By selecting the appropriate topology for the specific decision class, verified by <strong>DecisionFlow IDs (DFID)</strong> and governed by the <strong>Decision Intelligence Runtime</strong>, organizations can build systems that are scalable, auditable, and resilient to the non-deterministic nature of Large Language Models.</p>
+<hr />
+<h2 id="1-the-case-for-architectural-pluralism">1. The Case for Architectural Pluralism</h2>
+<p>In the early phases of AI adoption, engineers often seek a "Universal Agent Architecture"-a single loop to rule them all. However, in production environments like the <strong>AIvestor</strong> financial system, this monolithic approach fails. The latency required to "think fast" (scalping a price inefficiency) is incompatible with the comprehensive context required to "think slow" (rebalancing a portfolio against geopolitical risk).</p>
+<p>To solve this, we decouple the <strong>Identity Layer</strong> from the <strong>Topology Layer</strong>:</p>
+<ul>
+<li><strong>The Identity Layer (ROA):</strong> Who acts? (Defined by Responsibility Contracts).</li>
+<li><strong>The Execution Kernel (DIR):</strong> How is it validated? (Defined by DFIDs, Hard Gates, and Idempotency).</li>
+<li><strong>The Topology (EOAM / SDS / DL):</strong> How do signals flow, and where does trust originate?</li>
+</ul>
+<p>Each topology defines two orthogonal properties:</p>
+<ol>
+<li><strong>Signal Flow</strong> — the communication pattern between agents and the runtime (mesh, stream, or ledger).</li>
+<li><strong>Trust Locus</strong> — the architectural location where safety is guaranteed:<ul>
+<li><strong>Process</strong> (EOAM): The Runtime validates proposals <em>after</em> generation.</li>
+<li><strong>Generation</strong> (SDS): The Grammar constrains output <em>during</em> inference.</li>
+<li><strong>Artifact</strong> (DL+PCI): The Proof-Carrying Intent carries verifiable evidence <em>within itself</em>.</li>
+</ul>
+</li>
+</ol>
+<p>This separation allows a single systems architecture to support deliberate mesh networks, hyper-fast singular streams, and formally verified ledgers side-by-side. The three topologies are not incremental layers of the same pattern; they represent fundamentally different answers to the question: <em>"Where does safety come from?"</em></p>
+<p>A key motivation for this pluralistic approach is the limitation of conventional multi-agent frameworks, which typically rely on unstructured LLM-to-LLM dialogue or manager-led hierarchies. While powerful for creative synthesis, these patterns produce non-deterministic outcomes that are difficult to audit in regulated environments. The topologies defined here replace <strong>dialogue with choreography</strong> (typed signals, not chat), <strong>democracy with priority</strong> (deterministic preemption, not negotiation), and <strong>mystery with audit</strong> (DFID-bound causal chains, not opaque chat logs).</p>
+<p>Viewed through the lens of formal state integrity, the three topologies are not merely operational alternatives — they are <strong>specialized protectors of different Legal Decision State (LDS) components</strong>. A decision is only valid when five invariants hold simultaneously: <code>LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)</code>. EOAM guards contextual and temporal integrity (<code>¬C</code>, <code>¬T</code>); SDS enforces intent integrity (<code>¬I</code>); DL+PCI acts as the cryptographic certificate that all five held at once. The pluralism is not a matter of taste — it is a consequence of the different threat models each LDS component faces.</p>
+<pre class="mermaid"><code>---
+title: "Architectural Pluralism: Decoupling Identity from Topology"
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
+flowchart TB
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+
+    subgraph Identity_Layer ["`**IDENTITY LAYER (ROA)**&lt;br/&gt;Who Acts?`"]
+        Registry(["`**Agent Registry**&lt;br/&gt;Mission &amp; Authority`"]):::kernelSpace
+    end
+
+    subgraph Topology_Selector ["`**TOPOLOGY LAYER**&lt;br/&gt;Signal Flow &amp; Trust Locus`"]
+        direction TB
+        Selector{"`**Selector**`"}:::kernelSpace
+
+        subgraph EOAM ["`**Topology A: EOAM**&lt;br/&gt;Mesh (Complex)`"]
+            MeshAgents(["`**Collaborating Agents**&lt;br/&gt;Parallel Reasoning`"]):::userSpace
+        end
+
+        subgraph SDS ["`**Topology B: SDS**&lt;br/&gt;Stream (Fast)`"]
+            StreamAgent(["`**Sovereign Agent**&lt;br/&gt;Atomic Execution`"]):::userSpace
+        end
+
+        subgraph DL ["`**Topology C: DL+PCI**&lt;br/&gt;Ledger (Verified)`"]
+            LedgerAgent(["`**Prover Agent**&lt;br/&gt;Formal Verification`"]):::userSpace
+        end
+    end
+
+    subgraph Execution_Kernel ["`**EXECUTION KERNEL (DIR)**&lt;br/&gt;How is it validated?`"]
+        DIM{"`**DIM Gate**&lt;br/&gt;Validation`"}:::kernelSpace
+        Engine["`**Execution Engine**&lt;br/&gt;Side Effects`"]:::infraSpace
+    end
+
+    Registry --&gt; Selector
+    Selector --&gt;|Complex| EOAM
+    Selector --&gt;|Fast| SDS
+    Selector --&gt;|Audit| DL
+
+    MeshAgents --&gt; DIM
+    StreamAgent --&gt; DIM
+    LedgerAgent --&gt; DIM
+
+    DIM --&gt; Engine
+
+    style Identity_Layer fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style Topology_Selector fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px
+    style Execution_Kernel fill:#FAFAFA,stroke:#F57C00,stroke-width:3px</code></pre>
+<hr />
+<h2 id="2-topology-a-the-event-oriented-agent-mesh-eoam">2. Topology A: The Event-Oriented Agent Mesh (EOAM)</h2>
+<p><strong>Primary Attribute:</strong> Organizational Choreography
+<strong>Ideal For:</strong> Complex Strategy, Multi-Perspective Analysis, Resilience</p>
+<p>EOAM is a decentralized architectural pattern where autonomous agents collaborate through a reactive event substrate. It defines a system that is <strong>"Decentralized in activation, centralized in authority."</strong> EOAM trades the conceptual simplicity of linear orchestration for the power of <strong>parallelism</strong> and <strong>resilience</strong>.</p>
+<blockquote>
+<p><strong>LDS Role — Contextual and Temporal Integrity (<code>¬C</code>, <code>¬T</code>):</strong> EOAM's primary formal function is to prevent the system from executing a decision against an expired or drifted reality. Drift Envelopes define the maximum tolerable divergence between the context snapshot used for reasoning and the live system state at execution time. JIT Verification enforces this boundary immediately before any side effect. If the reality has moved beyond the envelope, the execution is rejected — ensuring the Context (C) and Time (T) invariants of the Legal Decision State are never violated.</p>
+</blockquote>
+<h3 id="21-scope-based-choreography">2.1 Scope-Based Choreography</h3>
+<p>EOAM replaces the central "Manager" with <strong>Scope-Based Choreography</strong>. Agents do not wait for commands; they are reactive entities that monitor the event bus for <strong>Observations</strong> or <strong>Triggers</strong> that fall within their defined <strong>Responsibility Contract</strong>.</p>
+<ul>
+<li><strong>Autonomy through Subscription:</strong> Agents subscribe to specific metadata-such as a ticker symbol or risk domain-defined in the <strong>Agent Registry</strong>.</li>
+<li><strong>Decentralized Intelligence:</strong> When a new signal (e.g., a news event) enters the mesh, all relevant agents (Risk, Sentiment, Strategy) are activated in parallel.</li>
+<li><strong>Inversion of Control:</strong> The Runtime does not "call" agents; it emits a context-rich event, and agents "claim" the responsibility to reason.</li>
+</ul>
+<h3 id="22-the-anatomy-of-a-mesh-event">2.2 The Anatomy of a Mesh Event</h3>
+<p>Every event transmitted through the mesh adheres to a strict schema to facilitate causality tracking.</p>
+<ul>
+<li><strong>DecisionFlow ID (DFID):</strong> The primary correlation identifier, functioning as an immutable trace header for the entire decision lifecycle. It allows for narrative reconstruction and deterministic idempotency.</li>
+<li><strong>ContextSnapshotID:</strong> A unique hash representing the exact "frozen reality" that an agent utilized. This ensures that every <strong>PolicyProposal</strong> is linked to the version of the world the agent "saw," enabling <strong>Just-In-Time (JIT) State Verification</strong>.</li>
+</ul>
+<h3 id="23-semantic-routing-economic-guardrails">2.3 Semantic Routing &amp; Economic Guardrails</h3>
+<p>In a decentralized mesh, mitigating noise and cost is critical.</p>
+<ul>
+<li><strong>Semantically Constrained Routing:</strong> The underlying transport acts as a "dumb pipe," relying on rules from the <strong>Agent Registry</strong> to match topics to subscribers based on Least Privilege.</li>
+<li><strong>Wake-up Predicates (Signal Suppression):</strong> To prevent "Token Burn" (waking up expensive LLMs for minor signals), the Runtime evaluates low-cost heuristic predicates (e.g., <code>abs(price_delta) &gt; 0.5%</code>) defined in the agent's manifest. If the predicate fails, the event is suppressed at the routing layer.</li>
+<li><strong>Economic Admission Control:</strong> The Mesh implements a strict "Budget-to-Signal" filter. The system determines how many agents to activate based on signal volatility and available token budget, preventing "Thundering Herd" costs where low-value signals trigger expensive multi-agent cascades.</li>
+</ul>
+<h3 id="24-the-mesh-decision-lifecycle">2.4 The Mesh Decision Lifecycle</h3>
+<ol>
+<li><strong>Observation:</strong> A raw signal triggers a new <strong>DecisionFlow</strong>. The Runtime generates an authoritative <strong>Context Snapshot</strong> (cached to prevent <strong>Read Contention</strong> on the database).</li>
+<li><strong>Distributed Parallel Reasoning:</strong> Agents reason in parallel, producing <strong>PolicyProposals</strong>.</li>
+<li><strong>Priority-Based Preemption Model:</strong> The Runtime utilizes a priority-driven logic rather than a simple time window. It collects proposals and applies the <strong>Agent Registry Priority Matrix</strong> to select the winner. High-priority agents (e.g., Risk Monitors) can preempt or invalidate earlier strategic proposals, ensuring safety always overrides strategy.</li>
+<li><strong>JIT Verification:</strong> The Runtime compares the live state against the <code>ContextSnapshotID</code>. If the <strong>Drift</strong> exceeds the agent-defined <strong>Drift Envelope</strong> (a contract-level parameter stored in the Registry), the execution is rejected. This prevents actions based on stale data (e.g., execution against a price that has moved beyond the allowable slippage/latency threshold).</li>
+</ol>
+<pre class="mermaid"><code>---
+title: "Topology A: EOAM Decision Lifecycle"
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
+flowchart LR
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+
+    Trigger((Signal)) --&gt; Context
+
+    subgraph Kernel_Prep ["`**1. PREPARATION**`"]
+        Context["`**Context Snapshot**&lt;br/&gt;Frozen Reality`"]:::kernelSpace
+    end
+
+    subgraph User_Reasoning ["`**2. PARALLEL REASONING (Mesh)**`"]
+        direction TB
+        Agent1(["`**Risk Agent**&lt;br/&gt;(High Priority)`"]):::userSpace
+        Agent2(["`**Strategy Agent**&lt;br/&gt;(Low Priority)`"]):::userSpace
+
+        Context --&gt; Agent1
+        Context --&gt; Agent2
+    end
+
+    subgraph Kernel_Arbitration ["`**3. ARBITRATION &amp; VALIDATION**`"]
+        Arbitrator{"`**Priority Matrix**&lt;br/&gt;Preemption`"}:::kernelSpace
+        JIT{"`**JIT Check**&lt;br/&gt;Drift Verification`"}:::kernelSpace
+    end
+
+    subgraph Execution ["`**4. ACTION**`"]
+        Exec["`**Execution Intent**`"]:::infraSpace
+    end
+
+    Agent1 --&gt;|Proposal A| Arbitrator
+    Agent2 --&gt;|Proposal B| Arbitrator
+
+    Arbitrator --&gt;|Winner Selected| JIT
+    JIT --&gt;|Pass| Exec
+
+    style Kernel_Prep fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style User_Reasoning fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px
+    style Kernel_Arbitration fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style Execution fill:#FAFAFA,stroke:#F57C00,stroke-width:3px</code></pre>
+<h3 id="25-the-agent-dmz-semantic-design-pattern">2.5 The Agent DMZ (Semantic Design Pattern)</h3>
+<p>Within the EOAM topology, a critical semantic design pattern is the <strong>Agentic DMZ (Demilitarized Zone)</strong>. This pattern mitigates the profound threat of conversational AI: the extraction of Intellectual Property (IP), proprietary pricing algorithms, or internal policy rules via "fuzzing" attacks or prompt injections from external users or autonomous broker bots.</p>
+<p>Instead of introducing a new topology, the DMZ acts as a strict arrangement of agents within the Event-Oriented Agent Mesh, leveraging the fundamental division of <strong>Action (Write) boundaries vs. Observation (Read) boundaries</strong>:</p>
+<ol>
+<li><strong>The <code>INTERFACE</code> Agent (The Receptionist):</strong> Positioned at the Edge. This agent interacts directly with external entities. Under the principle of Context Starvation (Epistemic Amnesia), it has absolute zero knowledge of the business logic. It simply parses noisy conversational input into clean structural events. It is explicitly forbidden from generating a <code>PolicyProposal</code>, an <code>EvidencePackage</code>, or a <code>PCI</code>.</li>
+<li><strong>The Event Bus (Observation Boundary):</strong> The Event Bus facilitates communication between the Edge Zone and the Internal Core without activating the Decision Integrity Module (DIM). <strong>Crucially:</strong> Communications across the bus do not require DIM validation because the bus carries signal distribution—not execution intent. It holds no <em>executable</em> authority. However, to prevent data leaks (like a DMZ agent intercepting sensitive internal payloads), the bus requires strict <strong>information-flow control</strong> managed by the Agent Registry (Least Privilege subscription). DIM protects the mutation boundary, while the Registry and Event Bus protect the disclosure boundary.</li>
+<li><strong>The <code>STRATEGIST</code> / <code>EXECUTOR</code> Agent (The Brain):</strong> Positioned in the Internal Core, structurally "air-gapped" from the external world. It subscribes to the Event Bus, reads the structural JSON payload emitted by the Receptionist, and applies its proprietary business intelligence to emit a true <code>PolicyProposal</code>. Since it does not interact directly with external prompts, its contextual knowledge remains secure.</li>
+</ol>
+<p>This pattern demonstrates the EOAM philosophy: the mesh handles the distribution of non-executable signals safely under static least-privilege rules (the Event Bus), while the DIM stands guard exclusively at the final Rubicon of state mutation (the The Wall / Outbound Execution).</p>
+<h3 id="26-holistic-eoam-architecture-example-implementation">2.6 Holistic EOAM Architecture (Example Implementation)</h3>
+<p>The following diagram illustrates a complete "Event-Oriented Agent Mesh" implementation, derived from the <strong>AIvestor</strong> reference system. It demonstrates how Data Sources, Agents, and Execution components map to the DIR architectural spaces (Infrastructure, User, Kernel).</p>
+<pre class="mermaid"><code>---
+config:
+  layout: dagre
+  theme: neutral
+  look: classic
+title: Holistic EOAM Architecture (AIvestor Reference)
+---
+flowchart LR
+ subgraph Data_Sources["**Data Sources**"]
+    direction TB
+        MarketData["Market Data"]
+        MacroData["Macro Data"]
+        NewsData["ESPI News"]
+  end
+ subgraph Infrastructure_Layer["**INFRASTRUCTURE SPACE**&lt;br&gt;External Data &amp;amp; Interfaces"]
+    direction LR
+        Data_Sources
+        BrokerAPI["Broker API"]
+        Dashboard["Web Dashboard"]
+  end
+ subgraph Kernel_Layer["**KERNEL SPACE (DIR)**&lt;br&gt;Runtime &amp;amp; State"]
+    direction TB
+        Ingest["Scrapers &amp; Scoring"]
+        EventBus(("Event Bus"))
+        Postgres[("Context Store")]
+        Executor["Order Executor"]
+        Safety["Safety Limits / DIM"]
+  end
+ subgraph User_Layer["**USER SPACE (AGENTS)**&lt;br&gt;Reasoning Mesh"]
+    direction LR
+        Scanner(["Market Scanner"])
+        NewsAgent(["News Opportunity"])
+        Portfolio(["Portfolio Manager"])
+        InstAgents(["Instrument Agents 1..N"])
+  end
+    MarketData --&gt; Ingest
+    MacroData --&gt; Ingest
+    NewsData --&gt; Ingest
+    Ingest --&gt; Postgres &amp; EventBus
+    EventBus &lt;--&gt; Scanner &amp; NewsAgent &amp; Portfolio &amp; InstAgents
+    Scanner -- Proposals --&gt; Safety
+    NewsAgent -- Proposals --&gt; Safety
+    Portfolio -- Proposals --&gt; Safety
+    InstAgents -- Proposals --&gt; Safety
+    Safety -- Validated Intent --&gt; Executor
+    Executor -- Execute --&gt; BrokerAPI
+    BrokerAPI -- Confirmation --&gt; EventBus
+    Dashboard &lt;--&gt; EventBus
+    Dashboard -. Config .-&gt; Safety
+    Dashboard -. Modes .-&gt; Portfolio
+
+     MarketData:::infraSpace
+     MacroData:::infraSpace
+     NewsData:::infraSpace
+     BrokerAPI:::infraSpace
+     Dashboard:::infraSpace
+     Ingest:::kernelSpace
+     EventBus:::kernelSpace
+     Postgres:::kernelSpace
+     Executor:::kernelSpace
+     Safety:::kernelSpace
+     Scanner:::userSpace
+     NewsAgent:::userSpace
+     Portfolio:::userSpace
+     InstAgents:::userSpace
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold
+    style Infrastructure_Layer fill:#FAFAFA,stroke:#F57C00,stroke-width:3px
+    style Kernel_Layer fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style User_Layer fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px</code></pre>
+<hr />
+<h2 id="3-topology-b-the-sovereign-decision-stream-sds">3. Topology B: The Sovereign Decision Stream (SDS)</h2>
+<p><strong>Primary Attribute:</strong> Atomic Execution Velocity
+<strong>Ideal For:</strong> Tactical Automation, Risk Stops, Reactive Decision-Making</p>
+<blockquote>
+<p><strong>A note on latency:</strong> SDS minimizes decision latency <em>relative to multi-agent topologies</em> (EOAM), but it still involves LLM inference (typically 100ms-2s). It is not designed for microsecond-scale High-Frequency Trading (HFT), which requires deterministic code paths without probabilistic reasoning. SDS targets "fast-for-AI" decisions (sub-second to low-second), not "fast-for-hardware" decisions (sub-millisecond).</p>
+</blockquote>
+<p>While the <strong>Event-Oriented Agent Mesh (EOAM)</strong> excels at multi-perspective coordination and organizational "Digital Twins," it introduces significant latency and computational overhead due to its reliance on parallel orchestration and arbitration.</p>
+<p>The <strong>Sovereign Decision Stream (SDS)</strong> is an alternative architectural pattern designed for low-latency, cost-efficient, and structurally safe decision-making. SDS treats the decision process as a "straight-line" function rather than a choreographic dialogue. It achieves structural safety not through post-generation validation (the "Audit" model), but through <strong>Constrained Decoding</strong>-embedding the deterministic rules of the <strong>Decision Intelligence Runtime (DIR)</strong> directly into the probabilistic sampling of the Large Language Model.</p>
+<blockquote>
+<p><strong>LDS Role — Intent Integrity (<code>¬I</code>):</strong> SDS is the only topology that enforces the Intent invariant at the generation layer. By compiling the Responsibility Contract and schema constraints into a formal grammar and applying it during LLM sampling, SDS makes it <strong>physically impossible</strong> to generate an intent that violates contractual bounds. A <code>¬Intent</code> condition — an out-of-bounds or malformed proposal — cannot be emitted as output, because the grammar masks non-compliant tokens before they are ever sampled. Safety is not a post-generation check; it is a structural property of inference itself.</p>
+</blockquote>
+<h3 id="31-the-sds-philosophy-syntactically-bound-by-design">3.1 The SDS Philosophy: "Syntactically Bound by Design"</h3>
+<blockquote>
+<p><strong>Mandatory Disclaimer:</strong> Constrained Decoding (Grammar-based sampling) ensures structural integrity and boundary adherence but <strong>DOES NOT</strong> guarantee semantic alignment with the ROA Mission. Final semantic and safety validation remains the exclusive responsibility of the DIR Decision Integrity Module (DIM).</p>
+</blockquote>
+<p>In the SDS topology, the separation between User Space (Reasoning) and Kernel Space (Validation) remains architecturally absolute, but becomes executionally transparent. SDS replaces the "Thundering Herd" of parallel agents with a single, high-context <strong>Decision Atom</strong>.</p>
+<h4 id="311-constrained-decoding-the-safety-straightjacket">3.1.1 Constrained Decoding (The Safety Straightjacket)</h4>
+<p>The cornerstone of SDS is the use of grammars (e.g., via libraries like <em>Outlines</em> or <em>Guidance</em>) to enforce the <strong>Responsibility Contract</strong> during inference.</p>
+<ul>
+<li><strong>Deterministic Sampling:</strong> The LLM is physically unable to generate a token that violates the JSON schema or numerical bounds defined by the DIR.</li>
+<li><strong>Elimination of Syntax Errors:</strong> Because the output is constrained by a state machine, the resulting <strong>PolicyProposal</strong> is guaranteed to be syntactically valid and semantically bounded before it even reaches the Runtime.</li>
+</ul>
+<h4 id="312-the-atomic-context-input-to-inference">3.1.2 The "Atomic Context": Input to Inference</h4>
+<p>In SDS, there is no emergent context or asynchronous message passing. The <strong>Context Compiler</strong> assembles an <strong>Atomic Context</strong>-a pre-validated package containing:</p>
+<ol>
+<li><strong>The Mission</strong> (from ROA).</li>
+<li><strong>The Constraints</strong> (from dir_core Hard Gates).</li>
+<li><strong>The Snapshot</strong> (from the Context Store).</li>
+</ol>
+<p><strong>Critical Binding:</strong> The Agent's output (The Intent) <strong>MUST</strong> include the <code>ContextSnapshotID</code> hash-binding from the input. The DIR verifies this JIT to prevent execution against a drift-unverified state. The combination of the <strong>Atomic Context</strong>, the <strong>Intent</strong>, and the <strong>Signature</strong> forms the final <strong>Decision Atom</strong>.</p>
+<h3 id="32-the-sds-decision-lifecycle">3.2 The SDS Decision Lifecycle</h3>
+<p>The SDS lifecycle collapses the multi-agent choreography of EOAM into a streamlined, four-stage pipeline.</p>
+<ol>
+<li><strong>Ingest &amp; Compile:</strong> A trigger event initializes a <strong>DecisionFlow (DFID)</strong>. The Runtime compiles the "Decision Atom," injecting authority limits directly into the prompt metadata.</li>
+<li><strong>Constrained Reasoning (SDS Loop):</strong> The agent performs its <strong>Explain</strong> phase. When transitioning to the <strong>Policy</strong> phase, the inference engine switches to a constrained mode, utilizing the DIR-provided grammar to ensure the proposal is "<strong>Syntactically Bound by Design</strong>".</li>
+<li><strong>JIT Fast-Pass Validation:</strong> Because the proposal was generated under constraint, the <strong>Decision Integrity Module (DIM)</strong> performs only a lightweight <strong>Just-In-Time (JIT) State Verification</strong> to check for environment drift since the snapshot.</li>
+<li><strong>Execution:</strong> The <strong>PolicyProposal</strong> is immediately transformed into an <strong>Execution Intent</strong>.</li>
+</ol>
+<pre class="mermaid"><code>---
+title: "Topology B: SDS Decision Lifecycle"
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
+flowchart LR
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+
+    Trigger((Signal)) --&gt; Atom
+
+    subgraph Compile ["`**1. INGEST &amp; COMPILE**`"]
+        Atom["`**Decision Atom**&lt;br/&gt;Snapshot + Limits`"]:::kernelSpace
+    end
+
+    subgraph Constrained_Loop ["`**2. CONSTRAINED REASONING**`"]
+        Grammar["`**Grammar**&lt;br/&gt;(Straightjacket)`"]:::kernelSpace
+        Inference(["`**LLM Inference**&lt;br/&gt;Syntactically Bound`"]):::userSpace
+
+        Grammar -.-&gt; Inference
+        Atom --&gt; Inference
+    end
+
+    subgraph Fast_Pass ["`**3. JIT FAST-PASS**`"]
+        JIT{"`**Lightweight JIT**&lt;br/&gt;Drift Check`"}:::kernelSpace
+    end
+
+    subgraph Exec_Layer ["`**4. EXECUTION**`"]
+        Intent["`**Execution Intent**&lt;br/&gt;Atomic Action`"]:::infraSpace
+    end
+
+    Inference --&gt;|Valid Proposal| JIT
+    JIT --&gt;|Pass| Intent
+
+    style Compile fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style Constrained_Loop fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px
+    style Fast_Pass fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style Exec_Layer fill:#FAFAFA,stroke:#F57C00,stroke-width:3px</code></pre>
+<h3 id="33-holistic-sds-architecture-high-performance-implementation">3.3 Holistic SDS Architecture (High-Performance Implementation)</h3>
+<p>The following diagram illustrates a complete <strong>Sovereign Decision Stream (SDS)</strong> architecture, designed for maximum throughput and minimal latency. It highlights the direct path from observation to execution, bypassing the complex event bus choreography of EOAM while maintaining strict safety via the "Straightjacket" grammar.</p>
+<pre class="mermaid"><code>---
+config:
+  layout: dagre
+  theme: neutral
+  look: classic
+title: Holistic SDS Architecture (Tactical Automation)
+---
+flowchart LR
+ subgraph Data_Sources["**Data Sources**"]
+    direction TB
+        L1_Feed["L1/L2 Market Data"]
+        Tick_Stream["Tick Stream"]
+  end
+ subgraph Infrastructure_Layer["**INFRASTRUCTURE SPACE**&lt;br&gt;Low-Latency I/O"]
+    direction LR
+        Data_Sources
+        Direct_DMA["DMA Gateway"]
+        Dashboard["Risk Console"]
+  end
+ subgraph Kernel_Layer["**KERNEL SPACE (DIR)**&lt;br&gt;Validation &amp;amp; Compilation"]
+    direction TB
+        Context_Compiler["Context Compiler"]
+        Grammar_Factory["Grammar Factory"]
+        JIT_Validator["JIT Validator"]
+        Executor["Atomic Executor"]
+        Risk_Governor["Risk Governor"]
+        Registry[("Agent Registry")]
+  end
+ subgraph User_Layer["**USER SPACE (SDS)**&lt;br&gt;Constrained Reasoning"]
+    direction LR
+        HFT_Agent(["Tactical Agent"])
+        Inference_Engine[["LLM Inference Engine"]]
+  end
+    L1_Feed &amp; Tick_Stream ==&gt; Context_Compiler
+    Registry -.-&gt; Grammar_Factory
+    Context_Compiler -- Atomic Context --&gt; HFT_Agent
+    Grammar_Factory -- JSON Grammar --&gt; Inference_Engine
+    HFT_Agent -- "Prompt + Context" --&gt; Inference_Engine
+    Inference_Engine -- "Syntactic Policy" --&gt; HFT_Agent
+    HFT_Agent -- "Decision Atom" --&gt; JIT_Validator
+    Registry -.-&gt; Risk_Governor
+    Risk_Governor -.-&gt; JIT_Validator
+    JIT_Validator -- "Verified Intent" --&gt; Executor
+    Executor ==&gt; Direct_DMA
+    Direct_DMA -.-&gt; Dashboard
+    Context_Compiler -.-&gt; JIT_Validator
+
+     L1_Feed:::infraSpace
+     Tick_Stream:::infraSpace
+     Direct_DMA:::infraSpace
+     Dashboard:::infraSpace
+     Context_Compiler:::kernelSpace
+     Grammar_Factory:::kernelSpace
+     JIT_Validator:::kernelSpace
+     Executor:::kernelSpace
+     Risk_Governor:::kernelSpace
+     Registry:::kernelSpace
+     HFT_Agent:::userSpace
+     Inference_Engine:::userSpace
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold
+    style Infrastructure_Layer fill:#FAFAFA,stroke:#F57C00,stroke-width:3px
+    style Kernel_Layer fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style User_Layer fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px</code></pre>
+<h3 id="34-design-intent-the-fly-by-wire-paradigm">3.4 Design Intent: The "Fly-by-Wire" Paradigm</h3>
+<p>To visualize <strong>Topology B</strong>, consider the control system of a modern <strong>Fighter Jet</strong> (Fly-by-Wire).</p>
+<p>In older aircraft (like standard scripts), the pilot's stick was mechanically connected to the wings. If the pilot pulled too hard, the wings could snap off. In a Fly-by-Wire system, there is no mechanical link.</p>
+<ul>
+<li><strong>The Pilot (The Agent)</strong> inputs an intent ("Pull up").</li>
+<li><strong>The Flight Computer (The Grammar)</strong> intercepts the signal. It knows the airframe's structural limit is 9G. Any stick input that would exceed that envelope is <strong>rejected at the input layer</strong> — the control surfaces physically will not respond to it. The pilot must issue a command <em>within</em> the safe envelope for the system to act.</li>
+<li><strong>The Result:</strong> The pilot retains full authority within the safe flight envelope, but the physics of the system make it impossible to exceed structural limits, regardless of intent.</li>
+</ul>
+<p><strong>Topology B</strong> applies this to decision-making. The Agent has "Sovereign" speed and authority, but it operates through a <strong>Grammar</strong>. It does not matter if the LLM's probability distribution favors trading 1,000,000 lots; the Grammar <strong>masks that token at the sampling layer</strong>, making it impossible to generate. The LLM must select from the remaining valid tokens. This allows the system to operate at high speeds (skipping the slow "Manager Review") because the "Physics of the System" (Syntax/Grammar) guarantees structural integrity.</p>
+<hr />
+<h2 id="4-topology-c-the-decision-ledger-dlpci">4. Topology C: The Decision Ledger (DL+PCI)</h2>
+<p><strong>Primary Attribute:</strong> Formal Verification &amp; Absolute Audit
+<strong>Ideal For:</strong> Compliance-Heavy Operations, Inter-Organizational Settlements, High-Value Transfers</p>
+<p><strong>Topology C</strong> represents the ultimate stage of formal verification within the Decision Intelligence Runtime framework. It shifts the focus from "trusting the agent" (EOAM) or "constraining the agent" (SDS) to <strong>"verifying the artifact."</strong></p>
+<blockquote>
+<p><strong>LDS Role — Cryptographic State Certificate (<code>A ∧ C ∧ T ∧ I ∧ E</code>):</strong> DL+PCI does not protect a single LDS component — it demands cryptographic proof that <strong>all five held simultaneously</strong> at the moment the intent was formed. The Proof-Carrying Intent is not a request for trust; it is a self-contained certificate asserting that Authority was in scope, Context was authentic, Time had not expired, Intent was within bounds, and Evidence was verifiable. The Proof Checker verifies this certificate deterministically, without reasoning. The Decision Ledger stores the certificate immutably. The result is a topology where safety is a structural property of the data artifact itself — independent of the agent, the runtime, or any network condition.</p>
+</blockquote>
+<h3 id="41-the-philosophy-proof-carrying-intents-pci">4.1 The Philosophy: Proof-Carrying Intents (PCI)</h3>
+<p>In this model, the system operates on a "Zero-Trust" basis regarding the agent's reasoning process. The <strong>Decision Ledger</strong> does not execute an intent because an agent "said so"; it executes it only if the intent carries an immutable proof of compliance.</p>
+<p>This transitions the architecture from <strong>Active Agents</strong> to <strong>Proof-Carrying Intents (PCI)</strong>. The safety is a property of the data structure itself, not the process that generated it.</p>
+<h3 id="42-the-decision-ledger">4.2 The Decision Ledger</h3>
+<p>The <strong>Decision Ledger</strong> is an append-only, immutable record that serves as the "Immutable Source of Truth" for the system.</p>
+<ul>
+<li><strong>Append-Only:</strong> History cannot be rewritten. Every decision, whether successful or rejected, is permanently recorded.</li>
+<li><strong>Idempotency:</strong> The Ledger ensures that replaying the same intent results in the same outcome (or a deterministic rejection if state has changed).</li>
+<li><strong>Zero-Trust Auditability:</strong> Auditors do not need to inspect the LLM's "thoughts"; they only need to verify the cryptographic proofs stored in the Ledger.</li>
+</ul>
+<blockquote>
+<p>The cryptographic protocol for generating and verifying Evidence Hashes and PCIs is formally specified in the <strong>Technical Annex</strong> at the end of this document.</p>
+</blockquote>
+<h3 id="43-the-proof-checker">4.3 The Proof Checker</h3>
+<p>In Topology C, the <strong>Decision Integrity Module (DIM)</strong> acts as a minimalist <strong>Proof Checker</strong>. It does not "think" or "reason." It simply validates the proofs attached to the intent.</p>
+<ul>
+<li><strong>Cryptographic Verification:</strong> Verifies the signature of the intent (binding it to an ROA identity).</li>
+<li><strong>Logical Verification:</strong> Checks that the intent includes valid evidence for all required rules (e.g., "RBAC Check Passed," "Limit Check Passed," "State Freshness Verified").</li>
+<li><strong>Temporal Validity (Drift Check):</strong> Explicitly verifies that the <code>ContextSnapshotID</code> referenced in the PCI is not "stale" (expired timestamp) and that the live system state has not drifted beyond the allowable envelope since the proof was generated.</li>
+</ul>
+<h3 id="44-concept-refinement-pci-vs-decision-atom">4.4 Concept Refinement: PCI vs. Decision Atom</h3>
+<p><strong>Proof-Carrying Intent (PCI)</strong> is an evolution of the "Decision Atom" from SDS.</p>
+<ul>
+<li><strong>Decision Atom:</strong> Contains <strong>What</strong> (Action) and <strong>Context</strong> (Snapshot). Guaranteed to be <em>syntactically</em> valid by SDS.</li>
+<li><strong>Proof-Carrying Intent:</strong> Contains <strong>What</strong>, <strong>Why</strong> (Semantic Rationale), and <strong>Proof</strong> (Deterministic evidence). Guaranteed to be <em>formally</em> compliant against the Ledger's history.</li>
+</ul>
+<p>While SDS ensures the agent stays within <em>syntactic</em> bounds (e.g., "produce valid JSON"), DL+PCI ensures <strong>formal compliance</strong> (e.g., "this transfer is valid because the balance was X at block Y, and policy Z allows transfers under limit L").</p>
+<blockquote>
+<p><strong>Ontological Limits of PCI:</strong> PCI is <em>Proof-Carrying Intent</em>, not <em>Proof-Carrying Code</em>. It does NOT prove semantic truth. It formally proves: <strong>State binding, Contract binding, Rule binding, and Identity binding.</strong> To address semantic truth (the "Compliant Lie"), the system relies on the Evidence Governance Layer in User Space (see Section 8).</p>
+</blockquote>
+<pre class="mermaid"><code>---
+title: "Topology C: Component Architecture &amp; Proof Flow"
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
+flowchart TB
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+
+    subgraph User_Space ["`**USER SPACE**`"]
+        Prover(["`**Prover Agent**&lt;br/&gt;(Signer)`"]):::userSpace
+    end
+
+    subgraph Kernel_Space ["`**KERNEL SPACE (DIR)**`"]
+        direction TB
+
+        subgraph Authorities ["`**Reference Authorities**`"]
+            Registry[("`**Agent Registry**&lt;br/&gt;Contract Hash ($H_c$)`")]:::kernelSpace
+            Context[("`**Context Store**&lt;br/&gt;State Hash ($H_s$)`")]:::kernelSpace
+        end
+
+        subgraph Validation_Gate ["`**Verification**`"]
+            DIM{"`**DIM / Proof Checker**&lt;br/&gt;Verify Evidence Hash`"}:::kernelSpace
+        end
+
+        Ledger[("`**Decision Ledger**&lt;br/&gt;Immutable Log`")]:::kernelSpace
+    end
+
+    subgraph Infra_Space ["`**INFRASTRUCTURE**`"]
+        Executor["`**Execution Engine**&lt;br/&gt;Deterministic Side-Effect`"]:::infraSpace
+    end
+
+    %% Data Flow
+    Prover --&gt;|"`**Submit PCI**&lt;br/&gt;(Intent + Proof + Sig)`"| DIM
+
+    Registry -.-&gt;|"$H_c$"| DIM
+    Context -.-&gt;|"$H_s$"| DIM
+
+    DIM --&gt;|"`**Valid**`"| Ledger
+    DIM -.-&gt;|"`**Invalid**`"| Reject((Reject)):::kernelSpace
+
+    Ledger ==&gt;|"`**Commit Event**`"| Executor
+
+    style User_Space fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px
+    style Kernel_Space fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style Infra_Space fill:#FAFAFA,stroke:#F57C00,stroke-width:3px
+    style Authorities fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,stroke-dasharray: 5 5
+    style Validation_Gate fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,stroke-dasharray: 5 5</code></pre>
+<h3 id="45-addressing-the-obvious-question-is-topology-c-just-topology-b-with-extra-steps">4.5 Addressing the Obvious Question: "Is Topology C Just Topology B With Extra Steps?"</h3>
+<p>A natural objection arises: if a Proof-Carrying Intent builds on top of SDS's Decision Atom, isn't Topology C merely Topology B with an additional audit layer? The answer is no-and the distinction is architectural, not incremental.</p>
+<p>The three topologies differ not only in <strong>Signal Flow</strong> (how messages move) but in <strong>Trust Locus</strong> (where safety is guaranteed):</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Topology A (EOAM)</th>
+<th style="text-align: left;">Topology B (SDS)</th>
+<th style="text-align: left;">Topology C (DL+PCI)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Trust Locus</strong></td>
+<td style="text-align: left;"><strong>Process</strong> — DIM validates <em>after</em> agents reason</td>
+<td style="text-align: left;"><strong>Generation</strong> — Grammar constrains <em>during</em> inference</td>
+<td style="text-align: left;"><strong>Artifact</strong> — PCI carries proof <em>within itself</em></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Offline Verifiability</strong></td>
+<td style="text-align: left;">No — requires live DIM and Runtime</td>
+<td style="text-align: left;">No — requires live JIT and Runtime</td>
+<td style="text-align: left;"><strong>Yes</strong> — PCI is self-contained and cryptographically verifiable</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Recovery Model</strong></td>
+<td style="text-align: left;">Re-arbitrate (select new winner from proposals)</td>
+<td style="text-align: left;">Re-reason (trigger new LLM inference)</td>
+<td style="text-align: left;"><strong>Deterministic Replay</strong> from immutable Ledger</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Inter-Organizational Use</strong></td>
+<td style="text-align: left;">No — confined to a single trust domain</td>
+<td style="text-align: left;">No — Grammar and JIT are internal</td>
+<td style="text-align: left;"><strong>Yes</strong> — PCI can be verified by an external auditor or counterparty</td>
+</tr>
+</tbody>
+</table>
+<h4 id="why-this-matters-the-regulatory-audit-scenario">Why This Matters: The Regulatory Audit Scenario</h4>
+<p>Consider a concrete scenario that exposes the architectural difference:</p>
+<blockquote>
+<p><strong>Six months after execution, a regulator asks: "Why did the system sell 500 shares of XYZ on March 15th at 14:32?"</strong></p>
+<ul>
+<li><strong>Topology B (SDS):</strong> The Runtime has logs. The DFID links the trigger to the action. But the JIT check was performed by a Runtime that has since undergone three software updates. The auditor must <em>trust</em> that the logs were not altered and that the validation logic at the time of execution matched the current version. The proof is <em>reconstructed</em> from system state-it was never an independent object.</li>
+<li><strong>Topology C (DL+PCI):</strong> The auditor retrieves the PCI from the immutable Decision Ledger. They re-calculate the <code>evidence_hash</code> using the archived $H_s$, $H_c$, and $H_r$. They verify the <code>roa_signature</code> against the registered public key. <strong>No access to the live Runtime is required.</strong> The proof is a <em>property of the artifact</em>, not a property of the system that produced it.</li>
+</ul>
+</blockquote>
+<p>This is not "B plus logging." It is a fundamentally different trust architecture:</p>
+<ul>
+<li><strong>SDS guarantees:</strong> "This intent was structurally valid <em>at the moment of generation</em>."</li>
+<li><strong>DL+PCI guarantees:</strong> "This intent was formally compliant, and <em>anyone can verify this at any time</em>, without trusting the system that produced it."</li>
+</ul>
+<p>The distinction mirrors the difference between <strong>runtime type-checking</strong> (safe while the program runs) and <strong>proof-carrying code</strong> (safe regardless of the execution environment). Both are valid; they serve different classes of problems. Topology C exists for scenarios where the proof must <em>outlive</em> the system that generated it.</p>
+<h3 id="46-design-intent-the-notarized-execution-paradigm">4.6 Design Intent: The "Notarized Execution" Paradigm</h3>
+<p>To better understand Topology C, consider the banking concept of a <strong>Letter of Credit (L/C)</strong>.</p>
+<p>In a standard transaction, a buyer might promise to pay. In an L/C, a <strong>Bank</strong> (The Runtime) guarantees payment to a <strong>Beneficiary</strong> (Execution) on behalf of a <strong>Buyer</strong> (The Agent), <em>provided that</em> specific documents (Proofs) are presented.</p>
+<ul>
+<li><strong>The Agent (Buyer)</strong> does not touch the money directly. It instructs the bank.</li>
+<li><strong>The Runtime (Bank)</strong> does not judge the quality of the goods. It strictly verifies that the <em>documents</em> (Bill of Lading, Invoice) match the conditions of the Credit exactly.</li>
+<li><strong>The Execution (Beneficiary)</strong> gets paid (action executes) <em>if and only if</em> the documents are perfect.</li>
+</ul>
+<p>In <strong>Topology C</strong>, the <strong>Proof-Carrying Intent (PCI)</strong> is that "stack of documents." The Agent (Buyer) constructs a complex transaction, but the Runtime (Bank) will only "release funds" (execute side effects) if the cryptographic proofs (documents) perfectly match the <strong>Decision Ledger's</strong> requirements. If a single signature is missing or a timestamp is stale, the transaction is dishonored-regardless of how "smart" the Agent's reasoning was.</p>
+<p>This transforms the system from <strong>"Trust but Verify"</strong> (classic agent monitoring) to <strong>"Verify then Trust"</strong> (cryptographic enforcement).</p>
+<hr />
+<h2 id="5-economic-governance-cost-aware-topologies">5. Economic Governance: Cost-Aware Topologies</h2>
+<p>A critical, yet often overlooked, dimension of agentic architecture is the theory of cost. The current industry discourse is dominated by concerns over "token burn," expensive evaluation harnesses, and the prohibitive cost of running massive agent swarms. The prevailing narrative is simply: <em>AI is too expensive.</em></p>
+<p>The Decision Intelligence Runtime (DIR) challenges this by positing that <strong>governance lowers token consumption</strong>. By decoupling the topology from the agent, DIR introduces <strong>Economic Governance</strong>—the ability to deliberately select a topology based on the required intelligence-to-cost ratio for a specific class of decisions.</p>
+<p>Not every decision requires a swarm of high-intelligence agents debating strategy. By matching the topology to the problem, organizations can optimize their token expenditure without sacrificing safety or capability (see the Cost and Intelligence profiles in the Decision Matrix in Section 6).</p>
+<h3 id="51-the-cost-intelligence-trade-off">5.1 The Cost-Intelligence Trade-off</h3>
+<ul>
+<li><strong>EOAM (High Intelligence, High Cost):</strong> When a decision is ambiguous, strategic, or requires multiple perspectives, the high token cost of EOAM is justified. The mesh allows agents to debate and synthesize, producing high-quality proposals at the expense of latency and compute.</li>
+<li><strong>SDS (Medium Intelligence, Low Cost):</strong> When a decision is well-defined and tactical, SDS is the economic choice. By using Constrained Decoding and single-agent streams, SDS minimizes token usage and latency. It is the "fast path" for routine operations.</li>
+<li><strong>DL+PCI (Low Intelligence, High Assurance):</strong> When the cost of a mistake is catastrophic (e.g., regulatory fines, massive financial loss), the system shifts to DL+PCI. Here, the economic calculation is not about maximizing intelligence or minimizing token burn, but about maximizing assurance and auditability. The agent's reasoning is less important than its ability to package a cryptographically verifiable proof.</li>
+</ul>
+<p>By treating cost as an architectural variable rather than an unavoidable penalty, DIR allows organizations to deploy AI at scale sustainably. Economic Governance ensures that expensive cognitive cycles are reserved for problems that actually require them.</p>
+<hr />
+<h2 id="6-comparative-analysis-the-decision-matrix">6. Comparative Analysis: The Decision Matrix</h2>
+<p>The choice between EOAM, SDS, and DL+PCI is a strategic decision based on the trade-off between <strong>Coordination</strong>, <strong>Velocity</strong>, and <strong>Integrity</strong>. These three dimensions form a "pick-two" triangle analogous to the <strong>CAP Theorem</strong> in distributed systems: optimizing for one axis necessarily constrains the others.</p>
+<pre class="mermaid"><code>---
+title: "The Decision Triangle: Coordination × Velocity × Integrity"
+config:
+  theme: neutral
+  look: classic
+---
+flowchart LR
+    classDef coordStyle fill:#E8EAF6,stroke:#3F51B5,stroke-width:3px,color:#1A237E,font-weight:bold;
+    classDef velocStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:3px,color:#E65100,font-weight:bold;
+    classDef integStyle fill:#E8F5E9,stroke:#388E3C,stroke-width:3px,color:#1B5E20,font-weight:bold;
+    classDef edgeLabel fill:none,stroke:none,color:#616161,font-style:italic;
+
+    EOAM(["`**Topology A: EOAM**
+    COORDINATION
+    *(breadth &amp; strategy)*`"]):::coordStyle
+
+    SDS(["`**Topology B: SDS**
+    VELOCITY
+    *(speed &amp; tactics)*`"]):::velocStyle
+
+    DL(["`**Topology C: DL+PCI**
+    INTEGRITY
+    *(trust &amp; audit)*`"]):::integStyle
+
+    EOAM ---|"Trade-off: Speed vs Breadth"| SDS
+    SDS ---|"Trade-off: Rigor vs Speed"| DL
+    DL ---|"Trade-off: Breadth vs Rigor"| EOAM</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Event-Oriented Agent Mesh (EOAM)</th>
+<th style="text-align: left;">Sovereign Decision Stream (SDS)</th>
+<th style="text-align: left;">Decision Ledger (DL+PCI)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Primary Goal</strong></td>
+<td style="text-align: left;"><strong>Coordinated Strategic Reasoning</strong></td>
+<td style="text-align: left;">Atomic execution velocity</td>
+<td style="text-align: left;"><strong>Formal Verification / Absolute Integrity</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Topology Type</strong></td>
+<td style="text-align: left;">Decentralized Choreography (Many-to-Many)</td>
+<td style="text-align: left;">Linear Pipeline (One-to-One)</td>
+<td style="text-align: left;">Append-Only Log (State-to-State)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Intelligence Profile</strong></td>
+<td style="text-align: left;"><strong>High Intelligence</strong> (Multi-agent synthesis, debate, strategy)</td>
+<td style="text-align: left;"><strong>Medium Intelligence</strong> (Single-agent, constrained generation)</td>
+<td style="text-align: left;"><strong>Low Intelligence</strong> (Minimal reasoning, focused on proof generation)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Trust Locus</strong></td>
+<td style="text-align: left;"><strong>Process</strong> — Runtime validates after generation</td>
+<td style="text-align: left;"><strong>Generation</strong> — Grammar constrains during inference</td>
+<td style="text-align: left;"><strong>Artifact</strong> — PCI carries self-contained proof</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Assurance Profile</strong></td>
+<td style="text-align: left;">Process-based</td>
+<td style="text-align: left;">Generation-based</td>
+<td style="text-align: left;"><strong>High Assurance</strong> (Artifact-based cryptographic verification)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Offline Verifiability</strong></td>
+<td style="text-align: left;">No (requires live DIM)</td>
+<td style="text-align: left;">No (requires live JIT)</td>
+<td style="text-align: left;"><strong>Yes</strong> (self-contained cryptographic proof)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Concurrency</strong></td>
+<td style="text-align: left;">High (Parallel Reasoning)</td>
+<td style="text-align: left;">Low (Linear Atomic Decision)</td>
+<td style="text-align: left;">Serialized (Ledger Ordering)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Latency</strong></td>
+<td style="text-align: left;">Significant (Priority-Based Preemption)</td>
+<td style="text-align: left;"><strong>Minimal</strong> (Single Inference Pass)</td>
+<td style="text-align: left;">Medium (Log persistence &amp; proof verification)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Cost Profile</strong></td>
+<td style="text-align: left;"><strong>High Cost</strong> (High token burn, multiple LLM calls, complex context)</td>
+<td style="text-align: left;"><strong>Low Cost</strong> (Single pass, grammar-constrained, fast inference)</td>
+<td style="text-align: left;"><strong>Medium Cost</strong> (Cost shifted from reasoning to cryptographic proof)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Recovery Model</strong></td>
+<td style="text-align: left;">Re-arbitrate (select new proposal winner)</td>
+<td style="text-align: left;">Re-reason (new LLM inference)</td>
+<td style="text-align: left;"><strong>Deterministic Replay</strong> (from immutable Ledger)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Inter-Org Use</strong></td>
+<td style="text-align: left;">No (single trust domain)</td>
+<td style="text-align: left;">No (internal Grammar &amp; JIT)</td>
+<td style="text-align: left;"><strong>Yes</strong> (PCI verifiable by external party)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Use Case</strong></td>
+<td style="text-align: left;">Strategic planning, complex problem solving, organizational choreography</td>
+<td style="text-align: left;">High-velocity tactical execution, atomic operations, high-frequency trading</td>
+<td style="text-align: left;">Regulated actions, irreversible financial transfers, formal audits</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-implementation-blueprints">7. Implementation Blueprints</h2>
+<p>A robust <strong>Decision Intelligence</strong> system can support all topologies simultaneously within the same <strong>Agent Registry</strong>.</p>
+<h3 id="71-topology-a-mesh-handler-eoam">7.1 Topology A: Mesh Handler (EOAM)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># agents/trader_mesh_agent.py</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TacticalTrader</span><span class="p">(</span><span class="n">ResponsibleAgent</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">register</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Register for semantic routing</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">registry</span><span class="o">.</span><span class="n">handshake</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="p">,</span> <span class="n">contract</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">&quot;EOAM&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_observation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">ObservationEvent</span><span class="p">):</span>
+        <span class="c1"># 1. Mesh Logic: Reactive, Parallel</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">ContextCompiler</span><span class="o">.</span><span class="n">assemble</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">snapshot_id</span><span class="p">)</span>
+        <span class="n">explanation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">llm</span><span class="o">.</span><span class="n">explain</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mission</span><span class="p">)</span>
+        <span class="n">policy_intent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">llm</span><span class="o">.</span><span class="n">generate_policy</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">explanation</span><span class="p">)</span>
+
+        <span class="c1"># 2. Emit Proposal to Bus for Preemption/Selection</span>
+        <span class="n">proposal</span> <span class="o">=</span> <span class="n">PolicyProposal</span><span class="p">(</span>
+            <span class="n">dfid</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">dfid</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="n">policy_intent</span><span class="p">,</span>
+            <span class="n">constraints</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;drift_envelope_bps&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">},</span> <span class="c1"># JIT Drift Parameter</span>
+            <span class="n">context_ref</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">snapshot_id</span>
+        <span class="p">)</span>
+        <span class="n">EventBus</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">proposal</span><span class="p">)</span> 
+</code></pre></div>
+<h3 id="72-topology-b-stream-handler-sds">7.2 Topology B: Stream Handler (SDS)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># sds/core_handler.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">outlines</span><span class="w"> </span><span class="kn">import</span> <span class="n">models</span><span class="p">,</span> <span class="n">generate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">SDSExecutionConstraints</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="c1"># The DIR-enforced &#39;Straightjacket&#39;</span>
+    <span class="n">max_trade_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">le</span><span class="o">=</span><span class="mf">1000.0</span><span class="p">)</span> <span class="c1"># Absolute DIR Hard Gate</span>
+    <span class="n">authorized_instruments</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;BTC-USD&quot;</span><span class="p">,</span> <span class="s2">&quot;ETH-USD&quot;</span><span class="p">]</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">SDSPolicy</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">action</span><span class="p">:</span> <span class="nb">str</span> <span class="c1"># Must match Literal [&quot;BUY&quot;, &quot;SELL&quot;, &quot;HOLD&quot;]</span>
+    <span class="n">amount</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">rationale</span><span class="p">:</span> <span class="nb">str</span> <span class="c1"># The &#39;Explain&#39; component</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">execute_sovereign_stream</span><span class="p">(</span><span class="n">dfid</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context_snapshot</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+    <span class="c1"># 1. Fetch Mission and Constraints from Registry &amp; DIR</span>
+    <span class="n">contract</span> <span class="o">=</span> <span class="n">AgentRegistry</span><span class="o">.</span><span class="n">get_contract</span><span class="p">(</span><span class="n">context_snapshot</span><span class="o">.</span><span class="n">agent_id</span><span class="p">)</span>
+
+    <span class="c1"># 2. Build the &#39;Decision Atom&#39; Grammar</span>
+    <span class="c1"># This prevents the LLM from ever suggesting &gt; 1000.0 or unauthorized assets</span>
+    <span class="n">grammar</span> <span class="o">=</span> <span class="n">build_pydantic_grammar</span><span class="p">(</span><span class="n">SDSPolicy</span><span class="p">,</span> <span class="n">constraints</span><span class="o">=</span><span class="n">contract</span><span class="o">.</span><span class="n">limits</span><span class="p">)</span>
+
+    <span class="c1"># 3. Constrained Inference (The SDS Secret Sauce)</span>
+    <span class="c1"># The model samplers are gated by the DIR-defined grammar</span>
+    <span class="n">policy_proposal</span> <span class="o">=</span> <span class="n">generate</span><span class="o">.</span><span class="n">json</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">grammar</span><span class="p">)(</span>
+        <span class="n">prompt</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Mission: </span><span class="si">{</span><span class="n">contract</span><span class="o">.</span><span class="n">mission</span><span class="si">}</span><span class="se">\n</span><span class="s2">Context: </span><span class="si">{</span><span class="n">context_snapshot</span><span class="o">.</span><span class="n">data</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># 4. JIT Verification &amp; Execution (Minimal Latency)</span>
+    <span class="c1"># Requires hash-binding check against context_snapshot</span>
+    <span class="k">return</span> <span class="n">DIR</span><span class="o">.</span><span class="n">jit_execute</span><span class="p">(</span><span class="n">dfid</span><span class="p">,</span> <span class="n">policy_proposal</span><span class="p">,</span> <span class="n">context_snapshot</span><span class="o">.</span><span class="n">hash</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="73-topology-c-ledger-handler-dlpci">7.3 Topology C: Ledger Handler (DL+PCI)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># sds/ledger_intent_compiler.py</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProofCarryingIntent</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">dfid</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">intent</span><span class="p">:</span> <span class="n">SDSPolicy</span> <span class="c1"># Syntactically bound</span>
+    <span class="n">proof</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;rule_checks&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;RBAC&quot;</span><span class="p">,</span> <span class="s2">&quot;LIMITS&quot;</span><span class="p">,</span> <span class="s2">&quot;FRESHNESS&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;evidence_hash&quot;</span><span class="p">:</span> <span class="s2">&quot;sha256_of_state_and_contract&quot;</span>
+    <span class="p">}</span>
+    <span class="n">signature</span><span class="p">:</span> <span class="nb">str</span> <span class="c1"># Cryptographic bond to ROA identity</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ProofChecker</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">verify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pci</span><span class="p">:</span> <span class="n">ProofCarryingIntent</span><span class="p">,</span> <span class="n">ledger</span><span class="p">:</span> <span class="n">DecisionLedger</span><span class="p">):</span>
+        <span class="c1"># 1. Cryptographic Verification</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">verify_signature</span><span class="p">(</span><span class="n">pci</span><span class="o">.</span><span class="n">signature</span><span class="p">,</span> <span class="n">pci</span><span class="o">.</span><span class="n">dfid</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">InvalidSignatureError</span><span class="p">()</span>
+
+        <span class="c1"># 2. Logical Verification</span>
+        <span class="c1"># Does the evidence hash match the current ledger state?</span>
+        <span class="n">current_state_hash</span> <span class="o">=</span> <span class="n">ledger</span><span class="o">.</span><span class="n">get_state_hash</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">pci</span><span class="o">.</span><span class="n">proof</span><span class="p">[</span><span class="s2">&quot;evidence_hash&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">current_state_hash</span><span class="p">:</span>
+             <span class="k">raise</span> <span class="n">StateDriftError</span><span class="p">(</span><span class="s2">&quot;Proof invalid for current state&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 3. Commit</span>
+        <span class="n">ledger</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pci</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+</code></pre></div>
+<h3 id="74-kernel-user-space-integrity-constraints-all-topologies">7.4 Kernel-User Space Integrity Constraints (All Topologies)</h3>
+<p>The following constraints apply <strong>regardless of topology</strong>. They are properties of the DIR Kernel, not of any specific signal flow pattern. They are included here because they govern the boundary between all Implementation Blueprints above and the Execution Engine.</p>
+<ul>
+<li><strong>Deterministic Compensation Menu:</strong> In multi-step decisions, agents MUST NOT generate "reasoning-based compensation" logic. Instead, they must select from a pre-defined, DIR-validated set of actions (e.g., <code>REVERT</code>, <code>CLOSE_ALL</code>, <code>ALERT_HUMAN</code>). This prevents the same reasoning capability that caused the failure from exacerbating it.</li>
+<li><strong>Lock Normalization:</strong> Agents are NOT responsible for sorting Resource IDs to prevent deadlocks. <strong>Alphabetical lock normalization is a Kernel (Runtime) responsibility</strong>, ensuring that the Reasoning layer remains infrastructure-agnostic.</li>
+</ul>
+<hr />
+<h2 id="8-the-evidence-governance-layer-the-compliant-lie">8. The Evidence Governance Layer &amp; The Compliant Lie</h2>
+<p>While the Decision Intelligence Runtime (DIR) enforces structural integrity and prevents operational chaos (loops, drift), it introduces a specific vulnerability within probabilistic systems known as <strong>"The Compliant Lie"</strong>.</p>
+<p>To address this, the architecture defines the <strong>Evidence Governance Layer</strong> as a first-class citizen in User Space. If the DIR Kernel provides <strong>Execution Governance</strong> (structural and deterministic safety), the Evidence Governance Layer provides <strong>Semantic Governance</strong> (verifiable claims and evidence).</p>
+<h3 id="81-the-compliant-lie">8.1 The Compliant Lie</h3>
+<p>A "Compliant Lie" occurs when a Large Language Model generates a decision that is <strong>structurally perfect, fully within the contract limits, but semantically entirely wrong</strong> based on the input context. </p>
+<blockquote>
+<p><strong>The Commercial Insurance Scenario:</strong> A client requests an insurance policy for "50 heavy trucks" in an email. A small, fast LLM hallucinates and parses this as "5 personal cars." 
+* Did it break the YAML contract? No, the field <code>vehicle_count = 5</code> is structurally valid.
+* Did it enter an unbounded loop? No.
+* Will the DIR Kernel catch it? No. The Kernel Space executes validated intents; it does not judge the agent's wisdom.</p>
+</blockquote>
+<p>If the DIR executes this, the system functions flawlessly from an infrastructure perspective, but fails completely from a business perspective.</p>
+<blockquote>
+<p><strong>Compliant Lie vs. Semantic Drift:</strong> The Compliant Lie is a <em>synchronous, single-decision</em> hallucination, caught <em>before</em> execution. It must not be confused with <strong>Semantic Drift</strong> — an <em>aggregate, post-execution</em> failure (the "Day Three" problem) in which an agent gradually yields to contextual manipulation while each individual action stays within limits. The two demand different defenses: pre-submission evidence generation (this chapter) versus Post-Execution Governance monitors.</p>
+</blockquote>
+<h3 id="82-the-evidence-governance-pipeline">8.2 The Evidence Governance Pipeline</h3>
+<p>To solve the Compliant Lie without violating the fundamental separation of User Space and Kernel Space, we elevate Evidence Governance from a set of ad-hoc patterns to a formal architectural pipeline.</p>
+<p>The fundamental shift is moving from <em>governance of answers</em> (AI validating AI) to <em>governance of evidence</em>. We do not ask "Is the answer correct?", because that is impossible to prove deterministically. Instead, we ask "Does there exist a sufficient evidence package to make this decision?".</p>
+<h3 id="821-the-evidence-hierarchy">8.2.1 The Evidence Hierarchy</h3>
+<p>Evidence is not a monolith; it is a spectrum of assurance defined by the Responsibility Contract. DIR formalizes an <strong>Evidence Hierarchy</strong> with three distinct tiers:</p>
+<ol>
+<li><strong>Heuristic Evidence</strong>: Legacy deterministic checks (e.g., SQL Views, Regex, Business Rules). These verify narrow parameters and structured fields but cannot validate semantic nuances.</li>
+<li><strong>Reconstructed Evidence</strong>: Independent semantic verification (e.g., Bidirectional Reconstruction). This ensures the reasoning is stable and the claim maps logically back to the original context.</li>
+<li><strong>Cryptographic Evidence</strong>: The PCI Hash (SHA256). This provides deterministic proof of identity, state, and contract binding, ensuring the intent artifact is structurally unforgeable.</li>
+</ol>
+<p>In this paradigm, an LLM does not produce <em>truth</em>; it produces a <strong>Claim</strong>. The system must then produce an <strong>Evidence Package</strong> (utilizing tiers 1 and 2) to support that claim. Only when the claim and the evidence are combined can a valid output artifact — a <code>Proof-Carrying Intent (PCI)</code>, representing tier 3 — be submitted to the DIR wall.</p>
+<p>The formal pipeline is:
+<code>Context</code> $\rightarrow$ <code>Claim</code> $\rightarrow$ <code>Evidence Generators</code> $\rightarrow$ <code>Evidence Package</code> $\rightarrow$ <code>PCI</code></p>
+<pre class="mermaid"><code>---
+title: "The Evidence Governance Layer"
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
+flowchart LR
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+
+    Context["`**Context**&lt;br/&gt;(Snapshot)`"]:::kernelSpace
+
+    subgraph Evidence_Layer ["`**EVIDENCE GOVERNANCE LAYER (User Space)**`"]
+        direction LR
+        Agent(["`**LLM Agent**`"]):::userSpace
+        Claim["`**Claim**&lt;br/&gt;(Proposed Intent)`"]:::userSpace
+        Generators{"`**Evidence&lt;br/&gt;Generators**`"}:::userSpace
+        Package["`**Evidence Package**&lt;br/&gt;(Claim + Proofs)`"]:::userSpace
+
+        Agent --&gt;|Synthesizes| Claim
+        Claim --&gt; Generators
+        Generators --&gt;|Validates &amp; Appends| Package
+    end
+
+    PCI["`**PCI**&lt;br/&gt;(Signed Artifact)`"]:::userSpace
+    DIR{"`**DIR Kernel**&lt;br/&gt;(Execution Gov)`"}:::kernelSpace
+
+    Context --&gt; Agent
+    Context --&gt; Generators
+    Package --&gt;|Signed| PCI
+    PCI --&gt; DIR
+
+    style Evidence_Layer fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px</code></pre>
+<blockquote>
+<p><strong>A note on rigor:</strong> The Evidence Governance Layer acts as an <strong>Evidence Generator</strong>, not a formal prover. It sharply reduces the probability of an undetected Compliant Lie by requiring independent confirmation, but it cannot mathematically guarantee its absence. The only <em>cryptographic</em> proof in this framework is the <code>evidence_hash</code> of a signed PCI (see Topology C and the Technical Annex), which attests to identity and state-binding, not semantic truth.</p>
+</blockquote>
+<h3 id="83-evidence-generators-synthesis-patterns">8.3 Evidence Generators (Synthesis Patterns)</h3>
+<p>The DIR architecture dictates that we do not build massive, slow telemetry systems to grade the LLM's "confidence." Instead, we rely on the principle of differential separation to generate evidence:</p>
+<h4 id="pattern-1-differential-heuristics">Pattern 1: Differential Heuristics</h4>
+<p><strong>Definition:</strong> A parallel processing pattern binding probabilistic LLM inference to deterministic rules (e.g., regex, SQL views) to generate supporting evidence.
+* <strong>Mechanism:</strong>
+  1. Input context $C$ is processed by Agent $A_{LLM}$ yielding a structured claim $I_{LLM}$.
+  2. Concurrently, $C$ is processed by Heuristic $H_{Det}$ yielding baseline evidence $I_H$.
+* <strong>Evidence Logic:</strong> Compute $\Delta(I_{LLM}, I_H)$ on critical fields.
+* <strong>Escalation Trigger:</strong> IF $\Delta \neq 0$, THEN ABORT PCI generation AND flag as <code>COMPLIANT_LIE_SUSPECTED</code>.</p>
+<blockquote>
+<p><strong>Example:</strong> $C$ = "insure 50 heavy trucks". Heuristic $H_{Det}$ uses regex to extract <code>vehicle_type: "heavy_trucks"</code> (evidence). Agent $A_{LLM}$ hallucinates <code>vehicle_type: "personal_cars"</code> (claim). Delta detected ($\Delta \neq 0$) $\rightarrow$ ABORT.</p>
+</blockquote>
+<h4 id="pattern-2-bidirectional-reconstruction">Pattern 2: Bidirectional Reconstruction</h4>
+<p><strong>Definition:</strong> A verification pipeline leveraging functional inversion (Reconstructable Logic Slices). It generates evidence by forcing a secondary agent to blindly reconstruct the original context from the proposed JSON claim.
+* <strong>Mechanism:</strong>
+  1. <strong>Synthesis:</strong> Agent $A_{syn}$ processes context $C$ yielding a structured JSON claim $I$.
+  2. <strong>Reconstruction:</strong> Agent $A_{rec}$ (Evidence Generator) processes ONLY claim $I$ yielding reconstructed narrative $C_{rec}$ (evidence).
+* <strong>Evidence Logic:</strong> Evaluate semantic equivalence between $C$ and $C_{rec}$.
+* <strong>Escalation Trigger:</strong> IF $C \not\approx C_{rec}$, THEN ABORT PCI generation AND flag as <code>COMPLIANT_LIE_SUSPECTED</code>.</p>
+<blockquote>
+<p><strong>Example:</strong> Agent $A_{syn}$ hallucinates $I = {\text{"vehicle_type": "personal_cars"}}$ (claim). Agent $A_{rec}$ reads $I$ and reconstructs $C_{rec}$ = "User wants to insure personal cars." (evidence). Semantic comparison between $C_{rec}$ and the original $C$ ("heavy trucks") fails $\rightarrow$ ABORT.</p>
+</blockquote>
+<p><strong>System Invariant:</strong> Generation of the agent's output artifact in User Space MUST require a sufficient evidence package from the defined Evidence Generators before signing. The DIR Kernel verifies the PCI's cryptographic signature and structural proofs but <strong>cannot judge semantic correctness</strong>; it only checks if the required evidence package exists. Therefore, the Evidence Governance Layer is solely responsible for catching the Compliant Lie before signing.</p>
+<h3 id="84-relationship-to-kernel-side-semantic-checks">8.4 Relationship to Kernel-Side Semantic Checks</h3>
+<p>Evidence Governance is the <strong>first</strong> of three complementary semantic defenses in the DIR framework. They operate at different points in the decision lifecycle and must not be conflated:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Defense</th>
+<th style="text-align: left;">Layer</th>
+<th style="text-align: left;">Timing</th>
+<th style="text-align: left;">Target</th>
+<th style="text-align: left;">Blocking?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Evidence Governance Layer</strong> (this chapter)</td>
+<td style="text-align: left;">User Space</td>
+<td style="text-align: left;">Pre-submission (before signing)</td>
+<td style="text-align: left;">The Compliant Lie (single hallucination)</td>
+<td style="text-align: left;">Yes — no evidence package, no signed artifact</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Semantic Alignment Check</strong> (Soft Guard)</td>
+<td style="text-align: left;">DIM-adjacent</td>
+<td style="text-align: left;">Validation-time</td>
+<td style="text-align: left;">Proxy gaming (narrative ≠ policy)</td>
+<td style="text-align: left;">Audit-only by default; optional strict mode</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Asynchronous Semantic Auditing</strong></td>
+<td style="text-align: left;">Post-Execution Monitors</td>
+<td style="text-align: left;">After execution (rolling window)</td>
+<td style="text-align: left;">Semantic Drift (Day Three aggregate)</td>
+<td style="text-align: left;">No — triggers circuit breaker / <code>SUSPENDED</code></td>
+</tr>
+</tbody>
+</table>
+<p>The architectural distinction: The Evidence Governance Layer operates <strong>entirely in User Space and adds no latency or LLM calls to the deterministic Kernel path</strong>, preserving Invariant 1 (Determinism). The Semantic Alignment Check is an optional Kernel-adjacent soft guard; Asynchronous Semantic Auditing runs off the critical path entirely. Together they form a defense-in-depth posture — catch the lie before signing, flag misalignment at the gate, and detect drift over time.</p>
+<hr />
+<h2 id="9-conclusion">9. Conclusion</h2>
+<p>The development of <strong>Decision Intelligence Topologies</strong> marks the maturation of agentic engineering. We are moving beyond the era of treating Large Language Models as meaningful entities in themselves, and towards an era where they are components within rigorous system architectures.</p>
+<p>The inclusion of <strong>Topology C (DL+PCI)</strong> completes the triad-not as an incremental extension of earlier patterns, but as a fundamentally different <strong>Trust Locus</strong>:
+*   <strong>EOAM</strong> for breadth and strategy — safety lives in the <strong>process</strong>.
+*   <strong>SDS</strong> for speed and tactics — safety lives in the <strong>generation</strong>.
+*   <strong>DL+PCI</strong> for truth and audit — safety lives in the <strong>artifact</strong>.</p>
+<p>Sophisticated organizations will employ all three topologies in concert. The Mesh (EOAM) thinks deeply about strategy and risk; the Stream (SDS) executes those strategies with precision; and the Ledger (DL) records the irrevocable truth of every action-a truth that can be verified by any party, at any time, without access to the system that produced it. In all cases, the future belongs to architectures that prioritize <strong>auditability over creativity</strong> and <strong>constraints over capabilities</strong>.</p>
+<p>Viewed through the Illegal State Theory, the triad is complete and non-redundant: EOAM prevents <code>¬C</code> and <code>¬T</code>, SDS prevents <code>¬I</code>, and DL+PCI certifies <code>A ∧ C ∧ T ∧ I ∧ E</code>. Together they cover every dimension of the Legal Decision State — ensuring that no matter how the system is composed, an Illegal Decision State remains unreachable by design.</p>
+<hr />
+<h2 id="10-glossary">10. Glossary</h2>
+<ul>
+<li><strong>Economic Governance:</strong> The architectural capability to select an agent topology based on the required intelligence-to-cost ratio, optimizing token expenditure without sacrificing safety.</li>
+<li><strong>Priority-Based Preemption (EOAM):</strong> A mechanism where the Runtime selects the "winning" proposal based on the <strong>Agent Registry Priority Matrix</strong> (e.g., Risk &gt; Strategy) rather than just a time window.</li>
+<li><strong>Constrained Decoding (SDS):</strong> Using grammar-based sampling to physically prevent an LLM from generating non-compliant tokens.</li>
+<li><strong>Drift Envelope:</strong> A contract-level parameter specifying the maximum allowable deviation (e.g., price slippage, latency) for JIT Verification before a PolicyProposal is rejected.</li>
+<li><strong>DecisionFlow ID (DFID):</strong> The immutable trace ID linking observation, reasoning, and execution.</li>
+<li><strong>Decision Intelligence Runtime (DIR):</strong> The deterministic kernel validating all agent actions.</li>
+<li><strong>Decision Atom (SDS):</strong> A single, context-complete package for atomic execution, hash-bound to a specific snapshot.</li>
+<li><strong>Event-Oriented Agent Mesh (EOAM):</strong> A decentralized topology for parallel, multi-agent coordination.</li>
+<li><strong>Responsibility-Oriented Agent (ROA):</strong> The identity layer defining "Who" is reasoning.</li>
+<li><strong>Sovereign Decision Stream (SDS):</strong> A linear topology for high-velocity, atomic decisions.</li>
+<li><strong>Wake-up Predicate:</strong> cheap heuristic logic used to suppress signals before invoking expensive agents.</li>
+<li><strong>Decision Ledger:</strong> An append-only, immutable record serving as the source of truth for all decisions.</li>
+<li><strong>Proof-Carrying Intent (PCI):</strong> An intent artifact containing action, rationale, and deterministic proof of rule compliance.</li>
+<li><strong>Proof Checker:</strong> A minimalist verification module that validates PCI proofs without reasoning.</li>
+<li><strong>Immutable Narrative:</strong> The unchangeable history of decisions and states stored in the Decision Ledger.</li>
+<li><strong>Trust Locus:</strong> The architectural location where safety is guaranteed within a given topology: the <strong>Process</strong> (EOAM — runtime validates after generation), the <strong>Generation</strong> (SDS — grammar constrains during inference), or the <strong>Artifact</strong> (DL+PCI — the PCI carries self-contained, cryptographically verifiable proof).</li>
+<li><strong>The Compliant Lie:</strong> A vulnerability where an LLM generates a decision that is structurally perfect and within limits, but semantically erroneous or hallucinated based on the context.</li>
+<li><strong>Evidence Governance:</strong> Architectural patterns deployed in User Space to generate sufficient evidence for an LLM's claim before submitting a Proof-Carrying Intent to the Kernel.</li>
+<li><strong>Differential Heuristics:</strong> An Evidence Governance pattern that compares a probabilistic LLM's claim against a deterministic legacy heuristic's evidence to detect and escalate discrepancies.</li>
+<li><strong>Bidirectional Reconstruction:</strong> An Evidence Governance pattern that generates evidence by having a secondary agent reconstruct the original narrative from the synthesized JSON claim.</li>
+</ul>
+<hr />
+<h1 id="technical-annex-cryptographic-integrity-for-topology-c-dlpci">Technical Annex: Cryptographic Integrity for Topology C (DL+PCI)</h1>
+<h2 id="1-abstract">1. Abstract</h2>
+<p>This technical annex defines the protocol for generating and verifying the <strong>Evidence Hash</strong> and <strong>Proof-Carrying Intents (PCI)</strong> within the <strong>Decision Ledger</strong> topology. As established in the <strong>Decision Intelligence Topologies</strong> whitepaper, Topology C moves the system from "Active Reasoning" to "Formal Verification," where safety is a structural property of the intent artifact itself.</p>
+<p>The primary objective is to ensure that every entry in the <strong>Decision Ledger</strong> is cryptographically bound to a specific version of reality (<strong>Context Snapshot</strong>), a specific authority (<strong>Responsibility Contract</strong>), and a deterministic result from the <strong>Proof Checker</strong>.</p>
+<blockquote>
+<p><strong>Crucial Disclaimer:</strong> This cryptographic protocol proves constraints and bindings, not semantic truth. It formally proves State binding, Contract binding, Rule binding, and Identity binding. It does not mathematically guarantee the semantic correctness of the reasoning.</p>
+</blockquote>
+<hr />
+<h2 id="2-the-proof-carrying-intent-pci-structure">2. The Proof-Carrying Intent (PCI) Structure</h2>
+<p>A <strong>Proof-Carrying Intent</strong> is the definitive communication primitive for Topology C. It encapsulates the probabilistic reasoning of the agent within a deterministic, verifiable envelope.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dfid</code></td>
+<td>UUID</td>
+<td>The immutable <strong>DecisionFlow ID</strong> linking the intent to its causal trigger.</td>
+</tr>
+<tr>
+<td><code>intent_payload</code></td>
+<td>JSON</td>
+<td>The <strong>Syntactically Bound</strong> policy generated via SDS Constrained Decoding.</td>
+</tr>
+<tr>
+<td><code>context_ref</code></td>
+<td>Hash</td>
+<td>The <strong>ContextSnapshotID</strong> representing the "frozen reality" used during reasoning.</td>
+</tr>
+<tr>
+<td><code>evidence_hash</code></td>
+<td>Hash</td>
+<td>The composite hash proving alignment between state, contract, and rules.</td>
+</tr>
+<tr>
+<td><code>roa_signature</code></td>
+<td>Signature</td>
+<td>The cryptographic signature of the agent, verifying identity and authority.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-evidence-hash-generation-protocol">3. Evidence Hash Generation Protocol</h2>
+<p>The <strong>Evidence Hash</strong> is not a simple checksum; it is a <strong>Merkle-root-style</strong> derivation that ensures any drift in context or unauthorized changes to the mission results in an immediate verification failure.</p>
+<h3 id="31-components-of-the-hash">3.1 Components of the Hash</h3>
+<p>The hash is derived from three immutable inputs provided by the <strong>Decision Intelligence Runtime (DIR)</strong>:</p>
+<ol>
+<li><strong>State Snapshot Hash ($H_s$):</strong> The SHA-256 hash of the <code>ContextSnapshotID</code>.</li>
+<li><strong>Contract Hash ($H_c$):</strong> The SHA-256 hash of the <strong>Responsibility Contract</strong> active in the <strong>Agent Registry</strong> at $T_{start}$.</li>
+<li><strong>Rule-Set Hash ($H_r$):</strong> The hash of the deterministic validation rules (Hard Gates) applied by the DIM.</li>
+</ol>
+<h3 id="32-derivation-formula">3.2 Derivation Formula</h3>
+<p>The <code>evidence_hash</code> ($H_{evidence}$) is calculated as follows:</p>
+<p>$$ H_{evidence} = \text{SHA256}( \text{DFID} \parallel H_s \parallel H_c \parallel H_r ) $$</p>
+<p>This ensures that the proof is unique to the specific <strong>DecisionFlow</strong> and cannot be replayed in a different context or by an agent with a different contract.</p>
+<hr />
+<h2 id="4-the-proof-checker-workflow">4. The Proof Checker Workflow</h2>
+<p>In Topology C, the <strong>Decision Integrity Module (DIM)</strong> functions as a minimalist <strong>Proof Checker</strong>. It executes the following deterministic steps before committing the intent to the <strong>Decision Ledger</strong>:</p>
+<ol>
+<li><strong>Identity Attestation:</strong> Verifies that the <code>roa_signature</code> matches the public key registered in the <strong>Agent Registry</strong>.</li>
+<li><strong>Context Binding:</strong> Retrieves the current system state and verifies that the <code>context_ref</code> in the PCI matches the <code>ContextSnapshotID</code> generated at the start of the flow.</li>
+<li><strong>JIT Drift Verification:</strong> Performs a final check to ensure the live environment state is within the <strong>Drift Envelope</strong> defined in the contract.</li>
+<li><strong>Hash Validation:</strong> Re-calculates the <code>evidence_hash</code> using the Registry's authoritative data and compares it against the hash provided in the PCI.</li>
+<li><strong>Commitment:</strong> If all checks pass, the PCI is appended to the <strong>Decision Ledger</strong>, and the <strong>Execution Engine</strong> is triggered.</li>
+</ol>
+<pre class="mermaid"><code>---
+title: "Topology C: Proof Verification Sequence"
+config:
+  theme: neutral
+  look: classic
+---
+sequenceDiagram
+    participant A as Prover Agent (SDS)
+    participant K as Proof Checker (Kernel)
+    participant L as Decision Ledger (Immutable)
+    participant E as Execution Engine
+
+    Note over A: Generates Syntactic Intent&lt;br/&gt;+ Evidence Hash
+    A-&gt;&gt;K: Submit PCI (Intent + Proof)
+
+    activate K
+    K-&gt;&gt;K: Verify Signature
+    K-&gt;&gt;K: Validate Evidence Hash&lt;br/&gt;(State + Contract + Rules)
+    K-&gt;&gt;K: JIT Drift Check&lt;br/&gt;(within Envelope?)
+
+    alt Verification Passed
+        K-&gt;&gt;L: Append PCI to Ledger
+        K-&gt;&gt;E: Trigger Deterministic Action
+        E--&gt;&gt;K: Success (ResultID)
+        K--&gt;&gt;A: Closed (Status: Success)
+    else Verification Failed
+        K--&gt;&gt;A: Aborted (Status: REJECT_DRIFT / REJECT_AUTH)
+    end
+    deactivate K
+</code></pre>
+<hr />
+<h2 id="5-resilience-handling-state-disruption">5. Resilience: Handling State Disruption</h2>
+<p>Topology C utilizes the <strong>Decision Ledger</strong> to manage failures without relying on probabilistic agent reasoning.</p>
+<ul>
+<li><strong>Audit Trait:</strong> Because every intent is a PCI, the Ledger provides a "Zero-Trust" audit trail. If a system failure occurs, the Ledger allows for a <strong>Deterministic Replay</strong> to identify exactly which proof failed.</li>
+<li><strong>Immutable Compensation:</strong> If an execution fails after the Ledger commitment (e.g., Infrastructure error), the system triggers a <strong>Deterministic Compensation Action</strong> from a pre-defined menu (e.g., <code>REVERT_STATE</code>), rather than asking the agent to re-reason about the failure.</li>
+<li><strong>Registry Outage:</strong> During a Registry outage, the Proof Checker relies on <strong>Local Responsibility Contract Caching</strong>. However, new PCIs requiring Responsibility Contract updates are rejected to prevent <strong>Stale Responsibility Contract Exploitation</strong>.</li>
+</ul>
+<hr />
+<h2 id="6-conclusion">6. Conclusion</h2>
+<p>The <strong>Evidence Hash</strong> and <strong>Proof-Carrying Intent</strong> represent the most rigorous layer of the <strong>Decision Intelligence Runtime</strong>. By treating safety as a cryptographic requirement of the artifact, Topology C ensures that even the most advanced Large Language Models remain "Provers" of intent rather than "Owners" of execution. This annex provides the technical substrate for a system where truth is found in the <strong>Ledger</strong>, and agents are held to an immutable standard of formal compliance.</p>
+<hr />
+<h2 id="references">References</h2>
+<ol>
+<li>McKeeman, W. M. (1998). <em>Differential Testing for Software</em>. Digital Technical Journal, 10(1), 100–107. (Theoretical foundation for the comparative testing method used to detect semantic divergence between systems).</li>
+<li>Goldberg, A. V., &amp; Harrelson, C. (2005). <em>Computing the shortest path: A* search meets graph theory</em>. In Proceedings of the sixteenth annual ACM-SIAM symposium on Discrete algorithms (SODA), 156–165. (Origin of the term "Differential Heuristics" / ALT in classical AI pathfinding, conceptually adapted in DIR to use deterministic rules as "anchors" to measure probabilistic LLM drift).</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.indexes", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

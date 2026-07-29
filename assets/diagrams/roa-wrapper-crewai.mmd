@@ -1,0 +1,40 @@
+---
+config:
+  look: handDrawn
+---
+graph TB
+
+    subgraph ROA_Wrapper ["ROA AGENT (Governance Wrapper)"]
+        style ROA_Wrapper fill:#E8F5E9,stroke:#388E3C,stroke-width:3px
+        
+        Contract["Responsibility Contract<br/>(Policy Boundaries)"]:::roaSpace
+        Context_In["Context Snapshot<br/>(Authoritative State)"]:::roaSpace
+
+        subgraph CrewAI_Fleet ["CrewAI Crew (Sandboxed)"]
+            style CrewAI_Fleet fill:#FFF3E0,stroke:#E65100,stroke-width:2px
+            direction TB
+            
+            Agent_A(["Analyst Agent<br/>(Reasoning)"]):::agentBox
+            Agent_B(["Decision Agent<br/>(Policy Logic)"]):::agentBox
+            
+            Agent_A -->|Eligibility Summary| Agent_B
+            
+            JSON_Output{{"output_json<br/>(Structured Claim)"}}:::frameworkSpace
+            Agent_B --> JSON_Output
+        end
+
+        Self_Check["Mission Validator<br/>(Internal Heuristic)"]:::roaSpace
+    end
+
+    subgraph DIR_Kernel ["KERNEL SPACE (DIR)"]
+        style DIR_Kernel fill:#FAFAFA,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+        DIM{{"Decision Integrity Module"}}
+    end
+    Context_In ==>|Grounding Data| CrewAI_Fleet
+    Contract -.->|Injected as Persona Limits| CrewAI_Fleet
+    JSON_Output ==>|Raw Proposal| Self_Check
+    Self_Check ==>|PolicyProposal JSON| DIM
+    linkStyle 0 stroke:#388E3C,stroke-width:2px
+    linkStyle 1 stroke:#388E3C,stroke-width:2px,stroke-dasharray: 3 3
+    linkStyle 2 stroke:#E65100,stroke-width:2px
+    linkStyle 4 stroke:#2E7D32,stroke-width:3px

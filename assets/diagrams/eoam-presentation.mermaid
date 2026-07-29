@@ -1,0 +1,108 @@
+graph TD
+    %% ==============================================================================
+    %% STYLES AND DEFINITIONS
+    %% ==============================================================================
+    
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:3px,color:#1B5E20
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,stroke-dasharray: 5 5
+    
+    classDef proposal fill:#FFF9C4,stroke:#FBC02D,stroke-width:1px,color:#333
+    classDef winningProposal fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px,color:#1B5E20,font-weight:bold
+    
+    classDef bus fill:#F5F5F5,stroke:#616161,stroke-width:4px,rx:10,ry:10,color:#616161
+    classDef api fill:#212121,stroke:#000,stroke-width:2px,color:#fff
+
+    %% ==============================================================================
+    %% 1. USER SPACE: AGENTS (Producers)
+    %% ==============================================================================
+    
+    subgraph User_Space ["👤 USER SPACE (Probabilistic Reasoning)"]
+        direction LR
+        style User_Space fill:none,stroke:none
+
+        Agent_Review[("🤓 Review Agent<br/>(Prio: 10)")]:::userSpace
+        Agent_Strategy[("🤖 Strategy Agent<br/>(Prio: 50)")]:::userSpace
+        Agent_Risk[("👮 Risk Guardian<br/>(Prio: 100)")]:::userSpace
+    end
+
+    %% ==============================================================================
+    %% 2. KERNEL SPACE: RUNTIME (The Pipe)
+    %% ==============================================================================
+
+    subgraph Kernel_Space ["🏁 KERNEL SPACE (Deterministic Execution)"]
+        style Kernel_Space fill:#FAFAFA,stroke:#388E3C,stroke-width:2px
+        direction TB
+
+        %% The Source of Truth
+        Registry[("📜 Agent Registry<br/>(Contracts & Permissions)")]:::kernelSpace
+        
+        %% Data Ingestion
+        DataScraper["🕸️ Data Scraper<br/>(Ingestion)"]:::kernelSpace
+
+        %% The "Pipe" - Event Bus collecting Proposals
+        subgraph Event_Bus_Pipe ["📢 Event Bus (Aggregation)"]
+            direction LR
+            style Event_Bus_Pipe fill:#F5F5F5,stroke:#757575,stroke-width:4px
+            
+            E1(Raw Data Event):::proposal
+            P1(Proposal A):::proposal
+            P2(Proposal B):::proposal
+            P3(Proposal C<br/>Risk Intervention):::winningProposal
+        end
+
+        %% STEP 1: Contract Validation (The Gatekeeper)
+        ContractGuard{{"👮 Contract Validator<br/>(Schema & Bounds Check)"}}:::kernelSpace
+
+        %% STEP 2: Arbitration (The Decision)
+        Arbiter{{"⚖️ Priority Arbiter<br/>(Conflict Resolution)"}}:::kernelSpace
+        
+        %% STEP 3: Execution
+        AtomicExec["⚙️ Atomic Executor<br/>(Idempotency & Retry)"]:::kernelSpace
+    end
+
+    %% ==============================================================================
+    %% 3. INFRA SPACE: EXTERNAL WORLD
+    %% ==============================================================================
+
+    subgraph External_World ["☁️ INFRASTRUCTURE"]
+        style External_World fill:none,stroke:none
+        API(("External API<br/>(Execution)")):::api
+        Internet(("🌍 Internet")):::api
+    end
+
+    %% ==============================================================================
+    %% CONNECTIONS
+    %% ==============================================================================
+
+    %% Ingestion
+    Internet -->|Raw Data| DataScraper
+    DataScraper -->|Emit Event| E1
+    E1 -.-> Agent_Review & Agent_Strategy & Agent_Risk
+
+    %% Agents emit proposals
+    Agent_Review -->|Emit| P1
+    Agent_Strategy -->|Emit| P2
+    Agent_Risk -->|Emit| P3
+
+    %% Runtime Logic Flow
+    Event_Bus_Pipe ==> ContractGuard
+    Registry -.->|Load Contract| ContractGuard
+    
+    ContractGuard ==>|Valid| Arbiter
+    ContractGuard -.->|Start Violation| Trash1["Rejected<br/>(Contract Breach)"]:::infraSpace
+
+    Arbiter ==>|Highest Prio| AtomicExec
+    Arbiter -.->|Preempted| Trash2["Discarded<br/>(Low Prio)"]:::infraSpace
+
+    %% Execution
+    AtomicExec ==>|Authorized Side Effect| API
+
+// [MermaidChart: 90262486-21fa-4d89-aa8b-f9cbffe5086d]
+// [MermaidChart: 90262486-21fa-4d89-aa8b-f9cbffe5086d]
+// [MermaidChart: 90262486-21fa-4d89-aa8b-f9cbffe5086d]
+// [MermaidChart: 90262486-21fa-4d89-aa8b-f9cbffe5086d]
+// [MermaidChart: 90262486-21fa-4d89-aa8b-f9cbffe5086d]
+// [MermaidChart: 90262486-21fa-4d89-aa8b-f9cbffe5086d]
+// [MermaidChart: a26a0b35-3058-496c-973a-45c2dc7fb12e]
+// [MermaidChart: a26a0b35-3058-496c-973a-45c2dc7fb12e]
