@@ -9,9 +9,25 @@ simulation:
   seeds:
     llm: 42
 
+# LLM backends — activate exactly one llm_defaults block (provider: ollama | mock | gemini).
+# Inactive blocks stay commented. Gemini: set GOOGLE_API_KEY or GEMINI_API_KEY in the environment (do not put keys in this file).
+
+# Ollama (local Gemma):
+# llm_defaults:
+#   provider: "ollama"
+#   model: "gemma3:4b"
+#   base_url: "http://localhost:11434"
+#   timeout: 60
+
+# Mock (deterministic, no network):
+# llm_defaults:
+#   provider: "mock"
+#   timeout: 60
+
+# GCP Gemini via Google Generative AI (Gemini API):
 llm_defaults:
-  model: "gemma3:4b"
-  base_url: "http://localhost:11434"
+  provider: "gemini"
+  model: "gemini-flash-lite-latest"
   timeout: 60
 
 underwriting:

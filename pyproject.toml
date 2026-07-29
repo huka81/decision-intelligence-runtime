@@ -35,7 +35,7 @@ postgres = ["psycopg[binary]>=3.1"]
 asyncpg = ["asyncpg>=0.29"]
 # Optional: Boxed Intelligence pattern (wrappers)
 frameworks = ["langchain-core", "crewai"]
-samples = ["markdown>=3.5", "httpx", "plotly"]
+samples = ["markdown>=3.5", "httpx", "plotly", "google-genai>=1.0.0"]
 dev = [
     "pytest>=7",
     "pytest-cov>=4",
