@@ -123,56 +123,56 @@ Large Language Models are semantic engines, not formal state machines. They can 
 A **Legal Decision State (LDS)** is the conjunction of five simultaneously valid conditions:
 
 ```
-LDS = Context (C) ∧ Authority (A) ∧ Intent (I) ∧ Evidence (E) ∧ Time (T)
+LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)
 ```
 
-*   **Context (C)**: All information required to evaluate the legality of a decision (Operational, Business, Governance, and Execution context). **Note: The agent's Mission is formally a subset of Context (`Mission ⊂ Context`). An agent optimizing for the wrong goal triggers a `¬C` violation.**
 *   **Authority (A)**: The agent has the explicit permission and boundaries to act (Responsibility Contract).
+*   **Context (C)**: All information required to evaluate the legality of a decision (Operational, Business, Governance, and Execution context). **Note: The agent's Mission is formally a subset of Context (`Mission ⊂ Context`). An agent optimizing for the wrong goal triggers a `¬C` violation.**
+*   **Time (T)**: The decision is executed before the underlying reality drifts.
 *   **Intent (I)**: The proposed action matches the mission and syntactic constraints.
 *   **Evidence (E)**: A reproducible justification generated independently from the policy proposal.
-*   **Time (T)**: The decision is executed before the underlying reality drifts.
 
 An **Illegal Decision State** occurs when any condition is violated:
 
 ```
-¬LDS = ¬C ∨ ¬A ∨ ¬I ∨ ¬E ∨ ¬T
+¬LDS = ¬A ∨ ¬C ∨ ¬T ∨ ¬I ∨ ¬E
 ```
 
 ### Component Mapping: What Each DIR Element Protects
 
 | LDS Component | Violation | DIR Protection Mechanism |
 |---|---|---|
-| **Context (C)** | Agent acts on stale, incomplete, or manipulated data | Context Store + CaC (Context as Code) — Context Integrity Layer |
 | **Authority (A)** | Agent proposes action beyond its defined limits | ROA Responsibility Contract — Authority Boundary Generator |
+| **Context (C)** | Agent acts on stale, incomplete, or manipulated data | Context Store + CaC (Context as Code) — Context Integrity Layer |
+| **Time (T)** | Decision executes after the underlying reality has drifted | EOAM Drift Envelopes + JIT Verification — Temporal Integrity |
 | **Intent (I)** | Proposed action violates contractual or syntactic bounds | SDS Constrained Decoding — Intent Integrity Topology |
 | **Evidence (E)** | Rationale is hallucinated or emotionally manipulated | Evidence Governance (Differential Heuristics, Bidirectional Reconstruction) — Lie Detector |
-| **Time (T)** | Decision executes after the underlying reality has drifted | EOAM Drift Envelopes + JIT Verification — Temporal Integrity |
 
 ### Topology Mapping: Each Topology Protects a Different LDS Component
 
 | Topology | Primary Protection | Mechanism |
 |---|---|---|
-| **EOAM** | ¬T and ¬C | Drift Envelopes + JIT State Verification prevent execution against expired reality |
+| **EOAM** | ¬C and ¬T | Drift Envelopes + JIT State Verification prevent execution against expired reality |
 | **SDS** | ¬I | Constrained Decoding makes generating an illegal intent physically impossible |
-| **DL+PCI** | C ∧ A ∧ I ∧ E ∧ T (certificate) | PCI demands cryptographic proof that all five conditions held simultaneously |
+| **DL+PCI** | A ∧ C ∧ T ∧ I ∧ E (certificate) | PCI demands cryptographic proof that all five conditions held simultaneously |
 
 ### The DIM as Illegal State Preventer
 
 The **Decision Integrity Module (DIM)** must be understood not as a simple validator but as a formal **Illegal State Preventer**:
 
-> *"The DIM does not judge agent creativity. It mathematically ensures the system cannot transition into a state where ¬C ∨ ¬A ∨ ¬I ∨ ¬E ∨ ¬T is true."*
+> *"The DIM does not judge agent creativity. It mathematically ensures the system cannot transition into a state where ¬A ∨ ¬C ∨ ¬T ∨ ¬I ∨ ¬E is true."*
 
 Each DIM validation step maps directly to an LDS component:
 
 | DIM Gate | LDS Component Protected |
 |---|---|
-| Schema & Integrity check | ¬I — malformed intent is blocked |
 | RBAC / Authority check | ¬A — unauthorized proposals are rejected |
 | Context hash / Mission invariant | ¬C — agent cannot act on a phantom reality |
 | JIT State Verification / TTL | ¬T — stale decisions cannot execute |
+| Schema & Integrity check | ¬I — malformed intent is blocked |
 | Semantic Alignment / Evidence check | ¬E — compliant lies are surfaced before signing |
 
-This elevates DIR from an API gateway pattern to a formal engineering construct aligned with TLA+, proof-carrying code, and formal verification methodology. Every component exists because one of C, A, I, E, or T must be guaranteed.
+This elevates DIR from an API gateway pattern to a formal engineering construct aligned with TLA+, proof-carrying code, and formal verification methodology. Every component exists because one of A, C, T, I, or E must be guaranteed.
 
 ---
 

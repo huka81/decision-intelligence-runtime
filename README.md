@@ -50,15 +50,15 @@ DIR is built on the formal premise that an AI agent cannot be trusted to maintai
 
 A decision is considered execution-safe—and allowed to pass through the runtime—only when five independent dimensions are simultaneously satisfied. We call this the **Legal Decision State (LDS)**:
 
-$$LDS = C \wedge A \wedge I \wedge E \wedge T$$
+$$LDS = A \wedge C \wedge T \wedge I \wedge E$$
 
-If any of these components is false ($\neg C \vee \neg A \vee \neg I \vee \neg E \vee \neg T$), the decision is structurally illegal and must be aborted. Every component in the DIR ecosystem exists exclusively to protect one of these invariants:
+If any of these components is false ($\neg A \vee \neg C \vee \neg T \vee \neg I \vee \neg E$), the decision is structurally illegal and must be aborted. Every component in the DIR ecosystem exists exclusively to protect one of these invariants:
 
-- **Context (C):** Protected by the **Context Store** & **Context-as-Code (CaC)**. Ensures the agent is not acting on stale, hallucinated, or mission-drifted data.
 - **Authority (A):** Protected by **Responsibility-Oriented Agents (ROA)**. Ensures the agent's proposed action does not exceed its explicitly registered contractual limits.
+- **Context (C):** Protected by the **Context Store** & **Context-as-Code (CaC)**. Ensures the agent is not acting on stale, hallucinated, or mission-drifted data.
+- **Time (T):** Protected by **JIT State Verification** & **Drift Envelopes**. Prevents Time-of-Check to Time-of-Use (TOCTOU) races by ensuring reality hasn't shifted between LLM reasoning and API execution.
 - **Intent (I):** Protected by **SDS Grammars** & **DIM Schema Validation**. Ensures the action is syntactically valid and structurally executable.
 - **Evidence (E):** Protected by the **Evidence Governance Layer**. Detects "Compliant Lies" by ensuring the action is backed by deterministically reproducible reasoning.
-- **Time (T):** Protected by **JIT State Verification** & **Drift Envelopes**. Prevents Time-of-Check to Time-of-Use (TOCTOU) races by ensuring reality hasn't shifted between LLM reasoning and API execution.
 
 *The Decision Integrity Module (DIM) is the deterministic gatekeeper that mathematically enforces this equation before any side effect occurs.*
 

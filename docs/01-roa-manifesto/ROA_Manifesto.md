@@ -308,7 +308,7 @@ Without explicit authority, every agent becomes a free-floating generalist - and
 
 ### Formal Grounding: ROA as Authority Boundary Generator
 
-Viewed through formal state integrity, the ROA authority definition is not merely a configuration concern — it is the architectural mechanism that prevents `¬Authority` conditions. A decision is only legally valid when five invariants hold simultaneously: `LDS = Context (C) ∧ Authority (A) ∧ Intent (I) ∧ Evidence (E) ∧ Time (T)`. If an agent proposes an action beyond its defined `AuthoritySpec` — for instance, an insurance underwriting agent proposing a premium of $200,000 when its `max_order_size_usd` is $100,000 — it creates a `¬A` condition. The decision cannot be legal regardless of how sound the reasoning was.
+Viewed through formal state integrity, the ROA authority definition is not merely a configuration concern — it is the architectural mechanism that prevents `¬Authority` conditions. A decision is only legally valid when five invariants hold simultaneously: `LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)`. If an agent proposes an action beyond its defined `AuthoritySpec` — for instance, an insurance underwriting agent proposing a premium of $200,000 when its `max_order_size_usd` is $100,000 — it creates a `¬A` condition. The decision cannot be legal regardless of how sound the reasoning was.
 
 ROA is, by this definition, the **Authority Boundary Generator** of the system. Without a formally registered Responsibility Contract, the Decision Integrity Module (DIM) has no machine-readable definition of `A` against which to evaluate proposals. ROA's existence is what makes the `¬A` invariant enforceable — not aspirational.
 

@@ -16,7 +16,7 @@ This paper introduces the **Decision Intelligence Runtime (DIR)**, an architectu
 
 DIR applies principles from distributed systems orchestration (sagas, idempotency) and security (policy enforcement points) to the domain of AI agents. It proposes a strict separation of concerns where agents are responsible for **Reasoning** (proposing strategies) and a deterministic runtime is responsible for **Execution** (validating and applying those strategies).
 
-By decoupling intent from action, DIR solves common stability issues such as race conditions, hallucinations in function calls, and execution of stale decisions. This document outlines the pattern's core components, including the DecisionFlow ID (an adaptation of distributed tracing for reasoning chains) and the Decision Integrity Module, offering a blueprint for moving agents from experimental scripts to reliable production systems. Formally, DIR is an architecture designed to prevent **Illegal Decision States** - conditions where Context, Authority, Intent, Evidence, or Time invariants are violated - and the DIM is the enforcement mechanism that makes such states unreachable.
+By decoupling intent from action, DIR solves common stability issues such as race conditions, hallucinations in function calls, and execution of stale decisions. This document outlines the pattern's core components, including the DecisionFlow ID (an adaptation of distributed tracing for reasoning chains) and the Decision Integrity Module, offering a blueprint for moving agents from experimental scripts to reliable production systems. Formally, DIR is an architecture designed to prevent **Illegal Decision States** - conditions where Authority, Context, Time, Intent, or Evidence invariants are violated - and the DIM is the enforcement mechanism that makes such states unreachable.
 
 ## 1. Motivation: Why Agents Need a Runtime
 
@@ -523,20 +523,20 @@ To mitigate this, the Execution Engine enforces a **Just-In-Time (JIT) State Che
 The preceding validation pipeline can be understood through the lens of formal state integrity. A decision is only valid — and safe to execute — when five conditions hold simultaneously. This defines the **Legal Decision State (LDS)**:
 
 ```
-LDS = Context (C) ∧ Authority (A) ∧ Intent (I) ∧ Evidence (E) ∧ Time (T)
+LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)
 ```
 
 *(Note: The agent's Mission is formally considered a subset of Context; `Mission ⊂ Context`)*
 
-An **Illegal Decision State** occurs when any condition is violated: `¬C ∨ ¬A ∨ ¬I ∨ ¬E ∨ ¬T`. Every step of the DIM validation pipeline exists to prevent exactly one of these violations:
+An **Illegal Decision State** occurs when any condition is violated: `¬A ∨ ¬C ∨ ¬T ∨ ¬I ∨ ¬E`. Every step of the DIM validation pipeline exists to prevent exactly one of these violations:
 
 | DIM Gate | LDS Component | Prevents |
 |---|---|---|
-| Schema & Integrity (6.2 step 1) | Intent (I) | Malformed or out-of-contract intent (`¬I`) |
 | RBAC / Authority (6.2 step 2) | Authority (A) | Agent exceeding its defined permission boundaries (`¬A`) |
 | Context hash / Mission invariant (6.2 steps 3, 5) | Context (C) | Acting on stale, manipulated, or mission-drifted context (`¬C`) |
 | TTL / Decision Validity Window (6.4) | Time (T) | Executing decisions whose temporal window has expired (`¬T`) |
-| JIT State Re-verification (6.5) | Time (T) + Context (C) | TOCTOU drift between reasoning and execution (`¬T`, `¬C`) |
+| JIT State Re-verification (6.5) | Context (C) + Time (T) | TOCTOU drift between reasoning and execution (`¬C`, `¬T`) |
+| Schema & Integrity (6.2 step 1) | Intent (I) | Malformed or out-of-contract intent (`¬I`) |
 | Semantic Alignment / Evidence (6.3) | Evidence (E) | Compliant lies — syntactically valid but hallucinated rationale (`¬E`) |
 
 This reframes the DIM's role: it is not merely a validator that applies business rules. It is an **Illegal State Preventer** in the formal sense — a construct aligned with TLA+, formal verification, and proof-carrying code. The DIM does not judge the agent's creativity; it mathematically ensures the system cannot transition into a state where any of the five invariants is false.
@@ -556,26 +556,26 @@ flowchart TB
 
     subgraph Theory ["Legal Decision State (LDS) Equation"]
         direction LR
-        LDS["LDS = C ∧ A ∧ I ∧ E ∧ T"]:::ldsNode
+        LDS["LDS = A ∧ C ∧ T ∧ I ∧ E"]:::ldsNode
     end
 
     subgraph Components ["State Protections"]
         direction TB
-        C["Context (C)<br/>Protected by CaC & Context Store"]:::compNode
         A["Authority (A)<br/>Protected by ROA"]:::compNode
+        C["Context (C)<br/>Protected by CaC & Context Store"]:::compNode
+        T["Time (T)<br/>Protected by EOAM & JIT"]:::compNode
         I["Intent (I)<br/>Protected by SDS Grammars"]:::compNode
         E["Evidence (E)<br/>Protected by Evidence Governance"]:::compNode
-        T["Time (T)<br/>Protected by EOAM & JIT"]:::compNode
     end
 
     subgraph DIM ["Decision Integrity Module (DIM)"]
         Preventer{"Illegal State<br/>Preventer"}:::gateNode
     end
 
-    LDS --> C & A & I & E & T
-    C & A & I & E & T --> Preventer
+    LDS --> A & C & T & I & E
+    A & C & T & I & E --> Preventer
     Preventer -->|"Valid LDS (Execution)"| Exec["Decision Ledger / Execution"]:::ldsNode
-    Preventer -.->|"Illegal State (¬C ∨ ¬A ∨ ¬I ∨ ¬E ∨ ¬T)"| Reject(("Abort")):::gateNode
+    Preventer -.->|"Illegal State (¬A ∨ ¬C ∨ ¬T ∨ ¬I ∨ ¬E)"| Reject(("Abort")):::gateNode
 ```
 
 ## 7. Execution: Idempotency and Side Effects
@@ -676,7 +676,7 @@ If the Context as Code (CaC) pattern applies to "context", we must formally defi
 To resolve this, DIR provides a strict formal definition:
 > **Context is all information required to evaluate the legality of a decision.**
 
-Anything that is not strictly required to determine if a decision violates the Legal Decision State (`¬C ∨ ¬A ∨ ¬I ∨ ¬E ∨ ¬T`) is noise and should be excluded from the authoritative context boundary.
+Anything that is not strictly required to determine if a decision violates the Legal Decision State (`¬A ∨ ¬C ∨ ¬T ∨ ¬I ∨ ¬E`) is noise and should be excluded from the authoritative context boundary.
 
 ### 8.1 The 4 Domains of Context
 

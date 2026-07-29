@@ -46,7 +46,7 @@ This separation allows a single systems architecture to support deliberate mesh 
 
 A key motivation for this pluralistic approach is the limitation of conventional multi-agent frameworks, which typically rely on unstructured LLM-to-LLM dialogue or manager-led hierarchies. While powerful for creative synthesis, these patterns produce non-deterministic outcomes that are difficult to audit in regulated environments. The topologies defined here replace **dialogue with choreography** (typed signals, not chat), **democracy with priority** (deterministic preemption, not negotiation), and **mystery with audit** (DFID-bound causal chains, not opaque chat logs).
 
-Viewed through the lens of formal state integrity, the three topologies are not merely operational alternatives — they are **specialized protectors of different Legal Decision State (LDS) components**. A decision is only valid when five invariants hold simultaneously: `LDS = Context (C) ∧ Authority (A) ∧ Intent (I) ∧ Evidence (E) ∧ Time (T)`. EOAM guards temporal and contextual integrity (`¬T`, `¬C`); SDS enforces intent integrity (`¬I`); DL+PCI acts as the cryptographic certificate that all five held at once. The pluralism is not a matter of taste — it is a consequence of the different threat models each LDS component faces.
+Viewed through the lens of formal state integrity, the three topologies are not merely operational alternatives — they are **specialized protectors of different Legal Decision State (LDS) components**. A decision is only valid when five invariants hold simultaneously: `LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)`. EOAM guards contextual and temporal integrity (`¬C`, `¬T`); SDS enforces intent integrity (`¬I`); DL+PCI acts as the cryptographic certificate that all five held at once. The pluralism is not a matter of taste — it is a consequence of the different threat models each LDS component faces.
 
 ```mermaid
 ---
@@ -112,7 +112,7 @@ flowchart TB
 
 EOAM is a decentralized architectural pattern where autonomous agents collaborate through a reactive event substrate. It defines a system that is **"Decentralized in activation, centralized in authority."** EOAM trades the conceptual simplicity of linear orchestration for the power of **parallelism** and **resilience**.
 
-> **LDS Role — Temporal and Contextual Integrity (`¬T`, `¬C`):** EOAM's primary formal function is to prevent the system from executing a decision against an expired or drifted reality. Drift Envelopes define the maximum tolerable divergence between the context snapshot used for reasoning and the live system state at execution time. JIT Verification enforces this boundary immediately before any side effect. If the reality has moved beyond the envelope, the execution is rejected — ensuring the Time (T) and Context (C) invariants of the Legal Decision State are never violated.
+> **LDS Role — Contextual and Temporal Integrity (`¬C`, `¬T`):** EOAM's primary formal function is to prevent the system from executing a decision against an expired or drifted reality. Drift Envelopes define the maximum tolerable divergence between the context snapshot used for reasoning and the live system state at execution time. JIT Verification enforces this boundary immediately before any side effect. If the reality has moved beyond the envelope, the execution is rejected — ensuring the Context (C) and Time (T) invariants of the Legal Decision State are never violated.
 
 ### 2.1 Scope-Based Choreography
 
@@ -467,7 +467,7 @@ In older aircraft (like standard scripts), the pilot's stick was mechanically co
 
 **Topology C** represents the ultimate stage of formal verification within the Decision Intelligence Runtime framework. It shifts the focus from "trusting the agent" (EOAM) or "constraining the agent" (SDS) to **"verifying the artifact."**
 
-> **LDS Role — Cryptographic State Certificate (`C ∧ A ∧ I ∧ E ∧ T`):** DL+PCI does not protect a single LDS component — it demands cryptographic proof that **all five held simultaneously** at the moment the intent was formed. The Proof-Carrying Intent is not a request for trust; it is a self-contained certificate asserting that Context was authentic, Authority was in scope, Intent was within bounds, Evidence was verifiable, and Time had not expired. The Proof Checker verifies this certificate deterministically, without reasoning. The Decision Ledger stores the certificate immutably. The result is a topology where safety is a structural property of the data artifact itself — independent of the agent, the runtime, or any network condition.
+> **LDS Role — Cryptographic State Certificate (`A ∧ C ∧ T ∧ I ∧ E`):** DL+PCI does not protect a single LDS component — it demands cryptographic proof that **all five held simultaneously** at the moment the intent was formed. The Proof-Carrying Intent is not a request for trust; it is a self-contained certificate asserting that Authority was in scope, Context was authentic, Time had not expired, Intent was within bounds, and Evidence was verifiable. The Proof Checker verifies this certificate deterministically, without reasoning. The Decision Ledger stores the certificate immutably. The result is a topology where safety is a structural property of the data artifact itself — independent of the agent, the runtime, or any network condition.
 
 ### 4.1 The Philosophy: Proof-Carrying Intents (PCI)
 
@@ -902,7 +902,7 @@ The inclusion of **Topology C (DL+PCI)** completes the triad-not as an increment
 
 Sophisticated organizations will employ all three topologies in concert. The Mesh (EOAM) thinks deeply about strategy and risk; the Stream (SDS) executes those strategies with precision; and the Ledger (DL) records the irrevocable truth of every action-a truth that can be verified by any party, at any time, without access to the system that produced it. In all cases, the future belongs to architectures that prioritize **auditability over creativity** and **constraints over capabilities**.
 
-Viewed through the Illegal State Theory, the triad is complete and non-redundant: EOAM prevents `¬T` and `¬C`, SDS prevents `¬I`, and DL+PCI certifies `C ∧ A ∧ I ∧ E ∧ T`. Together they cover every dimension of the Legal Decision State — ensuring that no matter how the system is composed, an Illegal Decision State remains unreachable by design.
+Viewed through the Illegal State Theory, the triad is complete and non-redundant: EOAM prevents `¬C` and `¬T`, SDS prevents `¬I`, and DL+PCI certifies `A ∧ C ∧ T ∧ I ∧ E`. Together they cover every dimension of the Legal Decision State — ensuring that no matter how the system is composed, an Illegal Decision State remains unreachable by design.
 
 ---
 

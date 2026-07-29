@@ -37,7 +37,7 @@ The answer is singular: **To prevent illegal decision states.**
 Large Language Models are semantic engines, not formal state machines. They can easily propose actions that violate logic, permissions, or temporal realities. If we do not govern them, they will execute illegal states.
 
 A Legal Decision State (LDS) requires five components to be valid simultaneously: 
-```LDS = Context (C) ∧ Authority (A) ∧ Intent (I) ∧ Evidence (E) ∧ Time (T)``` 
+```LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)``` 
 Every concept in the DIR ecosystem exists to protect one or more of these invariants:
 
 ```mermaid
