@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contract Studio</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-name">Contract Studio</span>
+      <span class="brand-sub">ROA Bootstrap Responsibility Contracts</span>
+    </div>
+    <div class="topbar-actions">
+      <select id="sessionSelect" aria-label="Sessions"></select>
+      <button type="button" id="renameSessionBtn" title="Rename selected session">Rename</button>
+      <button type="button" id="deleteSessionBtn" title="Delete selected session">Delete</button>
+      <button type="button" id="newSessionBtn">New session</button>
+      <select id="presetSelect" aria-label="Preset">
+        <option value="generic">generic</option>
+        <option value="trading">trading</option>
+        <option value="fraud_gate">fraud_gate</option>
+        <option value="underwriting">underwriting</option>
+        <option value="retention_refund">retention_refund</option>
+        <option value="interface_dmz">interface_dmz</option>
+        <option value="strategist">strategist</option>
+        <option value="monitor">monitor</option>
+      </select>
+      <button type="button" id="validateBtn">Verify integrity</button>
+      <button type="button" id="exportBtn" disabled>Export YAML</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="pane chat-pane" aria-label="Chat">
+      <div id="chatLog" class="chat-log"></div>
+      <form id="chatForm" class="chat-form">
+        <textarea
+          id="chatInput"
+          rows="3"
+          placeholder="Describe your agent: domain, mission, owner, limits..."
+          required
+        ></textarea>
+        <button type="submit" id="sendBtn">Send</button>
+      </form>
+    </section>
+
+    <section class="pane yaml-pane" aria-label="Contract YAML preview">
+      <div class="yaml-header">
+        <h2>Contract YAML</h2>
+        <span id="statusBadge" class="badge badge-draft">drafting</span>
+        <span id="integrityBadge" class="badge badge-integrity-unknown" hidden>integrity</span>
+      </div>
+      <div id="integrityPanel" class="integrity-panel" hidden></div>
+      <ul id="validationList" class="validation-list"></ul>
+      <pre id="yamlPreview" class="yaml-preview"># Start a session and chat to build your contract.</pre>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
