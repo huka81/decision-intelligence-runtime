@@ -1,4 +1,4 @@
-<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-01-05 | Last updated: 2026-02-20 </sup>
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-01-05 | Last updated: 2026-08-11 </sup>
 
 ---
 
@@ -16,7 +16,7 @@ This paper introduces the **Decision Intelligence Runtime (DIR)**, an architectu
 
 DIR applies principles from distributed systems orchestration (sagas, idempotency) and security (policy enforcement points) to the domain of AI agents. It proposes a strict separation of concerns where agents are responsible for **Reasoning** (proposing strategies) and a deterministic runtime is responsible for **Execution** (validating and applying those strategies).
 
-By decoupling intent from action, DIR solves common stability issues such as race conditions, hallucinations in function calls, and execution of stale decisions. This document outlines the pattern's core components, including the DecisionFlow ID (an adaptation of distributed tracing for reasoning chains) and the Decision Integrity Module, offering a blueprint for moving agents from experimental scripts to reliable production systems. Formally, DIR is an architecture designed to prevent **Illegal Decision States** - conditions where Authority, Context, Time, Intent, or Evidence invariants are violated - and the DIM is the enforcement mechanism that makes such states unreachable.
+By decoupling intent from action, DIR addresses common stability issues such as race conditions, hallucinations in function calls, and execution of stale decisions. This document outlines the pattern's core components, including the DecisionFlow ID (an adaptation of distributed tracing for reasoning chains) and the Decision Integrity Module, offering a blueprint for moving agents from experimental scripts to reliable production systems. Its central architectural claim is not that transaction guards are new, but that autonomous execution can be governed by moving control outside probabilistic reasoning and into a deterministic **admissible transition gate**. Within the active contract model, transitions classified as illegal cannot pass through the governed execution path.
 
 ## 1. Motivation: Why Agents Need a Runtime
 
@@ -28,14 +28,16 @@ The system was capable of sophisticated reasoning but lacked execution disciplin
 
 These were not failures of intelligence. They were failures of architecture.
 
-### 1.1 The "Probabilistic to Deterministic" Gap
+### 1.1 The "Probabilistic to Deterministic" Gap: A Pragmatic Neuro-Symbolic System
 
 The fundamental problem in modern agent design is the collapse of two distinct concerns into a single loop:
 
-1. **Reasoning (Probabilistic):** The agent interpreting context. This is messy, creative, and non-deterministic.
-2. **Execution (Deterministic):** The system changing state (e.g., sending money, updating a record). This requires strict guarantees.
+1. **Reasoning (Probabilistic / Connectionist):** The agent interpreting context using neural networks (LLMs). This is messy, creative, highly adaptable, and inherently non-deterministic (System 1).
+2. **Execution (Deterministic / Symbolic):** The system changing state (e.g., sending money, updating a record). This requires strict mathematical logic, rules, constraints, and 100% formal accuracy (System 2).
 
-In standard software engineering, we solve similar problems using patterns like **CQRS** (Command Query Responsibility Segregation). We separate the *intent* to change data from the *process* of changing it. Yet, in most AI frameworks, we allow the probabilistic model to write directly to the "database" of the real world.
+The academic pursuit of Artificial Intelligence has long sought to unify these paradigms into a single "Neuro-Symbolic" model. Rather than waiting for a theoretical breakthrough that perfectly merges connectionist flexibility with symbolic reliability inside model weights, DIR realizes a **Neuro-Symbolic System at the architectural scale**. 
+
+In standard software engineering, we solve similar problems using patterns like **CQRS** (Command Query Responsibility Segregation). We separate the *intent* to change data from the *process* of changing it. Yet, in most AI frameworks, we allow the probabilistic neural model to write directly to the "database" of the real world. By separating the probabilistic reasoning (User Space) from a mathematically constrained deterministic execution layer (Kernel Space), DIR provides a pragmatic Neuro-Symbolic platform today.
 
 When reasoning and execution are interleaved, non-determinism leaks into operational behavior. Safety mechanisms become prompts ("Please do not trade if volatility is high") rather than hard constraints. As any security engineer knows, prompts are not permissions.
 
@@ -226,7 +228,9 @@ The **Outbound Translation Gate** is a deterministic component of the DIR Kernel
 
 ## 3. System Invariants
 
-Instead of a "manifesto," DIR relies on a set of architectural invariants. These are the constraints that must hold true for the system to be considered safe, regardless of how "creative" the LLM becomes.
+Instead of a "manifesto," DIR relies on a set of architectural invariants. These are the constraints that must hold for an implementation to conform to the DIR pattern, regardless of how "creative" the LLM becomes.
+
+Two uses of the word *invariant* must be kept distinct. The four invariants in this section are architectural properties of every conforming DIR implementation: determinism, privilege separation, execution parametrization, and correlation. **Contract invariants**, by contrast, are versioned business predicates derived from a Responsibility Contract and evaluated by the DIM for a particular agent and decision class. The architectural invariants make those contract predicates non-bypassable; the contract predicates define which transitions are permitted.
 
 ### 3.1 Invariant 1: Deterministic State Transitions
 
@@ -518,9 +522,9 @@ To mitigate this, the Execution Engine enforces a **Just-In-Time (JIT) State Che
 
 > **Architectural Note:** This introduces a performance penalty (an extra read operation). DIR accepts this cost ("Safety over Speed") to guarantee that no decision executes against a phantom reality.
 
-### 6.6 The DIM as Illegal State Preventer
+### 6.6 The DIM as an Admissible Transition Gate
 
-The preceding validation pipeline can be understood through the lens of formal state integrity. A decision is only valid — and safe to execute — when five conditions hold simultaneously. This defines the **Legal Decision State (LDS)**:
+The preceding validation pipeline can be understood through the lens of controlled state transitions. DIR uses five condition classes to define its practical **Legal Decision State (LDS)** model:
 
 ```
 LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)
@@ -528,7 +532,7 @@ LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)
 
 *(Note: The agent's Mission is formally considered a subset of Context; `Mission ⊂ Context`)*
 
-An **Illegal Decision State** occurs when any condition is violated: `¬A ∨ ¬C ∨ ¬T ∨ ¬I ∨ ¬E`. Every step of the DIM validation pipeline exists to prevent exactly one of these violations:
+Within this model, an **Illegal Decision State** occurs when any declared condition is violated: `¬A ∨ ¬C ∨ ¬T ∨ ¬I ∨ ¬E`. LDS is a validation ontology, not a claim that these five classes exhaust every way an autonomous system can cause harm. Each step of the DIM pipeline maps an enforceable condition to the transition gate:
 
 | DIM Gate | LDS Component | Prevents |
 |---|---|---|
@@ -537,9 +541,17 @@ An **Illegal Decision State** occurs when any condition is violated: `¬A ∨ ¬
 | TTL / Decision Validity Window (6.4) | Time (T) | Executing decisions whose temporal window has expired (`¬T`) |
 | JIT State Re-verification (6.5) | Context (C) + Time (T) | TOCTOU drift between reasoning and execution (`¬C`, `¬T`) |
 | Schema & Integrity (6.2 step 1) | Intent (I) | Malformed or out-of-contract intent (`¬I`) |
-| Semantic Alignment / Evidence (6.3) | Evidence (E) | Compliant lies — syntactically valid but hallucinated rationale (`¬E`) |
+| Evidence package verification / Semantic Alignment (6.3) | Evidence (E) | Missing or invalid evidence bindings; semantic mismatch is a Soft Guard, not a proof of truth (`¬E`) |
 
-This reframes the DIM's role: it is not merely a validator that applies business rules. It is an **Illegal State Preventer** in the formal sense — a construct aligned with TLA+, formal verification, and proof-carrying code. The DIM does not judge the agent's creativity; it mathematically ensures the system cannot transition into a state where any of the five invariants is false.
+This reframes the DIM's role: it is not merely a validator that applies business rules. It operates as the **Kernel Invariant Evaluator** for the active, human-approved contract version. The DIM does not judge the agent's creativity; it deterministically evaluates applicable transaction guards, authority, context, time, schema, and evidence-binding requirements before creating an `ExecutionIntent`.
+
+The resulting guarantee is **contract-relative enforcement**: every transition admitted through the governed execution path satisfied all active, machine-verifiable rules for that contract version. This does not establish that the contract describes every dangerous state or that a structurally valid Evidence Package is semantically true. Those limits are addressed through Evidence Governance, shadow validation, telemetry, and Post-Execution Governance.
+
+### 6.6.1 The Semantic Evidence Boundary
+
+Authority ($A$), context binding ($C$), temporal validity ($T$), and structured intent ($I$) can be evaluated by deterministic Runtime mechanisms when their data and rules are explicitly modeled. Semantic truth is different: no general Kernel check can establish that an arbitrary natural-language rationale correctly represents the real world.
+
+For Evidence ($E$), the DIM therefore verifies what can be made structural: required generator attestations, signatures, hashes, provenance, freshness, and the evidence level declared by the Responsibility Contract. It verifies that the approved evidence process occurred; it does not certify the truth of the narrative itself. Detecting the Compliant Lie remains a User Space Evidence Governance responsibility, while recurring semantic divergence is handled by Post-Execution Governance.
 
 ```mermaid
 ---

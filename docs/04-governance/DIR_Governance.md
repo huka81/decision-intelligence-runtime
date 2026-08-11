@@ -1,4 +1,4 @@
-<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-04-02 | Last updated: 2026-04-02 </sup>
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-04-02 | Last updated: 2026-08-11 </sup>
 
 ---
 
@@ -28,11 +28,11 @@ This discrepancy highlights the difference between **Kernel Compliance** and **B
 - **Ex-Ante Assurance (Pre-Execution):** Formal, deterministic safety provided by the DIM and Proof-Carrying Intents (PCI). It ensures **Kernel Compliance** — every individual decision passes the hard gates.
 - **Ex-Post Assurance (Post-Execution):** Heuristic, observational safety provided by Governance and Drift Monitoring. It ensures **Business Health** — the aggregate outcome of these decisions aligns with long-term strategic and financial goals.
 
-This is not an asymmetry where Governance is the "weaker sibling" of PCI. It is a natural architectural separation: PCI formally proves the validity of the current step, while Governance evaluates the heuristic health of the trajectory.
+This is not an asymmetry where Governance is the "weaker sibling" of PCI. It is a natural architectural separation: PCI makes declared bindings and rule checks independently verifiable for the current step, while Governance evaluates the heuristic health of the trajectory.
 
 If an agent learns to optimize its primary goal (e.g., customer retention) by consistently offering a 14.9% discount, it remains 100% compliant with the 15% DIM limit (Ex-Ante Assurance passes). Yet, over hundreds of decisions, this behavior will destroy business profitability (Ex-Post Assurance fails).
 
-Formally, the DIM enforces the Legal Decision State invariant `LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)` per individual transaction. But Kernel Compliance cannot protect the Time invariant across the **aggregate** dimension. Each transaction is executed before its reality drifts (`¬T` is blocked at execution time), yet the business reality itself erodes over time through cumulative agent behavior — a process this document terms **Agent Drift**. In LDS terms, drift is a slow-motion `¬T` violation: the agent's model of "what is appropriate" gradually detaches from the actual business environment.
+DIR uses `LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)` as a practical validation ontology for an individual decision. It is not a claim that these are the five fundamental or exhaustive dimensions of safety. It provides a stable way to classify the conditions that this architecture can bind, check, and audit. Kernel Compliance cannot extend that model automatically across the **aggregate** dimension. Each transaction may execute within its validity window, yet the business environment or cumulative outcome can still deteriorate — a process this document terms **Agent Drift**.
 
 The same logic applies to the Evidence invariant (`E`). Semantic Drift (see Section 3.2) does not cause individual proposals to fail evidence checks — each one may be internally consistent. But in aggregate, the pattern of rationalization diverges from sound judgment, producing a system-wide `¬E` condition that no single-transaction gate can detect. Post-Execution Governance exists precisely to close this gap: extending LDS protection from individual decisions to the entire decision trajectory over time.
 
@@ -66,12 +66,12 @@ For a trading agent, this means the contract must define `max_order_size_usd` an
 
 | Contract Element | Bootstrap Required? | Can Evolve Later? |
 |---|---|---|
-| Hard limit on irreversible action value | ✅ Mandatory | No - only tighten |
+| Hard limit on irreversible action value | ✅ Mandatory | Yes - tightening is routine; expansion requires new risk evidence and shadow validation |
 | Allowed action types | ⚠️ Recommended | ✅ Yes |
 | Semantic / business-logic rules | ❌ Optional | ✅ Yes |
 | Aggregate thresholds (for Monitors) | ❌ Optional | ✅ Yes |
 
-Everything below the mandatory line is learned through observation. Everything above it is non-negotiable from the first deployment.
+The presence of a hard ceiling is non-negotiable from the first deployment. Its initial value is a versioned risk decision, not an eternal constant. Tightening may be used as a precautionary change; expanding the ceiling requires explicit evidence, human approval, and shadow validation under the Contract Evolution Loop.
 
 ### 2.3 Telemetry as a Learning Signal
 
@@ -83,7 +83,7 @@ The DIR architecture does not require a separate observation infrastructure. The
 
 **Signal 3 - `explain` rationale:** The agent's natural-language reasoning, recorded per proposal. This is the only signal that can surface **Semantic Drift** (see Section 3.2) - patterns of emotional yielding or policy bypass that produce numerically compliant but semantically wrong proposals. This signal requires human interpretation; it cannot be reliably reduced to an automated metric.
 
-> **The biased sample problem:** Telemetry only shows proposals within the current contract's action space. An agent constrained to `max_order_size_usd: 1000` will never propose a 5,000 USD order - so the telemetry will never reveal whether such orders would be profitable or safe. Contract evolution based purely on observed proposals is learning from a censored distribution. Human judgment is required to assess whether current boundaries are suppressing valid behavior, not just dangerous behavior.
+> **The biased sample problem:** Telemetry is censored whenever the active generation path prevents proposals outside the current contract's action space. This is explicit in SDS constrained decoding and can also occur when an EOAM agent receives its limits as generation context. In an architecture where the agent may emit out-of-bounds proposals and the DIM rejects them, rejection telemetry exposes more of the latent distribution, but still reveals no executed outcomes beyond the boundary. Human judgment is therefore required to assess whether current limits suppress valid behavior, not just dangerous behavior.
 
 #### 2.3.1 Exploration Agents (Canary Deployments)
 
@@ -145,9 +145,119 @@ flowchart LR
 ```
 *Figure: The Contract Evolution Loop. The Exploration Agent (orange) feeds unbiased telemetry into the Analyze step. Both the Human Review and Shadow Validation gates can return the cycle to Propose without promoting the new contract version.*
 
-### 2.5 Pitfalls of Iterative Contracts
+### 2.5 Invariant-Driven Build-Time Governance
 
-Four failure modes are specific to the iterative contract approach and must be actively managed:
+The Contract Evolution Loop solves the process of knowing *when* to update a contract, but it introduces an operational problem: how do we translate vague business discoveries into deterministic rules without falling into the trap of manual rule hardcoding or full human-in-the-loop (HITL) runtime bottlenecks?
+
+This is the role of **Invariant-Driven Governance**: a build-time discipline for converting selected business boundaries into versioned, reviewable, and deterministically enforceable rules. It does not attempt to formalize the entire business domain. It formalizes the minimum critical subset whose violation must prevent execution.
+
+The individual predicates are not the architectural novelty; preconditions, postconditions, policy checks, and transaction guards are established engineering mechanisms. The architectural move is **where control is placed**. DIR does not try to make probabilistic reasoning universally correct. It treats reasoning as an open-ended proposal process, then admits only transitions inside a separately governed execution space. The central relationship is:
+
+`probabilistic reasoning → admissible transition space → deterministic state transition`
+
+This makes model behavior replaceable while keeping execution authority stable. Models, prompts, and reasoning strategies may change without gaining the ability to bypass the contract that defines which transitions the Runtime may commit. Invariant-Driven Governance is therefore a model of **controlled transition**, not a complete theory of AI safety.
+
+#### 2.5.1 Intent Compression
+
+The operational leverage behind this model is **Intent Compression**: transforming broad, repetitive, and partly ambiguous business intent into a compact, versioned set of explicit decision boundaries. Its purpose is not to compress truth or eliminate human judgment. Its purpose is to make one accountable human judgment reusable across many autonomous decisions.
+
+Without this transformation, a policy must be interpreted again for every transaction - either probabilistically by the agent or manually by a reviewer. Intent Compression moves that recurring interpretation into the contract-design process. The Contract Owner resolves the material ambiguity once, the approved result is compiled, and the Runtime applies the resulting constraints consistently until evidence requires a new version.
+
+For example, a broad objective such as *"Retain customers without eroding margin"* may yield a small operational boundary set:
+
+```yaml
+max_discount_pct: 15
+max_average_discount_7d: 8
+requires_active_subscription: true
+```
+
+The individual guards are simple. The architecture governs where they came from, what they mean, who approved them, where they apply, which version was active, and when they must change. Intent Compression therefore reduces repeated interpretation and narrows the audit surface; it does not make the source domain simple or complete.
+
+An invariant in the strict sense is a deterministic predicate over a proposed transition:
+
+`I_k(s_t, a, s_{t+1}, t) ∈ {0, 1}`
+
+Here, `s_t` is the authoritative state before execution, `a` is the proposed action, `s_{t+1}` is the resulting state, and `t` is the relevant time boundary. The DIM may commit the transition only when every active, applicable predicate evaluates to `1`. This gives DIR a precise but deliberately limited guarantee: **contract-relative enforcement**. A proposal accepted by the Kernel satisfied all machine-verifiable rules in the active, human-approved contract version. It does not prove that the contract is complete, that its source policy was interpreted perfectly, or that the rule will remain healthy as the environment changes.
+
+The broader governance model contains four related classes of constraint:
+
+| Constraint class | Governing question | Primary enforcement point |
+|---|---|---|
+| **Architectural boundary** | Who or what may reach a component? | Context as Code, IAM, CI/CD, network and module boundaries |
+| **Transaction invariant / guard** | What must be true for this transition? | DIM, schema checks, Rego, SQL, or native Kernel logic |
+| **Evidence obligation** | What evidence must accompany the claim? | Evidence Governance in User Space; structural verification in Kernel Space |
+| **Aggregate / temporal policy** | Does the trajectory remain healthy over time? | Post-Execution Monitors and Circuit Breakers |
+
+Only the second class is an invariant in the narrow state-transition sense. The other classes are part of the same governance architecture because they make the invariant non-bypassable, establish what evidence is required, or detect behavior that is locally compliant but globally unhealthy.
+
+The lifecycle is necessary because compressed intent must retain source traceability, accountable approval, versioning, and a path for correction.
+
+The build-time part of the Responsibility Contract Lifecycle follows a controlled compilation pipeline:
+
+1. **Source binding:** Versioned business clauses, regulations, threat models, and telemetry findings are linked to the proposed contract change.
+2. **Candidate synthesis:** An LLM may translate those sources into typed candidate constraints and flag ambiguous terms. Its output is an untrusted draft, not an authoritative rule.
+3. **Deterministic verification:** Schema validators, AST linters, tests, and bounded SAT/SMT checks detect malformed, contradictory, redundant, or unreachable rules within the modeled domain.
+4. **Human adjudication (Build-Time HITL):** The Contract Owner resolves ambiguity, assesses uncovered risk, reviews boundary cases, and accepts or rejects each material rule.
+5. **Sign-off and compilation:** The approved canonical bundle is cryptographically signed and reproducibly compiled into target enforcement artifacts such as Rego policies, SQL constraints, or native code.
+6. **Shadow validation and publication:** The compiled candidate runs against representative or live shadow traffic before the signed version is activated in the Agent Registry.
+
+### 2.5.2 The Tooling Ecosystem against Rubber-Stamping
+
+The primary theoretical risk of Build-Time HITL is "Rubber-Stamping" — the phenomenon where the immense cognitive load of reviewing machine-generated invariants leads a human operator to blindly click "Approve" (The Illusion of Control). If the human signature is unreflective, the entire governance structure fails. 
+
+To materially constrain this, the architecture demands tools designed for the Boundary Engineer/Contract Owner that illuminate the consequences of the invariant bundle *before* the cryptographic seal is generated:
+
+1. **Coverage Matrix (The Blind-Spot Detector):** A graphical or data-driven map representing the total action space permitted by the Contract alongside the applied invariants. The matrix aggressively highlights "unprotected" transitions (e.g., *Warning: Action `SEND_EMAIL` has no associated rate-limit invariant*). 
+2. **Responsibility Distance (Worst-Case Scenario Analysis):** A deterministic calculation showing the absolute maximum operational or financial burn the agent could legally generate if it went rogue but strictly respected all proposed invariants (e.g., *"If signed, this agent can legally route $4M per day before triggering a hard stop."*). The human signs specifically accepting this quantitative risk.
+3. **SMT Deadlock Detection:** Translating invariants into Boolean/SMT logic (e.g., using Theorem Provers like Z3) forces the system to prove that the proposed invariants are mutually satisfiable. If Invariant A and Invariant B mathematically contradict each other, the pipeline rejects the bundle before the human is even allowed to review it.
+
+```mermaid
+---
+title: Invariant Lifecycle - From Business Source to Runtime Enforcement
+config:
+    layout: dagre
+    look: handDrawn
+    theme: base
+---
+flowchart TD
+        classDef sourceNode fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold
+        classDef userNode fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold
+        classDef kernelNode fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold
+        classDef humanNode fill:#FFF9C4,stroke:#F9A825,stroke-width:2px,color:#333333,font-weight:bold
+        classDef rejectNode fill:#FFEBEE,stroke:#C62828,stroke-width:2px,color:#B71C1C
+
+        SRC["`**1 · Versioned Sources**<br/>Policies · Regulations<br/>Threat Models · Telemetry`"]:::sourceNode
+        SYN["`**2 · Candidate Synthesis**<br/>LLM-assisted<br/>Untrusted Draft`"]:::userNode
+        VERIFY["`**3 · Deterministic Verification**<br/>Schema · AST · Tests<br/>Bounded SAT / SMT`"]:::kernelNode
+        REVIEW{"`**4 · Human Adjudication**<br/>Contract Owner<br/>Accepts responsibility`"}:::humanNode
+        SIGN["`**5 · Signed Canonical Bundle**<br/>Versioned · Traceable<br/>Human-approved`"]:::humanNode
+        COMPILE["`**6 · Reproducible Compilation**<br/>Rego · SQL<br/>Native Kernel Logic`"]:::kernelNode
+        SHADOW{"`**7 · Shadow Validation**<br/>Impact acceptable?`"}:::kernelNode
+        REGISTRY[("`**Agent Registry**<br/>Active Contract Version`")]:::kernelNode
+        REVISE["`**Revise Candidate**<br/>Resolve ambiguity<br/>or failed impact test`"]:::rejectNode
+
+        SRC --> SYN
+        SYN --> VERIFY
+        VERIFY --> REVIEW
+        REVIEW -->|"Approved"| SIGN
+        REVIEW -.->|"Rejected / ambiguous"| REVISE
+        SIGN --> COMPILE
+        COMPILE --> SHADOW
+        SHADOW -->|"Pass"| REGISTRY
+        SHADOW -.->|"Fail"| REVISE
+        REVISE -.-> SYN
+```
+*Figure: The Invariant Lifecycle. LLM-assisted synthesis produces an untrusted draft. Deterministic tooling checks the modeled rules, but only the human Contract Owner can authorize the canonical bundle. Compilation and shadow validation must succeed before the Agent Registry activates the new contract version.*
+
+This pipeline implements the Propose, Human Review, Shadow Validation, and Publish stages of the Contract Evolution Loop; it is not a separate lifecycle. Cryptographic signing establishes integrity, provenance, and accountable approval. Deterministic tooling establishes properties of the formal model it checks. Neither mechanism proves that the model captures every dangerous state. That residual risk is why DFID telemetry, Runtime **Human-on-the-Loop (HOTL)** supervision, and Post-Execution Governance remain necessary.
+
+The scaling benefit is therefore an amortization, not a claim of constant human effort. Build-Time HITL moves repeated review away from every nominal transaction and concentrates it on contract versions, exceptions, and discovered drift. Human effort no longer grows directly with transaction volume, but it still grows with contract change frequency, rule complexity, and interactions between constraints.
+
+Intent Compression is necessarily incomplete with respect to the full business domain. A compact contract cannot preserve every nuance of its sources or anticipate every future condition. Source traceability, human adjudication, shadow validation, telemetry, and contract evolution exist to expose and repair that loss.
+
+### 2.6 Pitfalls of Iterative Contracts
+
+Eight failure modes are specific to iterative contracts and their build-time compilation and must be actively managed:
 
 **Pitfall 1 - The Biased Sample:** As noted in Section 2.3, the agent never proposes outside its current contract boundaries. Iterating purely on observed behavior can converge to a local optimum that is safe but suboptimal. Mitigation: periodically review whether rejection rates suggest the contract is suppressing valid behavior, not only dangerous behavior.
 
@@ -156,6 +266,14 @@ Four failure modes are specific to the iterative contract approach and must be a
 **Pitfall 3 - The Semantic Blind Spot:** Numerical telemetry metrics (average proposal value, rejection rate, estimated ROI) cannot detect Semantic Drift. An agent yielding to emotional manipulation produces proposals that are numerically indistinguishable from well-reasoned ones. Only the `explain` rationale reveals the difference. Mitigation: include a qualitative review of a random sample of `explain` records in every contract evolution cycle - not just the aggregate numbers.
 
 **Pitfall 4 - The Circular Feedback:** If the agent's behavior shapes the contract, and the contract shapes the agent's behavior, the system risks drifting toward what the agent learned to propose rather than what the business intended. Mitigation: every contract change must be anchored to a stated business objective (recorded in the contract's `mission` field), not solely to observed behavioral patterns.
+
+**Pitfall 5 - Semantic Loss:** Natural-language policies contain open terms such as "reasonable," "material," or "when appropriate." Converting them directly into crisp predicates can over-constrain legitimate work or leave a dangerous gap. Mitigation: candidate synthesis must preserve source-clause traceability and flag unresolved terms; only a human domain owner may choose the operational boundary or require escalation instead of automation.
+
+**Pitfall 6 - Rule Interaction and Loss of Liveness:** Individually plausible predicates can conflict, become redundant, or make every useful transition unreachable. A satisfiable rule set can still be operationally paralyzing. Mitigation: apply bounded SAT/SMT checks, boundary tests, witness scenarios for permitted behavior, and rejection-rate analysis before publication.
+
+**Pitfall 7 - Rubber-Stamping:** A shorter rule bundle is not automatically easier to verify. Dense interactions can hide behind compact syntax and encourage superficial approval. Mitigation: present source-to-rule diffs, counterexamples, changed-risk summaries, coverage gaps, and shadow results; require additional reviewers for high-impact expansions.
+
+**Pitfall 8 - Stale but Validly Signed Rules:** A signature proves who approved a particular version and that the artifact has not changed. It does not prove that the business environment still makes the rule appropriate. Mitigation: bind contracts to validity metadata and authoritative data sources, monitor environmental drift, and require periodic or event-driven revalidation.
 
 ## 3. AI Drift Taxonomy
 
@@ -187,6 +305,8 @@ To combat drift, the architecture must include an asynchronous, aggregate safety
 
 Instead of evaluating proposals *before* execution (which adds latency and requires complex state management), this layer evaluates the *trend of executions* over time.
 
+The thresholds evaluated here are **aggregate or temporal policies**, not transaction invariants in the narrow sense defined in Section 2.5. A transaction invariant accepts or rejects one proposed transition. An aggregate policy evaluates a derived metric over a window and changes the agent's future operating mode when the trajectory becomes unhealthy. Both are deterministic where their inputs and calculations are explicit, but they operate at different scopes and provide different kinds of assurance.
+
 ### 4.1 The Aggregate Monitor
 Monitors are dedicated components that operate outside the critical path of a single DecisionFlow. They run periodically or reactively after each executed decision.
 
@@ -196,7 +316,15 @@ Their core mechanism relies on the **DecisionFlow ID (DFID)** to join disparate 
 
 By querying the last $N$ decisions (a **rolling window**), the monitor calculates aggregate metrics - such as moving averages, violation rates, or estimated ROI.
 
-### 4.2 The Circuit Breaker: Graduated Response
+### 4.2 The Threat of the Open-World Assumption
+
+It is critical to understand developmentally why Ex-Post monitors are required despite the existence of rigorous Pre-Execution Invariants. Invariants compiled during the Build-Time HITL phase operate strictly under a **Closed-World Assumption**.
+
+A Closed-World system assumes that every dangerous scenario was foreseen, modeled, and securely bounded as a formal invariant $I_k \in R^*$ before deployment. However, real-world business always operates under an **Open-World Assumption**. An agent might find a mathematically valid transition within $R^*$ that is ruinous to the business because the original architects simply didn't foresee the vector. If an agent consistently offers 14.9% discounts (perfectly legal under a `max_discount=15%` invariant), it will bypass the Kernel cleanly while destroying the company's macro position. 
+
+Post-Execution Governance is therefore not supplementary—it is the mathematical baseline reality that static Ex-Ante invariants cannot defend a dynamic Open-World business environment indefinitely without constant statistical and trajectory oversight.
+
+### 4.3 The Circuit Breaker: Graduated Response
 
 If an aggregate monitor detects that a trend has crossed a predefined business threshold, it must intervene immediately. Unlike the DIM, which rejects a single bad proposal, the monitor acts on the agent's global identity.
 

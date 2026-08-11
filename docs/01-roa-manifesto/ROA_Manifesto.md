@@ -1,4 +1,4 @@
-<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2025-12-11 | Last updated: 2026-02-20 </sup>
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2025-12-11 | Last updated: 2026-08-11 </sup>
 
 ---
 
@@ -252,6 +252,10 @@ responsibility:
 
 This explicit, typed definition allows the Runtime to validate the agent's behavior *before* any action is taken — and allows auditors to inspect the governance requirements independently of the agent's code.
 
+The Responsibility Contract is also the authoritative source from which enforceable constraints are derived. During **Build-Time HITL (Human-in-the-Loop)**, an LLM may help synthesize candidate constraints from business documents or telemetry, but those candidates have no authority. The human Contract Owner resolves ambiguity, reviews boundary cases, and approves the canonical contract version. Deterministic tooling can then compile its machine-verifiable subset into a **Signed Invariant Bundle** consumed by the Runtime.
+
+The signature binds an accountable owner to an exact contract version and protects the bundle's integrity and provenance. It does not prove that the rules are complete or permanently correct. Human review is amortized across the decisions governed by that version rather than repeated for every nominal transaction; new evidence, exceptions, and environmental change still require contract evolution. The full compilation and evolution process is defined in [Invariant-Driven Build-Time Governance](../04-governance/DIR_Governance.md#25-invariant-driven-build-time-governance).
+
 ### 3.1.1 The Four Canonical Roles
 
 The `role` field in the Responsibility Contract aligns an agent with its structural purpose in the system. ROA defines four canonical roles:
@@ -308,9 +312,9 @@ Without explicit authority, every agent becomes a free-floating generalist - and
 
 ### Formal Grounding: ROA as Authority Boundary Generator
 
-Viewed through formal state integrity, the ROA authority definition is not merely a configuration concern — it is the architectural mechanism that prevents `¬Authority` conditions. A decision is only legally valid when five invariants hold simultaneously: `LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)`. If an agent proposes an action beyond its defined `AuthoritySpec` — for instance, an insurance underwriting agent proposing a premium of $200,000 when its `max_order_size_usd` is $100,000 — it creates a `¬A` condition. The decision cannot be legal regardless of how sound the reasoning was.
+Viewed through formal state integrity, the ROA authority definition is not merely a configuration concern — it is the architectural mechanism that makes authority machine-evaluable. DIR uses `LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)` as a practical ontology of decision-validity conditions, not as an exhaustive decomposition of safety. If an agent proposes an action beyond its defined `AuthoritySpec` — for instance, an insurance underwriting agent proposing a premium of $200,000 when its `max_order_size_usd` is $100,000 — it creates a `¬A` condition within that model. The Runtime must not admit the transition regardless of how sound the reasoning was.
 
-ROA is, by this definition, the **Authority Boundary Generator** of the system. Without a formally registered Responsibility Contract, the Decision Integrity Module (DIM) has no machine-readable definition of `A` against which to evaluate proposals. ROA's existence is what makes the `¬A` invariant enforceable — not aspirational.
+ROA is, by this definition, the **Authority Boundary Generator** of the system. Without a formally registered Responsibility Contract, the Decision Integrity Module (DIM) has no machine-readable definition of `A` against which to evaluate proposals. ROA does not make the agent's reasoning correct; it defines the authority portion of the admissible transition space outside that reasoning.
 
 ---
 

@@ -1,4 +1,4 @@
-<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-02-19 | Last updated: 2026-06-09 </sup>
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-02-19 | Last updated: 2026-08-11 </sup>
 
 ---
 
@@ -28,17 +28,17 @@ For this reason, the repository includes a Python package (`src`) that is intend
 
 ---
 
-## 3. Illegal States as the Design Target
+## 3. Admissible Transitions as the Design Target
 
 Why does this entire architecture exist? 
 
-The answer is singular: **To prevent illegal decision states.**
+The answer is operational: **to prevent untrusted reasoning from committing transitions outside a governed execution space.**
 
-Large Language Models are semantic engines, not formal state machines. They can easily propose actions that violate logic, permissions, or temporal realities. If we do not govern them, they will execute illegal states.
+Large Language Models are semantic engines, not formal state machines. They can propose actions that violate logic, permissions, or temporal realities. DIR does not attempt to make that reasoning universally correct. It moves execution control outside the model and evaluates each proposed transition before any side effect is authorized.
 
-A Legal Decision State (LDS) requires five components to be valid simultaneously: 
+A practical Legal Decision State (LDS) model classifies five conditions that commonly determine whether an autonomous transition may be admitted:
 ```LDS = Authority (A) ∧ Context (C) ∧ Time (T) ∧ Intent (I) ∧ Evidence (E)``` 
-Every concept in the DIR ecosystem exists to protect one or more of these invariants:
+This is an engineering ontology derived from the needs of auditable autonomous systems, not a claim that five variables form a fundamental or exhaustive theory of safety. Its value is that the concepts in the DIR ecosystem can map their controls to a shared decision-validity model:
 
 ```mermaid
 ---
@@ -66,7 +66,7 @@ flowchart LR
     DIR ==> Gov
 ```
 
-Suddenly, these are not disjointed tools. They are a single, cohesive story.
+The invariant predicates themselves are established engineering mechanisms. The architectural contribution is their placement between open-ended probabilistic reasoning and deterministic state change. These are therefore not disjointed tools, but a single control path from generated proposal to governed execution.
 
 ---
 
@@ -95,19 +95,60 @@ Context as Code (CaC)
 
 ---
 
-## 5. Context as the New Compiler
+## 5. Architecture vs Logic: Boundaries and Invariants
+
+A critical distinction within Context as Code is separating **Boundaries** from **Invariants**. While they are often used interchangeably, they represent two different concepts that operate synergistically:
+
+* **Boundaries (Structure/Architecture):** A spatial and architectural concept. They answer *"Where does the agent's sandbox end?"* A boundary is a structural cordon, such as declaring that the Billing module cannot import network libraries `requests`, or that a specific agent has zero execution authority. Boundaries ensure that nobody bypasses the control.
+* **Invariants (State/Logic):** A formal and logical concept. They answer *"What condition must hold for this state transition to be admitted?"* An invariant is a deterministic predicate evaluated by the Kernel (e.g., `discount <= 15%`). Invariants make the control explicit and machine-verifiable.
+
+In practice: the **Boundary** is the wall separating the LLM from the database, and the **Invariant** is the mathematical rule the sensor in that wall uses to verify every intent crossing it.
+
+This precise structural divide effectively turns Context as Code into the foundational blueprint for a **Neuro-Symbolic System**. We no longer ask connectionist models (LLMs) to perform flawless symbolic logic during runtime. Instead, the probabilistic model interprets the chaotic real-world inputs (User Space), while the deterministic architectural boundaries and invariants perfectly evaluate mathematical rules (Kernel Space).
+
+This distinction establishes a higher level of abstraction for AI-assisted engineering. Instead of manually encoding every validation branch, engineers define the admissible behavior space: architectural boundaries prevent bypass, transaction invariants reject forbidden transitions, evidence obligations govern claims, and aggregate policies detect trajectories that become unhealthy over time.
+
+### 5.1 Intent Compression: Making Judgment Reusable
+
+Moving to this higher level of abstraction requires **Intent Compression**: transforming broad business intent into a compact, versioned set of explicit decision boundaries. It does not compress truth or replace domain expertise. It extracts the small subset of intent that must be stable, reviewable, and mechanically enforceable for a particular class of decisions.
+
+The practical benefit is reuse of judgment. Instead of asking a human or an LLM to reinterpret the same policy for every transaction, a responsible owner resolves the material ambiguity during contract design. The approved boundary can then govern many autonomous decisions consistently:
+
+```text
+Business intent
+  → explicit decision boundaries
+  → human-approved contract
+  → reusable execution constraints
+```
+
+This is the scaling purpose of the specification. The code implementing a guard may be trivial; establishing its provenance, scope, meaning, ownership, version, and evolution is not. Intent Compression moves engineering effort from repeatedly judging outputs to governing the conditions under which those outputs may alter state.
+
+The layers divide responsibility cleanly:
+
+| Layer | Governs |
+|---|---|
+| **Context as Code** | What may be generated and how components may interact |
+| **ROA** | What a named agent may propose and what evidence it owes |
+| **DIR** | What may be executed under the active contract and current state |
+| **Post-Execution Governance** | Whether locally compliant decisions remain healthy as a trajectory |
+
+Because LLMs are not reliable executors of strict rules, we shift their role. In Context as Code, the **LLM is a Transpiler, not a Judge** - more precisely, it is a probabilistic synthesizer of candidate constraints. It may read a business document and propose a typed representation, but deterministic tools check the representation and a human Contract Owner resolves ambiguity, approves the canonical version, and accepts accountability. The architecture enforces the boundary; the Runtime evaluates the approved invariant. The complete process is described in [Invariant-Driven Build-Time Governance](../04-governance/DIR_Governance.md#25-invariant-driven-build-time-governance).
+
+---
+
+## 6. Context as the New Compiler
 
 As AI coding tools become integrated into the workflow, the role of the developer evolves. Syntax creation becomes commoditized, while **Context Quality** becomes the primary determinant of system reliability.
 
 The developer moves towards the role of a "Context Coordinator," responsible for defining the boundaries and deterministic gates that govern the system. The documentation in this repository serves a dual purpose: it educates human engineers and acts as a **system prompt** for AI agents.
 
-In this paradigm, Markdown files are not just passive documentation; they are active inputs that guide the generation of code. They define the **absolute constraints** of the system that the AI must adhere to. The repository does the heavy lifting of architectural safety, while the AI handles the syntax.
+In this paradigm, Markdown files are not just passive documentation; they are active inputs that guide the generation of code. They declare the system's boundaries in a form that humans and AI tools can inspect. Where a boundary must be non-bypassable, the declaration is paired with deterministic enforcement such as CI rules, schemas, IAM policies, or Runtime gates. Documentation supplies governing context; enforcement turns selected declarations into guarantees.
 
 > *Note: If loading the entire `docs/` tree feels like overkill, point your AI agent at [DIR-minified.md](../07-dir-minified/DIR-minified.md) to get the same architectural **boundaries** in a single, machine-optimized file.*
 
 ---
 
-## 6. Engineering as the Foundation of AI Production
+## 7. Engineering as the Foundation of AI Production
 
 While major platforms will likely offer their own comprehensive libraries for AI agents, one size rarely fits all in complex enterprise environments. Reliable AI systems require solid engineering foundations, not just better models.
 
@@ -115,8 +156,8 @@ This repository offers a "tailored suit" approach. It provides the foundational 
 
 ---
 
-## 7. The Final Shift
+## 8. The Final Shift
 
 DIR is a tool for thinking and a foundation for designing reliable AI systems. 
 
-By offloading the syntactic heavy lifting to AI, and reserving the **system's core invariants** for human engineers through documentation, we move from writing code to writing context. In the AI era, context acts as code.
+By offloading the syntactic heavy lifting to AI, and reserving the **system's core invariants** for human engineers through documentation, we move from writing code to writing context. Intent Compression makes that context operational by turning accountable judgment into reusable decision boundaries. In the AI era, context acts as code.

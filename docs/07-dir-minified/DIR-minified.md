@@ -148,7 +148,7 @@ An **Illegal Decision State** occurs when any condition is violated:
 | **Intent (I)** | Proposed action violates contractual or syntactic bounds | SDS Constrained Decoding — Intent Integrity Topology |
 | **Evidence (E)** | Rationale is hallucinated or emotionally manipulated | Evidence Governance (Differential Heuristics, Bidirectional Reconstruction) — Lie Detector |
 
-### Topology Mapping: Each Topology Protects a Different LDS Component
+### 1.4.1 Topology Mapping: Each Topology Protects a Different LDS Component
 
 | Topology | Primary Protection | Mechanism |
 |---|---|---|
@@ -156,13 +156,13 @@ An **Illegal Decision State** occurs when any condition is violated:
 | **SDS** | ¬I | Constrained Decoding makes generating an illegal intent physically impossible |
 | **DL+PCI** | A ∧ C ∧ T ∧ I ∧ E (certificate) | PCI demands cryptographic proof that all five conditions held simultaneously |
 
-### The DIM as Illegal State Preventer
+### 1.4.2 The DIM as Illegal State Preventer and Kernel Invariant Evaluator
 
-The **Decision Integrity Module (DIM)** must be understood not as a simple validator but as a formal **Illegal State Preventer**:
+The **Decision Integrity Module (DIM)** must be understood not as a simple validator but as a formal **Illegal State Preventer** and **Kernel Invariant Evaluator**:
 
 > *"The DIM does not judge agent creativity. It mathematically ensures the system cannot transition into a state where ¬A ∨ ¬C ∨ ¬T ∨ ¬I ∨ ¬E is true."*
 
-Each DIM validation step maps directly to an LDS component:
+Each DIM validation step maps directly to an LDS component. Crucially, while Authority ($A$), Context ($C$), Time ($T$), and Intent ($I$) are deterministically computable in polynomial time within the Kernel, **Semantic Truth / Evidence ($E$) is undecidable in a deterministic environment (per Rice's Theorem)**. Therefore, the Kernel checks *cryptographic evidence signatures* produced in User Space; it cannot semantically read text to prove $E$. 
 
 | DIM Gate | LDS Component Protected |
 |---|---|
@@ -274,9 +274,15 @@ DIR is an adaptation of **Command Query Responsibility Segregation (CQRS)**:
 
 ROA defines agents not by their *capabilities* (what tools they can call) but by their *responsibilities* (what they are accountable for, what they own, what limits bind them).
 
-### 3.1 Responsibility Contract
+### 3.1 Responsibility Contract / Signed Invariant Bundle
 
-Every ROA agent is governed by a **Responsibility Contract** — a formal, machine-readable definition registered with the Agent Registry. Contracts are loaded from a trusted source (CI/CD pipeline or cryptographically signed repository) at deployment. Agents MUST NOT self-register at runtime.
+Every ROA agent is governed by a **Responsibility Contract** — a formal, machine-readable definition registered with the Agent Registry. Under the hood, this contract operates as a cryptographically **Signed Invariant Bundle**, produced through an engineering process known as **Invariant-Driven Build-Time Governance**.
+
+**Key Architectural Distinction:**
+*   **Boundary** (Where): An architectural cordon dictating what an agent can touch (e.g., event bus vs external API).
+*   **Invariant** (What): A deterministic mathematical logic check defining admissible state transitions inside that boundary.
+
+Contracts are loaded from a trusted source (CI/CD pipeline or signed repository) at deployment. Agents MUST NOT self-register at runtime. As AI engineers generate constraints via an LLM transpiler, human domain experts perform the **Build-Time HITL** ($O(1)$ constant time overhead) reviewing and cryptographically signing the explicit business invariants to establish the contract.
 
 The contract is composed of three typed blocks: **Mission**, **Authority**, and **Responsibility**. Each block is a validated Pydantic sub-model — not an opaque dict.
 
@@ -918,7 +924,7 @@ Confidence MAY reduce or increase the *urgency* of human review in escalation wo
 
 ## 4. DIR  -  DECISION INTELLIGENCE RUNTIME
 
-DIR is the privileged kernel that turns tentative Policy Proposals into controlled side effects. It is **not** an agent. It contains **no LLMs**. It performs **no semantic reasoning**. Given the same inputs, it always produces the same output.
+DIR is the privileged kernel that turns tentative Policy Proposals into controlled side effects. It is **not** an agent. It contains **no LLMs**. It performs **no semantic reasoning**. Given the same inputs, it always produces the same output by operating as a strict **Admissible Transition Gate**.
 
 **Architectural roots  -  DIR stands on proven engineering foundations:**
 
@@ -935,8 +941,8 @@ DIR is the privileged kernel that turns tentative Policy Proposals into controll
 
 These invariants MUST hold regardless of agent behavior, model updates, or topology:
 
-**Invariant 1  -  Deterministic State Transitions:**
-User Space (agents, LLMs, prompts) is probabilistic. Kernel Space (validation logic, state machines, API calls) MUST be deterministic. Given the same `(Policy, Context, Time)`, the Runtime MUST always return the same Validation Result. Hard Gates MUST be implemented in code (Python/Go/Rego), not prompts. Probabilistic validation (LLM-based) MUST remain in User Space or serve as non-blocking auditors only.
+**Invariant 1  -  Deterministic State Transitions & Kernel Invariant Evaluator:**
+User Space (agents, LLMs, prompts) is probabilistic. Kernel Space (validation logic, state machines, API calls) MUST be deterministic and serves strictly as the `Kernel Invariant Evaluator`. Given the same `(Policy, Context, Time)`, the Runtime MUST always return the same Validation Result based on mathematically sound transition rules. Hard Gates MUST be implemented in code (Python/Go/Rego), not prompts. The LLM acts solely as a **Transpiler** (synthesizing intent and generating claims) but never as a **Judge**. Probabilistic validation (LLM-based) MUST remain in User Space or serve as non-blocking auditors only.
 
 **Invariant 2  -  The Reasoning-Execution Wall:**
 Agents propose (tentative commands). Runtime validates and executes. No agent holds API keys or database write credentials. No agent opens network sockets. Agents ONLY submit proposals to the Runtime's internal bus.
