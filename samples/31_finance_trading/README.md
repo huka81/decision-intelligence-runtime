@@ -352,15 +352,15 @@ flowchart TD
 **Purpose:** Prevent "Token Burn" by suppressing LLM invocations for minor price changes that don't warrant agent reasoning.
 
 **Implementation:**
-- Each agent contract includes `wake_up_threshold_pct` (default: 0.5%)
+- Each agent contract defines `execution_conditions.wake_up_threshold_pct`
 - Orchestrator tracks last price for each instrument scope
 - Before invoking agent's `on_observation()`, calculates `price_change_pct = abs((current_price - last_price) / last_price * 100)`
 - **If change < threshold:** Signal suppressed, agent not invoked (saves LLM tokens)
 - **If change ≥ threshold:** Agent activated normally
 
 **Configuration:**
-- **Instrument agents** (strategic): 0.5% threshold - less sensitive, focus on significant trends
-- **Position agents** (tactical): 0.3% threshold - more sensitive for active risk management
+- **Instrument agents**: `agents[].contract.execution_conditions.wake_up_threshold_pct: 0.8`
+- **Position template**: `agents[].contract.execution_conditions.wake_up_threshold_pct: 0.5`
 
 **Economic Benefits:**
 - Reduces unnecessary LLM API calls by 60-80% in typical market conditions
@@ -383,8 +383,8 @@ flowchart TD
 When an agent receives an event it runs a single **decision cycle**:
 
 1. **Explain:** The agent sends the current context (e.g. price, trend, volatility, or news fields) to the LLM with its **mission** and contract boundaries. The LLM returns a free-form interpretation; the response is parsed into **ExplainResult** (narrative, signals, risks, opportunities).
-2. **Policy:** The agent sends the Explain result to the LLM and asks for one action from **allowed_policy_types**. The LLM response is parsed into **Policy** (proposed_action, justification, confidence).
-3. **Self-check:** The agent checks (a) confidence ≥ **escalate_on_uncertainty**, (b) proposed_action is in **allowed_policy_types**. If either fails, the agent does **not** emit a proposal; it may record an escalation. If both pass, it builds a **PolicyProposal** and returns it to the orchestrator.
+2. **Policy:** The agent sends the Explain result to the LLM and asks for one action from **`authority.allowed_policy_types`**. The LLM response is parsed into **Policy** (proposed_action, justification, confidence).
+3. **Self-check:** The agent checks (a) confidence ≥ **`responsibility.escalation.confidence_below`**, (b) proposed_action is in **`authority.allowed_policy_types`**. If either fails, the agent does **not** emit a proposal; it may record an escalation. If both pass, it builds a **PolicyProposal** and returns it to the orchestrator.
 
 Only one proposal per agent per event is collected; escalations are not sent to the orchestrator as proposals.
 
@@ -521,7 +521,7 @@ flowchart LR
 
 - **Explain:** Context (e.g. instrument, price, trend, volatility or news headline, raw_score) is sent to the LLM with the agent’s mission; output is parsed into narrative, signals, risks, opportunities.
 - **Policy:** Explain result and allowed policy types are sent to the LLM; output is parsed into one action, justification, and confidence.
-- **Self-check:** If confidence &lt; escalate_on_uncertainty or action ∉ allowed_policy_types → do not emit; optionally escalate. Otherwise → build **PolicyProposal** (policy_kind, params, confidence, justification) and return it to the orchestrator.
+- **Self-check:** If confidence &lt; `responsibility.escalation.confidence_below` or action ∉ `authority.allowed_policy_types` → do not emit; optionally escalate. Otherwise → build **PolicyProposal** (policy_kind, params, confidence, justification) and return it to the orchestrator.
 
 ---
 ## Example Scenario: End-to-End Flow
@@ -722,7 +722,7 @@ flowchart TB
   - **Position lifecycle cards:** Professional styling with gradients, P&L boxes, timeline events
   - **DFID hierarchy:** Expandable tree showing parent-child relationships
   - Reports can be regenerated for any completed simulation
-- **dir:** EventBus (scope-based dispatch), DIM (validate_proposal), models (ResponsibilityContract, PolicyProposal, etc.), QuoteGenerator, NewsGenerator, canonical StorageBundle.
+- **dir:** EventBus (scope-based dispatch), DIM (validate_proposal), native canonical `FinanceContract`, PolicyProposal, QuoteGenerator, NewsGenerator, and canonical StorageBundle.
 
 ---
 
@@ -845,10 +845,18 @@ agents:
     scope: "BTC-USD"
     mission: "Monitor market signals for BTC-USD..."
     contract:
-      role: MONITOR
-      authorized_instruments: ["BTC-USD"]
-      allowed_policy_types: ["ADJUST_RISK", "RISK_ALERT", "HOLD"]
-      wake_up_threshold_pct: 0.8
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      subject: { agent_id: instrument_btc_usd, role: MONITOR }
+      mission: "Monitor market signals for BTC-USD..."
+      authority:
+        allowed_policy_types: [ADJUST_RISK, RISK_ALERT, HOLD]
+        resource_scope: { instruments: [BTC-USD] }
+        limits:
+          max_drawdown_limit: { value: 0.05, unit: fraction }
+      execution_conditions: { wake_up_threshold_pct: 0.8 }
+      responsibility:
+        escalation: { mode: conditional, confidence_below: 0.65 }
     priority: 8
 
   - agent_id: "news_scorer"
@@ -856,8 +864,14 @@ agents:
     scope: null
     mission: "Evaluate news impact. When score >= 0.50, emit NEWS_QUALIFIED..."
     contract:
-      role: STRATEGIST
-      allowed_policy_types: ["NEWS_QUALIFIED", "HOLD"]
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      subject: { agent_id: news_scorer, role: STRATEGIST }
+      mission: "Evaluate news impact. When score >= 0.50, emit NEWS_QUALIFIED..."
+      authority:
+        allowed_policy_types: [NEWS_QUALIFIED, HOLD]
+      responsibility:
+        escalation: { mode: conditional, confidence_below: 0.6 }
     priority: 5
 
   - agent_id: "position_template"
@@ -865,9 +879,23 @@ agents:
     scope: null
     mission: "Manage this news-triggered position..."
     contract:
-      role: EXECUTOR
-      allowed_policy_types: ["TAKE_PROFIT", "CLOSE", "REDUCE", "HOLD", "ADJUST_STOP"]
-      wake_up_threshold_pct: 0.5
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      subject:
+        agent_id: position_template
+        role: EXECUTOR
+        parent_agent_id: news_scorer
+      mission: "Manage this news-triggered position..."
+      authority:
+        allowed_policy_types: [TAKE_PROFIT, CLOSE, REDUCE, HOLD, ADJUST_STOP]
+        limits:
+          max_drawdown_limit: { value: 0.04, unit: fraction }
+          take_profit_pct: { value: 0.03, unit: fraction }
+          max_exposure: { value: 5000.0, unit: USD }
+          reduce_pct: { value: 0.5, unit: fraction }
+      execution_conditions: { wake_up_threshold_pct: 0.5 }
+      responsibility:
+        escalation: { mode: conditional, confidence_below: 0.70 }
     priority: 4
 ```
 
@@ -876,7 +904,7 @@ agents:
 | **simulation** | `instruments`, `simulation_ticks`, `tick_interval_sec`, `news_every_n_ticks`, `max_news_events`, `initial_prices`, `news_score_threshold` (minimum score for NEWS_QUALIFIED to open positions), `seeds` (quote, news). |
 | **priority_matrix** | Maps `policy_kind` to numeric priority (lower = higher). Used by the orchestrator to choose the winning proposal. **Note:** `OPEN_POSITION` removed - positions opened exclusively via `NEWS_QUALIFIED`. |
 | **llm_defaults** | Optional LLM configuration. Supports three providers: <br>• **Ollama** (local): `model`, `base_url` <br>• **Gemini** (cloud): `provider: "gemini"`, `model` (e.g. `"gemini-1.5-flash"`), `api_key` (optional, uses env var if not set) <br>• **Mock** (testing): `provider: "mock"` or env `USE_MOCK_LLM=1` <br>If `provider` is omitted, auto-detects from model name ("gemini-*" → Gemini, else → Ollama). |
-| **agents** | List of agent definitions: `agent_id`, `type` (instrument \| news_scorer \| position), `scope`, `mission`, `contract` (role, authorized_instruments, allowed_policy_types, escalate_on_uncertainty, max_drawdown_limit, **wake_up_threshold_pct**, parent_agent_id), `priority`. <br><br>**Agent types:**<br>• **instrument** (MONITOR role): Observe market signals for one instrument, provide risk alerts. Cannot open positions. Default `wake_up_threshold_pct: 0.5%`.<br>• **news_scorer** (STRATEGIST role): Exclusive entry point. Emits NEWS_QUALIFIED when score ≥ threshold to spawn positions.<br>• **position** (EXECUTOR role): Template for dynamically spawned position managers. Opened only by NEWS_QUALIFIED trigger. Default `wake_up_threshold_pct: 0.3%` (more sensitive). <br><br>**Wake-up Predicates (DIR Topologies §2.3):**<br>• `wake_up_threshold_pct` (default: 0.5): Minimum price change percentage to invoke agent. Prevents "Token Burn" on minor signals. |
+| **agents** | Agent routing metadata (`agent_id`, `type`, `scope`, `priority`) plus canonical `contract`: identity/role/hierarchy in `subject`, policies/scopes/limits in `authority`, wake-up in `execution_conditions`, and escalation in `responsibility.escalation`. Instrument contracts use wake-up `0.8`; the position template uses `0.5`. |
 | **database** | Persistence for the whole sample: `provider`: `sqlite` \| `postgres` \| `memory` (see `samples/shared/bootstrap.py`). SQLite: `db_path` — if relative, it is resolved against the **directory containing `config.yaml`** (so `data/simulation_data.db` becomes `samples/31_finance_trading/data/simulation_data.db` regardless of shell CWD). PostgreSQL: `host`, `port`, `dbname`, `user`, `password`; requires `pip install psycopg2-binary` and a reachable server (same pattern as `samples/08_custom_repo_psql/`). Optional env overrides: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`. |
 
 ---
@@ -1116,19 +1144,19 @@ WHERE event = 'POSITION_SPAWNED'
 ```sql
 -- SQLite
 SELECT agent_id, priority, status, registered_at,
-       json_extract(contract, '$.role')                    AS role,
+  json_extract(contract, '$.subject.role')            AS role,
        json_extract(contract, '$.mission')                 AS mission,
-       json_extract(contract, '$.allowed_policy_types')    AS allowed_policy_types_json,
-       json_extract(contract, '$.authorized_instruments') AS authorized_instruments_json
+  json_extract(contract, '$.authority.allowed_policy_types') AS allowed_policy_types_json,
+  json_extract(contract, '$.authority.resource_scope.instruments') AS instruments_json
 FROM agent_registry
 ORDER BY agent_id;
 
 -- PostgreSQL
 SELECT agent_id, priority, status, registered_at,
-       contract->>'role'                 AS role,
+  contract#>>'{subject,role}'       AS role,
        contract->>'mission'              AS mission,
-       contract->'allowed_policy_types'  AS allowed_policy_types_json,
-       contract->'authorized_instruments' AS authorized_instruments_json
+  contract#>'{authority,allowed_policy_types}' AS allowed_policy_types_json,
+  contract#>'{authority,resource_scope,instruments}' AS instruments_json
 FROM agent_registry
 ORDER BY agent_id;
 ```

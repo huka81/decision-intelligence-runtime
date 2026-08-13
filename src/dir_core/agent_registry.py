@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .data_types import AgentRegistryStatus, HandshakeRejectionReason
+from .contract_projection import project_contract
+from .models import RuntimeContractProjection
 from .storage.base import AgentRegistryStorage
 from .storage.sqlite import SqliteAgentRegistryStorage
 
@@ -121,6 +123,22 @@ class AgentRegistry:
         logger.info("Handshake: agent_id=%s ver=%s accepted", agent_id, agent_version)
         return HandshakeResult(accepted=True, session_token=token)
 
+    def register_projection(
+        self,
+        projection: RuntimeContractProjection,
+        agent_version: str,
+        priority: int = 0,
+    ) -> HandshakeResult:
+        """Register an approved RuntimeContractProjection explicitly."""
+        if projection.agent_id == "":
+            return HandshakeResult(accepted=False, reason="MISSING_AGENT_ID")
+        return self.handshake(
+            projection.agent_id,
+            projection.model_dump(mode="json"),
+            agent_version,
+            priority=priority,
+        )
+
     def get_schema(
         self, agent_id: str, schema_kind: Optional[str] = None
     ) -> Optional[dict]:
@@ -163,6 +181,13 @@ class AgentRegistry:
         """Retrieve agent capability contract."""
         rec = self._storage.get_agent(agent_id)
         return rec["contract"] if rec else None
+
+    def get_agent_projection(
+        self, agent_id: str
+    ) -> Optional[RuntimeContractProjection]:
+        """Retrieve the registered contract as an execution projection."""
+        contract = self.get_agent_contract(agent_id)
+        return project_contract(contract) if contract is not None else None
 
     def get_agent_manifest(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve agent capability contract. Deprecated: use get_agent_contract."""

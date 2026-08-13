@@ -162,12 +162,15 @@ Key blocks in `config.yaml`:
 
 | Block | Purpose |
 |-------|---------|
+| `agents[].contract` | Canonical subject, mission, allowed retention policies, wake-up condition, and escalation threshold |
 | `retention_airlock.tier_discount_limits` | Fact validation ceiling per customer tier |
 | `retention_airlock.intent_retry.max_retries` | Intent Retry Governor cap (`REASONING_EXHAUSTION`) |
 | `retention_airlock.bidirectional_reconstruction` | Agent B compression drift thresholds (`min_keyword_overlap`, `salient_terms`) |
 | `temporal_monitor` | Rolling window circuit breaker for margin drift |
 | `drift_sweep` | Phase B batch (10 max-discount decisions) |
 | `scenarios.yaml` | Phase A defense scenarios with expected verdicts |
+
+The tier limits, intent retry settings, reconstruction thresholds, temporal monitor, and drift sweep remain sample-level controls. They are intentionally not duplicated inside the Responsibility Contract.
 
 ## Database storage
 

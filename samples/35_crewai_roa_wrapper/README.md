@@ -243,9 +243,11 @@ Process customer claims fairly, within policy boundaries, without exceeding auth
 
 | Field | Description |
 |-------|-------------|
-| `allowed_refund_categories` | Product categories agent may propose refunds for (e.g., electronics, clothing) |
-| `max_refund_without_escalation` | EUR threshold-above requires human approval (ESCALATE) |
-| `return_window_days` | Max days from purchase for automatic eligibility |
+| `authority.resource_scope.categories` | Product categories agent may propose refunds for (e.g., electronics, clothing) |
+| `authority.allowed_policy_types` | Allowed claims actions: REFUND, REPLACE, ESCALATE |
+| `responsibility.escalation.confidence_below` | Confidence below which the wrapper escalates |
+| `claims_bounds.max_refund_without_escalation` | Sample-specific EUR threshold above which DIM requires escalation; outside the canonical contract |
+| `claims_bounds.return_window_days` | Sample-specific automatic eligibility window; outside the canonical contract |
 
 ### Natural Language Intake (Scenarios E, F)
 
@@ -298,13 +300,16 @@ simulation:
 agents:
   - agent_id: "claims_agent_v1"
     contract:
-      role: EXECUTOR
-      authorized_instruments: [electronics, clothing, home]
-      allowed_policy_types: [REFUND, REPLACE, ESCALATE]
-      escalate_on_uncertainty: 0.7
-      max_drawdown_limit: 0.05
-      wake_up_threshold_pct: 0.5
-      parent_agent_id: null
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      subject: { agent_id: claims_agent_v1, role: EXECUTOR }
+      mission: "Process customer claims fairly, within policy boundaries..."
+      authority:
+        allowed_policy_types: [REFUND, REPLACE, ESCALATE]
+        resource_scope: { categories: [electronics, clothing, home] }
+      execution_conditions: { wake_up_threshold_pct: 0.5 }
+      responsibility:
+        escalation: { mode: conditional, confidence_below: 0.7 }
     claims_bounds:
       max_refund_without_escalation: 500.0
       return_window_days: 14
@@ -319,8 +324,8 @@ context_store:
 | `database` | SQLite path anchored next to `config.yaml` via `setup_environment` |
 | `llm_defaults` | Default Ollama endpoint; overridden by `OLLAMA_*` env vars when set |
 | `simulation.run_id` | `simulation_id` in every telemetry `details` payload |
-| `agents[].contract` | Canonical `ResponsibilityContract` fields for `YamlContractProvider` |
-| `agents[].claims_bounds` | Claims-only limits read into `ClaimsContract` |
+| `agents[].contract` | Canonical Responsibility Contract: subject, mission, category scope, policy types, and escalation |
+| `agents[].claims_bounds` | Claims-only DIM limits read into `ClaimsContract`; intentionally outside the canonical contract |
 | `context_store` | Authoritative orders for DIM (not injected into the Crew prompt) |
 
 ## How to run

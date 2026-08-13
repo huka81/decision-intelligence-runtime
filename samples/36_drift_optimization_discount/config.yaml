@@ -19,19 +19,26 @@ agents:
     mission: Retain subscribers who request cancellation by offering a retention discount.
     priority: 10
     contract:
-      role: EXECUTOR
-      authorized_instruments: []
-      allowed_policy_types: ["retention_discount"]
-      escalate_on_uncertainty: 0.7
-      max_drawdown_limit: 0.05
-      wake_up_threshold_pct: 0.5
-      parent_agent_id: null
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      subject:
+        agent_id: RetentionAgent
+        role: EXECUTOR
+        parent_agent_id: null
+      mission: Retain subscribers who request cancellation by offering a retention discount.
+      authority:
+        allowed_policy_types: [retention_discount]
+        limits:
+          max_discount_pct: { value: 15.0, unit: percent }
+      execution_conditions:
+        wake_up_threshold_pct: 0.5
+      responsibility:
+        escalation:
+          mode: conditional
+          confidence_below: 0.7
 
 paths:
   inputs_file: data/cancelation.json
-
-contract:
-  max_discount_pct: 15.0
 
 # Overlay: simulation + monitor blocks are read from this file (anchored to this YAML dir).
 simulation_config: simulation.yaml

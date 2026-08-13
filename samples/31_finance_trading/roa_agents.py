@@ -19,7 +19,6 @@ from dir_core import (
     ExplainResult,
     Policy,
     PolicyProposal,
-    ResponsibilityContract,
     SelfCheckResult,
     new_dfid,
 )
@@ -28,6 +27,7 @@ from dir_core.utils.logging_utils import log_with_dfid
 from dir_core.models import DecisionRecord
 
 from dir_core.utils.llm_client import LLMClient
+from contracts import FinanceContract
 
 try:
     from .dir_kernel_wiring import SimulationKernelContext, persist_roa_cycle_record
@@ -158,7 +158,7 @@ class ROAAgentLLMBase:
 
     def __init__(
         self,
-        contract: ResponsibilityContract,
+        contract: FinanceContract,
         llm: LLMClient,
         kernel_ctx: Optional[SimulationKernelContext] = None,
     ):
@@ -352,7 +352,7 @@ class ROAInstrumentAgent(ROAAgentLLMBase):
 
     def __init__(
         self,
-        contract: ResponsibilityContract,
+        contract: FinanceContract,
         llm: LLMClient,
         instrument: str,
         kernel_ctx: Optional[SimulationKernelContext] = None,
@@ -404,7 +404,7 @@ class ROAPositionAgent(ROAAgentLLMBase):
 
     def __init__(
         self,
-        contract: ResponsibilityContract,
+        contract: FinanceContract,
         llm: LLMClient,
         position_id: str,
         instrument: str,
@@ -554,7 +554,7 @@ class ROANewsScorerAgent(ROAAgentLLMBase):
 
     def __init__(
         self,
-        contract: ResponsibilityContract,
+        contract: FinanceContract,
         llm: LLMClient,
         score_threshold: float = 0.6,
         kernel_ctx: Optional[SimulationKernelContext] = None,

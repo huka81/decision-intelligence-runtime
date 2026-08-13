@@ -13,6 +13,9 @@ import yaml
 
 from dir_core import ResponsibilityContract
 
+from .canonical import canonical_contract_to_runtime
+from .flatten import flatten_contract_dict
+
 logger = logging.getLogger(__name__)
 
 class ContractProvider(ABC):
@@ -57,42 +60,47 @@ class YamlContractProvider(ContractProvider):
             logger.error("Failed to load YAML contracts from %s: %s", self.file_path, e)
             raise
 
+    def _parse_contract(self, c_dict: Dict[str, Any], agent_id: str) -> ResponsibilityContract:
+        c_dict = dict(c_dict)
+        c_dict["agent_id"] = agent_id
+        if c_dict.get("api_version") or "subject" in c_dict:
+            c_dict = canonical_contract_to_runtime(c_dict, agent_id)
+        if "authority" in c_dict:
+            c_dict = flatten_contract_dict(c_dict)
+        return self._contract_model(**c_dict)
+
     def get_contract(self, agent_id: str) -> ResponsibilityContract:
         # In many samples, contracts are under an 'agents' list
         if "agents" in self._data:
             for agent_cfg in self._data["agents"]:
                 if agent_cfg.get("agent_id") == agent_id:
-                    c_dict = dict(agent_cfg.get("contract", {}))
-                    c_dict["agent_id"] = agent_id
-                    return self._contract_model(**c_dict)
-        
+                    return self._parse_contract(agent_cfg.get("contract", {}), agent_id)
+
         # Some samples define a single contract under the 'contract' key
         if "contract" in self._data:
             c_dict = dict(self._data["contract"])
             c_id = c_dict.get("agent_id") or self._data.get("agent_id")
             if c_id == agent_id:
-                c_dict["agent_id"] = agent_id
-                return self._contract_model(**c_dict)
+                return self._parse_contract(c_dict, agent_id)
 
         raise ValueError(f"Contract for agent '{agent_id}' not found in YAML {self.file_path}")
 
     def get_all_contracts(self) -> Dict[str, ResponsibilityContract]:
         contracts = {}
-        
+
         if "agents" in self._data:
             for agent_cfg in self._data["agents"]:
                 agent_id = agent_cfg.get("agent_id")
                 if agent_id:
-                    c_dict = dict(agent_cfg.get("contract", {}))
-                    c_dict["agent_id"] = agent_id
-                    contracts[agent_id] = self._contract_model(**c_dict)
-                    
+                    contracts[agent_id] = self._parse_contract(
+                        agent_cfg.get("contract", {}), agent_id
+                    )
+
         elif "contract" in self._data:
             c_dict = dict(self._data["contract"])
             agent_id = c_dict.get("agent_id") or self._data.get("agent_id", "unknown_agent")
-            c_dict["agent_id"] = agent_id
-            contracts[agent_id] = self._contract_model(**c_dict)
-            
+            contracts[agent_id] = self._parse_contract(c_dict, agent_id)
+
         return contracts
 
 

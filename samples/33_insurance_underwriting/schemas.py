@@ -5,7 +5,7 @@ Pydantic models for insurance underwriting. ProofCarryingIntent lives in dir_cor
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -30,33 +30,30 @@ __all__ = [
 
 
 class UnderwritingContract(BaseModel):
-    """Responsibility slice for kernel gates and DIM business rules (from config)."""
+    """Canonical insurance contract consumed directly by the sample Kernel."""
 
-    agent_id: str = "underwriter_agent"
-    version: str = Field(
-        default="1.0.0",
-        description="Policy version (SemVer)",
-    )
-    created_by: Optional[str] = Field(
-        default=None,
-        description="Who created/approved the policy (e.g. compliance@example.com)",
-    )
-    created_at: Optional[str] = Field(
-        default=None,
-        description="When the policy was created (ISO 8601)",
-    )
-    mission: str = Field(
-        default="Underwrite insurance policies for compliant businesses.",
-        description="ROA mission (Manifesto §3.2)",
-    )
-    max_tiv: float = Field(
-        default=2_000_000,
-        description="Maximum Total Insured Value (TiV) in USD the agent may bind",
-    )
-    prohibited_industries: List[str] = Field(
-        default_factory=lambda: ["Fireworks", "CryptoMining"],
-        description="Industries for which no policy may be issued",
-    )
+    api_version: str = "roa.dir/v1"
+    kind: str = "ResponsibilityContract"
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    subject: Dict[str, Any] = Field(default_factory=dict)
+    mission: str = "Underwrite insurance policies for compliant businesses."
+    authority: Dict[str, Any] = Field(default_factory=dict)
+    responsibility: Dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def agent_id(self) -> str:
+        return str(self.subject.get("agent_id", "underwriter_agent"))
+
+    @property
+    def max_tiv(self) -> float:
+        limits = self.authority.get("limits") or {}
+        value = limits.get("max_tiv", 2_000_000)
+        return float(value.get("value", value) if isinstance(value, dict) else value)
+
+    @property
+    def prohibited_industries(self) -> List[str]:
+        exclusions = self.authority.get("exclusions") or {}
+        return list(exclusions.get("prohibited_industries") or [])
 
 
 class ClientApplication(BaseModel):

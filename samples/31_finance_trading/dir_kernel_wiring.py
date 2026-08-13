@@ -13,10 +13,11 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from dir_core import AgentRegistry, ContextStore, ResponsibilityContract
+from dir_core import AgentRegistry, ContextStore
 from dir_core.models import DecisionRecord
 
 from shared.contracts.provider import ContractProvider
+from contracts import FinanceContract
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ def register_config_agents(
         agent_id = cfg.get("agent_id")
         if not agent_id or cfg.get("type") == "position":
             continue
-        contract: ResponsibilityContract = contracts.get_contract(agent_id)
+        contract = FinanceContract.from_raw(cfg.get("contract") or {})
         priority = int(cfg.get("priority", 0))
         result = registry.handshake(
             agent_id,
@@ -59,7 +60,7 @@ def register_config_agents(
         )
 
 
-def register_spawned_position_agent(registry: AgentRegistry, contract: ResponsibilityContract) -> None:
+def register_spawned_position_agent(registry: AgentRegistry, contract: FinanceContract) -> None:
     """Persist a dynamically spawned position agent (same bundle as static agents)."""
     priority = 4
     result = registry.handshake(

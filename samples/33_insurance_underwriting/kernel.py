@@ -17,8 +17,7 @@ from dir_core.pci import (
     hash_content,
     proposal_params_for_hash,
 )
-
-from schemas import PolicyProposal
+from schemas import PolicyProposal, UnderwritingContract
 
 logger = logging.getLogger(__name__)
 
@@ -110,8 +109,9 @@ class DecisionIntegrityModule:
         if not contract:
             return "Contract Not Found"
 
-        max_tiv = contract.get("max_tiv", 0)
-        prohibited_industries = contract.get("prohibited_industries", [])
+        underwriting_contract = UnderwritingContract.model_validate(contract)
+        max_tiv = underwriting_contract.max_tiv
+        prohibited_industries = underwriting_contract.prohibited_industries
 
         # Business rule checks (prohibited industry, max TiV)
         proposal = PolicyProposal.model_validate(pci.intent_payload)

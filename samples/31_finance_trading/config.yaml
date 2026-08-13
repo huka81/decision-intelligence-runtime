@@ -84,12 +84,24 @@ agents:
     scope: "BTC-USD"
     mission: "Monitor market signals for BTC-USD. Analyze trends, volatility, and provide risk assessments. Wait for news-triggered opportunities - do not open positions directly."
     contract:
-      role: MONITOR
-      authorized_instruments: ["BTC-USD"]
-      allowed_policy_types: ["ADJUST_RISK", "RISK_ALERT", "HOLD"]
-      escalate_on_uncertainty: 0.65
-      max_drawdown_limit: 0.05
-      wake_up_threshold_pct: 0.8  # Wake-up only on 0.8%+ price change (Signal Suppression)
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      subject:
+        agent_id: instrument_btc_usd
+        role: MONITOR
+      mission: "Monitor market signals for BTC-USD. Analyze trends, volatility, and provide risk assessments. Wait for news-triggered opportunities - do not open positions directly."
+      authority:
+        allowed_policy_types: [ADJUST_RISK, RISK_ALERT, HOLD]
+        resource_scope:
+          instruments: [BTC-USD]
+        limits:
+          max_drawdown_limit: { value: 0.05, unit: fraction }
+      execution_conditions:
+        wake_up_threshold_pct: 0.8
+      responsibility:
+        escalation:
+          mode: conditional
+          confidence_below: 0.65
     priority: 8
 
   - agent_id: "instrument_eth_usd"
@@ -97,12 +109,24 @@ agents:
     scope: "ETH-USD"
     mission: "Monitor market signals for ETH-USD. Analyze trends, volatility, and provide risk assessments. Wait for news-triggered opportunities - do not open positions directly."
     contract:
-      role: MONITOR
-      authorized_instruments: ["ETH-USD"]
-      allowed_policy_types: ["ADJUST_RISK", "RISK_ALERT", "HOLD"]
-      escalate_on_uncertainty: 0.65
-      max_drawdown_limit: 0.05
-      wake_up_threshold_pct: 0.8  # Wake-up only on 0.8%+ price change (Signal Suppression)
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      subject:
+        agent_id: instrument_eth_usd
+        role: MONITOR
+      mission: "Monitor market signals for ETH-USD. Analyze trends, volatility, and provide risk assessments. Wait for news-triggered opportunities - do not open positions directly."
+      authority:
+        allowed_policy_types: [ADJUST_RISK, RISK_ALERT, HOLD]
+        resource_scope:
+          instruments: [ETH-USD]
+        limits:
+          max_drawdown_limit: { value: 0.05, unit: fraction }
+      execution_conditions:
+        wake_up_threshold_pct: 0.8
+      responsibility:
+        escalation:
+          mode: conditional
+          confidence_below: 0.65
     priority: 8
 
   # News scorer - EXCLUSIVE entry point for all positions
@@ -112,11 +136,18 @@ agents:
     scope: null
     mission: "Evaluate news impact on instruments. When news score >= 0.50 threshold, emit NEWS_QUALIFIED to open position for affected instruments. This is the exclusive entry point for all trading positions."
     contract:
-      role: STRATEGIST
-      authorized_instruments: []
-      allowed_policy_types: ["NEWS_QUALIFIED", "HOLD"]
-      escalate_on_uncertainty: 0.6
-      max_drawdown_limit: 0.05
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      subject:
+        agent_id: news_scorer
+        role: STRATEGIST
+      mission: "Evaluate news impact on instruments. When news score >= 0.50 threshold, emit NEWS_QUALIFIED to open position for affected instruments. This is the exclusive entry point for all trading positions."
+      authority:
+        allowed_policy_types: [NEWS_QUALIFIED, HOLD]
+      responsibility:
+        escalation:
+          mode: conditional
+          confidence_below: 0.6
     priority: 5
 
   # Position manager template - spawned ONLY by NEWS_QUALIFIED trigger from news_scorer
@@ -134,14 +165,32 @@ agents:
       - ADJUST_STOP: When trailing stop needs adjustment
       Always state your decision clearly with price levels and reasoning.
     contract:
-      role: EXECUTOR
-      authorized_instruments: []  # Filled at spawn: [instrument]
-      allowed_policy_types: ["TAKE_PROFIT", "CLOSE", "REDUCE", "HOLD", "ADJUST_STOP"]
-      escalate_on_uncertainty: 0.70
-      max_drawdown_limit: 0.04  # 4% stop loss in USD terms (wider tolerance)
-      take_profit_pct: 0.03  # 3% profit target (wider tolerance)
-      max_exposure: 5000.0  # $5,000 per position for realistic P&L
-      reduce_pct: 0.5  # 50% reduction on REDUCE
-      wake_up_threshold_pct: 0.5  # More sensitive for position management (0.5%)
-      parent_agent_id: null  # Always 'news_scorer' - positions only opened by news
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      subject:
+        agent_id: position_template
+        role: EXECUTOR
+        parent_agent_id: news_scorer
+      mission: |
+        Manage this news-triggered position. You have USD exposure to protect.
+        Decision rules:
+        - TAKE_PROFIT: When P&L >= +3% (profit target hit) - CLOSE the position
+        - CLOSE: When P&L <= -4% (stop loss) or when you decide to exit
+        - REDUCE: When volatility increases but P&L is still positive - cut exposure by 50%
+        - HOLD: When P&L is between -2% and +2% and conditions stable
+        - ADJUST_STOP: When trailing stop needs adjustment
+        Always state your decision clearly with price levels and reasoning.
+      authority:
+        allowed_policy_types: [TAKE_PROFIT, CLOSE, REDUCE, HOLD, ADJUST_STOP]
+        limits:
+          max_drawdown_limit: { value: 0.04, unit: fraction }
+          take_profit_pct: { value: 0.03, unit: fraction }
+          max_exposure: { value: 5000.0, unit: USD }
+          reduce_pct: { value: 0.5, unit: fraction }
+      execution_conditions:
+        wake_up_threshold_pct: 0.5
+      responsibility:
+        escalation:
+          mode: conditional
+          confidence_below: 0.70
     priority: 4

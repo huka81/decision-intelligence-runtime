@@ -2,9 +2,16 @@ const chatLog = document.getElementById("chatLog");
 const chatForm = document.getElementById("chatForm");
 const chatInput = document.getElementById("chatInput");
 const sendBtn = document.getElementById("sendBtn");
-const yamlPreview = document.getElementById("yamlPreview");
+const yamlEditor = document.getElementById("yamlEditor");
+const yamlActions = document.getElementById("yamlActions");
+const saveBtn = document.getElementById("saveBtn");
+const revertBtn = document.getElementById("revertBtn");
+const dirtyBadge = document.getElementById("dirtyBadge");
 const statusBadge = document.getElementById("statusBadge");
 const validationList = document.getElementById("validationList");
+const warningList = document.getElementById("warningList");
+const governancePanel = document.getElementById("governancePanel");
+const governanceContent = document.getElementById("governanceContent");
 const sessionSelect = document.getElementById("sessionSelect");
 const newSessionBtn = document.getElementById("newSessionBtn");
 const renameSessionBtn = document.getElementById("renameSessionBtn");
@@ -17,6 +24,8 @@ const integrityPanel = document.getElementById("integrityPanel");
 
 let currentSessionId = null;
 let currentSessionTitle = "";
+let savedYaml = "";
+let exportAllowed = false;
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -41,8 +50,57 @@ function renderMessages(messages) {
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
+function renderGovernance(analysis) {
+  if (!analysis) {
+    governancePanel.hidden = true;
+    governanceContent.innerHTML = "";
+    return;
+  }
+  governancePanel.hidden = false;
+  const goal = analysis.goal || {};
+  const actions = analysis.action_classes || [];
+  const invariants = analysis.invariant_candidates || [];
+  const ambiguities = analysis.ambiguities || [];
+  const questions = analysis.open_questions || [];
+
+  governanceContent.innerHTML = `
+    <div class="gov-section">
+      <div class="gov-label">Goal</div>
+      <p>${goal.objective || "(not set)"}</p>
+    </div>
+    <div class="gov-section">
+      <div class="gov-label">Actions (${actions.length})</div>
+      <ul>${actions.map((a) => `<li>${a.action_type} — ${a.reversibility}${a.linked_limit_key ? ` → ${a.linked_limit_key}` : ""}</li>`).join("") || "<li>none</li>"}</ul>
+    </div>
+    <div class="gov-section">
+      <div class="gov-label">Invariant candidates (${invariants.length})</div>
+      <ul>${invariants.map((i) => `<li>${i.invariant_id} [${i.constraint_class}] → ${i.linked_limit_key || "—"}</li>`).join("") || "<li>none</li>"}</ul>
+    </div>
+    ${ambiguities.length ? `<div class="gov-section"><div class="gov-label">Ambiguities</div><ul>${ambiguities.map((a) => `<li>${a}</li>`).join("")}</ul></div>` : ""}
+    ${questions.length ? `<div class="gov-section"><div class="gov-label">Open questions</div><ul>${questions.map((q) => `<li>${q}</li>`).join("")}</ul></div>` : ""}
+  `;
+}
+
+function isDirty() {
+  return yamlEditor.value !== savedYaml;
+}
+
+function refreshDirtyState() {
+  const dirty = isDirty();
+  yamlActions.hidden = !dirty;
+  dirtyBadge.hidden = !dirty;
+  // Unsaved manual edits must never be exported: the export uses the stored revision.
+  exportBtn.disabled = !exportAllowed || dirty;
+}
+
+function setEditorContent(text) {
+  yamlEditor.value = text;
+  savedYaml = text;
+  refreshDirtyState();
+}
+
 function renderYaml(data) {
-  yamlPreview.textContent = data.contract_yaml || "# No contract yet";
+  setEditorContent(data.contract_yaml || "# No contract yet");
   const status = data.session?.status || data.status || "drafting";
   statusBadge.textContent = status;
   statusBadge.className = `badge badge-${status === "ready" || status === "exported" ? status === "exported" ? "exported" : "ready" : "draft"}`;
@@ -51,16 +109,27 @@ function renderYaml(data) {
     currentSessionTitle = data.session.title;
   }
 
+  renderValidationLists(data.validation_errors, data.validation_warnings);
+  renderGovernance(data.governance_analysis);
+
+  exportAllowed = data.validation_ok ?? false;
+  refreshDirtyState();
+}
+
+function renderValidationLists(errors, warnings) {
   validationList.innerHTML = "";
-  const errors = data.validation_errors || [];
-  for (const e of errors) {
+  for (const e of errors || []) {
     const li = document.createElement("li");
     li.textContent = e;
     validationList.appendChild(li);
   }
 
-  const ok = data.validation_ok ?? false;
-  exportBtn.disabled = !ok;
+  warningList.innerHTML = "";
+  for (const w of warnings || []) {
+    const li = document.createElement("li");
+    li.textContent = w;
+    warningList.appendChild(li);
+  }
 }
 
 function renderIntegrity(result) {
@@ -100,18 +169,17 @@ function renderIntegrity(result) {
     ${hash}
   `;
 
-  exportBtn.disabled = !result.integrity_ok;
+  exportAllowed = result.integrity_ok;
+  refreshDirtyState();
   if (result.status) {
     statusBadge.textContent = result.status;
     statusBadge.className = `badge badge-${result.status === "exported" ? "exported" : result.status === "ready" ? "ready" : "draft"}`;
   }
 
-  validationList.innerHTML = "";
-  for (const e of result.validation_errors || result.errors || []) {
-    const li = document.createElement("li");
-    li.textContent = e;
-    validationList.appendChild(li);
-  }
+  renderValidationLists(
+    result.validation_errors || result.errors || [],
+    result.validation_warnings || [],
+  );
 }
 
 async function loadSessions() {
@@ -144,6 +212,8 @@ async function loadSession(id) {
     contract_yaml: data.contract_yaml,
     validation_ok: data.validation_ok,
     validation_errors: data.validation_errors,
+    validation_warnings: data.validation_warnings,
+    governance_analysis: data.governance_analysis,
     session: data.session,
   });
 }
@@ -198,11 +268,70 @@ async function deleteSession() {
   }
 }
 
+function confirmDiscardEdits() {
+  if (!isDirty()) return true;
+  return window.confirm("Discard unsaved YAML edits?");
+}
+
+async function saveContract() {
+  if (!currentSessionId) return;
+  saveBtn.disabled = true;
+  try {
+    const data = await api(`/api/sessions/${currentSessionId}/contract`, {
+      method: "PUT",
+      body: JSON.stringify({ yaml: yamlEditor.value }),
+    });
+    integrityBadge.hidden = true;
+    integrityPanel.hidden = true;
+
+    if (data.saved) {
+      // Server returns re-rendered canonical YAML, so the editor stays in sync.
+      renderYaml(data);
+      await loadSessions();
+    } else {
+      renderValidationLists(data.validation_errors, data.validation_warnings);
+      exportAllowed = false;
+      refreshDirtyState();
+      statusBadge.textContent = "invalid";
+      statusBadge.className = "badge badge-draft";
+    }
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+
+yamlEditor.addEventListener("input", refreshDirtyState);
+
+yamlEditor.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+    e.preventDefault();
+    if (isDirty()) saveContract();
+  }
+});
+
+saveBtn.addEventListener("click", () => saveContract());
+
+revertBtn.addEventListener("click", () => {
+  if (!confirmDiscardEdits()) return;
+  yamlEditor.value = savedYaml;
+  refreshDirtyState();
+});
+
+window.addEventListener("beforeunload", (e) => {
+  if (isDirty()) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!currentSessionId) return;
   const message = chatInput.value.trim();
   if (!message) return;
+  if (!confirmDiscardEdits()) return;
 
   sendBtn.disabled = true;
   try {
@@ -226,6 +355,10 @@ renameSessionBtn.addEventListener("click", () => renameSession().catch((e) => al
 deleteSessionBtn.addEventListener("click", () => deleteSession().catch((e) => alert(e.message)));
 
 sessionSelect.addEventListener("change", () => {
+  if (!confirmDiscardEdits()) {
+    sessionSelect.value = currentSessionId;
+    return;
+  }
   loadSession(sessionSelect.value).catch((e) => alert(e.message));
 });
 
@@ -251,7 +384,7 @@ validateBtn.addEventListener("click", async () => {
   if (!currentSessionId) return;
   validateBtn.disabled = true;
   try {
-    const yaml = yamlPreview.textContent || "";
+    const yaml = yamlEditor.value || "";
     const data = await api(`/api/sessions/${currentSessionId}/validate`, {
       method: "POST",
       body: JSON.stringify({ yaml }),

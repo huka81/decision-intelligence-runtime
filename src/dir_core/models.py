@@ -67,6 +67,35 @@ class ResponsibilityContract(BaseModel):
     )
 
 
+class ContractReleaseRef(BaseModel):
+    """Identity of the approved contract release used by the Runtime."""
+
+    contract_id: str = "legacy"
+    contract_version: str = "0.0.0"
+    api_version: str = "legacy"
+    contract_hash: str = ""
+
+
+class RuntimeContractProjection(BaseModel):
+    """Small execution-facing projection of a canonical Responsibility Contract.
+
+    The full authoring contract belongs to Build-Time tooling. This projection is
+    the stable subset that Registry, DIM, and governance services consume.
+    """
+
+    release: ContractReleaseRef = Field(default_factory=ContractReleaseRef)
+    agent_id: str
+    role: ContractRole = ContractRole.EXECUTOR
+    mission: str = ""
+    allowed_policy_types: List[str] = Field(default_factory=list)
+    resource_scope: Dict[str, List[str]] = Field(default_factory=dict)
+    transaction_limits: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+    execution_conditions: Dict[str, Any] = Field(default_factory=dict)
+    evidence_requirements: Dict[str, Any] = Field(default_factory=dict)
+    escalation_policy: Dict[str, Any] = Field(default_factory=dict)
+    aggregate_policies: List[Dict[str, Any]] = Field(default_factory=list)
+
+
 # =============================================================================
 # Decision Lifecycle: Explain → Policy → Self-Check (Manifesto §4)
 # =============================================================================

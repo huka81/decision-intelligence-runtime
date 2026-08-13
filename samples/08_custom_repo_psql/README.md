@@ -131,8 +131,8 @@ Annotated excerpt — full file is `config.yaml`.
 - **`simulation.seeds`** — recorded on `SIMULATION_START`; keep keys here for any seeded behaviour (this sample uses a deterministic mock strategy without RNG).
 - **`demo.note`** — short text placed into `context_session` under `input` for the ROA prompts.
 - **`llm_defaults`** — same resolution rules as other samples (`USE_MOCK_LLM`, provider).
-- **`contracts.provider: yaml`** — loads `ResponsibilityContract` objects from the same file as bootstrap’s `config_path`; do not set `contracts.path` to a bare `config.yaml` unless your working directory is the sample folder (Guide §7).
-- **`agents`** — each row supplies `agent_id`, `priority`, governance metadata (`owner`, `version`, `effective_from`, optional `effective_until`, `approved_by`) copied into `SIMULATION_START.details.agents[]`, plus nested `contract` for the kernel model. Handshake `agent_version` comes from `agents[].version` (fallback: `agent_version` at file root if present).
+- **`contracts.provider: yaml`** — loads the canonical `agents[].contract` from the same file as bootstrap’s `config_path`; do not set `contracts.path` to a bare `config.yaml` unless your working directory is the sample folder (Guide §7).
+- **`agents`** — each row supplies Registry routing metadata (`agent_id`, `priority`) plus a canonical contract. Contract version/owner/validity live in `contract.metadata`, identity/role in `contract.subject`, policies in `contract.authority`, wake-up in `contract.execution_conditions`, and escalation in `contract.responsibility`.
 
 ## Database storage
 

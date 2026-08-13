@@ -64,7 +64,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         data = yaml.safe_load(handle) or {}
 
     try:
-        contract = CanonicalContract(**data)
+        contract = CanonicalContract.from_raw(data)
         validate_bootstrap(contract, preset=args.preset)
     except (BootstrapValidationError, ValueError) as exc:
         print(f"Validation failed: {exc}", file=sys.stderr)

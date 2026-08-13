@@ -23,22 +23,25 @@ agents:
         Based on analyst findings, produce a refund proposal as JSON.
         Use action=REFUND always. The DIR Kernel enforces all limits.
     contract:
-      role: EXECUTOR
-      mission: >
-        Process customer claims fairly, within policy boundaries,
-        without exceeding authority or escalating unnecessarily.
-      authorized_instruments:
-        - electronics
-        - clothing
-        - home
-      allowed_policy_types:
-        - REFUND
-        - REPLACE
-        - ESCALATE
-      escalate_on_uncertainty: 0.7
-      max_drawdown_limit: 0.05
-      wake_up_threshold_pct: 0.5
-      parent_agent_id: null
+        api_version: roa.dir/v1
+        kind: ResponsibilityContract
+        subject:
+          agent_id: claims_agent_v1
+          role: EXECUTOR
+          parent_agent_id: null
+        mission: >
+          Process customer claims fairly, within policy boundaries,
+          without exceeding authority or escalating unnecessarily.
+        authority:
+          allowed_policy_types: [REFUND, REPLACE, ESCALATE]
+          resource_scope:
+            categories: [electronics, clothing, home]
+        execution_conditions:
+          wake_up_threshold_pct: 0.5
+        responsibility:
+          escalation:
+            mode: conditional
+            confidence_below: 0.7
     claims_bounds:
       max_refund_without_escalation: 500.0
       return_window_days: 14

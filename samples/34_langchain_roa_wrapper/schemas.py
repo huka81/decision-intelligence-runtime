@@ -88,6 +88,10 @@ def registry_contract_payload(
         extra = dict(row.get("contract") or {})
         merged = {**base, **extra}
         merged["agent_id"] = agent_id
+        authority = dict(extra.get("authority") or {})
+        resource_scope = dict(authority.get("resource_scope") or {})
+        if "environments" in resource_scope:
+            merged["allowed_environments"] = list(resource_scope["environments"])
         if row.get("mission"):
             merged["mission"] = row["mission"]
     merged.setdefault(

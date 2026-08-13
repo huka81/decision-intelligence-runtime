@@ -233,3 +233,15 @@ __marimo__/
 /samples/38_drift_environmental_bidding/agent-prompt.md
 /publications
 /samples/38_drift_environmental_bidding/data/*.sqlite
+
+# Docker Open Science artifact outputs (keep directory structure via .gitkeep)
+/docker/artifacts/**/*
+!/docker/artifacts/**/.gitkeep
+!/docker/artifacts/.gitkeep
+
+# Reviewer distribution packages (built by docker/pack_artifact.sh)
+/dist/
+
+# Contract Studio SQLite database
+/tools/contract/data/*.db
+/tools/contract/data/*.db-journal

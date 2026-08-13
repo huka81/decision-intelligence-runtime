@@ -176,83 +176,87 @@ A Responsibility Contract specifies:
 * **Authority boundaries:** Which actions it is allowed to take, the maximum impact of those actions (e.g., financial limits), and which actions it must not take.
 * **Responsibility (Governance):** The operational requirements the agent must meet, such as required evidence levels, explainability mandates, and explicit escalation criteria (when it must defer to a higher-level agent or human).
 
-This contract acts as the "job description" and transforms ROA from a conceptual idea into **machine-readable governance**. Each of the three blocks maps directly to a typed schema — not an opaque dict, but a validated, versioned, machine-evaluable object:
+This contract acts as the "job description" and transforms ROA from a conceptual idea into **machine-readable governance**. A canonical contract is complete when it covers every governance dimension required to bound the agent, not when it enumerates every possible business rule. Domain detail evolves inside a stable, versioned structure:
 
-```python
-from pydantic import BaseModel, Field
-from typing import List, Literal, Dict
+| Contract block | Governing question |
+| :--- | :--- |
+| `metadata` | Which contract version is this, who owns it, and where did its rules come from? |
+| `subject` | Which agent or agent class does the contract bind? |
+| `mission` | Why does the agent exist? |
+| `authority` | What may the agent propose, against which resources, and within what limits? |
+| `execution_conditions` | Under which state, time, and concurrency conditions may a proposal execute? |
+| `responsibility` | What explanation, evidence, and escalation behavior is required? |
+| `governance` | When does the agent's aggregate trajectory require intervention? |
 
-class AuthoritySpec(BaseModel):
-    """What the agent is permitted to do and the hard limits on that permission.
-    Enforced deterministically by the Decision Integrity Module (DIM) in Kernel Space."""
-    authorized_instruments: List[str]
-    allowed_policy_types: List[str]
-    max_order_size_usd: float
-    max_drawdown_limit_pct: float
-
-class ResponsibilitySpec(BaseModel):
-    """Governance requirements the agent must meet.
-    Enforced by the Evidence Governance Layer (User Space) and Post-Execution Monitors."""
-    explainability: Literal["required", "optional"]
-    evidence_level: Literal["high", "medium", "low"]
-    escalation: Literal["mandatory", "conditional", "disabled"]
-    escalate_on_uncertainty: float = Field(
-        default=0.7,
-        description="Confidence threshold below which escalation is triggered"
-    )
-    aggregate_thresholds: Dict[str, float] = Field(
-        default_factory=dict,
-        description="Day-Three defense: limits for Post-Execution Monitors"
-    )
-
-class ResponsibilityContract(BaseModel):
-    agent_id: str
-    role: Literal["STRATEGIST", "EXECUTOR", "MONITOR", "INTERFACE"]
-    version: str = Field(description="Immutable versioning for audit trails")
-    owner: str = Field(description="Named human accountable for this agent's behavior")
-
-    # 1. Mission — the agent's optimization target
-    mission: str
-
-    # 2. Authority — deterministic boundaries enforced by DIM in Kernel Space
-    authority: AuthoritySpec
-
-    # 3. Responsibility — governance requirements enforced by Evidence Governance Layer
-    responsibility: ResponsibilitySpec
-```
-
-The canonical deployment form is a YAML file registered via a CI/CD pipeline — never self-registered by the agent at runtime:
+The canonical **authoring form** is a human-readable YAML file reviewed and registered through a CI/CD pipeline — never self-registered by the agent at runtime. The following example is complete at the architectural level while leaving domain-specific detail to typed schema extensions and compiled enforcement artifacts:
 
 ```yaml
 # agent_contract.yaml — registered via CI/CD pipeline, NOT self-registered by agent
-agent_id: "crypto_position_manager_01"
-version: "1.2.0"
-owner: "jane.doe@example.com"          # Human accountability — who answers for this agent?
-role: "EXECUTOR" # Can be STRATEGIST, EXECUTOR, MONITOR, or INTERFACE
+api_version: roa.dir/v1
+kind: ResponsibilityContract
 
-# 1. Mission — why this agent exists
-mission: "Manage crypto positions. Protect capital while seeking alpha."
+metadata:
+  contract_id: crypto_position_manager
+  version: 1.2.0
+  owner: jane.doe@example.com
+  source_refs: [RISK-POLICY-17]
 
-# 2. Authority — what the agent is permitted to do (enforced by DIM in Kernel Space)
+subject:
+  agent_id: crypto_position_manager_01
+  role: EXECUTOR
+  parent_agent_id: portfolio_strategist_01
+
+mission:
+  statement: >
+    Manage crypto positions while protecting capital and seeking
+    risk-adjusted returns.
+
 authority:
-  authorized_instruments: ["ETH-USD", "BTC-USD"]
-  allowed_policy_types: ["TAKE_PROFIT", "CLOSE_POSITION", "REDUCE_SIZE", "HOLD", "BUY", "SELL"]
-  max_order_size_usd: 50000.00
-  max_drawdown_limit_pct: 4.0
+  allowed_policy_types: [BUY, SELL, HOLD, REDUCE_SIZE, CLOSE_POSITION]
+  resource_scope:
+    instruments: [BTC-USD, ETH-USD]
+  limits:
+    max_order_size: { value: 50000, unit: USD }
+    max_daily_drawdown: { value: 4, unit: percent }
 
-# 3. Responsibility — governance requirements (enforced by Evidence Governance Layer)
+execution_conditions:
+  max_context_age_seconds: 30
+  max_price_slippage: { value: 0.5, unit: percent }
+  reservation_required: true
+
 responsibility:
-  explainability: required            # Explain stage is mandatory before Policy
-  evidence_level: high                # Both Evidence Generators required before signing
-  escalation: mandatory               # Must escalate when uncertainty threshold is crossed
-  escalate_on_uncertainty: 0.70       # Confidence < 70% triggers human escalation
-  aggregate_thresholds:
-    max_average_discount_30d: 0.10    # Post-Execution Monitor suspends agent if exceeded
+  explainability: required
+  evidence:
+    level: high
+    required_attestations: [context_snapshot, deterministic_risk_check]
+  escalation:
+    mode: mandatory
+    confidence_below: 0.70
+    route_to: portfolio_risk_owner
+
+governance:
+  aggregate_policies:
+    - metric: rolling_drawdown
+      window: 24h
+      operator: gt
+      threshold: 4
+      unit: percent
+      response: SUSPENDED
 ```
 
-This explicit, typed definition allows the Runtime to validate the agent's behavior *before* any action is taken — and allows auditors to inspect the governance requirements independently of the agent's code.
+This authoring form is the source of governance, not the object executed directly by the DIM. The lifecycle produces two derived artifacts:
 
-The Responsibility Contract is also the authoritative source from which enforceable constraints are derived. During **Build-Time HITL (Human-in-the-Loop)**, an LLM may help synthesize candidate constraints from business documents or telemetry, but those candidates have no authority. The human Contract Owner resolves ambiguity, reviews boundary cases, and approves the canonical contract version. Deterministic tooling can then compile its machine-verifiable subset into a **Signed Invariant Bundle** consumed by the Runtime.
+```text
+Canonical Responsibility Contract
+    → Signed Contract Release
+    → Runtime Enforcement Projection
+```
+
+The **Signed Contract Release** is the normalized, immutable, and attributable contract version. The **Runtime Enforcement Projection** is the minimal generated representation consumed by the DIM, Evidence Governance, and Post-Execution Monitors. Both are deterministic products of the canonical contract; neither is maintained as an independent source of truth.
+
+The YAML above defines the architecture-level reference shape. The repository's minimal Python package may implement a narrower Bootstrap subset while the schema evolves. `api_version` is the compatibility boundary: additions that preserve existing semantics may extend `roa.dir/v1`, while incompatible meaning requires a new API version.
+
+During **Build-Time HITL (Human-in-the-Loop)**, an LLM may help synthesize candidate constraints from business documents or telemetry, but those candidates have no authority. The human Contract Owner resolves ambiguity, reviews boundary cases, and approves the canonical contract version. Deterministic tooling then compiles its machine-verifiable subset into the enforcement projection.
 
 The signature binds an accountable owner to an exact contract version and protects the bundle's integrity and provenance. It does not prove that the rules are complete or permanently correct. Human review is amortized across the decisions governed by that version rather than repeated for every nominal transaction; new evidence, exceptions, and environmental change still require contract evolution. The full compilation and evolution process is defined in [Invariant-Driven Build-Time Governance](../04-governance/DIR_Governance.md#25-invariant-driven-build-time-governance).
 
@@ -322,36 +326,37 @@ ROA is, by this definition, the **Authority Boundary Generator** of the system. 
 
 If Mission answers *why* the agent exists and Authority answers *what* it may do, Responsibility answers **how** it must behave while doing it.
 
-This is the governance block — the set of operational requirements the system enforces on the agent's reasoning and output pipeline, regardless of the decision content. It is machine-readable: every field in `ResponsibilitySpec` is evaluated deterministically, not interpreted by the LLM.
+The `responsibility` block defines obligations on the agent's reasoning and proposal pipeline. The separate `governance` block defines how the system evaluates the agent's aggregate trajectory after execution. Keeping them separate prevents a single-transaction requirement from being confused with a rolling-window policy.
 
-### The `ResponsibilitySpec` fields
+### Responsibility and governance fields
 
 | Field | Type | Enforced by | Meaning |
 | :--- | :--- | :--- | :--- |
-| `explainability` | `"required"` / `"optional"` | ROA Decision Lifecycle | Whether the Explain stage is mandatory before Policy formation |
-| `evidence_level` | `"high"` / `"medium"` / `"low"` | Evidence Governance Layer | How many Evidence Generators must agree before signing the artifact |
-| `escalation` | `"mandatory"` / `"conditional"` / `"disabled"` | DIR Runtime | Whether escalation to human is mandatory, conditional on threshold, or disabled |
-| `escalate_on_uncertainty` | `float` (0.0–1.0) | DIR Runtime (DIM Gate) | Confidence score below which the agent must escalate rather than emit a proposal |
-| `aggregate_thresholds` | `Dict[str, float]` | Post-Execution Monitors | Rolling-window limits that trigger Circuit Breaking if exceeded (Day-Three defense) |
+| `responsibility.explainability` | `required` / `optional` | ROA Decision Lifecycle | Whether the Explain stage is mandatory before Policy formation |
+| `responsibility.evidence.level` | `high` / `medium` / `low` | Evidence Governance Layer | Minimum rigor required before an artifact may be signed |
+| `responsibility.evidence.required_attestations` | list | Evidence Governance Layer | Named attestations required for this decision class |
+| `responsibility.escalation.mode` | `mandatory` / `conditional` / `disabled` | DIR Runtime | Whether escalation is required, conditional, or disabled |
+| `responsibility.escalation.confidence_below` | float (0.0–1.0) | DIR Runtime (DIM Gate) | Confidence threshold below which the agent must escalate |
+| `governance.aggregate_policies` | list of typed policies | Post-Execution Monitors | Rolling-window rules and their Circuit Breaker responses |
 
-### Why `evidence_level` matters
+### Why the evidence level matters
 
-`evidence_level` is the bridge between the Responsibility Contract and the Evidence Governance Layer. It specifies the minimum rigor the User Space pipeline must achieve before signing the output artifact:
+`responsibility.evidence.level` is the bridge between the Responsibility Contract and the Evidence Governance Layer. It specifies the minimum rigor the User Space pipeline must achieve before signing the output artifact:
 
 * **`high`** — both Evidence Generators must agree: Differential Heuristics AND Bidirectional Reconstruction.
 * **`medium`** — one Evidence Generator sufficient.
 * **`low`** — Self-Check only; no external Evidence Generator required.
 
-This means the agent's contract directly governs the strength of its semantic verification pipeline. A high-stakes agent (e.g., one issuing irreversible financial transfers) declares `evidence_level: high`; a low-stakes monitoring agent may declare `evidence_level: low`.
+This means the agent's contract directly governs the strength of its semantic verification pipeline. A high-stakes agent (e.g., one issuing irreversible financial transfers) declares `responsibility.evidence.level: high`; a low-stakes monitoring agent may declare `low`. The exact attestations remain explicit in `required_attestations` rather than being hidden behind the level name.
 
 ### Why this is governance, not just configuration
 
-The distinction is architectural. Configuration is read by the agent and followed as a suggestion. Governance is read by the Runtime and enforced as a constraint. The `ResponsibilitySpec` fields are evaluated by mechanisms that operate independently of the LLM:
+The distinction is architectural. Configuration is read by the agent and followed as a suggestion. Governance is consumed by enforcement mechanisms operating independently of the LLM:
 
-* `explainability` is enforced by the ROA Decision Lifecycle structure.
-* `evidence_level` is enforced by the Evidence Governance Layer before any artifact is signed.
-* `escalation` and `escalate_on_uncertainty` are enforced by the DIM gate in Kernel Space.
-* `aggregate_thresholds` are enforced by asynchronous Post-Execution Monitors.
+* `responsibility.explainability` is enforced by the ROA Decision Lifecycle structure.
+* `responsibility.evidence` is enforced by the Evidence Governance Layer before any artifact is signed.
+* `responsibility.escalation` is enforced by the DIM gate in Kernel Space.
+* `governance.aggregate_policies` are enforced by asynchronous Post-Execution Monitors.
 
 The agent cannot override these requirements by reasoning differently. They are the contract.
 
@@ -1664,10 +1669,12 @@ What we can do, however, is take the next step - together - toward architectures
 # **13. Glossary**
 
 *   **Responsibility-Oriented Agents (ROA)**: An architectural pattern where agents are defined by their specific responsibilities, boundaries, and missions rather than generic capabilities.
-*   **Responsibility Contract**: A formal, machine-readable definition of an agent's governance, composed of three typed blocks: `mission` (optimization target), `authority` (permitted actions and hard limits), and `responsibility` (governance requirements). Registered via CI/CD pipeline; never self-registered by the agent.
-*   **AuthoritySpec**: The typed sub-model of a Responsibility Contract specifying what the agent is permitted to do (`authorized_instruments`, `allowed_policy_types`, `max_order_size_usd`, `max_drawdown_limit_pct`). Enforced deterministically by the DIM in Kernel Space.
-*   **ResponsibilitySpec**: The typed sub-model of a Responsibility Contract specifying governance requirements (`explainability`, `evidence_level`, `escalation`, `escalate_on_uncertainty`, `aggregate_thresholds`). Enforced by the Evidence Governance Layer and Post-Execution Monitors.
-*   **evidence_level**: A `ResponsibilitySpec` field declaring the minimum rigor required from the Evidence Governance Layer before signing an output artifact. `high` = both Evidence Generators required; `medium` = one sufficient; `low` = Self-Check only.
+*   **Responsibility Contract**: The versioned, human-authored source of governance for an agent or agent class. Its canonical structure covers metadata, subject, mission, authority, execution conditions, responsibility obligations, and aggregate governance. Registered via CI/CD pipeline; never self-registered by the agent.
+*   **Authority**: The typed contract block specifying which policy types and resources are in scope and which transaction limits bound the agent's proposals. Its machine-verifiable subset is enforced by the DIM in Kernel Space.
+*   **Responsibility**: The typed contract block specifying explainability, evidence, and escalation obligations that the agent and its proposal pipeline must satisfy.
+*   **Signed Contract Release**: The normalized, immutable, and attributable release produced after human approval of a canonical Responsibility Contract.
+*   **Runtime Enforcement Projection**: The minimal generated representation consumed by the DIM, Evidence Governance, and Post-Execution Monitors. It is derived from a Signed Contract Release and is not an independent source of truth.
+*   **Evidence Level**: A responsibility field declaring the minimum rigor required from the Evidence Governance Layer before signing an output artifact. The concrete required attestations remain explicit in the contract.
 *   **Decision Intelligence Runtime (DIR)**: The deterministic system that orchestrates, validates, and executes the policies proposed by ROA agents.
 *   **Mission**: The fundamental optimization target or goal function of an agent (e.g., "Minimize risk while maintaining market exposure"). Stored as a typed `str` in the Responsibility Contract; used as an interpretive constraint during Explain and Policy formation.
 *   **Policy**: A structured object emitted by an agent representing a proposed course of action, subject to validation by the Runtime.

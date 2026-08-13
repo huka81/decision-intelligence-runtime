@@ -138,8 +138,8 @@ $env:OPEN_REPORT_HTML="1"; python samples/36_drift_optimization_discount/run.py
 | `database` | SQLite path under the sample directory (anchored by `setup_environment`). |
 | `llm_defaults` | Provider, model, timeout; use `provider: mock` or `USE_MOCK_LLM=1` for CI. |
 | `contracts` | `provider: yaml`; omit `path` so `setup_environment(..., config_path=...)` resolves the contract file. |
-| `agents` | Responsibility contract including `allowed_policy_types: ["retention_discount"]`. |
-| `contract.max_discount_pct` | DIM hard ceiling on `discount_offered`. |
+| `agents[].contract.authority.allowed_policy_types` | Responsibility Contract policy scope: `retention_discount`. |
+| `agents[].contract.authority.limits.max_discount_pct.value` | DIM hard ceiling on `discount_offered`; the sample config adapter exposes this canonical value to its existing typed DIM config. |
 | `simulation_config` | Relative path to `simulation.yaml` (phases, seeds, `run_id`). |
 | `simulation.yaml` | `simulation` (two-phase curve) and `monitor` (window, threshold, suspension reason). |
 

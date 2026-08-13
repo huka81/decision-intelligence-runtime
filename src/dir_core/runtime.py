@@ -13,11 +13,16 @@ from typing import Any, Callable, Dict, Optional
 
 from .agent_registry import AgentRegistry, HandshakeResult
 from .context_store import ContextStore
-from .data_types import ValidationResult, ValidationVerdict
+from .data_types import (
+    AgentRegistryStatus,
+    DimReasonCode,
+    ValidationResult,
+    ValidationVerdict,
+)
 from .dim import validate_proposal
 from .escalation import EscalationManager
 from .intent_retry import IntentRetryGovernor
-from .models import PolicyProposal
+from .models import PolicyProposal, RuntimeContractProjection
 from .storage import StorageBundle
 from .storage.base import AuditStore
 
@@ -62,6 +67,20 @@ class DecisionRuntime:
             agent_id, contract, agent_version, priority=priority
         )
 
+    def register_projection(
+        self,
+        projection: RuntimeContractProjection,
+        agent_version: str,
+        *,
+        priority: int = 0,
+    ) -> HandshakeResult:
+        """Register an approved RuntimeContractProjection."""
+        return self.registry.register_projection(
+            projection,
+            agent_version,
+            priority=priority,
+        )
+
     def evaluate_proposal(
         self,
         proposal: PolicyProposal,
@@ -76,6 +95,18 @@ class DecisionRuntime:
         now: datetime | None = None,
         record_audit: bool = True,
     ) -> ValidationResult:
+        agent_status = self.registry.get_agent_status(proposal.agent_id)
+        if agent_status is not None:
+            status, _reason = agent_status
+            if status == AgentRegistryStatus.SUSPENDED:
+                return ValidationVerdict.REJECT, DimReasonCode.AGENT_SUSPENDED
+            if status == AgentRegistryStatus.RETIRED:
+                return ValidationVerdict.REJECT, DimReasonCode.AGENT_RETIRED
+            if status == AgentRegistryStatus.DEGRADED:
+                return ValidationVerdict.REJECT, DimReasonCode.AGENT_DEGRADED
+            if status == AgentRegistryStatus.ESCALATION_ONLY:
+                return ValidationVerdict.ESCALATE, "AGENT_ESCALATION_ONLY"
+
         self.context_store.update_session(
             proposal.dfid, dict(raw_web_context), agent_id=proposal.agent_id
         )

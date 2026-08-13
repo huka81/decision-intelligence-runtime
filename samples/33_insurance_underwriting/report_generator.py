@@ -261,13 +261,26 @@ def _clause_explanation(reason_code: str, case: EmailCaseResult) -> str:
     )
 
 
+def _contract_max_tiv(contract: Dict[str, Any]) -> float:
+    max_tiv_spec = contract.get("authority", {}).get("limits", {}).get("max_tiv", {})
+    return float(
+        max_tiv_spec.get("value", max_tiv_spec)
+        if isinstance(max_tiv_spec, dict)
+        else max_tiv_spec
+    )
+
+
 def _decision_rationale_html(
     case: EmailCaseResult,
     contract: Dict[str, Any],
     email_processing: Dict[str, Any],
 ) -> str:
-    max_lim = float(contract.get("max_tiv") or 0)
-    prohibited_ind = contract.get("prohibited_industries") or []
+    max_lim = _contract_max_tiv(contract)
+    prohibited_ind = (
+        contract.get("authority", {})
+        .get("exclusions", {})
+        .get("prohibited_industries", [])
+    )
     prohibited_ter = email_processing.get("prohibited_territories") or []
     inj = email_processing.get("injection_patterns") or []
 
@@ -475,6 +488,7 @@ def generate_email_report(
     bound_n = sum(1 for c in email_results if c.final_status == "BOUND")
     esc_n = sum(1 for c in email_results if c.final_status == "ESCALATED")
     rej_n = sum(1 for c in email_results if c.final_status == "REJECTED")
+    max_lim = _contract_max_tiv(contract)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -753,8 +767,8 @@ def generate_email_report(
 
     <div class="summary-box">
         <h2>Summary</h2>
-        <p><strong>Policy (version):</strong> {_escape(contract.get('version', '—'))}</p>
-        <p><strong>Max TiV (contract):</strong> {_format_money(float(contract.get('max_tiv', 0)))}</p>
+        <p><strong>Policy (version):</strong> {_escape(contract.get('metadata', {}).get('version', '—'))}</p>
+        <p><strong>Max TiV (contract):</strong> {_format_money(max_lim)}</p>
         <p><strong>Emails processed:</strong> {len(email_results)} · <strong>Bound:</strong> {bound_n} ·
         <strong>Escalated:</strong> {esc_n} · <strong>Rejected:</strong> {rej_n}</p>
         <p><strong>Ledger entries (verified):</strong> {ledger_count}</p>

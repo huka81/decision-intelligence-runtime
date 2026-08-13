@@ -20,6 +20,7 @@ from dir_core import (
     select_winner,
 )
 from dir_core.utils.logging_utils import log_with_dfid
+from contracts import FinanceContract
 
 logger = logging.getLogger(__name__)
 
@@ -229,7 +230,6 @@ class EOAMOrchestrator:
             raise RuntimeError(
                 "Orchestrator.set_spawn_deps(llm, position_template) must be called before spawn"
             )
-        from dir_core import ResponsibilityContract
         try:
             from .roa_agents import ROAPositionAgent
         except ImportError:
@@ -238,12 +238,19 @@ class EOAMOrchestrator:
         position_id = f"POS_{self._next_position_id}"
         self._next_position_id += 1
         t = self._position_template
-        contract_dict = dict(t.get("contract", {}))
-        contract_dict["agent_id"] = f"position_{position_id}"
-        contract_dict["authorized_instruments"] = [instrument]
-        contract_dict["parent_agent_id"] = parent_agent_id or contract_dict.get("parent_agent_id")
-        contract_dict["mission"] = t.get("mission", "")
-        contract = ResponsibilityContract(**contract_dict)
+        raw_contract = dict(t.get("contract", {}))
+        contract_data = dict(raw_contract)
+        subject = dict(contract_data.get("subject") or {})
+        subject["agent_id"] = f"position_{position_id}"
+        subject["parent_agent_id"] = parent_agent_id or subject.get("parent_agent_id")
+        authority = dict(contract_data.get("authority") or {})
+        scope = dict(authority.get("resource_scope") or {})
+        scope["instruments"] = [instrument]
+        authority["resource_scope"] = scope
+        contract_data["subject"] = subject
+        contract_data["authority"] = authority
+        contract_data["mission"] = t.get("mission") or contract_data.get("mission", "")
+        contract = FinanceContract.from_raw(contract_data)
         agent = ROAPositionAgent(
             contract=contract,
             llm=self._llm,

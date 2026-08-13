@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 from .models import PolicyProposal
+from .contract_projection import project_contract
+from .models import RuntimeContractProjection
 from .data_types import DimReasonCode, ValidationResult, ValidationVerdict
 
 if TYPE_CHECKING:
@@ -22,6 +24,33 @@ def _resolve_valid_until(proposal: PolicyProposal) -> Optional[datetime]:
     window_sec = proposal.execution_constraints.get("validity_window_sec")
     if window_sec is not None:
         return proposal.created_at + timedelta(seconds=float(window_sec))
+    return None
+
+
+def _validate_transaction_limits(
+    proposal: PolicyProposal,
+    projection: RuntimeContractProjection,
+) -> Optional[DimReasonCode | str]:
+    """Validate only explicitly named, Runtime-supported contract metrics."""
+    metric_params = {
+        "max_order_size": "order_value",
+        "max_order_size_usd": "order_value",
+        "max_transaction_usd": "transaction_value",
+        "max_discount_pct": "discount_pct",
+    }
+    for limit_name, limit in projection.transaction_limits.items():
+        metric_name = str(limit.get("metric", metric_params.get(limit_name, "")))
+        if not metric_name:
+            return f"Unsupported transaction limit metric: {limit_name}"
+        if metric_name not in proposal.params:
+            return DimReasonCode.CONTRACT_PARAMETER_MISSING
+        try:
+            actual = float(proposal.params[metric_name])
+            maximum = float(limit["value"])
+        except (KeyError, TypeError, ValueError):
+            return f"Invalid transaction limit definition: {limit_name}"
+        if actual > maximum:
+            return DimReasonCode.CONTRACT_LIMIT_EXCEEDED
     return None
 
 
@@ -67,9 +96,18 @@ def validate_proposal(
 
     # 4. Generic Contract Boundaries (if contract provided)
     if contract:
-        # Handle nested variants (e.g. from samples/00_quick_start) vs flat
-        permissions = contract.get("permissions", contract)
-        safety_rules = contract.get("safety_rules", contract)
+        projection = (
+            contract
+            if isinstance(contract, RuntimeContractProjection)
+            else project_contract(contract)
+        )
+        # Handle typed projections alongside legacy nested/flat dictionaries.
+        if isinstance(contract, RuntimeContractProjection):
+            permissions = {"allowed_policy_types": projection.allowed_policy_types}
+            safety_rules: Dict[str, Any] = {}
+        else:
+            permissions = contract.get("permissions", contract)
+            safety_rules = contract.get("safety_rules", contract)
 
         # 4a. Validate allowed policies
         allowed_policies = permissions.get("allowed_policy_types")
@@ -84,6 +122,10 @@ def validate_proposal(
             return _reject(
                 f"Proposal confidence ({proposal.confidence}) is below threshold ({min_conf})"
             )
+
+        limit_reason = _validate_transaction_limits(proposal, projection)
+        if limit_reason is not None:
+            return _reject(limit_reason)
 
     # 4.1. Context/State Consistency (Legacy stub)
     state = context.get("state", {})

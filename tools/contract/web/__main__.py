@@ -4,8 +4,15 @@ from __future__ import annotations
 
 import sys
 
+from ..env import load_contract_env
+from ..settings import configure_studio_logging, load_studio_settings
+
 
 def main() -> int:
+    load_contract_env()
+    settings = load_studio_settings()
+    configure_studio_logging(debug=settings.debug)
+
     try:
         import uvicorn
     except ImportError:
@@ -15,12 +22,19 @@ def main() -> int:
         )
         return 1
 
-    from .app import app
+    from .app import create_app
 
     host = "127.0.0.1"
     port = 8765
     print(f"Contract Studio: http://{host}:{port}")
-    uvicorn.run(app, host=host, port=port, log_level="info")
+    if settings.debug:
+        print("Debug mode ON — LLM prompts and raw responses will be logged.")
+    uvicorn.run(
+        create_app(settings),
+        host=host,
+        port=port,
+        log_level="info",
+    )
     return 0
 
 

@@ -38,14 +38,27 @@ agents:
     effective_until: null
     approved_by: null
     contract:
-      role: EXECUTOR
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      metadata:
+        version: "1.0.0"
+        owner: "dir-samples@example.com"
+        effective_from: "2026-02-01"
+        effective_until: null
+        approved_by: null
+      subject:
+        agent_id: repo_demo_agent
+        role: EXECUTOR
+        parent_agent_id: null
       mission: >-
         You are a placeholder agent for a storage wiring demo. Prefer HOLD.
         Follow the JSON shapes requested in each ROA stage prompt exactly.
-      authorized_instruments: []
-      allowed_policy_types:
-        - "HOLD"
-      escalate_on_uncertainty: 0.5
-      max_drawdown_limit: 0.05
-      wake_up_threshold_pct: 0.5
-      parent_agent_id: null
+      authority:
+        allowed_policy_types:
+          - "HOLD"
+      execution_conditions:
+        wake_up_threshold_pct: 0.5
+      responsibility:
+        escalation:
+          mode: conditional
+          confidence_below: 0.5

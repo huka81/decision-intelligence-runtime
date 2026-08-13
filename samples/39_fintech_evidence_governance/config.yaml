@@ -24,17 +24,23 @@ agents:
     approved_by: null
     priority: 0
     contract:
-      role: EXECUTOR
-      mission: "Raise card limits only when declared income supports the requested limit per policy ratios."
-      authorized_instruments:
-        - PLN_CARD
-      allowed_policy_types:
-        - RAISE_LIMIT
-        - HOLD
-      escalate_on_uncertainty: 0.7
-      max_drawdown_limit: 0.05
-      wake_up_threshold_pct: 0.5
-      parent_agent_id: null
+        api_version: roa.dir/v1
+        kind: ResponsibilityContract
+        subject:
+          agent_id: credit_limit_agent
+          role: EXECUTOR
+          parent_agent_id: null
+        mission: "Raise card limits only when declared income supports the requested limit per policy ratios."
+        authority:
+          allowed_policy_types: [RAISE_LIMIT, HOLD]
+          resource_scope:
+            instruments: [PLN_CARD]
+        execution_conditions:
+          wake_up_threshold_pct: 0.5
+        responsibility:
+          escalation:
+            mode: conditional
+            confidence_below: 0.7
 
 credit_limit_gate:
   max_limit_pln: 10000.0

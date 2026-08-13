@@ -36,6 +36,7 @@ asyncpg = ["asyncpg>=0.29"]
 # Optional: Boxed Intelligence pattern (wrappers)
 frameworks = ["langchain-core", "crewai"]
 samples = ["markdown>=3.5", "httpx", "plotly", "google-genai>=1.0.0"]
+studio = ["fastapi>=0.110", "uvicorn[standard]>=0.27", "z3-solver>=4.12", "python-dotenv>=1.0"]
 dev = [
     "pytest>=7",
     "pytest-cov>=4",

@@ -158,8 +158,8 @@ Annotated structure (see `config.yaml` in this directory):
 - **`database`** — `provider: sqlite`, `db_path` relative to this YAML (anchored by `setup_environment`).
 - **`llm_defaults`** — model and timeout; use `provider: mock` or `USE_MOCK_LLM=1` for offline runs.
 - **`contracts`** — YAML contract provider (same file).
-- **`agents`** — `RefundAgent` with full `ResponsibilityContract` fields plus `mission` and `priority`.
-- **`contract.max_refund_eur`** — sample-specific DIM ceiling (also passed in handshake payload).
+- **`agents[].contract`** — canonical RefundAgent contract: identity/role in `subject`, REFUND in `authority.allowed_policy_types`, and escalation under `responsibility.escalation`.
+- **`agents[].contract.authority.limits.max_refund_eur.value`** — sample-specific DIM ceiling; the config adapter exposes this canonical value to the existing typed gate.
 - **`simulation`** — `run_id` (used as **`simulation_id`** in telemetry), `seeds`, `normal_phase_iterations`, refund amounts, emotional keywords.
 - **`monitor`** — `window_size`, `violation_rate_threshold`, `min_delay_hours_for_refund`, `suspension_reason`.
 - **`dim`** — `allowed_agents`, `context_state` for stub context gates in DIM.

@@ -50,13 +50,20 @@ agents:
   - agent_id: "fraud_guard_v1"
     priority: 10
     contract:
-      role: EXECUTOR
-      mission: >
-        You are a fraud analyst for a payment gateway. Evaluate each transaction
-        and follow the ROA JSON shapes requested in the user prompts exactly.
-      authorized_instruments: []
-      allowed_policy_types: ["ALLOW", "BLOCK", "CHALLENGE"]
-      escalate_on_uncertainty: 0.35
-      max_drawdown_limit: 0.05
-      wake_up_threshold_pct: 0.5
-      parent_agent_id: null
+        api_version: roa.dir/v1
+        kind: ResponsibilityContract
+        subject:
+          agent_id: fraud_guard_v1
+          role: EXECUTOR
+          parent_agent_id: null
+        mission: >
+          You are a fraud analyst for a payment gateway. Evaluate each transaction
+          and follow the ROA JSON shapes requested in the user prompts exactly.
+        authority:
+          allowed_policy_types: ["ALLOW", "BLOCK", "CHALLENGE"]
+        execution_conditions:
+          wake_up_threshold_pct: 0.5
+        responsibility:
+          escalation:
+            mode: conditional
+            confidence_below: 0.35

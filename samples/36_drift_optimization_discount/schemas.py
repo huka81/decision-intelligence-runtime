@@ -129,6 +129,14 @@ def merge_agent_from_agents_list(raw: Dict[str, Any]) -> Dict[str, Any]:
         "role": str(c.get("role", "EXECUTOR")),
         "allowed_policy_types": list(c.get("allowed_policy_types", ["retention_discount"])),
     }
+    limits = dict((c.get("authority") or {}).get("limits") or {})
+    if "max_discount_pct" in limits:
+        value = limits["max_discount_pct"]
+        merged["contract"] = {
+            "max_discount_pct": value.get("value", value)
+            if isinstance(value, dict)
+            else value
+        }
     return merged
 
 

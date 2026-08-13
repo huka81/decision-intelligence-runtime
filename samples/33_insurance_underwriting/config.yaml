@@ -57,17 +57,31 @@ agents:
     created_at: "2025-02-17T10:00:00Z"
     priority: 10
     contract:
-      role: EXECUTOR
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      metadata:
+        version: "1.0.0"
+        owner: "reference-sample"
+        effective_from: "2026-01-01"
+        effective_until: null
+        approved_by: null
+        created_by: "compliance@example.com"
+        created_at: "2025-02-17T10:00:00Z"
+      subject:
+        agent_id: underwriter_agent
+        role: EXECUTOR
       mission: |
         You are an insurance underwriter. Analyze the client application and propose
         a policy. Base premium on Total Insured Value (TiV) at ~2% of TiV, capped at max_tiv.
         NEVER propose for Fireworks or CryptoMining industries - these are prohibited.
         Output structured format.
-      authorized_instruments: []
-      allowed_policy_types: ["BIND", "DECLINE"]
-      escalate_on_uncertainty: 0.65
-      max_drawdown_limit: 0.05
-      wake_up_threshold_pct: 0.5
-      parent_agent_id: null
-      max_tiv: 3000000
-      prohibited_industries: ["Fireworks", "CryptoMining"]
+      authority:
+        allowed_policy_types: ["BIND", "DECLINE"]
+        limits:
+          max_tiv: { value: 3000000, unit: USD }
+        exclusions:
+          prohibited_industries: ["Fireworks", "CryptoMining"]
+      responsibility:
+        escalation:
+          mode: conditional
+          confidence_below: 0.65

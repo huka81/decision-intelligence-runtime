@@ -1,0 +1,117 @@
+# Contract Studio authoring ontology — sections, constraint layers, aggregate schema.
+# Injected into LLM prompts via compile_context_for_prompt().
+# Normative clause citations remain in packs/roa-dir-v1.yaml.
+
+sections:
+  metadata:
+    purpose: Contract identity, SemVer version, human owner, source provenance.
+    yaml_path: metadata
+    not_for: Runtime enforcement logic; placeholders are not final values.
+  subject:
+    purpose: Bound agent or agent class, canonical role, optional parent hierarchy.
+    yaml_path: subject
+    not_for: Mission text or execution limits.
+  mission:
+    purpose: Interpretive goal for Explain/Policy in User Space; not executable authority.
+    yaml_path: mission.statement
+    not_for: Hard limits, aggregate monitors, or DIM gates.
+  authority:
+    purpose: Allowed policy types, resource scope, hard transaction limits (ex-ante DIM).
+    yaml_path: authority
+    not_for: Rolling-window trajectory rules; those belong in governance.aggregate_policies.
+  execution_conditions:
+    purpose: Context age, drift envelopes, reservations, concurrency (JIT / Topology B).
+    yaml_path: execution_conditions
+    not_for: Bootstrap irreversible limits; use authority.limits.
+  responsibility:
+    purpose: Explainability, evidence level, escalation when confidence is low.
+    yaml_path: responsibility
+    not_for: Aggregate circuit breakers; confidence_below is not an aggregate policy.
+  governance:
+    purpose: Post-execution aggregate policies and Circuit Breaker responses (MONITOR).
+    yaml_path: governance.aggregate_policies
+    not_for: Single-transaction limits; use authority.limits and invariant_candidates.
+
+constraint_layers:
+  authority_limit:
+    description: Hard numerical cap on one proposed irreversible action.
+    contract_location: authority.limits
+    enforcement: DIM
+    scope: single_transaction
+    never_place_in:
+      - governance.aggregate_policies
+      - governance.aggregate_thresholds
+  transaction_invariant:
+    description: Deterministic predicate evaluated when a proposal crosses authority boundary.
+    contract_location: governance_analysis.invariant_candidates (SQLite only, not exported YAML)
+    enforcement: DIM
+    scope: single_transaction
+    never_place_in:
+      - governance.aggregate_policies
+    notes: Link via linked_limit_key to authority.limits; use predicate AST in analysis.
+  aggregate_policy:
+    description: Derived metric over a time window; changes operating mode when trajectory is unhealthy.
+    contract_location: governance.aggregate_policies
+    enforcement: MONITOR
+    scope: rolling_window
+    requires_temporal_window: true
+    forbidden_windows:
+      - 1t
+      - txn
+      - transaction
+      - per_tx
+      - single
+  escalation:
+    description: Mandatory human route when agent confidence is below threshold.
+    contract_location: responsibility.escalation
+    enforcement: User_Space
+    scope: single_decision
+    never_place_in:
+      - governance.aggregate_policies
+
+aggregate_policy_schema:
+  required_fields:
+    - policy_id
+    - metric
+    - window
+    - operator
+    - threshold
+    - unit
+    - response
+  optional_fields:
+    - statement
+  operators:
+    - gt
+    - ge
+    - lt
+    - le
+    - eq
+  responses:
+    - SUSPENDED
+    - ESCALATION_ONLY
+    - DEGRADED
+  forbidden_field_names:
+    - on_breach
+  forbidden_response_values:
+    - SUSPEND
+    - ESCALATE
+  temporal_window_examples:
+    - 24h
+    - 7d
+    - 30d
+  non_temporal_window_forbidden:
+    - 1t
+    - txn
+    - transaction
+    - per_tx
+    - single
+
+hard_rules:
+  - Do not copy authority.limits into governance.aggregate_policies or aggregate_thresholds.
+  - Do not encode transaction invariants (including INV-* ids) as aggregate policies.
+  - Do not put confidence thresholds in aggregate_policies; use responsibility.escalation.
+  - Empty governance.aggregate_policies is valid for Bootstrap v1.0.0.
+  - Do not invent aggregate thresholds without explicit user confirmation.
+  - Final contracts must not use agent_id or contract_id draft_agent.
+  - Final contracts must not use owner@example.com or empty owner.
+  - Use response SUSPENDED not SUSPEND; use operator not on_breach.

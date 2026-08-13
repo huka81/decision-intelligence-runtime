@@ -1,4 +1,4 @@
-<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-03-06 | Last updated: 2026-03-06 </sup>
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-03-06 | Last updated: 2026-08-12 </sup>
 
 ---
 
@@ -274,98 +274,100 @@ DIR is an adaptation of **Command Query Responsibility Segregation (CQRS)**:
 
 ROA defines agents not by their *capabilities* (what tools they can call) but by their *responsibilities* (what they are accountable for, what they own, what limits bind them).
 
-### 3.1 Responsibility Contract / Signed Invariant Bundle
+### 3.1 Canonical Responsibility Contract
 
-Every ROA agent is governed by a **Responsibility Contract** — a formal, machine-readable definition registered with the Agent Registry. Under the hood, this contract operates as a cryptographically **Signed Invariant Bundle**, produced through an engineering process known as **Invariant-Driven Build-Time Governance**.
+Every ROA agent or agent class is governed by a **Responsibility Contract**: the versioned, human-authored source of governance registered through a trusted CI/CD path. Agents MUST NOT self-register or alter their own contract at runtime.
 
-**Key Architectural Distinction:**
-*   **Boundary** (Where): An architectural cordon dictating what an agent can touch (e.g., event bus vs external API).
-*   **Invariant** (What): A deterministic mathematical logic check defining admissible state transitions inside that boundary.
+**Boundary vs. invariant:** A boundary defines where authority ends; an invariant is a deterministic predicate evaluated when a proposal crosses that boundary. Individual predicates are established engineering mechanisms. ROA/DIR places them outside probabilistic reasoning in a governed admissible-transition path.
 
-Contracts are loaded from a trusted source (CI/CD pipeline or signed repository) at deployment. Agents MUST NOT self-register at runtime. As AI engineers generate constraints via an LLM transpiler, human domain experts perform the **Build-Time HITL** ($O(1)$ constant time overhead) reviewing and cryptographically signing the explicit business invariants to establish the contract.
+A canonical contract is architecturally complete when it covers every governance dimension required for its decision class. It does NOT need to enumerate every possible domain rule or contain unused empty blocks.
 
-The contract is composed of three typed blocks: **Mission**, **Authority**, and **Responsibility**. Each block is a validated Pydantic sub-model — not an opaque dict.
+| Block | Machine meaning |
+|---|---|
+| `metadata` | Contract identity, version, human owner, source provenance |
+| `subject` | Bound agent or agent class, canonical role, hierarchy |
+| `mission` | Interpretive goal used in User Space; not executable authority |
+| `authority` | Allowed policy types, resource scope, hard transaction limits |
+| `execution_conditions` | Context age, drift, reservation, and concurrency requirements |
+| `responsibility` | Explainability, evidence attestations, escalation policy |
+| `governance` | Aggregate policies and Circuit Breaker responses |
 
-```python
-from pydantic import BaseModel, Field
-from typing import List, Literal, Dict
-
-class AuthoritySpec(BaseModel):
-    # What the agent is permitted to do and the hard limits on that permission.
-    # Enforced deterministically by the Decision Integrity Module (DIM) in Kernel Space.
-    authorized_instruments: List[str]
-    allowed_policy_types: List[str]
-    max_order_size_usd: float
-    max_drawdown_limit_pct: float
-
-class ResponsibilitySpec(BaseModel):
-    # Governance requirements the agent must meet.
-    # Enforced by the Evidence Governance Layer (User Space) and Post-Execution Monitors.
-    explainability: Literal["required", "optional"]
-    evidence_level: Literal["high", "medium", "low"]
-    escalation: Literal["mandatory", "conditional", "disabled"]
-    escalate_on_uncertainty: float = Field(
-        default=0.7,
-        description="Confidence threshold below which escalation is triggered"
-    )
-    aggregate_thresholds: Dict[str, float] = Field(
-        default_factory=dict,
-        description="Day-Three defense: limits for Post-Execution Monitors"
-    )
-
-class ResponsibilityContract(BaseModel):
-    agent_id: str = Field(description="Unique identifier for this agent instance")
-    role: Literal["STRATEGIST", "EXECUTOR", "MONITOR", "INTERFACE"] = Field(default="EXECUTOR")
-    version: str = Field(description="Immutable versioning for audit trails")
-    owner: str = Field(description="Named human accountable for this agent's behavior")
-
-    # 1. Mission — the agent's optimization target
-    mission: str = Field(description="The agent's optimization target or guiding principle")
-
-    # 2. Authority — deterministic boundaries enforced by DIM in Kernel Space
-    authority: AuthoritySpec
-
-    # 3. Responsibility — governance requirements enforced by Evidence Governance Layer
-    responsibility: ResponsibilitySpec
-```
-
-**Why contract as code, not constraints as prompt:** Prompts are suggestions. Code is enforcement. A prompt saying "do not exceed $10,000 exposure" can be ignored or creatively reinterpreted. A contract field `max_order_size_usd: 50000.0` validated by deterministic code cannot be bypassed.
-
-**YAML deployment format — how contracts are configured at deployment time:**
+**Canonical authoring form:**
 
 ```yaml
-# agent_contract.yaml — registered via CI/CD pipeline, NOT self-registered by agent
-agent_id: "crypto_position_manager_01"
-version: "1.2.0"
-owner: "jane.doe@example.com"          # Human accountability — who answers for this agent?
-effective_from: "2026-02-01"           # Temporal validity of this contract version
-role: "EXECUTOR"
+api_version: roa.dir/v1
+kind: ResponsibilityContract
 
-# 1. Mission — why this agent exists
-mission: "Manage crypto positions. Protect capital while seeking alpha."
+metadata:
+    contract_id: crypto_position_manager
+    version: 1.2.0
+    owner: jane.doe@example.com
+    source_refs: [RISK-POLICY-17]
 
-# 2. Authority — what the agent is permitted to do (enforced by DIM in Kernel Space)
+subject:
+    agent_id: crypto_position_manager_01
+    role: EXECUTOR
+    parent_agent_id: portfolio_strategist_01
+
+mission:
+    statement: >
+        Manage crypto positions while protecting capital and seeking
+        risk-adjusted returns.
+
 authority:
-  authorized_instruments: ["ETH-USD", "BTC-USD"]
-  allowed_policy_types: ["TAKE_PROFIT", "CLOSE_POSITION", "REDUCE_SIZE", "HOLD", "BUY", "SELL"]
-  max_order_size_usd: 50000.00
-  max_drawdown_limit_pct: 4.0
+    allowed_policy_types: [BUY, SELL, HOLD, REDUCE_SIZE, CLOSE_POSITION]
+    resource_scope:
+        instruments: [BTC-USD, ETH-USD]
+    limits:
+        max_order_size: { value: 50000, unit: USD }
+        max_daily_drawdown: { value: 4, unit: percent }
 
-# 3. Responsibility — governance requirements (enforced by Evidence Governance Layer)
+execution_conditions:
+    max_context_age_seconds: 30
+    max_price_slippage: { value: 0.5, unit: percent }
+    reservation_required: true
+
 responsibility:
-  explainability: required            # Explain stage is mandatory before Policy
-  evidence_level: high                # Both Evidence Generators required before signing
-  escalation: mandatory               # Must escalate when uncertainty threshold is crossed
-  escalate_on_uncertainty: 0.70       # Confidence < 70% triggers human escalation
-  aggregate_thresholds:
-    max_average_discount_30d: 0.10    # Post-Execution Monitor suspends agent if exceeded
+    explainability: required
+    evidence:
+        level: high
+        required_attestations: [context_snapshot, deterministic_risk_check]
+    escalation:
+        mode: mandatory
+        confidence_below: 0.70
+        route_to: portfolio_risk_owner
+
+governance:
+    aggregate_policies:
+        - metric: rolling_drawdown
+            window: 24h
+            operator: gt
+            threshold: 4
+            unit: percent
+            response: SUSPENDED
 ```
 
-Note the `owner` field: every contract MUST have a named human accountable for its behavior. This prevents "agent accountability vacuum" — the situation where no person is responsible for an agent's decisions.
+**Artifact lifecycle:**
 
-The `evidence_level` field bridges the contract to the Evidence Governance Layer (§3.4): `high` = both Evidence Generators required; `medium` = one sufficient; `low` = Self-Check only.
+```text
+Canonical Responsibility Contract
+        -> Signed Contract Release
+        -> Runtime Enforcement Projection
+```
 
-The Agent Registry also maintains the **Runtime Status** of each agent.
+- **Canonical Responsibility Contract:** human-authored source of governance.
+- **Signed Contract Release:** normalized, immutable, attributable approved version. Its signature proves integrity, provenance, and accountable approval; it does NOT prove correctness or completeness.
+- **Runtime Enforcement Projection:** minimal generated representation consumed by DIM, Evidence Governance, and Post-Execution Monitors. The DIM does NOT interpret the full authoring YAML directly.
+
+During **Build-Time HITL**, an LLM MAY synthesize candidate constraints from source documents or telemetry, but candidates have no authority. A human Contract Owner resolves material ambiguity and approves the canonical version. Deterministic tooling validates and compiles the machine-verifiable subset. Human review is amortized across decisions governed by that release; it is not constant-cost or eliminated.
+
+**Normative rules:**
+1. `metadata.owner` MUST identify the accountable human or organizational owner.
+2. `api_version` is the compatibility boundary. Incompatible semantics require a new API version.
+3. Unsupported critical fields MUST fail closed during projection compilation or registration; they MUST NOT be silently ignored.
+4. `responsibility.evidence.level` defines minimum rigor; concrete `required_attestations` remain explicit.
+5. Dynamic Registry status (`ACTIVE`, `SUSPENDED`, `DEGRADED`, `ESCALATION_ONLY`, `RETIRED`) is operational state and MUST NOT be embedded in the signed contract payload.
+6. Runtime projections and signed releases are derived artifacts, never independent sources of truth.
 
 ### 3.1.1 The Four Canonical Roles
 

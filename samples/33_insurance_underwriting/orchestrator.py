@@ -31,6 +31,11 @@ from telemetry import record_underwriting_step
 logger = logging.getLogger(__name__)
 
 
+def _contract_agent_id(contract: Dict[str, Any]) -> str:
+    """Read the agent identity from the canonical contract subject."""
+    return str((contract.get("subject") or {}).get("agent_id", ""))
+
+
 def _utc_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
@@ -78,7 +83,7 @@ def process_email_file(
     dfid = new_dfid()
     ep = config.get("email_processing", {})
     fx = {k.upper(): float(v) for k, v in ep.get("currency_fx_to_usd", {}).items()}
-    agent_id = str(contract_dict["agent_id"])
+    agent_id = _contract_agent_id(contract_dict)
 
     def _rec(
         event: str,
@@ -110,7 +115,7 @@ def process_email_file(
     context = client_application_from_fixture(fixture, fx)
 
     context_store.update_session(
-        dfid, context.model_dump(), agent_id=contract_dict["agent_id"]
+        dfid, context.model_dump(), agent_id=agent_id
     )
 
     result = EmailCaseResult(
@@ -227,7 +232,7 @@ def process_email_file(
         update={"requested_tiv_usd": facts.broker_requested_tiv_usd}
     )
     context_store.update_session(
-        dfid, context.model_dump(), agent_id=contract_dict["agent_id"]
+        dfid, context.model_dump(), agent_id=agent_id
     )
 
     detail_lim = f"tiv_usd={facts.broker_requested_tiv_usd:,.0f}"
@@ -305,7 +310,7 @@ def process_email_file(
     )
 
     result.add_step("DIM_VERIFY_AND_COMMIT", "VALIDATING", "Proof check + business rules")
-    dim_out = dim.verify_and_commit(pci, contract_dict["agent_id"])
+    dim_out = dim.verify_and_commit(pci, agent_id)
     result.dim_result = dim_out
     _rec(
         "DIM_RESULT",
@@ -383,7 +388,7 @@ def run_email_pipeline(
 
     contract = _contract_from_config(config)
     contract_dict = contract.model_dump()
-    agent_id = contract_dict["agent_id"]
+    agent_id = contract.agent_id
 
     if context_store is None:
         context_store = ContextStore(storage=bundle.context)
@@ -415,20 +420,11 @@ def run_email_pipeline(
 
 
 def _contract_from_config(config: Dict[str, Any]) -> UnderwritingContract:
-    uw = config.get("underwriting", {})
     agents = config.get("agents", [])
     agent_cfg = agents[0] if agents else {}
-    contract_cfg = agent_cfg.get("contract", {})
-    return UnderwritingContract(
-        agent_id=agent_cfg.get("agent_id", "underwriter_agent"),
-        version=agent_cfg.get("version", "1.0.0"),
-        created_by=agent_cfg.get("created_by"),
-        created_at=agent_cfg.get("created_at"),
-        mission=contract_cfg.get("mission")
-        or agent_cfg.get("mission", "Underwrite insurance policies."),
-        max_tiv=contract_cfg.get("max_tiv", uw.get("max_tiv", 2_000_000)),
-        prohibited_industries=contract_cfg.get(
-            "prohibited_industries",
-            uw.get("prohibited_industries", ["Fireworks", "CryptoMining"]),
-        ),
-    )
+    contract = dict(agent_cfg.get("contract") or {})
+    if not contract:
+        raise ValueError("agents[0].contract must define the canonical contract")
+    if "mission" not in contract and agent_cfg.get("mission"):
+        contract["mission"] = agent_cfg["mission"]
+    return UnderwritingContract.model_validate(contract)

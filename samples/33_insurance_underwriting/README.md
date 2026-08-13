@@ -8,7 +8,7 @@
 
 **Configuration:** Underwriting rules, LLM, agent contract, and **`email_processing`** (gates, paths, FX stub) live in **`config.yaml`**, same convention as `samples/31_finance_trading` and `samples/32_fraud_gate`.
 
-**Bindable TiV ceiling (`max_tiv`):** `run.py` and `orchestrator.py` build `UnderwritingContract` with `max_tiv` from **`agents[0].contract.max_tiv`**, then **`underwriting.max_tiv`**, then code default **`2_000_000`**. The committed sample uses **3,000,000** on the agent contract (see `config.yaml`).
+**Bindable TiV ceiling (`max_tiv`):** The sample reads its native canonical contract directly. The bindable ceiling is **`agents[0].contract.authority.limits.max_tiv.value`** (3,000,000 USD in the committed config). Prohibited industries come from **`agents[0].contract.authority.exclusions.prohibited_industries`**.
 
 **What `run.py` does:** bootstraps LLM and canonical `StorageBundle` via `samples.shared.bootstrap.setup_environment`, performs `AgentRegistry.handshake`, loads every matching `*.md` under `emails/`, runs the email orchestrator (SQLite under `database.db_path` + HTML report under `results/`), and opens the new report in the browser.
 
@@ -23,7 +23,7 @@ Each markdown fixture is one **DecisionFlow** with its own **DFID**, from ingest
 1. **Ingest** — `email_fixture_ingest` loads the markdown and builds a coarse `ClientApplication` (subject, body, industry hints, revenue proxy from table TiV × FX). Broker **TiV for authority** is **not** taken from these table regexes; the kernel waits for LLM extraction (`requested_tiv_usd` is filled after extraction).
 2. **Pre-agent gates** — Only configurable **`injection_patterns`** on the raw email body (default config: empty). The audit/timeline event **`KERNEL_GATES_PASSED`** means this step only; territory and `max_tiv` are **not** evaluated until after extraction (step 4).
 3. **Submission extraction (LLM)** — `BROKER_REQUESTED_TIV_USD` + `STATED_TERRITORIES`. With **MockLLM**, TiV is derived from the pipe-table row whose first cell is **Total Insurable Values** (`**Total: GBP …**` or a bold `**USD …**` amount in that row). Failure here ends as **`REJECTED` / `EXTRACTION_FAILED`**.
-4. **Post-extraction gates (deterministic)** — On **agent-extracted** territory text vs `prohibited_territories`, then **TiV vs `contract.max_tiv`**:
+4. **Post-extraction gates (deterministic)** — On **agent-extracted** territory text vs `email_processing.prohibited_territories`, then TiV vs the canonical contract's `authority.limits.max_tiv`:
    - **Both** territory and authority fail → **`CONTRACT_VIOLATION`** (`REJECTED`).
    - **Only** prohibited geography → **`PROHIBITED_TERRITORY`** (`REJECTED`).
    - **Only** TiV above `max_tiv` → **`AUTHORITY_CEILING`** (**`ESCALATED`**, not bound).
@@ -106,19 +106,30 @@ email_processing:
 
 agents:
   - agent_id: "underwriter_agent"
+    owner: "reference-sample"
     version: "1.0.0"
     priority: 10
     contract:
-      role: EXECUTOR
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      metadata:
+        version: "1.0.0"
+        owner: "reference-sample"
+        created_by: "compliance@example.com"
+      subject:
+        agent_id: underwriter_agent
+        role: EXECUTOR
       mission: "You are an insurance underwriter..."
-      authorized_instruments: []
-      allowed_policy_types: ["BIND", "DECLINE"]
-      escalate_on_uncertainty: 0.65
-      max_drawdown_limit: 0.05
-      wake_up_threshold_pct: 0.5
-      parent_agent_id: null
-      max_tiv: 3000000
-      prohibited_industries: ["Fireworks", "CryptoMining"]
+      authority:
+        allowed_policy_types: [BIND, DECLINE]
+        limits:
+          max_tiv: { value: 3000000, unit: USD }
+        exclusions:
+          prohibited_industries: [Fireworks, CryptoMining]
+      responsibility:
+        escalation:
+          mode: conditional
+          confidence_below: 0.65
 ```
 
 | Section | Purpose |
@@ -126,9 +137,9 @@ agents:
 | **database** | Canonical `StorageBundle` SQLite path (anchored to `config.yaml` directory) |
 | **simulation** | `run_id` — propagated as `simulation_id` on audit rows |
 | **contracts** | Optional — defaults to the same YAML path passed to ``setup_environment`` |
-| **underwriting** | `max_tiv`, `prohibited_industries` — defaults when building domain contract helpers |
+| **underwriting** | Sample-level underwriting inputs/defaults; the agent's binding authority comes from its canonical contract |
 | **llm_defaults** | Ollama or mock (`USE_MOCK_LLM=1`, or unreachable live LLM falls back to mock) |
-| **agents** | DIR `ResponsibilityContract` fields under `contract`, plus underwriting `max_tiv` |
+| **agents[].contract** | Native canonical Responsibility Contract read directly by Agent, Gates, DIM, Registry, and reporting |
 | **email_processing** | `emails_dir`, `currency_fx_to_usd`, `prohibited_territories`, `injection_patterns` |
 
 ### email_processing (default path)
@@ -260,7 +271,7 @@ sequenceDiagram
 
 | Component | Purpose |
 |-----------|---------|
-| **AgentRegistry** | Stores the Underwriting Policy (Responsibility Contract): delegated **`max_tiv`** (from config; **3,000,000** in the committed sample), prohibited industries from contract |
+| **AgentRegistry** | Stores the canonical Underwriting Responsibility Contract: delegated `authority.limits.max_tiv` and `authority.exclusions.prohibited_industries` |
 | **ContextStore** | Holds the Client Application state (business_type, revenue, industry) |
 | **DecisionLedger** | Append-only list storing only verified decisions |
 | **DecisionIntegrityModule (DIM)** | Proof Checker: recalculates Evidence Hash, rejects on mismatch (Zero Trust) |

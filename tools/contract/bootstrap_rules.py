@@ -33,7 +33,7 @@ def validate_bootstrap(contract: CanonicalContract, preset: str | None = None) -
     if not contract.owner.strip():
         errors.append("owner must be set (human accountability)")
 
-    if not contract.mission.strip():
+    if not contract.mission.statement.strip():
         errors.append("mission must not be empty")
 
     if contract.version != "1.0.0":

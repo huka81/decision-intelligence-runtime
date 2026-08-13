@@ -22,22 +22,28 @@ agents:
       Analyze cloud usage logs and reduce costs by shutting down idle resources,
       without disrupting production.
     contract:
-      role: EXECUTOR
-      mission: |
-        Analyze cloud usage logs and reduce costs by shutting down idle resources,
-        without disrupting production.
-      authorized_instruments: []
-      allowed_policy_types:
-        - TERMINATE
-        - STOP
-        - SCALE_DOWN
-      allowed_environments:
-        - DEV
-        - STG
-      escalate_on_uncertainty: 0.7
-      max_drawdown_limit: 0.05
-      wake_up_threshold_pct: 0.5
-      parent_agent_id: null
+        api_version: roa.dir/v1
+        kind: ResponsibilityContract
+        subject:
+          agent_id: finops_autoscaler_v1
+          role: EXECUTOR
+          parent_agent_id: null
+        mission: |
+          Analyze cloud usage logs and reduce costs by shutting down idle resources,
+          without disrupting production.
+        authority:
+          allowed_policy_types:
+            - TERMINATE
+            - STOP
+            - SCALE_DOWN
+          resource_scope:
+            environments: [DEV, STG]
+        execution_conditions:
+          wake_up_threshold_pct: 0.5
+        responsibility:
+          escalation:
+            mode: conditional
+            confidence_below: 0.7
 
 context_store:
   instances:

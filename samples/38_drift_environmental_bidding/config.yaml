@@ -46,12 +46,20 @@ agents:
     agent_version: "1.0.0"
     priority: 10
     contract:
-      role: EXECUTOR
-      mission: "Maintain top 3 ad placement for key search terms without exceeding the contract CPC ceiling."
-      authorized_instruments: []
-      allowed_policy_types:
-        - cpc_bid
-      escalate_on_uncertainty: 0.5
-      max_drawdown_limit: 2.00
-      wake_up_threshold_pct: 0.5
-      parent_agent_id: null
+        api_version: roa.dir/v1
+        kind: ResponsibilityContract
+        subject:
+          agent_id: BiddingAgent
+          role: EXECUTOR
+          parent_agent_id: null
+        mission: "Maintain top 3 ad placement for key search terms without exceeding the contract CPC ceiling."
+        authority:
+          allowed_policy_types: [cpc_bid]
+          limits:
+            max_drawdown_limit: 2.00
+        execution_conditions:
+          wake_up_threshold_pct: 0.5
+        responsibility:
+          escalation:
+            mode: conditional
+            confidence_below: 0.5

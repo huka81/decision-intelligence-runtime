@@ -66,13 +66,14 @@ def check_authority_ceiling(
 ) -> GateOutcome | None:
     if context.requested_tiv_usd is None:
         return None
-    if context.requested_tiv_usd > contract.max_tiv:
+    max_tiv = contract.max_tiv
+    if context.requested_tiv_usd > max_tiv:
         return GateOutcome(
             ok=False,
             code="AUTHORITY_CEILING",
             message=(
                 f"Broker-requested TiV {context.requested_tiv_usd:,.0f} exceeds "
-                f"delegated max_tiv {contract.max_tiv:,.0f} "
+                f"delegated max_tiv {max_tiv:,.0f} "
                 "- escalated to human."
             ),
             lifecycle_state="ESCALATED",

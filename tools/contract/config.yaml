@@ -1,0 +1,28 @@
+# Contract Studio runtime configuration.
+# Secrets (API keys) live only in tools/contract/.env — never in this file.
+#
+# LLM resolution order:
+#   1. studio.use_mock_llm: true → mock
+#   2. studio.llm_provider set → that provider (gemini|ollama|mock)
+#   3. GEMINI_API_KEY / GOOGLE_API_KEY in environment → Gemini
+#   4. Ollama reachable at llm_defaults.base_url → Ollama
+#   5. else mock (with warning)
+
+studio:
+  # SQLite path; relative paths are anchored to tools/contract/
+  db_path: data/contract_studio.db
+  # Force deterministic mock LLM (offline / demos)
+  use_mock_llm: false
+  # Optional explicit provider: gemini | ollama | mock | null (auto)
+  llm_provider: gemini
+  # When true, log full system/user prompts and raw LLM responses
+  debug: true
+
+llm_defaults:
+  # Preferred provider when auto-selecting without an API key
+  provider: ollama
+  model: gemma3:4b
+  base_url: http://localhost:11434
+  timeout: 120
+  # Model used when Gemini is selected
+  gemini_model: gemini-flash-lite-latest

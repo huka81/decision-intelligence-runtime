@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 import yaml
 
-from .flatten import inflate_flat_to_canonical
+from .flatten import flatten_canonical, inflate_flat_to_canonical
 from .presets import PRESETS
 from .schema import CanonicalContract, InterviewAnswers, IRREVERSIBLE_LIMIT_KEYS
 
@@ -98,12 +98,17 @@ def answers_from_sample(
         config = yaml.safe_load(handle) or {}
 
     flat = _extract_flat_contract(config, agent_id)
-    canonical_data = inflate_flat_to_canonical(flat)
-    canonical = CanonicalContract(**canonical_data)
-    preset = _guess_preset(sample_path, flat)
+    canonical_data = (
+        CanonicalContract.from_raw(flat).model_dump(exclude_none=True)
+        if "api_version" in flat or "metadata" in flat or "subject" in flat
+        else inflate_flat_to_canonical(flat)
+    )
+    canonical = CanonicalContract.from_raw(canonical_data)
+    runtime_flat = flatten_canonical(canonical)
+    preset = _guess_preset(sample_path, runtime_flat)
 
     preset_def = PRESETS.get(preset, PRESETS["generic"])
-    limits = _limits_from_flat(flat)
+    limits = canonical.authority.numeric_limits()
     if not limits:
         limits = dict(preset_def.suggested_limits)
 
@@ -112,15 +117,18 @@ def answers_from_sample(
         agent_id=canonical.agent_id,
         owner=canonical.owner,
         role=canonical.role,
-        mission=canonical.mission or preset_def.mission_template,
+        mission=canonical.mission.statement or preset_def.mission_template,
         allowed_policy_types=canonical.authority.allowed_policy_types
         or list(preset_def.allowed_policy_types),
         authorized_instruments=canonical.authority.authorized_instruments
         or list(preset_def.authorized_instruments),
         irreversible_limits=limits,
+        limit_units={
+            key: limit.unit for key, limit in canonical.authority.limits.items()
+        },
         explainability=canonical.responsibility.explainability,
-        evidence_level=canonical.responsibility.evidence_level,
-        escalation=canonical.responsibility.escalation,
-        escalate_on_uncertainty=canonical.responsibility.escalate_on_uncertainty,
+        evidence_level=canonical.responsibility.evidence.level,
+        escalation=canonical.responsibility.escalation.mode,
+        escalate_on_uncertainty=canonical.responsibility.escalation.confidence_below,
         version="1.0.0",
     )

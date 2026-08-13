@@ -3,6 +3,7 @@
 import tempfile
 from pathlib import Path
 
+from dir_core import RuntimeContractProjection
 from dir_core.agent_registry import AgentRegistry, HandshakeResult
 
 
@@ -67,4 +68,27 @@ def test_get_schema() -> None:
             Path(path).unlink(missing_ok=True)
         except OSError:
             pass  # Windows: file may be locked by SQLite
+
+
+def test_register_and_get_runtime_projection() -> None:
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        path = f.name
+    try:
+        reg = AgentRegistry(path)
+        projection = RuntimeContractProjection(
+            agent_id="agent_a",
+            allowed_policy_types=["HOLD"],
+        )
+        result = reg.register_projection(projection, agent_version="1.0.0")
+
+        assert result.accepted is True
+        stored = reg.get_agent_projection("agent_a")
+        assert stored is not None
+        assert stored.agent_id == "agent_a"
+        assert stored.allowed_policy_types == ["HOLD"]
+    finally:
+        try:
+            Path(path).unlink(missing_ok=True)
+        except OSError:
+            pass
 

@@ -23,12 +23,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC = _REPO_ROOT / "src"
 _SAMPLES = _REPO_ROOT / "samples"
 _SAMPLE_DIR = Path(__file__).resolve().parent
-if str(_SRC) not in sys.path:
-    sys.path.insert(0, str(_SRC))
-if str(_SAMPLES) not in sys.path:
-    sys.path.insert(0, str(_SAMPLES))
-if str(_SAMPLE_DIR) not in sys.path:
-    sys.path.insert(0, str(_SAMPLE_DIR))
+for _p in (_REPO_ROOT, _SRC, _SAMPLES, _SAMPLE_DIR):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 from dir_core import DecisionRuntime
 from shared.bootstrap import (
@@ -70,20 +67,13 @@ def registry_contract_payload(
     contracts: ContractProvider,
     agent_id: str,
 ) -> Dict[str, Any]:
-    rc = contracts.get_contract(agent_id)
-    base = rc.model_dump()
     row = next(
         (a for a in (config.get("agents") or []) if a.get("agent_id") == agent_id),
         None,
     )
-    if not row:
-        return base
-    extra = dict(row.get("contract") or {})
-    merged: Dict[str, Any] = {**base, **extra}
-    merged["agent_id"] = agent_id
-    if row.get("mission"):
-        merged["mission"] = row["mission"]
-    return merged
+    if not row or not row.get("contract"):
+        raise ValueError(f"Canonical contract for {agent_id} is missing")
+    return dict(row["contract"])
 
 
 def _new_report_path(sample_dir: Path, slug: str = "emails") -> Path:
@@ -181,9 +171,9 @@ def main() -> None:
         )
         logger.info(
             "Contract loaded: version=%s, created_by=%s, created_at=%s",
-            contract.version,
-            contract.created_by or "—",
-            contract.created_at or "—",
+            contract.metadata.get("version", "—"),
+            contract.metadata.get("created_by", "—"),
+            contract.metadata.get("created_at", "—"),
         )
 
         logger.info("=" * 70)
@@ -253,23 +243,10 @@ def main() -> None:
 
 
 def _contract_dict_for_report(config: Dict[str, Any]) -> Dict[str, Any]:
-    uw = config.get("underwriting", {})
     agents = config.get("agents", [])
     agent_cfg = agents[0] if agents else {}
     contract_cfg = agent_cfg.get("contract", {})
-    return {
-        "agent_id": agent_cfg.get("agent_id", "underwriter_agent"),
-        "version": agent_cfg.get("version", "1.0.0"),
-        "created_by": agent_cfg.get("created_by"),
-        "created_at": agent_cfg.get("created_at"),
-        "mission": contract_cfg.get("mission")
-        or agent_cfg.get("mission", "Underwrite insurance policies."),
-        "max_tiv": contract_cfg.get("max_tiv", uw.get("max_tiv", 2_000_000)),
-        "prohibited_industries": contract_cfg.get(
-            "prohibited_industries",
-            uw.get("prohibited_industries", ["Fireworks", "CryptoMining"]),
-        ),
-    }
+    return dict(contract_cfg)
 
 
 if __name__ == "__main__":

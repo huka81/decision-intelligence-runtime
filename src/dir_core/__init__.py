@@ -80,6 +80,8 @@ from .models import (
     PolicyProposal,
     ProofCarryingIntent,
     CompensationAction,
+    ContractReleaseRef,
+    RuntimeContractProjection,
     ResponsibilityContract,
     SelfCheckResult,
 )
@@ -90,6 +92,7 @@ from .pci import (
     hash_content,
     proposal_params_for_hash,
 )
+from .contract_projection import project_contract
 from .wakeup import (
     WakeupPredicate,
     is_relevant_instrument,
@@ -214,6 +217,9 @@ __all__ = [
     "verify_drift",
     # Core models
     "ResponsibilityContract",
+    "ContractReleaseRef",
+    "RuntimeContractProjection",
+    "project_contract",
     "PolicyProposal",
     "ExecutionIntent",
     # ROA Lifecycle models

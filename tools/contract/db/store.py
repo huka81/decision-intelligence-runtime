@@ -68,6 +68,28 @@ class ExportRow:
     created_at: str
 
 
+@dataclass
+class GovernanceSnapshotRow:
+    id: str
+    session_id: str
+    pack_id: str
+    pack_version: str
+    context_json: str
+    context_hash: str
+    created_at: str
+
+
+@dataclass
+class GovernanceAssessmentRow:
+    id: str
+    revision_id: str
+    analysis_json: Optional[str]
+    report_json: str
+    warnings_json: str
+    llm_response_json: Optional[str]
+    created_at: str
+
+
 class ContractStudioStore:
     """Persistence layer for Contract Studio."""
 
@@ -87,6 +109,43 @@ class ContractStudioStore:
         with self._connect() as conn:
             conn.executescript(ddl)
             conn.commit()
+        self._migrate_schema()
+
+    def _migrate_schema(self) -> None:
+        """Apply additive migrations for existing Studio databases."""
+        with self._connect() as conn:
+            tables = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }
+            if "governance_context_snapshots" not in tables:
+                conn.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS governance_context_snapshots (
+                      id           TEXT PRIMARY KEY,
+                      session_id   TEXT NOT NULL UNIQUE REFERENCES contract_sessions(id) ON DELETE CASCADE,
+                      pack_id      TEXT NOT NULL,
+                      pack_version TEXT NOT NULL,
+                      context_json TEXT NOT NULL CHECK (json_valid(context_json)),
+                      context_hash TEXT NOT NULL,
+                      created_at   TEXT NOT NULL
+                    );
+                    CREATE TABLE IF NOT EXISTS revision_governance_assessments (
+                      id                TEXT PRIMARY KEY,
+                      revision_id       TEXT NOT NULL UNIQUE REFERENCES contract_revisions(id) ON DELETE CASCADE,
+                      analysis_json     TEXT CHECK (analysis_json IS NULL OR json_valid(analysis_json)),
+                      report_json       TEXT NOT NULL CHECK (json_valid(report_json)),
+                      warnings_json     TEXT NOT NULL CHECK (json_valid(warnings_json)),
+                      llm_response_json TEXT CHECK (llm_response_json IS NULL OR json_valid(llm_response_json)),
+                      created_at        TEXT NOT NULL
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_governance_session ON governance_context_snapshots(session_id);
+                    CREATE INDEX IF NOT EXISTS idx_assessment_revision ON revision_governance_assessments(revision_id);
+                    """
+                )
+                conn.commit()
 
     def create_session(
         self,
@@ -222,6 +281,7 @@ class ContractStudioStore:
         validation_errors: Optional[List[str]] = None,
         source_message_id: Optional[str] = None,
         change_summary: Optional[str] = None,
+        governance_assessment: Optional[Dict[str, Any]] = None,
     ) -> RevisionRow:
         revision_id = _new_id()
         revision_no = self.next_revision_no(session_id)
@@ -249,6 +309,13 @@ class ContractStudioStore:
                     now,
                 ),
             )
+            if governance_assessment is not None:
+                self._insert_assessment_conn(
+                    conn,
+                    revision_id=revision_id,
+                    assessment=governance_assessment,
+                    created_at=now,
+                )
             conn.execute(
                 """
                 UPDATE contract_sessions
@@ -259,6 +326,116 @@ class ContractStudioStore:
             )
             conn.commit()
         return self.get_revision(revision_id)
+
+    def _insert_assessment_conn(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        revision_id: str,
+        assessment: Dict[str, Any],
+        created_at: str,
+    ) -> None:
+        assessment_id = _new_id()
+        conn.execute(
+            """
+            INSERT INTO revision_governance_assessments
+              (id, revision_id, analysis_json, report_json, warnings_json,
+               llm_response_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                assessment_id,
+                revision_id,
+                json.dumps(assessment.get("analysis")) if assessment.get("analysis") else None,
+                json.dumps(assessment.get("report", {})),
+                json.dumps(assessment.get("warnings", [])),
+                json.dumps(assessment.get("llm_response")) if assessment.get("llm_response") else None,
+                created_at,
+            ),
+        )
+
+    def ensure_governance_snapshot(
+        self,
+        session_id: str,
+        context_snapshot: Dict[str, Any],
+    ) -> GovernanceSnapshotRow:
+        existing = self.get_governance_snapshot(session_id)
+        if existing is not None:
+            return existing
+        snapshot_id = _new_id()
+        now = _utcnow()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO governance_context_snapshots
+                  (id, session_id, pack_id, pack_version, context_json, context_hash, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    snapshot_id,
+                    session_id,
+                    context_snapshot.get("pack_id", "roa-dir-v1"),
+                    context_snapshot.get("pack_version", "1.0.0"),
+                    json.dumps(context_snapshot),
+                    context_snapshot.get("context_hash", ""),
+                    now,
+                ),
+            )
+            conn.commit()
+        return self.get_governance_snapshot(session_id) or GovernanceSnapshotRow(
+            id=snapshot_id,
+            session_id=session_id,
+            pack_id=context_snapshot.get("pack_id", "roa-dir-v1"),
+            pack_version=context_snapshot.get("pack_version", "1.0.0"),
+            context_json=json.dumps(context_snapshot),
+            context_hash=context_snapshot.get("context_hash", ""),
+            created_at=now,
+        )
+
+    def get_governance_snapshot(self, session_id: str) -> Optional[GovernanceSnapshotRow]:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM governance_context_snapshots WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return GovernanceSnapshotRow(
+            id=row["id"],
+            session_id=row["session_id"],
+            pack_id=row["pack_id"],
+            pack_version=row["pack_version"],
+            context_json=row["context_json"],
+            context_hash=row["context_hash"],
+            created_at=row["created_at"],
+        )
+
+    def get_governance_assessment(self, revision_id: str) -> Optional[GovernanceAssessmentRow]:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM revision_governance_assessments WHERE revision_id = ?",
+                (revision_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return GovernanceAssessmentRow(
+            id=row["id"],
+            revision_id=row["revision_id"],
+            analysis_json=row["analysis_json"],
+            report_json=row["report_json"],
+            warnings_json=row["warnings_json"],
+            llm_response_json=row["llm_response_json"],
+            created_at=row["created_at"],
+        )
+
+    def assessment_warnings(self, assessment: GovernanceAssessmentRow) -> List[str]:
+        if not assessment.warnings_json:
+            return []
+        try:
+            parsed = json.loads(assessment.warnings_json)
+            return list(parsed) if isinstance(parsed, list) else []
+        except json.JSONDecodeError:
+            return [assessment.warnings_json]
 
     def get_revision(self, revision_id: str) -> RevisionRow:
         with self._connect() as conn:

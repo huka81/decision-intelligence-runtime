@@ -17,20 +17,26 @@ agents:
     mission: "Resolve customer complaints about delayed shipping; issue refunds only when delay exceeds policy."
     priority: 0
     contract:
-      role: EXECUTOR
-      authorized_instruments: []
-      allowed_policy_types:
-        - REFUND
-      escalate_on_uncertainty: 0.7
-      max_drawdown_limit: 0.05
-      wake_up_threshold_pct: 0.5
-      parent_agent_id: null
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      subject:
+        agent_id: RefundAgent
+        role: EXECUTOR
+        parent_agent_id: null
+      mission: "Resolve customer complaints about delayed shipping; issue refunds only when delay exceeds policy."
+      authority:
+        allowed_policy_types: [REFUND]
+        limits:
+          max_refund_eur: { value: 50.0, unit: EUR }
+      execution_conditions:
+        wake_up_threshold_pct: 0.5
+      responsibility:
+        escalation:
+          mode: conditional
+          confidence_below: 0.7
 
 paths:
   inputs_file: data/support_tickets.json
-
-contract:
-  max_refund_eur: 50.0
 
 simulation:
   run_id: run_37_semantic_refund_01

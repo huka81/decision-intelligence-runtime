@@ -171,12 +171,15 @@ Simulation id: `run_39_evidence_governance_01` (`config.yaml` → `simulation.ru
 
 | Block | Purpose |
 | :--- | :--- |
+| `agents[].contract` | Canonical subject, mission, PLN card scope, allowed policies, wake-up condition, and escalation threshold |
 | `credit_limit_gate.max_limit_pln` | DIM hard ceiling (10 000 PLN) |
 | `credit_limit_gate.min_income_to_limit_ratio` | High-risk threshold for Layer 3 monitor |
 | `evidence_governance.income_patterns` | Tier 1 chat parsing hints |
 | `semantic_alignment` | Proxy-gaming phrases; global `strict_blocking` default |
 | `approval_monitor` | Window size (10) and drift threshold (35%) |
 | `drift_batch` | Iteration count, phase 1/2 income and limits, social-engineering phrase |
+
+`credit_limit_gate`, `evidence_governance`, `semantic_alignment`, `approval_monitor`, and `drift_batch` are sample-level pipeline configuration. They are intentionally not duplicated inside the Responsibility Contract.
 
 Per-scenario overrides in `scenarios.yaml`: `enable_heuristic`, `enable_reconstruction`, `tamper_pci`, `strict_alignment`, `skip_evidence_governance`.
 

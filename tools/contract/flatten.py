@@ -30,48 +30,27 @@ def flatten_canonical(contract: CanonicalContract | Dict[str, Any]) -> Dict[str,
     Convention: canonical ``max_drawdown_limit_pct`` uses percent points (e.g. 4.0 = 4%);
     dir_core ``max_drawdown_limit`` uses a fraction (e.g. 0.04).
     """
-    if isinstance(contract, CanonicalContract):
-        data = contract.model_dump()
-    else:
-        data = dict(contract)
-
-    authority = dict(data.get("authority") or {})
-    responsibility = dict(data.get("responsibility") or {})
+    canonical = (
+        contract
+        if isinstance(contract, CanonicalContract)
+        else CanonicalContract.from_raw(contract)
+    )
+    authority = canonical.authority
 
     flat: Dict[str, Any] = {
-        "agent_id": data["agent_id"],
-        "role": _map_role_for_dir_core(data.get("role", "EXECUTOR")),
-        "mission": data.get("mission", ""),
-        "authorized_instruments": list(authority.get("authorized_instruments") or []),
-        "allowed_policy_types": list(authority.get("allowed_policy_types") or []),
-        "escalate_on_uncertainty": float(
-            responsibility.get("escalate_on_uncertainty", 0.7)
-        ),
+        "agent_id": canonical.subject.agent_id,
+        "role": _map_role_for_dir_core(canonical.subject.role),
+        "mission": canonical.mission.statement,
+        "authorized_instruments": list(authority.authorized_instruments),
+        "allowed_policy_types": list(authority.allowed_policy_types),
+        "escalate_on_uncertainty": canonical.responsibility.escalation.confidence_below,
     }
 
-    drawdown = authority.get("max_drawdown_limit_pct")
+    drawdown = authority.limits.get("max_drawdown_limit_pct")
     if drawdown is not None:
-        flat["max_drawdown_limit"] = _normalize_drawdown_fraction(float(drawdown))
+        flat["max_drawdown_limit"] = _normalize_drawdown_fraction(drawdown.value)
 
-    permissions: Dict[str, float] = {}
-    for key in IRREVERSIBLE_LIMIT_KEYS:
-        value = authority.get(key)
-        if isinstance(value, (int, float)) and value > 0:
-            permissions[key] = float(value)
-
-    extra_authority = {
-        k: v
-        for k, v in authority.items()
-        if k not in {
-            "authorized_instruments",
-            "allowed_policy_types",
-            "max_drawdown_limit_pct",
-            *IRREVERSIBLE_LIMIT_KEYS,
-        }
-        and isinstance(v, (int, float))
-        and v > 0
-    }
-    permissions.update({k: float(v) for k, v in extra_authority.items()})
+    permissions = authority.numeric_limits()
 
     if permissions:
         flat["permissions"] = permissions
@@ -86,11 +65,7 @@ def flatten_contract_dict(contract_dict: Dict[str, Any]) -> Dict[str, Any]:
     """
     if "authority" not in contract_dict:
         return dict(contract_dict)
-
-    nested = dict(contract_dict)
-    if "agent_id" not in nested and "agent_id" in contract_dict:
-        nested["agent_id"] = contract_dict["agent_id"]
-    return flatten_canonical(nested)
+    return flatten_canonical(contract_dict)
 
 
 def inflate_flat_to_canonical(flat: Dict[str, Any]) -> Dict[str, Any]:
@@ -114,7 +89,7 @@ def inflate_flat_to_canonical(flat: Dict[str, Any]) -> Dict[str, Any]:
             fraction * 100.0 if fraction <= 1.0 else fraction
         )
 
-    return {
+    legacy = {
         "agent_id": flat.get("agent_id", "unknown_agent"),
         "version": flat.get("version", "1.0.0"),
         "owner": flat.get("owner", "owner@example.com"),
@@ -129,3 +104,4 @@ def inflate_flat_to_canonical(flat: Dict[str, Any]) -> Dict[str, Any]:
             "aggregate_thresholds": dict(flat.get("aggregate_thresholds") or {}),
         },
     }
+    return CanonicalContract.from_raw(legacy).model_dump(exclude_none=True)

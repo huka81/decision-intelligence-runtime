@@ -176,7 +176,7 @@ Annotated excerpts (full files are `config.yaml` and `scenarios.yaml` next to `r
 - **`simulation.run_id`** — becomes `simulation_id` on every audit row so runs are groupable in SQL.
 - **`llm_defaults`** — Ollama or Gemini defaults; mock is driven by `USE_MOCK_LLM=1` or `provider: mock`.
 - **`contracts.provider: yaml`** — contracts load from the same `config.yaml` (`agents` list).
-- **`agents[].contract`** — canonical `ResponsibilityContract` including `allowed_policy_types: [ALLOW, BLOCK, CHALLENGE]` and `escalate_on_uncertainty` for the Self-Check stage.
+- **`agents[].contract`** — canonical Responsibility Contract: `authority.allowed_policy_types: [ALLOW, BLOCK, CHALLENGE]`, identity/role in `subject`, wake-up in `execution_conditions`, and Self-Check threshold in `responsibility.escalation.confidence_below`.
 - **`jit_validator.global_max_limit`** — hard cap passed into DIM as `global_max_limit` in the validation context.
 - **`fraud_gate.fallback_rules`** — shared thresholds for deterministic fallback parsing and for `mocks/llm_mock_strategy.py` (`make_mock_strategy`) when the mock client is active.
 

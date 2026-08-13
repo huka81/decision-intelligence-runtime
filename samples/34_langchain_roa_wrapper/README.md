@@ -115,7 +115,7 @@ config:
 flowchart TB
     subgraph CFG["config.yaml"]
         LLMCFG["`llm_defaults<br/>gemma3:4b @ localhost:11434`"]
-        CONTRACT["`agent.contract - FinOpsContract<br/>allowed_environments: [DEV, STG]<br/>allowed_policy_types`"]
+        CONTRACT["`agents[].contract - ResponsibilityContract<br/>authority.resource_scope.environments: [DEV, STG]<br/>authority.allowed_policy_types`"]
         CTXSTORE["`context_store.instances<br/>i-prod-api-01: PROD, 72h<br/>i-dev-worker-03: DEV, 48h`"]
     end
 
@@ -270,8 +270,9 @@ Analyze cloud usage logs and reduce costs by shutting down idle resources, witho
 
 | Field | Description |
 |-------|-------------|
-| `allowed_environments` | Instance environments agent may propose actions on (DEV, STG; PROD prohibited) |
-| `allowed_policy_types` | Actions agent may propose (TERMINATE, STOP, SCALE_DOWN) |
+| `authority.resource_scope.environments` | Instance environments agent may propose actions on (DEV, STG; PROD prohibited) |
+| `authority.allowed_policy_types` | Actions agent may propose (TERMINATE, STOP, SCALE_DOWN) |
+| `responsibility.escalation.confidence_below` | Confidence below which the wrapper does not emit an executable proposal |
 
 ### Context Store (config.yaml)
 
@@ -403,13 +404,21 @@ llm_defaults:
   base_url: "http://localhost:11434"
   temperature: 0.2
 
-agent:
-  agent_id: "finops_autoscaler_v1"
-  mission: "Analyze cloud usage logs and reduce costs..."
-  contract:
-    role: EXECUTOR
-    allowed_environments: [DEV, STG]
-    allowed_policy_types: [TERMINATE, STOP, SCALE_DOWN]
+agents:
+  - agent_id: "finops_autoscaler_v1"
+    priority: 10
+    mission: "Analyze cloud usage logs and reduce costs..."
+    contract:
+      api_version: roa.dir/v1
+      kind: ResponsibilityContract
+      subject: { agent_id: finops_autoscaler_v1, role: EXECUTOR }
+      mission: "Analyze cloud usage logs and reduce costs..."
+      authority:
+        allowed_policy_types: [TERMINATE, STOP, SCALE_DOWN]
+        resource_scope: { environments: [DEV, STG] }
+      execution_conditions: { wake_up_threshold_pct: 0.5 }
+      responsibility:
+        escalation: { mode: conditional, confidence_below: 0.7 }
 
 context_store:
   instances:
@@ -442,7 +451,7 @@ scenarios:
 | Section | Purpose |
 |---------|---------|
 | `llm_defaults` | LLM model and Ollama endpoint |
-| `agent.contract` | Responsibility Contract: allowed_environments, allowed_policy_types |
+| `agents[].contract` | Canonical Responsibility Contract: environment scope and policy types under `authority`, escalation under `responsibility` |
 | `context_store` | Authoritative instance data (source of truth for DIM, invisible to agent) |
 | `scenarios.yaml` | Test cases: `context.idle_resources`, `expected` verdict |
 

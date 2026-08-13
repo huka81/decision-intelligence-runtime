@@ -87,7 +87,7 @@ def verify_contract_yaml(
         contract = CanonicalContract.from_raw(data)
         checks["schema"] = {
             "ok": True,
-            "detail": f"CanonicalContract valid for agent_id={contract.agent_id}",
+            "detail": f"CanonicalContract valid for agent_id={contract.subject.agent_id}",
         }
     except Exception as exc:
         checks["schema"] = {"ok": False, "detail": str(exc)}
@@ -146,10 +146,10 @@ def verify_contract_yaml(
         "checks": checks,
         "errors": errors,
         "contract": {
-            "agent_id": contract.agent_id,
-            "version": contract.version,
-            "owner": contract.owner,
-            "role": contract.role,
+            "agent_id": contract.subject.agent_id,
+            "version": contract.metadata.version,
+            "owner": contract.metadata.owner,
+            "role": contract.subject.role,
         },
         "sha256": digest,
     }

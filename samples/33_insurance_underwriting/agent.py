@@ -20,7 +20,12 @@ from dir_core.pci import compute_evidence_hash, hash_content
 from dir_core.utils.llm_client import LLMClient
 
 from kernel import intent_subset_for_evidence_hash
-from schemas import ClientApplication, EmailSubmissionExtraction, PolicyProposal
+from schemas import (
+    ClientApplication,
+    EmailSubmissionExtraction,
+    PolicyProposal,
+    UnderwritingContract,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +172,13 @@ class ROAUnderwriterAgent:
         self.llm = llm
         self.agent_id = agent_id
 
+    def _contract(self) -> UnderwritingContract:
+        """Read the canonical agent contract from the Registry."""
+        contract = self.registry.get_agent_contract(self.agent_id)
+        if not contract:
+            raise ValueError(f"Contract for {self.agent_id} not found")
+        return UnderwritingContract.model_validate(contract)
+
     def extract_submission_facts(
         self,
         dfid: str,
@@ -204,8 +216,7 @@ class ROAUnderwriterAgent:
         return _parse_submission_facts_extraction(response)
 
     def explain(self, dfid: str, context: ClientApplication) -> Dict[str, Any]:
-        contract = self.registry.get_agent_contract(self.agent_id) or {}
-        mission = contract.get("mission", "")
+        mission = self._contract().mission
 
         system = (
             f"Mission: {mission}\n"
@@ -234,10 +245,10 @@ class ROAUnderwriterAgent:
     def formulate_policy(
         self, dfid: str, explain_result: Dict[str, Any], context: ClientApplication
     ) -> PolicyProposal:
-        contract = self.registry.get_agent_contract(self.agent_id) or {}
-        mission = contract.get("mission", "")
-        max_tiv = contract.get("max_tiv", 0)
-        prohibited = contract.get("prohibited_industries", [])
+        contract = self._contract()
+        mission = contract.mission
+        max_tiv = contract.max_tiv
+        prohibited = contract.prohibited_industries
 
         system = (
             f"Mission: {mission}\n"
@@ -265,9 +276,9 @@ class ROAUnderwriterAgent:
         return _parse_policy(response, context, max_tiv)
 
     def self_check(self, proposal: PolicyProposal) -> tuple[bool, Optional[str]]:
-        contract = self.registry.get_agent_contract(self.agent_id) or {}
-        max_tiv = contract.get("max_tiv", 0)
-        prohibited = contract.get("prohibited_industries", [])
+        contract = self._contract()
+        max_tiv = contract.max_tiv
+        prohibited = contract.prohibited_industries
 
         prohibited_lower = {x.strip().lower() for x in prohibited}
         if proposal.industry.strip().lower() in prohibited_lower:

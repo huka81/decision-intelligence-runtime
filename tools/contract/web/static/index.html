@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Contract Studio</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=__ASSET_VERSION__" />
 </head>
 <body>
   <header class="topbar">
@@ -51,13 +51,29 @@
         <h2>Contract YAML</h2>
         <span id="statusBadge" class="badge badge-draft">drafting</span>
         <span id="integrityBadge" class="badge badge-integrity-unknown" hidden>integrity</span>
+        <span id="dirtyBadge" class="badge badge-dirty" hidden>unsaved edits</span>
+        <div class="yaml-actions" id="yamlActions" hidden>
+          <button type="button" id="revertBtn" title="Discard manual edits">Revert</button>
+          <button type="button" id="saveBtn" class="primary" title="Save and validate (Ctrl+S)">Save</button>
+        </div>
       </div>
       <div id="integrityPanel" class="integrity-panel" hidden></div>
+      <div id="governancePanel" class="governance-panel" hidden>
+        <h3>Governance analysis</h3>
+        <div id="governanceContent"></div>
+      </div>
       <ul id="validationList" class="validation-list"></ul>
-      <pre id="yamlPreview" class="yaml-preview"># Start a session and chat to build your contract.</pre>
+      <ul id="warningList" class="warning-list"></ul>
+      <textarea
+        id="yamlEditor"
+        class="yaml-editor"
+        spellcheck="false"
+        autocomplete="off"
+        aria-label="Editable contract YAML"
+      ># Start a session and chat to build your contract.</textarea>
     </section>
   </main>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=__ASSET_VERSION__"></script>
 </body>
 </html>

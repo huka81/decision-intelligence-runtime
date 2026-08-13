@@ -177,6 +177,26 @@ button:disabled {
   font-weight: 600;
 }
 
+.yaml-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.yaml-actions[hidden] {
+  display: none;
+}
+
+.yaml-actions button {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+.yaml-actions button.primary:not(:disabled) {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
 .badge {
   font-size: 0.75rem;
   padding: 0.2rem 0.55rem;
@@ -208,6 +228,15 @@ button:disabled {
 .badge-integrity-fail {
   background: rgba(240, 113, 120, 0.15);
   color: var(--err);
+}
+
+.badge-dirty {
+  background: rgba(240, 180, 41, 0.18);
+  color: var(--warn);
+}
+
+.badge-dirty[hidden] {
+  display: none;
 }
 
 .badge-integrity-unknown {
@@ -268,21 +297,76 @@ button:disabled {
   display: none;
 }
 
+.warning-list {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  list-style: none;
+  font-size: 0.85rem;
+  color: var(--warn);
+}
+
+.warning-list:empty {
+  display: none;
+}
+
 .validation-list li {
   padding: 0.15rem 0;
 }
 
-.yaml-preview {
+.governance-panel {
+  margin: 0;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+  background: rgba(26, 35, 50, 0.5);
+}
+
+.governance-panel[hidden] {
+  display: none;
+}
+
+.governance-panel h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.governance-panel .gov-section {
+  margin: 0.35rem 0;
+}
+
+.governance-panel .gov-label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.governance-panel ul {
+  margin: 0.2rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.yaml-editor {
   flex: 1;
   margin: 0;
   padding: 1rem;
   overflow: auto;
+  resize: none;
+  tab-size: 2;
+  white-space: pre;
   font-family: var(--font-mono);
   font-size: 0.82rem;
   line-height: 1.5;
   background: #0b1018;
   color: #c8d4e8;
+  border: none;
   border-top: 1px solid var(--border);
+}
+
+.yaml-editor:focus {
+  outline: none;
+  box-shadow: inset 0 1px 0 var(--accent);
 }
 
 @media (max-width: 900px) {

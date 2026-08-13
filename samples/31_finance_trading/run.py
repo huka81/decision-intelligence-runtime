@@ -32,12 +32,12 @@ import __init__  # noqa: F401 - loads .env via package __init__.py
 from dir_core import (
     DecisionRuntime,
     PolicyProposal,
-    ResponsibilityContract,
     create_event_bus,
 )
 from dir_core.utils.logging_utils import log_with_dfid
 from shared.bootstrap import database_connection_summary, setup_environment
 from shared.config import load_yaml_config
+from contracts import FinanceContract
 
 try:
     from .dir_kernel_wiring import (
@@ -113,8 +113,7 @@ def build_agents(
         agent_type = agent_cfg.get("type")
         agent_id = agent_cfg.get("agent_id", "")
         
-        # Load contract using ContractProvider instead of raw config
-        contract = contracts_provider.get_contract(agent_id)
+        contract = FinanceContract.from_raw(agent_cfg.get("contract") or {})
 
         if agent_type == "instrument":
             scope = agent_cfg.get("scope")
@@ -276,9 +275,14 @@ def main() -> None:
                         if not isinstance(entry_price_val, (int, float)):
                             entry_price_val = 1000.0
                         # Get max_exposure from position_template config
-                        max_exposure = 10000.0
-                        if position_template:
-                            max_exposure = position_template.get("contract", {}).get("max_exposure", 10000.0)
+                        position_contract = FinanceContract.from_raw(
+                            position_template.get("contract") or {}
+                        ) if position_template else None
+                        max_exposure = (
+                            position_contract.max_exposure
+                            if position_contract
+                            else 10000.0
+                        )
                         quantity = max_exposure / entry_price_val if entry_price_val > 0 else 0.0
                         agent = orch.spawn_position_agent(
                             winner.params.get("instrument", scope),
@@ -435,9 +439,14 @@ def main() -> None:
                         affected = news_winner.params.get("instruments_affected", [])
                         headline = news_winner.params.get("headline", "")
                         # Get max_exposure from position_template config
-                        max_exposure = 10000.0
-                        if position_template:
-                            max_exposure = position_template.get("contract", {}).get("max_exposure", 10000.0)
+                        position_contract = FinanceContract.from_raw(
+                            position_template.get("contract") or {}
+                        ) if position_template else None
+                        max_exposure = (
+                            position_contract.max_exposure
+                            if position_contract
+                            else 10000.0
+                        )
                         for inst in affected[:1]:  # Spawn one position per news
                             entry_price_raw = last_prices.get(inst) or initial_prices.get(inst) or 1000.0
                             entry_price = float(entry_price_raw)
