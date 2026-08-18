@@ -318,6 +318,8 @@ llm_defaults:
   model: gemma3:4b
   base_url: http://localhost:11434
   timeout: 120
+  max_output_tokens: 8192  # raise if governance_analysis JSON is truncated
+  json_mode: true            # Gemini: force application/json responses
   gemini_model: gemini-flash-lite-latest
 ```
 

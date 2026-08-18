@@ -24,5 +24,7 @@ llm_defaults:
   model: gemma3:4b
   base_url: http://localhost:11434
   timeout: 120
+  max_output_tokens: 8192
+  json_mode: true
   # Model used when Gemini is selected
   gemini_model: gemini-flash-lite-latest

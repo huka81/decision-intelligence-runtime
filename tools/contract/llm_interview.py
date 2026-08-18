@@ -152,6 +152,8 @@ Respond with ONLY valid JSON (no markdown fences) matching this schema:
 }}
 
 contract_patch may update canonical nested fields only. governance_analysis is required on every turn.
+Return compact minified JSON (no markdown fences). Omit empty assumptions/ambiguities arrays.
+Limit invariant_candidates to 6 items per turn unless the user explicitly requests more.
 """
 
 
@@ -194,7 +196,49 @@ def _extract_json(text: str) -> Dict[str, Any]:
     fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
     if fence:
         text = fence.group(1).strip()
-    return json.loads(text)
+    return _parse_json_object(text)
+
+
+def _parse_json_object(text: str) -> Dict[str, Any]:
+    """Parse LLM JSON; attempt brace repair when the model truncates mid-object."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as first_exc:
+        repaired = _close_truncated_json(text)
+        if repaired != text:
+            try:
+                return json.loads(repaired)
+            except json.JSONDecodeError:
+                pass
+        raise first_exc
+
+
+def _close_truncated_json(text: str) -> str:
+    """
+    Close unbalanced brackets/braces after a truncated model response.
+
+    Strips trailing partial key/value fragments that often appear when output
+    hits max_output_tokens mid-stream.
+    """
+    trimmed = text.rstrip()
+    trimmed = re.sub(r',\s*"[^"]*"\s*:\s*$', "", trimmed)
+    trimmed = re.sub(r',\s*"[^"]*"\s*:\s*"[^"]*$', "", trimmed)
+    trimmed = re.sub(r',\s*$', "", trimmed)
+
+    open_braces = trimmed.count("{") - trimmed.count("}")
+    open_brackets = trimmed.count("[") - trimmed.count("]")
+    if open_braces <= 0 and open_brackets <= 0:
+        return trimmed
+    return trimmed + ("]" * max(open_brackets, 0)) + ("}" * max(open_braces, 0))
+
+
+def _json_response_likely_truncated(raw: str, exc: Exception) -> bool:
+    text = raw.strip()
+    if not text.endswith("}") and not text.endswith("]"):
+        return True
+    if isinstance(exc, json.JSONDecodeError):
+        return "char" in str(exc).lower() or exc.pos is not None and exc.pos > len(text) * 0.85
+    return False
 
 
 def parse_llm_response(raw: str) -> LLMContractResponse:
@@ -291,19 +335,33 @@ def process_chat_turn(
     raw = llm.generate(prompt, system=system)
     last_error: Optional[Exception] = None
     parsed: Optional[LLMContractResponse] = None
-    for attempt in range(2):
+    for attempt in range(3):
         try:
             parsed = parse_llm_response(raw)
             break
         except (json.JSONDecodeError, ValidationError, ValueError) as exc:
             last_error = exc
-            if attempt == 0:
-                retry_prompt = (
-                    f"{prompt}\n\n"
-                    f"Your previous response was invalid: {exc}\n"
-                    "Reply with ONLY a JSON object matching LLMContractResponse schema."
+            truncated = _json_response_likely_truncated(raw, exc)
+            if attempt >= 2:
+                break
+            compact_hint = (
+                "Return ONLY compact minified JSON (no markdown). "
+                "Limit invariant_candidates to 6 entries. "
+                "Omit empty assumptions/ambiguities arrays. "
+                "Keep source_bindings to one clause per item."
+            )
+            if truncated:
+                compact_hint = (
+                    "Your previous JSON was truncated (output too long). "
+                    + compact_hint
                 )
-                raw = llm.generate(retry_prompt, system=system)
+            retry_prompt = (
+                f"{prompt}\n\n"
+                f"Your previous response was invalid: {exc}\n"
+                f"{compact_hint}\n"
+                "Reply with ONLY a JSON object matching LLMContractResponse schema."
+            )
+            raw = llm.generate(retry_prompt, system=system)
     if parsed is None:
         raise ValueError(f"LLM returned invalid JSON: {last_error}") from last_error
 
