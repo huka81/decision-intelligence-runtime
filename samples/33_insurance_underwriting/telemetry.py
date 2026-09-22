@@ -19,7 +19,7 @@ def _governance_agents(config: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]
         return []
     rows: List[Dict[str, Any]] = []
     for a in config.get("agents") or []:
-        c = a.get("contract") or {}
+        subject = (a.get("contract") or {}).get("subject") or {}
         rows.append(
             {
                 "agent_id": a.get("agent_id"),
@@ -28,7 +28,7 @@ def _governance_agents(config: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]
                 "effective_from": a.get("effective_from"),
                 "effective_until": a.get("effective_until"),
                 "approved_by": a.get("approved_by"),
-                "role": c.get("role"),
+                "role": subject.get("role"),
             }
         )
     return rows

@@ -51,13 +51,9 @@ class PolicyBindingClient:
         *,
         simulation_id: str,
         total_insured_value: float,
-        premium: float,
-        industry: str,
     ) -> BindResult:
         params = {
             "total_insured_value": total_insured_value,
-            "premium": premium,
-            "industry": industry,
         }
         ikey = compute_bind_idempotency_key(dfid, BIND_STEP_ID, params)
 
@@ -70,14 +66,13 @@ class PolicyBindingClient:
                 "simulation_id": simulation_id,
                 "idempotency_key_prefix": ikey[:16],
                 "total_insured_value": total_insured_value,
-                "premium": premium,
             },
         )
-        log_bind_req = (
-            '{"dfid":"%s","event":"BIND_REQUEST","step_id":"%s",'
-            '"idempotency_key":"%s"}'
+        logger.info(
+            "BIND_REQUEST step_id=%s idempotency_key=%s",
+            BIND_STEP_ID,
+            ikey[:16] + "...",
         )
-        logger.info(log_bind_req, dfid, BIND_STEP_ID, ikey[:16] + "...")
 
         cached = self._audit.get_idempotent_result(ikey)
         if cached is not None:
@@ -92,11 +87,10 @@ class PolicyBindingClient:
                     "policy_ref": cached.get("policy_ref"),
                 },
             )
-            log_ok = (
-                '{"dfid":"%s","event":"BIND_SUCCEEDED",'
-                '"cached":true,"policy_ref":"%s"}'
+            logger.info(
+                "BIND_SUCCEEDED cached=true policy_ref=%s",
+                cached.get("policy_ref", ""),
             )
-            logger.info(log_ok, dfid, cached.get("policy_ref", ""))
             return BindResult(
                 ok=True,
                 policy_ref=str(cached.get("policy_ref", "")),
@@ -122,11 +116,7 @@ class PolicyBindingClient:
                 "policy_ref": policy_ref,
             },
         )
-        log_new = (
-            '{"dfid":"%s","event":"BIND_SUCCEEDED",'
-            '"cached":false,"policy_ref":"%s"}'
-        )
-        logger.info(log_new, dfid, policy_ref)
+        logger.info("BIND_SUCCEEDED cached=false policy_ref=%s", policy_ref)
 
         return BindResult(
             ok=True,

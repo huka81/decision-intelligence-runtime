@@ -1,33 +1,26 @@
 """
-Kernel Space components for the Digital Underwriter (Topology C / DL+PCI).
-
-AgentRegistry, ContextStore (domain-specific). DecisionLedger, ProofChecker,
-compute_evidence_hash, hash_content, proposal_params_for_hash from dir_core (framework).
+Kernel Space: ProofChecker + contract IR + Decision Ledger (Topology C).
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from dir_core import AgentRegistry, ContextStore
+from dir_core.data_types import ValidationVerdict
+from dir_core.dim import validate_proposal
 from dir_core.ledger import DecisionLedger
+from dir_core.models import PolicyProposal as RuntimePolicyProposal
 from dir_core.models import ProofCarryingIntent
-from dir_core.pci import (
-    ProofChecker,
-    compute_evidence_hash,
-    hash_content,
-    proposal_params_for_hash,
-)
-from schemas import PolicyProposal, UnderwritingContract
+from dir_core.pci import ProofChecker, hash_content, proposal_params_for_hash
+
+from schemas import UnderwritingProposal
 
 logger = logging.getLogger(__name__)
 
-# Binding fields for Evidence_Hash (Topology C). Textual / observability fields
-# stay in PCI JSON but are excluded from the canonical proposal string.
-EXECUTION_RELEVANT_INTENT_KEYS = ("total_insured_value", "premium", "industry")
+EXECUTION_RELEVANT_INTENT_KEYS = ("total_insured_value", "territory")
 
 
 def intent_subset_for_evidence_hash(intent_payload: Dict[str, Any]) -> str:
-    """Canonical JSON of execution-relevant proposal fields for PCI Evidence_Hash."""
     subset = {
         k: intent_payload[k]
         for k in EXECUTION_RELEVANT_INTENT_KEYS
@@ -36,31 +29,8 @@ def intent_subset_for_evidence_hash(intent_payload: Dict[str, Any]) -> str:
     return proposal_params_for_hash(subset)
 
 
-# Re-export for backward compatibility (agent imports from kernel)
-__all__ = [
-    "DecisionIntegrityModule",
-    "DecisionLedger",
-    "EXECUTION_RELEVANT_INTENT_KEYS",
-    "compute_evidence_hash",
-    "hash_content",
-    "intent_subset_for_evidence_hash",
-    "proposal_params_for_hash",
-]
-
-
-# =============================================================================
-# DecisionIntegrityModule (DIM) - Proof Checker + Business Rules
-# =============================================================================
-
-
 class DecisionIntegrityModule:
-    """
-    The Proof Checker. Validates PCIs using Zero Trust.
-
-    Why DIM recalculates: The agent's evidence_hash is a claim. The DIM
-    independently recomputes using authoritative sources (ContextStore,
-    AgentRegistry). Mismatch = reject. The DIM never trusts the agent.
-    """
+    """Proof Checker: recomputes Evidence_Hash; never trusts the agent claim."""
 
     def __init__(
         self,
@@ -75,16 +45,6 @@ class DecisionIntegrityModule:
     def verify_and_commit(
         self, pci: ProofCarryingIntent, agent_id: str
     ) -> str:
-        """
-        Verify the PCI and commit to Ledger if valid.
-
-        Steps:
-        1. Context was set in store.
-        2. Use ProofChecker to verify evidence_hash (Zero Trust).
-        3. If match: run business-rule checks (prohibited industry, max TiV).
-        4. If all pass: append to Ledger, return "Policy Bound".
-        5. Otherwise: return rejection reason.
-        """
         def get_proposal_params(intent_payload: Dict[str, Any]) -> str:
             return intent_subset_for_evidence_hash(intent_payload)
 
@@ -109,32 +69,28 @@ class DecisionIntegrityModule:
         if not contract:
             return "Contract Not Found"
 
-        underwriting_contract = UnderwritingContract.model_validate(contract)
-        max_tiv = underwriting_contract.max_tiv
-        prohibited_industries = underwriting_contract.prohibited_industries
+        domain = UnderwritingProposal.model_validate(pci.intent_payload)
+        session = self.context_store.get_session(pci.dfid) or {}
+        runtime_proposal = RuntimePolicyProposal(
+            dfid=pci.dfid,
+            agent_id=agent_id,
+            policy_kind="BIND",
+            params={
+                "total_insured_value": domain.total_insured_value,
+                "territory": domain.territory,
+            },
+            justification=domain.justification,
+        )
+        projection = self.registry.get_agent_projection(agent_id)
+        verdict, dim_reason = validate_proposal(
+            runtime_proposal,
+            session,
+            contract=projection,
+        )
+        if verdict != ValidationVerdict.ACCEPT:
+            logger.warning("REJECT: %s", dim_reason)
+            return str(dim_reason)
 
-        # Business rule checks (prohibited industry, max TiV)
-        proposal = PolicyProposal.model_validate(pci.intent_payload)
-        prohibited_lower = {x.strip().lower() for x in prohibited_industries}
-        if proposal.industry.strip().lower() in prohibited_lower:
-            logger.warning(
-                "[DFID=%s] REJECT: Prohibited Industry (%s).",
-                pci.dfid[:8],
-                proposal.industry,
-            )
-            return "Prohibited Industry"
-
-        if proposal.total_insured_value > max_tiv:
-            logger.warning(
-                "[DFID=%s] REJECT: TiV %.0f exceeds contract max_tiv %.0f.",
-                pci.dfid[:8],
-                proposal.total_insured_value,
-                max_tiv,
-            )
-            return "TIV Exceeds Contract Max"
-
-        # All checks passed: commit to Ledger
         self.ledger.append(pci, agent_id=agent_id)
-        logger.info("[DFID=%s] Policy Bound.", pci.dfid[:8])
+        logger.info("Policy Bound.")
         return "Policy Bound"
-

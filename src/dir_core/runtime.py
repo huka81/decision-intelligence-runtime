@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional
 
-from .agent_registry import AgentRegistry, HandshakeResult
+from .agent_registry import AgentRegistry, AmendmentResult, HandshakeResult
 from .context_store import ContextStore
 from .data_types import (
     AgentRegistryStatus,
@@ -22,7 +22,7 @@ from .data_types import (
 from .dim import validate_proposal
 from .escalation import EscalationManager
 from .intent_retry import IntentRetryGovernor
-from .models import PolicyProposal, RuntimeContractProjection
+from .models import ContractParameterAmendment, PolicyProposal, RuntimeContractProjection
 from .storage import StorageBundle
 from .storage.base import AuditStore
 
@@ -81,6 +81,30 @@ class DecisionRuntime:
             priority=priority,
         )
 
+    def apply_parameter_amendment(
+        self,
+        amendment: ContractParameterAmendment,
+        *,
+        record_audit: bool = True,
+    ) -> AmendmentResult:
+        """Apply a human-gated scalar patch to a runtime-amendable invariant."""
+        result = self.registry.apply_parameter_amendment(amendment)
+        if record_audit and result.accepted and result.projection is not None:
+            self.audit.record(
+                amendment.dfid or amendment.agent_id,
+                "CONTRACT_PARAMETER_AMENDED",
+                details={
+                    "agent_id": amendment.agent_id,
+                    "invariant_id": amendment.invariant_id,
+                    "patch": dict(amendment.patch),
+                    "actor_id": amendment.actor_id,
+                    "base_release": amendment.base_release.model_dump(mode="json"),
+                    "impact_category": amendment.impact_category,
+                },
+                agent_id=amendment.agent_id,
+            )
+        return result
+
     def evaluate_proposal(
         self,
         proposal: PolicyProposal,
@@ -134,7 +158,8 @@ class DecisionRuntime:
 
         resolved_contract = contract
         if resolved_contract is None and use_registry_contract:
-            resolved_contract = self.registry.get_agent_contract(proposal.agent_id)
+            projection = self.registry.get_agent_projection(proposal.agent_id)
+            resolved_contract = projection if projection is not None else self.registry.get_agent_contract(proposal.agent_id)
 
         verdict, reason = validate_proposal(
             proposal,
@@ -145,6 +170,10 @@ class DecisionRuntime:
             contract=resolved_contract,
             custom_validators=custom_validators,
         )
+
+        dim_audit = dict(context.get("_dim_audit") or {})
+        failed_invariant_id = dim_audit.get("failed_invariant_id")
+        invariant_failures = dim_audit.get("failures")
 
         if record_audit and verdict in (
             ValidationVerdict.ACCEPT,
@@ -162,6 +191,15 @@ class DecisionRuntime:
                 "verdict": str(verdict),
                 "confidence": proposal.confidence,
             }
+            if failed_invariant_id:
+                details["failed_invariant_id"] = failed_invariant_id
+            if invariant_failures:
+                details["failures"] = invariant_failures
+                details["reason_codes"] = [
+                    str(item.get("reason", ""))
+                    for item in invariant_failures
+                    if isinstance(item, dict)
+                ]
             self.audit.record(
                 proposal.dfid,
                 event,

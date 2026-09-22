@@ -126,6 +126,7 @@ def answers_from_sample(
         limit_units={
             key: limit.unit for key, limit in canonical.authority.limits.items()
         },
+        invariants=canonical.authority.invariants,
         explainability=canonical.responsibility.explainability,
         evidence_level=canonical.responsibility.evidence.level,
         escalation=canonical.responsibility.escalation.mode,

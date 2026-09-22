@@ -466,6 +466,7 @@ The pipeline functions as a **Policy Enforcement Point (PEP)**. It evaluates pro
 4. **Resource Availability (Semantic Locking):** To prevent "Horizontal Resource Contention" (where two agents compete for the same cash/inventory), the DIM places a temporary lock or reservation on the required assets during the validation phase. If Agent A has reserved the last unit of capital, Agent B's simultaneous request is rejected with `INSUFFICIENT_LIQUIDITY`, preventing race conditions.
     *   **Linear Lock Acquisition:** To prevent deadlocks in multi-resource requests, resources MUST be requested in alphabetical order of their Global Resource IDs. Failure of the Agent to adhere to this sorting order in the Policy Proposal results in immediate rejection by the DIM. A mandatory `LockTimeout` (e.g., 5s) ensures that stalled flows are `ABORTED` with `RESOURCE_CONTENTION_TIMEOUT`.
 5. **Mission Invariant Check:** The DIM MUST verify that the Policy Proposal contains a `mission_context_hash`. The Runtime compares this against the registered Agent Mission. If the agent’s reasoning context has drifted from its assigned mission, the DIM rejects the proposal with `MISSION_DISSONANCE`.
+6. **Contract IR (Declarative Invariants):** The DIM evaluates the active Runtime Enforcement Projection's compiled `authority.invariants` using three native primitives: `range`, `set`, and `state_match`. A `set` rule declares either an `allowed` whitelist or a `denied` denylist; string denylists MAY use `match: substring`. `applies_to_policy_kinds` scopes a rule to named proposal phases without application-side filtering. Rejections emit stable `reason_code` values and `failed_invariant_id` in audit rows. This gate replaces ad-hoc limit and exclusion checks.
     > *The Runtime does not interpret mission semantics.
     > It validates **contractual alignment**, not semantic intent.
     > The `mission_context_hash` represents an immutable contract snapshot, not a philosophical goal.*
@@ -920,6 +921,21 @@ While a full "State Diff" simulation is the gold standard, it is often technical
 *   **HIGH_IMPACT (Financial/Irreversible):** e.g., "Transfer Funds", "Execute Trade", "Delete Record".
 
 The UI must visualize these categories (e.g., Red borders for HIGH_IMPACT) to disrupt "click-through" behavior. The operator approves the *risk category*, not just the JSON syntax.
+
+### 9.5 Contract Parameter Amendment (Runtime Scalar Mutation)
+
+Escalation resolves a single DecisionFlow (`OVERRIDE`, `MODIFY`, `ABORT`). When the human must change an already-approved rule **parameter** without waiting for CI/CD, the Runtime exposes a separate **`ContractParameterAmendment`** path.
+
+Rules:
+
+- Only invariants marked `runtime_amendable: true` may be patched.
+- Only scalar keys are allowed: `min`, `max`, `allowed` (subset tightening only), `drift_envelope_pct`.
+- Every patch MUST stay inside signed `min_floor` / `max_ceiling` envelopes. Missing envelope → fail closed.
+- Optional TTL (`amend_ttl_seconds` or explicit `expires_at`) reverts the patch automatically.
+- Amendments apply to **subsequent** `evaluate_proposal` calls; they do not retroactively abort in-flight intents.
+- Agents MUST NOT author amendments. A human operator issues them; the kernel records `CONTRACT_PARAMETER_AMENDED` in the decision audit with `invariant_id`, old/new values, and `base_release.contract_hash`.
+
+Structural changes (new invariant ids, new fields, authority expansion) still require the Contract Evolution Loop in [Governance](../04-governance/DIR_Governance.md).
 
 **[Escalation Event]**
 

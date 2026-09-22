@@ -8,6 +8,8 @@ import re
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from dir_core.models import InvariantSpec
+
 ContractRoleLiteral = Literal["STRATEGIST", "EXECUTOR", "MONITOR", "INTERFACE"]
 ExplainabilityLiteral = Literal["required", "optional"]
 EvidenceLevelLiteral = Literal["high", "medium", "low"]
@@ -263,6 +265,7 @@ class AuthoritySpec(BaseModel):
     allowed_policy_types: List[str] = Field(default_factory=list)
     resource_scope: Dict[str, List[str]] = Field(default_factory=dict)
     limits: Dict[str, LimitSpec] = Field(default_factory=dict)
+    invariants: List[InvariantSpec] = Field(default_factory=list)
     exclusions: Dict[str, Any] = Field(default_factory=dict)
 
     model_config = {"extra": "allow"}
@@ -413,6 +416,10 @@ class InterviewAnswers(BaseModel):
         default_factory=dict,
         description="Units for irreversible_limits; inferred when omitted",
     )
+    invariants: List[InvariantSpec] = Field(
+        default_factory=list,
+        description="Explicit authority invariant IR preserved by bootstrap tooling",
+    )
     explainability: ExplainabilityLiteral = "required"
     evidence_level: EvidenceLevelLiteral = "medium"
     escalation: EscalationLiteral = "mandatory"
@@ -431,6 +438,7 @@ class InterviewAnswers(BaseModel):
                 }
                 for key, value in self.irreversible_limits.items()
             },
+            "invariants": self.invariants,
         }
         return CanonicalContract(
             metadata={

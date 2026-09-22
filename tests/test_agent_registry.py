@@ -3,7 +3,7 @@
 import tempfile
 from pathlib import Path
 
-from dir_core import RuntimeContractProjection
+from dir_core import RuntimeContractProjection, project_contract
 from dir_core.agent_registry import AgentRegistry, HandshakeResult
 
 
@@ -86,6 +86,7 @@ def test_register_and_get_runtime_projection() -> None:
         assert stored is not None
         assert stored.agent_id == "agent_a"
         assert stored.allowed_policy_types == ["HOLD"]
+        assert stored.invariants
     finally:
         try:
             Path(path).unlink(missing_ok=True)

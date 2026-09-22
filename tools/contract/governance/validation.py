@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Set
 
 from ..schema import IRREVERSIBLE_LIMIT_KEYS, normalize_contract_dict, PLACEHOLDER_AGENT_IDS, PLACEHOLDER_OWNERS
+from ..invariants import compile_authority_invariants
 from .loader import load_governance_pack, verify_pack_integrity
 from .models import (
     GovernanceAnalysis,
@@ -440,6 +441,79 @@ def validate_authoring_contract(contract) -> List[str]:
                     f"authority.limits.{key} (single-transaction limit)"
                 )
 
+    errors.extend(validate_contract_invariant_ir(contract.model_dump(mode="json")))
+
+    return errors
+
+
+def validate_authority_invariant_conflicts(contract_dict: Dict[str, Any]) -> List[str]:
+    """Fail closed when explicit invariants conflict with compiled sugar IR."""
+    normalized = normalize_contract_dict(contract_dict)
+    authority = normalized.get("authority") or {}
+    explicit = list(authority.get("invariants") or [])
+    if not explicit:
+        return []
+
+    from dir_core.invariant_compile import compile_sugar_invariants
+
+    sugar = compile_sugar_invariants(
+        authority,
+        normalized.get("execution_conditions") or {},
+    )
+    sugar_by_id = {spec.id: spec for spec in sugar}
+    errors: List[str] = []
+
+    for entry in explicit:
+        if not isinstance(entry, dict):
+            continue
+        inv_id = str(entry.get("id", ""))
+        if inv_id in sugar_by_id:
+            errors.append(
+                f"INVARIANT_ID_CONFLICT: explicit invariant {inv_id} duplicates compiled sugar IR"
+            )
+        inv_type = str(entry.get("type", "")).lower()
+        inv_field = str(entry.get("field", ""))
+        for spec in sugar:
+            if spec.type == inv_type and spec.field == inv_field and spec.id != inv_id:
+                errors.append(
+                    f"INVARIANT_FIELD_CONFLICT: explicit {inv_id} overlaps sugar {spec.id} "
+                    f"on ({inv_type}, {inv_field})"
+                )
+    return errors
+
+
+def validate_contract_invariant_ir(contract_dict: Dict[str, Any]) -> List[str]:
+    """Compile invariant IR and reject unsupported or malformed entries."""
+    errors: List[str] = []
+    try:
+        compiled = compile_authority_invariants(contract_dict)
+    except Exception as exc:  # noqa: BLE001 - surface schema errors as strings
+        return [f"INVARIANT_COMPILE_FAILED: {exc}"]
+
+    for spec in compiled:
+        if spec.type == "range" and spec.max is None and spec.min is None:
+            errors.append(f"INVARIANT_RANGE_EMPTY: {spec.id} requires min or max")
+        if spec.type == "set" and not spec.allowed and not spec.denied:
+            errors.append(
+                f"INVARIANT_SET_EMPTY: {spec.id} requires allowed or denied values"
+            )
+        if spec.type == "set" and spec.allowed and spec.denied:
+            errors.append(
+                f"INVARIANT_SET_MODE: {spec.id} cannot declare both allowed and denied"
+            )
+        if spec.type == "set" and spec.match == "substring":
+            if spec.allowed:
+                errors.append(
+                    f"INVARIANT_SET_SUBSTRING_MODE: {spec.id} requires denied values"
+                )
+            values = spec.denied
+            if any(not isinstance(value, str) for value in values):
+                errors.append(
+                    f"INVARIANT_SET_SUBSTRING_TYPE: {spec.id} requires string values"
+                )
+        if spec.type == "state_match" and not spec.snapshot_path:
+            errors.append(f"INVARIANT_STATE_MATCH_PATH: {spec.id} requires snapshot_path")
+    errors.extend(validate_authority_invariant_conflicts(contract_dict))
     return errors
 
 

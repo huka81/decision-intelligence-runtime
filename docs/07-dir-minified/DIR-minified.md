@@ -321,6 +321,15 @@ authority:
     limits:
         max_order_size: { value: 50000, unit: USD }
         max_daily_drawdown: { value: 4, unit: percent }
+    invariants:
+        - id: INV_ORDER_SIZE
+          type: range
+          field: params.order_value
+          max: 50000
+          reason_code: CONTRACT_LIMIT_EXCEEDED
+          runtime_amendable: true
+          min_floor: 1000
+          max_ceiling: 100000
 
 execution_conditions:
     max_context_age_seconds: 30
@@ -357,7 +366,7 @@ Canonical Responsibility Contract
 
 - **Canonical Responsibility Contract:** human-authored source of governance.
 - **Signed Contract Release:** normalized, immutable, attributable approved version. Its signature proves integrity, provenance, and accountable approval; it does NOT prove correctness or completeness.
-- **Runtime Enforcement Projection:** minimal generated representation consumed by DIM, Evidence Governance, and Post-Execution Monitors. The DIM does NOT interpret the full authoring YAML directly.
+- **Runtime Enforcement Projection:** minimal generated representation consumed by DIM, Evidence Governance, and Post-Execution Monitors. The DIM does NOT interpret the full authoring YAML directly. It evaluates compiled `authority.invariants` IR (`range`, `set`, `state_match`). Set rules support either `allowed` or `denied`; string denylists may use `match: substring`. `applies_to_policy_kinds` scopes rules to proposal phases. Unsupported IR types MUST fail closed at compilation.
 
 During **Build-Time HITL**, an LLM MAY synthesize candidate constraints from source documents or telemetry, but candidates have no authority. A human Contract Owner resolves material ambiguity and approves the canonical version. Deterministic tooling validates and compiles the machine-verifiable subset. Human review is amortized across decisions governed by that release; it is not constant-cost or eliminated.
 
@@ -368,6 +377,8 @@ During **Build-Time HITL**, an LLM MAY synthesize candidate constraints from sou
 4. `responsibility.evidence.level` defines minimum rigor; concrete `required_attestations` remain explicit.
 5. Dynamic Registry status (`ACTIVE`, `SUSPENDED`, `DEGRADED`, `ESCALATION_ONLY`, `RETIRED`) is operational state and MUST NOT be embedded in the signed contract payload.
 6. Runtime projections and signed releases are derived artifacts, never independent sources of truth.
+7. `authority.invariants` is the DIM enforcement IR. Bootstrap limit and exclusion sugar compiles into it; explicit invariants override on id conflict. A set invariant MUST declare `allowed` or `denied`, never both.
+8. Runtime parameter mutation uses `ContractParameterAmendment` only for `runtime_amendable: true` scalars inside `min_floor` / `max_ceiling`.
 
 ### 3.1.1 The Four Canonical Roles
 

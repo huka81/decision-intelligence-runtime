@@ -225,7 +225,15 @@ def build_llm_from_config(
     if provider == "gemini":
         api_key = llm_defaults.get("api_key")
         timeout = int(llm_defaults.get("timeout", 60))
-        llm = GeminiClient(model=model, api_key=api_key, timeout=timeout)
+        max_output_tokens = int(llm_defaults.get("max_output_tokens", 8192))
+        json_mode = bool(llm_defaults.get("json_mode", False))
+        llm = GeminiClient(
+            model=model,
+            api_key=api_key,
+            timeout=timeout,
+            max_output_tokens=max_output_tokens,
+            json_mode=json_mode,
+        )
         logger.info("Using GeminiClient (model: %s)", llm.model)
         return llm
 

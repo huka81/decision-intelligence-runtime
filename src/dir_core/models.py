@@ -13,9 +13,9 @@ Extended with:
 
 from datetime import datetime, timezone
 from enum import StrEnum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from .data_types import (
     ContractRole,
@@ -76,6 +76,50 @@ class ContractReleaseRef(BaseModel):
     contract_hash: str = ""
 
 
+InvariantTypeLiteral = Literal["range", "set", "state_match"]
+
+
+class InvariantSpec(BaseModel):
+    """Declarative transaction invariant evaluated by DIM from Runtime projection IR."""
+
+    id: str
+    type: InvariantTypeLiteral
+    field: str
+    min: Optional[float] = None
+    max: Optional[float] = None
+    allowed: List[Any] = Field(default_factory=list)
+    denied: List[Any] = Field(default_factory=list)
+    match: Literal["exact", "substring"] = "exact"
+    applies_to_policy_kinds: List[str] = Field(default_factory=list)
+    snapshot_path: Optional[str] = None
+    expected: Any = None
+    drift_envelope_pct: Optional[float] = 0.0
+    reason_code: str = "INVARIANT_VIOLATION"
+    runtime_amendable: bool = False
+    min_floor: Optional[float] = None
+    max_ceiling: Optional[float] = None
+    amend_ttl_seconds: Optional[int] = None
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def normalize_type(cls, value: Any) -> str:
+        return str(value).strip().lower()
+
+
+class ContractParameterAmendment(BaseModel):
+    """Human-gated scalar patch to an existing runtime-amendable invariant."""
+
+    agent_id: str
+    base_release: ContractReleaseRef = Field(default_factory=ContractReleaseRef)
+    invariant_id: str
+    patch: Dict[str, Any] = Field(default_factory=dict)
+    actor_id: str
+    dfid: str = ""
+    created_at: datetime = Field(default_factory=_utcnow)
+    expires_at: Optional[datetime] = None
+    impact_category: str = "HIGH_IMPACT"
+
+
 class RuntimeContractProjection(BaseModel):
     """Small execution-facing projection of a canonical Responsibility Contract.
 
@@ -94,6 +138,8 @@ class RuntimeContractProjection(BaseModel):
     evidence_requirements: Dict[str, Any] = Field(default_factory=dict)
     escalation_policy: Dict[str, Any] = Field(default_factory=dict)
     aggregate_policies: List[Dict[str, Any]] = Field(default_factory=list)
+    invariants: List[InvariantSpec] = Field(default_factory=list)
+    parameter_amendments: List[ContractParameterAmendment] = Field(default_factory=list)
 
 
 # =============================================================================

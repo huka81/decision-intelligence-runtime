@@ -112,7 +112,7 @@ flowchart TB
 
 EOAM is a decentralized architectural pattern where autonomous agents collaborate through a reactive event substrate. It defines a system that is **"Decentralized in activation, centralized in authority."** EOAM trades the conceptual simplicity of linear orchestration for the power of **parallelism** and **resilience**.
 
-> **LDS Role — Contextual and Temporal Integrity (`¬C`, `¬T`):** EOAM's primary formal function is to prevent the system from executing a decision against an expired or drifted reality. Drift Envelopes define the maximum tolerable divergence between the context snapshot used for reasoning and the live system state at execution time. JIT Verification enforces this boundary immediately before any side effect. If the reality has moved beyond the envelope, the execution is rejected — ensuring the Context (C) and Time (T) invariants of the Legal Decision State are never violated.
+> **LDS Role — Contextual and Temporal Integrity (`¬C`, `¬T`):** EOAM's primary formal function is to prevent the system from executing a decision against an expired or drifted reality. Drift Envelopes define the maximum tolerable divergence between the context snapshot used for reasoning and the live system state at execution time. In canonical contracts, `execution_conditions.max_price_slippage` compiles to a DIM `state_match` invariant; JIT Verification remains the final execution-time check immediately before any side effect. If the reality has moved beyond the envelope, the execution is rejected — ensuring the Context (C) and Time (T) invariants of the Legal Decision State are never violated.
 
 ### 2.1 Scope-Based Choreography
 

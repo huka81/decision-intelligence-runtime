@@ -13,11 +13,11 @@ simulation:
 # Inactive blocks stay commented. Gemini: set GOOGLE_API_KEY or GEMINI_API_KEY in the environment (do not put keys in this file).
 
 # Ollama (local Gemma):
-# llm_defaults:
-#   provider: "ollama"
-#   model: "gemma3:4b"
-#   base_url: "http://localhost:11434"
-#   timeout: 60
+llm_defaults:
+  provider: "ollama"
+  model: "gemma3:4b"
+  base_url: "http://localhost:11434"
+  timeout: 60
 
 # Mock (deterministic, no network):
 # llm_defaults:
@@ -25,14 +25,10 @@ simulation:
 #   timeout: 60
 
 # GCP Gemini via Google Generative AI (Gemini API):
-llm_defaults:
-  provider: "gemini"
-  model: "gemini-flash-lite-latest"
-  timeout: 60
-
-underwriting:
-  max_tiv: 2000000
-  prohibited_industries: ["Fireworks", "CryptoMining"]
+# llm_defaults:
+#   provider: "gemini"
+#   model: "gemini-flash-lite-latest"
+#   timeout: 60
 
 email_processing:
   emails_dir: "emails"
@@ -40,11 +36,6 @@ email_processing:
     GBP: 1.0
     USD: 1.0
     EUR: 1.0
-  prohibited_territories:
-    - "syrian arab republic"
-    - "syria"
-    - "damascus"
-  injection_patterns: []
 
 agents:
   - agent_id: "underwriter_agent"
@@ -71,17 +62,20 @@ agents:
         agent_id: underwriter_agent
         role: EXECUTOR
       mission: |
-        You are an insurance underwriter. Analyze the client application and propose
-        a policy. Base premium on Total Insured Value (TiV) at ~2% of TiV, capped at max_tiv.
-        NEVER propose for Fireworks or CryptoMining industries - these are prohibited.
-        Output structured format.
+        Read the broker email and propose a BIND policy: total insured value,
+        territory, and a short justification.
       authority:
-        allowed_policy_types: ["BIND", "DECLINE"]
-        limits:
-          max_tiv: { value: 3000000, unit: USD }
-        exclusions:
-          prohibited_industries: ["Fireworks", "CryptoMining"]
-      responsibility:
-        escalation:
-          mode: conditional
-          confidence_below: 0.65
+        allowed_policy_types:
+          - BIND
+        invariants:
+          - id: INV_TERRITORY
+            type: set
+            field: params.territory
+            denied: ["syria", "damascus"]
+            match: substring
+            reason_code: PROHIBITED_TERRITORY
+          - id: INV_MAX_TIV
+            type: range
+            field: params.total_insured_value
+            max: 3000000
+            reason_code: AUTHORITY_CEILING

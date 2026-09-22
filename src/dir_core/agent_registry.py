@@ -14,8 +14,9 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .data_types import AgentRegistryStatus, HandshakeRejectionReason
+from .amendments import validate_amendment_patch, resolve_expires_at
 from .contract_projection import project_contract
-from .models import RuntimeContractProjection
+from .models import ContractParameterAmendment, RuntimeContractProjection
 from .storage.base import AgentRegistryStorage
 from .storage.sqlite import SqliteAgentRegistryStorage
 
@@ -31,6 +32,15 @@ class HandshakeResult:
     accepted: bool
     session_token: Optional[str] = None
     reason: Optional[str] = None
+
+
+@dataclass
+class AmendmentResult:
+    """Result of applying a human-gated parameter amendment."""
+
+    accepted: bool
+    reason: Optional[str] = None
+    projection: Optional[RuntimeContractProjection] = None
 
 
 def _parse_version(v: str) -> Optional[tuple]:
@@ -188,6 +198,62 @@ class AgentRegistry:
         """Retrieve the registered contract as an execution projection."""
         contract = self.get_agent_contract(agent_id)
         return project_contract(contract) if contract is not None else None
+
+    def apply_parameter_amendment(
+        self,
+        amendment: ContractParameterAmendment,
+    ) -> AmendmentResult:
+        """Apply a human-gated scalar patch to a runtime-amendable invariant."""
+        projection = self.get_agent_projection(amendment.agent_id)
+        if projection is None:
+            return AmendmentResult(accepted=False, reason="AGENT_NOT_FOUND")
+
+        target = next(
+            (spec for spec in projection.invariants if spec.id == amendment.invariant_id),
+            None,
+        )
+        if target is None:
+            return AmendmentResult(accepted=False, reason="INVARIANT_NOT_FOUND")
+
+        reject_reason = validate_amendment_patch(target, amendment.patch)
+        if reject_reason is not None:
+            return AmendmentResult(accepted=False, reason=reject_reason)
+
+        stored = dict(self.get_agent_contract(amendment.agent_id) or {})
+        if not stored.get("invariants"):
+            stored = projection.model_dump(mode="json")
+
+        amendments = list(stored.get("parameter_amendments") or [])
+        payload = amendment.model_dump(mode="json")
+        payload["expires_at"] = (
+            resolve_expires_at(amendment, target).isoformat()
+            if resolve_expires_at(amendment, target) is not None
+            else None
+        )
+        amendments.append(payload)
+        stored["parameter_amendments"] = amendments
+
+        rec = self._storage.get_agent(amendment.agent_id)
+        agent_version = rec.get("agent_version") if rec else "1.0.0"
+        if not agent_version:
+            agent_version = "1.0.0"
+
+        self._storage.upsert_agent(
+            agent_id=amendment.agent_id,
+            contract_json=json.dumps(stored),
+            priority=rec["priority"] if rec else 0,
+            status=AgentRegistryStatus.ACTIVE,
+            agent_version=agent_version,
+            session_token=rec.get("session_token") if rec else None,
+        )
+        updated = self.get_agent_projection(amendment.agent_id)
+        logger.info(
+            "Parameter amendment: agent_id=%s invariant_id=%s actor=%s",
+            amendment.agent_id,
+            amendment.invariant_id,
+            amendment.actor_id,
+        )
+        return AmendmentResult(accepted=True, projection=updated)
 
     def get_agent_manifest(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve agent capability contract. Deprecated: use get_agent_contract."""

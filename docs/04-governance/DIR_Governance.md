@@ -184,7 +184,7 @@ The broader governance model contains four related classes of constraint:
 | Constraint class | Governing question | Primary enforcement point |
 |---|---|---|
 | **Architectural boundary** | Who or what may reach a component? | Context as Code, IAM, CI/CD, network and module boundaries |
-| **Transaction invariant / guard** | What must be true for this transition? | DIM, schema checks, Rego, SQL, or native Kernel logic |
+| **Transaction invariant / guard** | What must be true for this transition? | DIM via compiled `authority.invariants` (`range`, `set`, `state_match`) |
 | **Evidence obligation** | What evidence must accompany the claim? | Evidence Governance in User Space; structural verification in Kernel Space |
 | **Aggregate / temporal policy** | Does the trajectory remain healthy over time? | Post-Execution Monitors and Circuit Breakers |
 
@@ -200,6 +200,17 @@ The build-time part of the Responsibility Contract Lifecycle follows a controlle
 4. **Human adjudication (Build-Time HITL):** The Contract Owner resolves ambiguity, assesses uncovered risk, reviews boundary cases, and accepts or rejects each material rule.
 5. **Sign-off and compilation:** The approved canonical bundle is cryptographically signed and reproducibly compiled into target enforcement artifacts such as Rego policies, SQL constraints, or native code.
 6. **Shadow validation and publication:** The compiled candidate runs against representative or live shadow traffic before the signed version is activated in the Agent Registry.
+
+#### 2.5.3 Two-Speed Contract Mutation
+
+DIR distinguishes **structural** contract changes from **parameter** changes:
+
+| Mutation class | Examples | Path | Human gate |
+|---|---|---|---|
+| Structural | New invariant id/type/field, new policy types, authority expansion | Contract Evolution Loop (PR → shadow → publish) | Contract Owner + tooling |
+| Parameter | Tighten/loosen `max`, adjust drift envelope within envelope | `ContractParameterAmendment` after escalation | Operator + Impact Category |
+
+Parameter mutation amortizes Build-Time review for incident response but MUST NOT become a backdoor for authority expansion. Envelope metadata on each amendable invariant is mandatory for expansions; subset tightening of `allowed` sets is permitted without expansion.
 
 ### 2.5.2 The Tooling Ecosystem against Rubber-Stamping
 

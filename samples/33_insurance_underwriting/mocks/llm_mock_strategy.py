@@ -52,7 +52,10 @@ def _mock_tiv_usd_from_body(body: str, fx: dict[str, float]) -> float:
     )
 
 
-def _mock_extract_submission_facts(user_prompt: str, system: Optional[str]) -> str:
+def _mock_policy_proposal_json(
+    user_prompt: str,
+    system: Optional[str],
+) -> str:
     body = user_prompt
     if "EMAIL:" in user_prompt:
         body = user_prompt.split("EMAIL:", 1)[-1].lstrip()
@@ -67,82 +70,26 @@ def _mock_extract_submission_facts(user_prompt: str, system: Optional[str]) -> s
             except (json.JSONDecodeError, TypeError, ValueError):
                 pass
 
-    usd = _mock_tiv_usd_from_body(body, fx)
-    stated = _mock_territory_row_text(body)
-    out = f"BROKER_REQUESTED_TIV_USD: {usd}\nSTATED_TERRITORIES: {stated}"
-    logger.info("Mock LLM (extract facts): %s", out.replace("\n", " | "))
-    return out
+    tiv = _mock_tiv_usd_from_body(body, fx)
+    territory = _mock_territory_row_text(body)
+    payload = {
+        "total_insured_value": tiv,
+        "territory": territory,
+        "justification": "Mock policy per mission.",
+    }
+    response = json.dumps(payload)
+    logger.info(
+        "Mock LLM (policy proposal): tiv=%.0f, territory=%s",
+        tiv,
+        territory[:60],
+    )
+    return response
 
 
 def make_mock_strategy() -> Callable[[str, Optional[str]], str]:
     """Return ``generate``-compatible strategy for ``MockLLMClient``."""
 
     def strategy(prompt: str, system: Optional[str] = None) -> str:
-        if system and "TASK: EXTRACT_SUBMISSION_FACTS" in system:
-            return _mock_extract_submission_facts(prompt, system)
-        prompt_lower = prompt.lower()
-        if "interpretation:" in prompt_lower:
-            sys = system or ""
-            max_tiv = 2_000_000
-            mm = re.search(
-                r"max total insured value \(tiv\):\s*([\d_,]+)",
-                sys.lower(),
-            )
-            if mm:
-                try:
-                    max_tiv = float(mm.group(1).replace(",", ""))
-                except ValueError:
-                    pass
-            industry = None
-            m = re.search(r"industry_label:\s*([^\n]+)", prompt_lower, re.I)
-            if not m:
-                m = re.search(r"industry\s*=\s*([^\n]+)", prompt_lower, re.I)
-            if not m:
-                m = re.search(r"industry[:\s]+(\w+)(?:\s|$)", prompt_lower, re.I)
-            industry = (m.group(1).strip() if m else "Retail")[:200]
-            revenue = 500_000
-            m = re.search(r"revenue[:\s]+([\d.]+)", prompt_lower, re.I)
-            if m:
-                try:
-                    revenue = float(m.group(1).replace(",", ""))
-                except ValueError:
-                    pass
-            requested = None
-            m = re.search(
-                r"broker_requested_tiv_usd[:\s]+([\d.]+)",
-                prompt_lower,
-                re.I,
-            )
-            if m:
-                try:
-                    requested = float(m.group(1).replace(",", ""))
-                except ValueError:
-                    pass
-            if requested is not None:
-                tiv = min(requested, max_tiv)
-            else:
-                tiv = min(revenue * 2, max_tiv)
-            premium = tiv * 0.02
-            response = (
-                f"TOTAL_INSURED_VALUE: {tiv}\n"
-                f"PREMIUM: {premium}\n"
-                f"INDUSTRY: {industry}\n"
-                f"JUSTIFICATION: Mock policy per mission.\n"
-                f"CONFIDENCE: 0.85"
-            )
-            logger.info(
-                "Mock LLM (policy): tiv=%.0f, premium=%.0f, industry=%s",
-                tiv,
-                premium,
-                industry,
-            )
-            return response
-        response = (
-            "Narrative: Client application reviewed. "
-            "SIGNALS: revenue, industry, business_type. "
-            "RISKS: industry risk profile. OPPORTUNITIES: standard underwriting."
-        )
-        logger.info("Mock LLM (explain)")
-        return response
+        return _mock_policy_proposal_json(prompt, system)
 
     return strategy

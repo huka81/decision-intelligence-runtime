@@ -66,7 +66,7 @@ Przykłady typu biznesowy use case, łączące mechanizmy w pełne scenariusze.
 
 - **Python 3.12+**
 - **From repo root**: `pip install -e .` or `pip install -r requirements.txt`.
-- **Workspace:** `.vscode/settings.json` sets `PYTHONPATH` to `src/` and `python.analysis.extraPaths`, so in Cursor/VS Code the samples run and resolve `dir` without code in `run.py`. Outside the IDE, set `PYTHONPATH` to the repo `src` directory or use `pip install -e .`.
+- **Workspace:** `.vscode/settings.json` sets `PYTHONPATH` to `src/` and `samples/`. `pyrightconfig.json` adds one execution environment per sample so Cursor/Pylance resolves sibling imports such as `from schemas import ...` to that sample, not a third-party `schemas` package. Outside the IDE, set `PYTHONPATH` to the repo `src` directory or use `pip install -e .`.
 
 ## Running a sample
 

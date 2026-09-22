@@ -245,6 +245,83 @@ def test_project_contract_legacy_shape() -> None:
     assert projection.agent_id == "legacy"
     assert projection.allowed_policy_types == ["HOLD"]
     assert projection.transaction_limits["max_order_size_usd"]["value"] == 500
+    assert any(spec.type == "range" for spec in projection.invariants)
+
+
+def test_compile_authority_invariants_from_canonical_limits() -> None:
+    from tools.contract.invariants import compile_authority_invariants
+
+    compiled = compile_authority_invariants(
+        {
+            "authority": {
+                "allowed_policy_types": ["BUY"],
+                "limits": {"max_order_size": {"value": 1000, "unit": "USD"}},
+            }
+        }
+    )
+    assert any(spec.id == "INV_ALLOWED_POLICY_TYPES" for spec in compiled)
+    assert any(spec.type == "range" and spec.max == 1000 for spec in compiled)
+
+
+def test_compile_authority_exclusion_to_denied_set() -> None:
+    from tools.contract.invariants import compile_authority_invariants
+
+    compiled = compile_authority_invariants(
+        {
+            "authority": {
+                "exclusions": {
+                    "prohibited_industries": ["Fireworks", "CryptoMining"]
+                }
+            }
+        }
+    )
+    exclusion = next(
+        spec for spec in compiled if spec.id == "INV_PROHIBITED_INDUSTRIES"
+    )
+    assert exclusion.field == "params.industry"
+    assert exclusion.denied == ["Fireworks", "CryptoMining"]
+
+
+def test_invariant_ir_rejects_mixed_set_modes() -> None:
+    from tools.contract.governance.validation import validate_contract_invariant_ir
+
+    errors = validate_contract_invariant_ir(
+        {
+            "authority": {
+                "invariants": [
+                    {
+                        "id": "INV_SET",
+                        "type": "set",
+                        "field": "params.kind",
+                        "allowed": ["A"],
+                        "denied": ["B"],
+                    }
+                ]
+            }
+        }
+    )
+    assert any("INVARIANT_SET_MODE" in error for error in errors)
+
+
+def test_explicit_invariant_conflict_detected() -> None:
+    from tools.contract.governance.validation import validate_authority_invariant_conflicts
+
+    errors = validate_authority_invariant_conflicts(
+        {
+            "authority": {
+                "allowed_policy_types": ["BUY"],
+                "invariants": [
+                    {
+                        "id": "INV_ALLOWED_POLICY_TYPES",
+                        "type": "set",
+                        "field": "policy_kind",
+                        "allowed": ["BUY"],
+                    }
+                ],
+            }
+        }
+    )
+    assert errors
 
 
 def test_from_sample_quick_start() -> None:
@@ -257,14 +334,19 @@ def test_from_sample_quick_start() -> None:
     validate_bootstrap(contract, preset=answers.preset)
 
 
-def test_from_sample_preserves_canonical_limit_unit() -> None:
+def test_from_sample_preserves_canonical_invariant_ir() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     answers = answers_from_sample(
         repo_root / "samples" / "33_insurance_underwriting"
     )
     contract = answers.to_canonical()
-    assert contract.authority.limits["max_tiv"].value == 3000000.0
-    assert contract.authority.limits["max_tiv"].unit == "USD"
+    limit = next(
+        spec
+        for spec in contract.authority.invariants
+        if spec.id == "INV_LIMIT_PROPOSAL_TIV"
+    )
+    assert limit.max == 3000000.0
+    assert limit.field == "params.total_insured_value"
 
 
 def test_normalize_preserves_explicit_currency_limit() -> None:

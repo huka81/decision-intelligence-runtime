@@ -21,7 +21,7 @@ Custom storage backend example::
     registry = AgentRegistry(storage=MyPostgresStorage())
 """
 
-from .agent_registry import AgentRegistry, HandshakeResult
+from .agent_registry import AgentRegistry, AmendmentResult, HandshakeResult
 from .arbitration import DEFAULT_PRIORITY_MATRIX, select_winner
 from .dim import validate_proposal
 from .data_types import (
@@ -82,6 +82,8 @@ from .models import (
     CompensationAction,
     ContractReleaseRef,
     RuntimeContractProjection,
+    InvariantSpec,
+    ContractParameterAmendment,
     ResponsibilityContract,
     SelfCheckResult,
 )
@@ -93,6 +95,8 @@ from .pci import (
     proposal_params_for_hash,
 )
 from .contract_projection import project_contract
+from .invariants import evaluate_invariants
+from .amendments import validate_amendment_patch
 from .wakeup import (
     WakeupPredicate,
     is_relevant_instrument,
@@ -219,7 +223,12 @@ __all__ = [
     "ResponsibilityContract",
     "ContractReleaseRef",
     "RuntimeContractProjection",
+    "InvariantSpec",
+    "ContractParameterAmendment",
+    "AmendmentResult",
     "project_contract",
+    "evaluate_invariants",
+    "validate_amendment_patch",
     "PolicyProposal",
     "ExecutionIntent",
     # ROA Lifecycle models

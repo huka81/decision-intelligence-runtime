@@ -43,12 +43,15 @@ constraint_layers:
       - governance.aggregate_thresholds
   transaction_invariant:
     description: Deterministic predicate evaluated when a proposal crosses authority boundary.
-    contract_location: governance_analysis.invariant_candidates (SQLite only, not exported YAML)
+    contract_location: authority.invariants
     enforcement: DIM
     scope: single_transaction
     never_place_in:
       - governance.aggregate_policies
-    notes: Link via linked_limit_key to authority.limits; use predicate AST in analysis.
+    notes: >-
+      Sugar limits and exclusions compile to IR; explicit invariants override on
+      id conflict. Set invariants use either allowed or denied. match=substring
+      is valid only for string sets. applies_to_policy_kinds scopes evaluation.
   aggregate_policy:
     description: Derived metric over a time window; changes operating mode when trajectory is unhealthy.
     contract_location: governance.aggregate_policies
@@ -110,8 +113,11 @@ hard_rules:
   - Do not copy authority.limits into governance.aggregate_policies or aggregate_thresholds.
   - Do not encode transaction invariants (including INV-* ids) as aggregate policies.
   - Do not put confidence thresholds in aggregate_policies; use responsibility.escalation.
+  - Do not duplicate authority.limits as explicit authority.invariants with conflicting bounds.
   - Empty governance.aggregate_policies is valid for Bootstrap v1.0.0.
   - Do not invent aggregate thresholds without explicit user confirmation.
+  - Set invariants must declare either allowed or denied, never both.
+  - Set match substring may contain only string values.
   - Final contracts must not use agent_id or contract_id draft_agent.
   - Final contracts must not use owner@example.com or empty owner.
   - Use response SUSPENDED not SUSPEND; use operator not on_breach.

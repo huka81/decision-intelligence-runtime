@@ -218,6 +218,15 @@ authority:
   limits:
     max_order_size: { value: 50000, unit: USD }
     max_daily_drawdown: { value: 4, unit: percent }
+  invariants:
+    - id: INV_ORDER_SIZE
+      type: range
+      field: params.order_value
+      max: 50000
+      reason_code: CONTRACT_LIMIT_EXCEEDED
+      runtime_amendable: true
+      min_floor: 1000
+      max_ceiling: 100000
 
 execution_conditions:
   max_context_age_seconds: 30
@@ -253,6 +262,8 @@ Canonical Responsibility Contract
 ```
 
 The **Signed Contract Release** is the normalized, immutable, and attributable contract version. The **Runtime Enforcement Projection** is the minimal generated representation consumed by the DIM, Evidence Governance, and Post-Execution Monitors. Both are deterministic products of the canonical contract; neither is maintained as an independent source of truth.
+
+Bootstrap sugar fields (`authority.limits`, `authority.exclusions`, `allowed_policy_types`, `resource_scope`, `execution_conditions`) compile into a closed declarative IR under `authority.invariants` (`range`, `set`, `state_match`). Set rules declare either `allowed` or `denied`; string denylists may use `match: substring`, and `applies_to_policy_kinds` scopes any rule to named proposal phases. The DIM evaluates that IR from the projection, not the full authoring YAML. Scalar parameters on `runtime_amendable: true` invariants may be patched at runtime through a signed **ContractParameterAmendment** after human escalation; structural changes still require the Contract Evolution Loop.
 
 The YAML above defines the architecture-level reference shape. The repository's minimal Python package may implement a narrower Bootstrap subset while the schema evolves. `api_version` is the compatibility boundary: additions that preserve existing semantics may extend `roa.dir/v1`, while incompatible meaning requires a new API version.
 

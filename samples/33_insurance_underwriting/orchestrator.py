@@ -1,5 +1,5 @@
 """
-Email ingestion orchestrator: DFID, kernel gates, ROA, DIM, mock bind, canonical audit.
+Email ingestion orchestrator: DFID, ROA, DIM, mock bind, canonical audit.
 
 One markdown email = one DecisionFlow. Expects ``AgentRegistry.handshake`` in ``run.py``.
 """
@@ -7,64 +7,41 @@ One markdown email = one DecisionFlow. Expects ``AgentRegistry.handshake`` in ``
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from dir_core import AgentRegistry, ContextStore, new_dfid
 from dir_core.storage import AuditStore, StorageBundle
-from dir_core.utils.logging_utils import log_with_dfid
+from dir_core.utils.logging_utils import log_context
 from email_fixture_ingest import (
     client_application_from_fixture,
     list_markdown_fixtures,
     load_markdown_email_fixture,
 )
-from gates import run_post_extraction_gates, run_pre_agent_gates
 from kernel import DecisionIntegrityModule, DecisionLedger
 from policy_binding import PolicyBindingClient
-from schemas import ClientApplication, UnderwritingContract
 
-from agent import DecisionCycleReport, ROAUnderwriterAgent
+from agent import ROAUnderwriterAgent
 from telemetry import record_underwriting_step
 
 logger = logging.getLogger(__name__)
 
 
-def _contract_agent_id(contract: Dict[str, Any]) -> str:
-    """Read the agent identity from the canonical contract subject."""
-    return str((contract.get("subject") or {}).get("agent_id", ""))
+def _parse_reason_codes(dim_out: str) -> list[str]:
+    if dim_out == "Policy Bound":
+        return []
+    return [code.strip() for code in dim_out.split(";") if code.strip()]
 
 
-def _utc_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-
-
-@dataclass
-class EmailCaseResult:
-    dfid: str
-    source_file: str
-    mail_subject: str
-    final_status: str
-    reason_code: str
-    lifecycle_state: str
-    dim_result: Optional[str] = None
-    policy_ref: Optional[str] = None
-    report: Optional[DecisionCycleReport] = None
-    timeline: List[Dict[str, Any]] = field(default_factory=list)
-    mail_body_markdown: str = ""
-    extracted_broker_tiv_usd: Optional[float] = None
-    stated_territories_extracted: Optional[str] = None
-
-    def add_step(self, step: str, state: str, detail: str = "") -> None:
-        self.timeline.append(
-            {
-                "step": step,
-                "state": state,
-                "detail": detail,
-                "at": _utc_iso(),
-            }
-        )
+def _terminal_from_dim(dim_out: str) -> tuple[str, str, str, list[str]]:
+    """Map DIM result to (outcome, reason_code, lifecycle_state, reason_codes)."""
+    if dim_out == "Policy Bound":
+        return "BOUND", "POLICY_BOUND", "CLOSED", []
+    reason_codes = _parse_reason_codes(dim_out)
+    reason_code = ";".join(reason_codes)
+    if reason_codes == ["AUTHORITY_CEILING"]:
+        return "ESCALATED", reason_code, "ESCALATED", reason_codes
+    return "REJECTED", reason_code, "ABORTED", reason_codes
 
 
 def process_email_file(
@@ -79,298 +56,224 @@ def process_email_file(
     audit: AuditStore,
     config: Dict[str, Any],
     simulation_id: str,
-) -> EmailCaseResult:
+) -> str:
     dfid = new_dfid()
-    ep = config.get("email_processing", {})
-    fx = {k.upper(): float(v) for k, v in ep.get("currency_fx_to_usd", {}).items()}
-    agent_id = _contract_agent_id(contract_dict)
+    with log_context(dfid=dfid):
+        ep = config.get("email_processing", {})
+        fx = {k.upper(): float(v) for k, v in ep.get("currency_fx_to_usd", {}).items()}
+        agent_id = str((contract_dict.get("subject") or {}).get("agent_id", ""))
 
-    def _rec(
-        event: str,
-        *,
-        step_id: str = "",
-        state: str = "",
-        details: Optional[Dict[str, Any]] = None,
-    ) -> None:
+        logger.info("FLOW_CREATED file=%s", path.name)
         record_underwriting_step(
             audit,
             dfid,
             simulation_id,
-            event,
-            step_id=step_id,
-            state=state,
-            details=details,
+            "FLOW_CREATED",
+            step_id="0",
+            state="CREATED",
+            details={"file": path.name},
             agent_id=agent_id,
         )
 
-    log_with_dfid(logger, dfid, logging.INFO, "FLOW_CREATED file=%s", path.name)
-    _rec(
-        "FLOW_CREATED",
-        step_id="0",
-        state="CREATED",
-        details={"file": path.name},
-    )
+        fixture = load_markdown_email_fixture(path)
+        context = client_application_from_fixture(fixture)
+        context_store.update_session(dfid, context.model_dump(), agent_id=agent_id)
 
-    fixture = load_markdown_email_fixture(path)
-    context = client_application_from_fixture(fixture, fx)
-
-    context_store.update_session(
-        dfid, context.model_dump(), agent_id=agent_id
-    )
-
-    result = EmailCaseResult(
-        dfid=dfid,
-        source_file=path.name,
-        mail_subject=context.mail_subject or path.stem,
-        final_status="REJECTED",
-        reason_code="UNKNOWN",
-        lifecycle_state="ABORTED",
-        mail_body_markdown=fixture.body_text,
-    )
-    result.add_step("MAIL_INGESTED", "CREATED", f"Read {path.name}")
-    _rec(
-        "MAIL_INGESTED",
-        state="CREATED",
-        details={
-            "subject": context.mail_subject,
-            "mail_body_sha256": context.mail_body_sha256,
-            "file": path.name,
-        },
-    )
-    log_with_dfid(
-        logger,
-        dfid,
-        logging.INFO,
-        "MAIL_INGESTED file=%s mail_body_sha256=%s",
-        path.name,
-        context.mail_body_sha256,
-    )
-
-    result.add_step("CONTEXT_COMPILED", "ACTIVE", "ClientApplication built from email")
-    _rec(
-        "CONTEXT_COMPILED",
-        state="ACTIVE",
-        details={
-            "requested_tiv_usd": None,
-            "note": "TiV from agent extraction, not regex parser",
-            "industry_snippet": (context.industry or "")[:120],
-        },
-    )
-    log_with_dfid(logger, dfid, logging.INFO, "CONTEXT_COMPILED")
-
-    gate = run_pre_agent_gates(
-        fixture.body_text,
-        context,
-        UnderwritingContract.model_validate(contract_dict),
-        config,
-    )
-    if gate is not None:
-        result.reason_code = gate.code
-        result.lifecycle_state = gate.lifecycle_state
-        result.final_status = "ESCALATED" if gate.lifecycle_state == "ESCALATED" else "REJECTED"
-        ev = (
-            "GATE_AUTHORITY_ESCALATED"
-            if gate.code == "AUTHORITY_CEILING"
-            else "GATE_REJECTED"
-        )
-        result.add_step(ev, gate.lifecycle_state, gate.message)
-        _rec(
-            ev,
-            state=gate.lifecycle_state,
-            details={"code": gate.code, "message": gate.message},
-        )
-        log_with_dfid(logger, dfid, logging.INFO, "%s code=%s", ev, gate.code)
-        _rec(
-            "FLOW_TERMINAL",
-            state=gate.lifecycle_state,
-            details={"outcome": result.final_status},
-        )
-        return result
-
-    result.add_step(
-        "KERNEL_GATES_PASSED",
-        "ACTIVE",
-        "No optional keyword injection match (territory + authority after agent extraction)",
-    )
-    _rec(
-        "KERNEL_GATES_PASSED",
-        state="ACTIVE",
-        details={},
-    )
-    log_with_dfid(logger, dfid, logging.INFO, "KERNEL_GATES_PASSED")
-
-    try:
-        facts = agent.extract_submission_facts(dfid, fixture.body_text, fx)
-    except (ValueError, TypeError) as exc:
-        result.reason_code = "EXTRACTION_FAILED"
-        result.lifecycle_state = "ABORTED"
-        result.final_status = "REJECTED"
-        msg = f"Agent could not extract submission facts: {exc}"
-        result.add_step("AGENT_SUBMISSION_EXTRACTION", "ABORTED", msg)
-        _rec(
-            "AGENT_SUBMISSION_EXTRACTION_FAILED",
-            state="ABORTED",
-            details={"error": str(exc)},
-        )
-        log_with_dfid(
-            logger,
+        record_underwriting_step(
+            audit,
             dfid,
-            logging.WARNING,
-            "AGENT_SUBMISSION_EXTRACTION_FAILED: %s",
-            exc,
+            simulation_id,
+            "MAIL_INGESTED",
+            state="CREATED",
+            details={
+                "file": path.name,
+                "subject": context.mail_subject,
+                "mail_body_sha256": context.mail_body_sha256,
+            },
+            agent_id=agent_id,
         )
-        _rec(
+        logger.info(
+            "MAIL_INGESTED file=%s mail_body_sha256=%s",
+            path.name,
+            context.mail_body_sha256,
+        )
+
+        record_underwriting_step(
+            audit,
+            dfid,
+            simulation_id,
+            "CONTEXT_COMPILED",
+            state="ACTIVE",
+            details={"industry": context.industry},
+            agent_id=agent_id,
+        )
+        logger.info("CONTEXT_COMPILED")
+
+        try:
+            proposal = agent.explain_and_formulate_policy(
+                fixture.body_text,
+                context,
+                fx,
+            )
+        except (ValueError, TypeError) as exc:
+            record_underwriting_step(
+                audit,
+                dfid,
+                simulation_id,
+                "POLICY_PROPOSAL_FAILED",
+                state="ABORTED",
+                details={"error": str(exc)},
+                agent_id=agent_id,
+            )
+            logger.warning("POLICY_PROPOSAL_FAILED: %s", exc)
+            record_underwriting_step(
+                audit,
+                dfid,
+                simulation_id,
+                "FLOW_TERMINAL",
+                state="ABORTED",
+                details={
+                    "outcome": "REJECTED",
+                    "reason_code": "PROPOSAL_FAILED",
+                    "lifecycle_state": "ABORTED",
+                },
+                agent_id=agent_id,
+            )
+            return dfid
+
+        record_underwriting_step(
+            audit,
+            dfid,
+            simulation_id,
+            "POLICY_PROPOSED",
+            state="ACTIVE",
+            details={
+                "total_insured_value": proposal.total_insured_value,
+                "territory": proposal.territory,
+                "justification": proposal.justification,
+            },
+            agent_id=agent_id,
+        )
+        logger.info(
+            "POLICY_PROPOSED total_insured_value=%s",
+            proposal.total_insured_value,
+        )
+
+        cycle = agent.run_decision_cycle(
+            context,
+            dfid=dfid,
+            proposal=proposal,
+        )
+        record_underwriting_step(
+            audit,
+            dfid,
+            simulation_id,
+            "PCI_EMITTED",
+            state="VALIDATING",
+            details={
+                "total_insured_value": cycle.proposal.total_insured_value,
+                "territory": cycle.proposal.territory,
+                "justification": cycle.proposal.justification,
+                "evidence_hash": cycle.pci.evidence_hash,
+            },
+            agent_id=agent_id,
+        )
+        logger.info(
+            "PCI_EMITTED total_insured_value=%.0f",
+            cycle.proposal.total_insured_value,
+        )
+
+        dim_out = dim.verify_and_commit(cycle.pci, agent_id)
+        reason_codes = _parse_reason_codes(dim_out)
+        record_underwriting_step(
+            audit,
+            dfid,
+            simulation_id,
+            "DIM_RESULT",
+            state="VALIDATING",
+            details={"result": dim_out, "reason_codes": reason_codes},
+            agent_id=agent_id,
+        )
+        logger.info("DIM_RESULT %s", dim_out)
+
+        outcome, reason_code, lifecycle_state, reason_codes = _terminal_from_dim(dim_out)
+        if dim_out != "Policy Bound":
+            ev = (
+                "GATE_AUTHORITY_ESCALATED"
+                if reason_codes == ["AUTHORITY_CEILING"]
+                else "GATE_REJECTED"
+            )
+            record_underwriting_step(
+                audit,
+                dfid,
+                simulation_id,
+                ev,
+                state=lifecycle_state,
+                details={
+                    "code": reason_code,
+                    "reason_codes": reason_codes,
+                    "message": dim_out,
+                },
+                agent_id=agent_id,
+            )
+            logger.info("%s code=%s", ev, reason_code)
+            record_underwriting_step(
+                audit,
+                dfid,
+                simulation_id,
+                "FLOW_TERMINAL",
+                state=lifecycle_state,
+                details={
+                    "outcome": outcome,
+                    "reason_code": reason_code,
+                    "reason_codes": reason_codes,
+                    "lifecycle_state": lifecycle_state,
+                },
+                agent_id=agent_id,
+            )
+            return dfid
+
+        record_underwriting_step(
+            audit,
+            dfid,
+            simulation_id,
+            "LEDGER_COMMITTED",
+            state="ACCEPTED",
+            details={},
+            agent_id=agent_id,
+        )
+        logger.info("LEDGER_COMMITTED")
+
+        br = binder.bind_policy(
+            dfid,
+            simulation_id=simulation_id,
+            total_insured_value=cycle.proposal.total_insured_value,
+        )
+        record_underwriting_step(
+            audit,
+            dfid,
+            simulation_id,
+            "BIND_SUCCEEDED",
+            state="CLOSED",
+            details={"policy_ref": br.policy_ref, "cached": br.cached},
+            agent_id=agent_id,
+        )
+        logger.info("FLOW_TERMINAL outcome=BOUND policy_ref=%s", br.policy_ref)
+        record_underwriting_step(
+            audit,
+            dfid,
+            simulation_id,
             "FLOW_TERMINAL",
-            state="ABORTED",
-            details={"outcome": "REJECTED"},
+            state="CLOSED",
+            details={
+                "outcome": "BOUND",
+                "reason_code": "POLICY_BOUND",
+                "lifecycle_state": "CLOSED",
+                "policy_ref": br.policy_ref,
+            },
+            agent_id=agent_id,
         )
-        return result
-
-    result.extracted_broker_tiv_usd = facts.broker_requested_tiv_usd
-    result.stated_territories_extracted = facts.stated_territories
-    context = context.model_copy(
-        update={"requested_tiv_usd": facts.broker_requested_tiv_usd}
-    )
-    context_store.update_session(
-        dfid, context.model_dump(), agent_id=agent_id
-    )
-
-    detail_lim = f"tiv_usd={facts.broker_requested_tiv_usd:,.0f}"
-    detail_ter = (facts.stated_territories or "")[:500]
-    result.add_step(
-        "AGENT_SUBMISSION_EXTRACTION",
-        "ACTIVE",
-        f"{detail_lim}; stated_territories: {detail_ter[:200]}{'...' if len(detail_ter) > 200 else ''}",
-    )
-    _rec(
-        "AGENT_SUBMISSION_EXTRACTION",
-        state="ACTIVE",
-        details={
-            "broker_requested_tiv_usd": facts.broker_requested_tiv_usd,
-            "stated_territories": facts.stated_territories,
-        },
-    )
-    log_with_dfid(
-        logger,
-        dfid,
-        logging.INFO,
-        "AGENT_SUBMISSION_EXTRACTION broker_requested_tiv_usd=%s",
-        facts.broker_requested_tiv_usd,
-    )
-
-    post = run_post_extraction_gates(
-        context,
-        facts.stated_territories,
-        UnderwritingContract.model_validate(contract_dict),
-        config,
-    )
-    if post is not None:
-        result.reason_code = post.code
-        result.lifecycle_state = post.lifecycle_state
-        result.final_status = (
-            "ESCALATED" if post.lifecycle_state == "ESCALATED" else "REJECTED"
-        )
-        ev = (
-            "GATE_AUTHORITY_ESCALATED"
-            if post.code == "AUTHORITY_CEILING"
-            else "GATE_REJECTED"
-        )
-        result.add_step(ev, post.lifecycle_state, post.message)
-        _rec(
-            ev,
-            state=post.lifecycle_state,
-            details={"code": post.code, "message": post.message},
-        )
-        log_with_dfid(logger, dfid, logging.INFO, "%s code=%s", ev, post.code)
-        _rec(
-            "FLOW_TERMINAL",
-            state=post.lifecycle_state,
-            details={"outcome": result.final_status},
-        )
-        return result
-
-    result.add_step("AGENT_DECISION_CYCLE", "ACTIVE", "Explain -> Policy -> Self-Check -> PCI")
-    pci, report = agent.run_decision_cycle(context, dfid=dfid)
-    result.report = report
-    _rec(
-        "PCI_EMITTED",
-        state="VALIDATING",
-        details={
-            "total_insured_value": report.policy_proposal.total_insured_value,
-            "premium": report.policy_proposal.premium,
-            "self_check_passed": report.self_check_passed,
-        },
-    )
-    log_with_dfid(
-        logger,
-        dfid,
-        logging.INFO,
-        "PCI_EMITTED total_insured_value=%.0f",
-        report.policy_proposal.total_insured_value,
-    )
-
-    result.add_step("DIM_VERIFY_AND_COMMIT", "VALIDATING", "Proof check + business rules")
-    dim_out = dim.verify_and_commit(pci, agent_id)
-    result.dim_result = dim_out
-    _rec(
-        "DIM_RESULT",
-        state="VALIDATING",
-        details={"result": dim_out},
-    )
-    log_with_dfid(logger, dfid, logging.INFO, "DIM_RESULT %s", dim_out)
-
-    if dim_out != "Policy Bound":
-        result.final_status = "REJECTED"
-        result.reason_code = dim_out.replace(" ", "_").upper()
-        result.lifecycle_state = "ABORTED"
-        result.add_step("FLOW_ABORTED", "ABORTED", dim_out)
-        _rec(
-            "FLOW_ABORTED",
-            state="ABORTED",
-            details={"reason": dim_out},
-        )
-        log_with_dfid(logger, dfid, logging.WARNING, "FLOW_ABORTED reason=%s", dim_out)
-        _rec(
-            "FLOW_TERMINAL",
-            state="ABORTED",
-            details={"outcome": "REJECTED"},
-        )
-        return result
-
-    result.add_step("LEDGER_COMMITTED", "ACCEPTED", "PCI appended to Decision Ledger")
-    _rec(
-        "LEDGER_COMMITTED",
-        state="ACCEPTED",
-        details={},
-    )
-    log_with_dfid(logger, dfid, logging.INFO, "LEDGER_COMMITTED")
-
-    result.add_step("BIND_API", "EXECUTING", "Mock policy bind")
-    br = binder.bind_policy(
-        dfid,
-        simulation_id=simulation_id,
-        total_insured_value=report.policy_proposal.total_insured_value,
-        premium=report.policy_proposal.premium,
-        industry=report.policy_proposal.industry,
-    )
-    result.policy_ref = br.policy_ref
-    result.final_status = "BOUND"
-    result.reason_code = "POLICY_BOUND"
-    result.lifecycle_state = "CLOSED"
-    result.add_step("BIND_SUCCEEDED", "CLOSED", br.message)
-    _rec(
-        "FLOW_TERMINAL",
-        state="CLOSED",
-        details={"outcome": "BOUND", "policy_ref": br.policy_ref},
-    )
-    log_with_dfid(
-        logger,
-        dfid,
-        logging.INFO,
-        "FLOW_TERMINAL outcome=BOUND policy_ref=%s",
-        br.policy_ref,
-    )
-    return result
+        return dfid
 
 
 def run_email_pipeline(
@@ -383,26 +286,24 @@ def run_email_pipeline(
     audit: AuditStore,
     simulation_id: str,
     context_store: ContextStore | None = None,
-) -> tuple[List[EmailCaseResult], DecisionLedger]:
-    binder = PolicyBindingClient(audit)
-
-    contract = _contract_from_config(config)
-    contract_dict = contract.model_dump()
-    agent_id = contract.agent_id
+) -> tuple[List[str], DecisionLedger]:
+    contract_dict = dict(config["agents"][0]["contract"])
+    agent_id = str((contract_dict.get("subject") or {}).get("agent_id", ""))
 
     if context_store is None:
         context_store = ContextStore(storage=bundle.context)
     ledger = DecisionLedger(storage=bundle.decision_ledger)
     dim = DecisionIntegrityModule(registry, context_store, ledger)
     agent = ROAUnderwriterAgent(registry, agent_id, llm)
+    binder = PolicyBindingClient(audit)
 
     ep = config.get("email_processing", {})
     emails_dir = sample_dir / ep.get("emails_dir", "emails")
     paths = list_markdown_fixtures(emails_dir)
 
-    results: List[EmailCaseResult] = []
+    dfids: List[str] = []
     for path in paths:
-        results.append(
+        dfids.append(
             process_email_file(
                 path,
                 contract_dict=contract_dict,
@@ -416,15 +317,4 @@ def run_email_pipeline(
                 simulation_id=simulation_id,
             )
         )
-    return results, ledger
-
-
-def _contract_from_config(config: Dict[str, Any]) -> UnderwritingContract:
-    agents = config.get("agents", [])
-    agent_cfg = agents[0] if agents else {}
-    contract = dict(agent_cfg.get("contract") or {})
-    if not contract:
-        raise ValueError("agents[0].contract must define the canonical contract")
-    if "mission" not in contract and agent_cfg.get("mission"):
-        contract["mission"] = agent_cfg["mission"]
-    return UnderwritingContract.model_validate(contract)
+    return dfids, ledger

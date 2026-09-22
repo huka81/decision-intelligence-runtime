@@ -1,11 +1,10 @@
-from dir_core import PolicyProposal, RuntimeContractProjection, project_contract
 """Tests for DIM TTL / Decision Validity Window (DIR §6.4)."""
 
 from datetime import datetime, timedelta, timezone
 
+from dir_core import PolicyProposal, RuntimeContractProjection, project_contract
 from dir_core.data_types import DimReasonCode, ValidationVerdict
 from dir_core.dim import validate_proposal
-from dir_core.models import PolicyProposal
 
 
 def _make_proposal(**kwargs) -> PolicyProposal:
@@ -89,50 +88,59 @@ def test_dim_contract_allowed_policy_types_accept() -> None:
     assert verdict == ValidationVerdict.ACCEPT
 
 
-    def test_dim_contract_transaction_limit_rejects() -> None:
-        projection = project_contract(
-            {
-                "agent_id": "agent_a",
-                "authority": {
-                    "allowed_policy_types": ["TRADE"],
-                    "limits": {"max_order_size": {"value": 1000, "unit": "USD"}},
-                },
-            }
-        )
-        proposal = _make_proposal(
-            policy_kind="TRADE",
-            params={"order_value": 1001},
-        )
-
-        verdict, reason = validate_proposal(proposal, {}, contract=projection)
-
-        assert verdict == ValidationVerdict.REJECT
-        assert reason == DimReasonCode.CONTRACT_LIMIT_EXCEEDED
-
-
-    def test_dim_contract_transaction_limit_requires_explicit_metric() -> None:
-        projection = RuntimeContractProjection(
-            agent_id="agent_a",
-            allowed_policy_types=["TRADE"],
-            transaction_limits={
-                "max_order_size": {"value": 1000, "unit": "USD"}
+def test_dim_contract_transaction_limit_rejects() -> None:
+    projection = project_contract(
+        {
+            "agent_id": "agent_a",
+            "authority": {
+                "allowed_policy_types": ["TRADE"],
+                "limits": {"max_order_size": {"value": 1000, "unit": "USD"}},
             },
-        )
-        proposal = _make_proposal(policy_kind="TRADE", params={"quantity": 1})
+        }
+    )
+    proposal = _make_proposal(
+        policy_kind="TRADE",
+        params={"order_value": 1001},
+    )
 
-        verdict, reason = validate_proposal(proposal, {}, contract=projection)
+    verdict, reason = validate_proposal(proposal, {}, contract=projection)
 
-        assert verdict == ValidationVerdict.REJECT
-        assert reason == DimReasonCode.CONTRACT_PARAMETER_MISSING
+    assert verdict == ValidationVerdict.REJECT
+    assert reason == DimReasonCode.CONTRACT_LIMIT_EXCEEDED
+
+
+def test_dim_contract_transaction_limit_requires_explicit_metric() -> None:
+    projection = RuntimeContractProjection(
+        agent_id="agent_a",
+        allowed_policy_types=["TRADE"],
+        invariants=[
+            {
+                "id": "INV_LIMIT",
+                "type": "range",
+                "field": "params.order_value",
+                "max": 1000,
+                "reason_code": "CONTRACT_LIMIT_EXCEEDED",
+            }
+        ],
+        transaction_limits={
+            "max_order_size": {"value": 1000, "unit": "USD"}
+        },
+    )
+    proposal = _make_proposal(policy_kind="TRADE", params={"quantity": 1})
+
+    verdict, reason = validate_proposal(proposal, {}, contract=projection)
+
+    assert verdict == ValidationVerdict.REJECT
+    assert reason == DimReasonCode.CONTRACT_PARAMETER_MISSING
 
 
 def test_dim_contract_allowed_policy_types_reject() -> None:
-    """When policy_kind is not in allowed_policy_types, reject."""
+    """When policy_kind is not in allowed_policy_types, reject via set invariant."""
     contract = {"permissions": {"allowed_policy_types": ["HOLD"]}}
     proposal = _make_proposal(policy_kind="TRADE")
     verdict, reason = validate_proposal(proposal, {}, contract=contract)
     assert verdict == ValidationVerdict.REJECT
-    assert "not in allowed_policy_types" in reason
+    assert reason == "UNAUTHORIZED_POLICY_TYPE"
 
 
 def test_dim_contract_min_confidence_accept() -> None:

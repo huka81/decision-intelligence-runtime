@@ -75,6 +75,8 @@ class GeminiClient(LLMClient):
         model: str = "gemini-flash-lite-latest",
         api_key: Optional[str] = None,
         timeout: int = 60,
+        max_output_tokens: int = 8192,
+        json_mode: bool = False,
     ):
         """
         Initialize Gemini client.
@@ -108,6 +110,8 @@ class GeminiClient(LLMClient):
             )
 
         self.timeout = timeout
+        self.max_output_tokens = max_output_tokens
+        self.json_mode = json_mode
         self._client = genai.Client(
             api_key=self.api_key,
             http_options=types.HttpOptions(timeout=timeout * 1000),
@@ -126,8 +130,10 @@ class GeminiClient(LLMClient):
                 "temperature": 0.7,
                 "top_k": 40,
                 "top_p": 0.95,
-                "max_output_tokens": 2048,
+                "max_output_tokens": self.max_output_tokens,
             }
+            if self.json_mode:
+                config_kwargs["response_mime_type"] = "application/json"
             if system:
                 config_kwargs["system_instruction"] = system
 
