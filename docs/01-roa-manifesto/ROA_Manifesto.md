@@ -955,6 +955,9 @@ The "library." Large, static, or reference data that is too voluminous to fit in
 * **Reference Datasets:** Historical backtest data, strategy whitepapers, or large unstructured documents.
 
 This structured approach ensures that agents always operate on a coherent slice of reality, rather than a noisy stream of raw events.
+
+> **Storage layers vs. semantic domains:** The four layers above (Session, State, Memory, Artifacts) describe **how context is stored**. The four semantic domains (Operational, Business, Governance, Execution) defined in the [DIR Architectural Pattern, Section 8.1](../02-decision-runtime/DIR_Architectural_Pattern.md#81-the-4-domains-of-context) describe **what each slice means for decision legality**. The mapping between them is defined there.
+
 ---
 
 ## **7.3 How Agents Use the Context Store**

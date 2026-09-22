@@ -2,15 +2,17 @@
 
 ---
 
-# DIR-minified: Decision Intelligence Runtime  -  Complete Framework Specification
+# DIR-minified: Decision Intelligence Runtime  -  Implementation Context Reference
 
-### LLM-Optimized Context Reference | ROA + DIR + Topologies
+### LLM-Optimized Context Projection | ROA + DIR + Topologies
 
 ---
 
 ## 0. HOW TO USE THIS DOCUMENT
 
-This file is the **single-source context** for the Decision Intelligence Runtime (DIR) framework. Load this file as context before asking an LLM to implement, extend, or review any DIR-compliant system.
+This file is a **condensed implementation context** for the Decision Intelligence Runtime (DIR) framework. Load it before asking an LLM to implement, extend, or review a DIR-compliant system.
+
+> **Canonical precedence:** On any conflict, the four canonical documents govern meaning: [ROA_Manifesto.md](../01-roa-manifesto/ROA_Manifesto.md), [DIR_Architectural_Pattern.md](../02-decision-runtime/DIR_Architectural_Pattern.md), [DIR_Topologies.md](../03-topologies/DIR_Topologies.md), [DIR_Governance.md](../04-governance/DIR_Governance.md). This file is a projection for prompt context — not a second constitution.
 
 **What this document contains:**
 - Complete specification of ROA (Responsibility-Oriented Agents)  -  the Identity Layer
@@ -66,7 +68,7 @@ The agent began reasoning based on a context snapshot at T0 with price $99.50. L
 Without idempotency controls, network timeouts caused the agent to retry execution. The system bought the same position twice. Then sold twice. Each execution created real financial exposure  -  not because the model was wrong, but because the infrastructure lacked exactly-once guarantees.
 
 - **Root cause:** No idempotency; no duplicate intent protection
-- **Mechanism required:** `SHA256(DFID + Step_ID + Canonical_Params)`. The runtime recognizes duplicate intents and prevents duplicate side effects regardless of environmental state changes at retry time
+- **Mechanism required:** `SHA256(DFID + Step_ID + Canonical_Params)`. A retry with the same `Canonical_Params` returns the cached result; different parameters produce a different key and therefore a different intent — bounded by the Intent Retry Governor
 
 **Failure Case 4  -  Agent Drift (Optimization / Semantic / Environmental)**
 
@@ -118,7 +120,7 @@ flowchart LR
 
 ### 1.4 Theoretical Model — Illegal State Theory
 
-Large Language Models are semantic engines, not formal state machines. They can propose actions that violate logic, permissions, or temporal realities. DIR is not merely a collection of components — it is an architecture designed to prevent a system from ever reaching an **Illegal Decision State**.
+Large Language Models are semantic engines, not formal state machines. They can propose actions that violate logic, permissions, or temporal realities. DIR is not merely a collection of components — it is an architecture designed to govern which transitions may commit side effects under the **active, human-approved contract**.
 
 A **Legal Decision State (LDS)** is the conjunction of five simultaneously valid conditions:
 
@@ -154,20 +156,20 @@ An **Illegal Decision State** occurs when any condition is violated:
 |---|---|---|
 | **EOAM** | ¬C and ¬T | Drift Envelopes + JIT State Verification prevent execution against expired reality |
 | **SDS** | ¬I | Constrained Decoding makes generating an illegal intent physically impossible |
-| **DL+PCI** | A ∧ C ∧ T ∧ I ∧ E (certificate) | PCI demands cryptographic proof that all five conditions held simultaneously |
+| **DL+PCI** | Binding certificate (A, C, T, I, E) | PCI carries cryptographic proof of state, contract, rule, and identity binding — not semantic truth |
 
 ### 1.4.2 The DIM as Illegal State Preventer and Kernel Invariant Evaluator
 
 The **Decision Integrity Module (DIM)** must be understood not as a simple validator but as a formal **Illegal State Preventer** and **Kernel Invariant Evaluator**:
 
-> *"The DIM does not judge agent creativity. It mathematically ensures the system cannot transition into a state where ¬A ∨ ¬C ∨ ¬T ∨ ¬I ∨ ¬E is true."*
+> *"The DIM does not judge agent creativity. It deterministically evaluates every active, machine-verifiable rule in the signed contract before creating an ExecutionIntent."*
 
 Each DIM validation step maps directly to an LDS component. Crucially, while Authority ($A$), Context ($C$), Time ($T$), and Intent ($I$) are deterministically computable in polynomial time within the Kernel, **Semantic Truth / Evidence ($E$) is undecidable in a deterministic environment (per Rice's Theorem)**. Therefore, the Kernel checks *cryptographic evidence signatures* produced in User Space; it cannot semantically read text to prove $E$. 
 
 | DIM Gate | LDS Component Protected |
 |---|---|
 | RBAC / Authority check | ¬A — unauthorized proposals are rejected |
-| Context hash / Mission invariant | ¬C — agent cannot act on a phantom reality |
+| Snapshot identity / Mission invariant | ¬C — agent cannot act on an unknown or contract-mismatched snapshot |
 | JIT State Verification / TTL | ¬T — stale decisions cannot execute |
 | Schema & Integrity check | ¬I — malformed intent is blocked |
 | Semantic Alignment / Evidence check | ¬E — compliant lies are surfaced before signing |
@@ -785,12 +787,12 @@ sequenceDiagram
 
     Note over Agent: Startup Phase  -  Agent loads local config
 
-    Agent->>Registry: REGISTER { ID: "Trader_Alpha", Ver: "1.2", Caps: ["TRADE"] }
+    Agent->>Registry: REGISTER { agent_id: "Trader_Alpha", contract_version: "1.2.0" }
 
     activate Registry
     Note right of Registry: Verification Gate
-    note right of Registry: 1. Is "Trader_Alpha" allowed?
-    note right of Registry: 2. Is v1.2 supported by v1.5 Runtime?
+    note right of Registry: 1. Does v1.2.0 exist as a Signed Contract Release?
+    note right of Registry: 2. Is contract_version supported by Runtime v1.5?
 
     alt Version Mismatch
         Registry-->>Agent: REJECT (406 Not Acceptable)
@@ -816,12 +818,13 @@ stateDiagram-v2
     [*] --> INITIALIZING : Registry.register()
     INITIALIZING --> ACTIVE : Handshake OK<br>(Registry)
     INITIALIZING --> RETIRED : Handshake FAIL<br>(Registry)
-    ACTIVE --> SUSPENDED : N x ValidationRejected<br>OR MISSION_DISSONANCE<br>(Runtime / DIM)
-    ACTIVE --> ESCALATED : EscalationTrigger fired<br>(Runtime)
+    ACTIVE --> SUSPENDED : Circuit Breaker<br>(Governance Monitor)
+    ACTIVE --> DEGRADED : Semantic Drift<br>(Governance Monitor)
+    ACTIVE --> ESCALATION_ONLY : Confidence trend<br>(Governance Monitor)
     ACTIVE --> RETIRED : agent.request_retire()<br>OR Instance lifecycle end<br>(Agent OR Runtime)
-    ESCALATED --> ACTIVE : Human APPROVE<br>(HITL)
-    ESCALATED --> RETIRED : Human REJECT / ABORT<br>(HITL or Runtime)
-    SUSPENDED --> ACTIVE : Operator reactivation<br>with justification
+    SUSPENDED --> ACTIVE : Operator Post-Incident Review
+    DEGRADED --> ACTIVE : Operator Post-Incident Review
+    ESCALATION_ONLY --> ACTIVE : Operator Post-Incident Review
     SUSPENDED --> RETIRED : Operator decision<br>after inspection
     RETIRED --> [*]
 ```
@@ -832,19 +835,18 @@ stateDiagram-v2
 |-----------|-------------|-----------|
 | `INITIALIZING → ACTIVE` | Registry | Handshake schema + version check passed |
 | `INITIALIZING → RETIRED` | Registry | Handshake failed  -  incompatible version or unauthorized ID |
-| `ACTIVE → SUSPENDED` | Runtime (DIM) | N consecutive `ValidationRejected` within a time window, OR `MISSION_DISSONANCE` detected |
-| `ACTIVE → ESCALATED` | Runtime | `EscalationTrigger` condition met (confidence < threshold, exposure > limit, etc.) |
+| `ACTIVE → SUSPENDED` | Governance Monitor (Circuit Breaker) | Hard aggregate limit crossed — DIM rejects all proposals |
+| `ACTIVE → DEGRADED` | Governance Monitor (Circuit Breaker) | Semantic Drift detected — specific capability revoked at DIM |
+| `ACTIVE → ESCALATION_ONLY` | Governance Monitor (Circuit Breaker) | Confidence trend — every proposal routed to human review |
 | `ACTIVE → RETIRED` | **Agent** (only allowed self-transition) OR Runtime | Agent calls `registry.request_retire(agent_id, reason)` after completing its mission; OR Runtime closes Instance Agent lifecycle |
-| `ESCALATED → ACTIVE` | Human (HITL) | Human approves via OVERRIDE |
-| `ESCALATED → RETIRED` | Human (HITL) or Runtime | Human rejects / ABORT decision; or retry budget exhausted |
-| `SUSPENDED → ACTIVE` | Operator | Manual reactivation with documented justification (audit trail required) |
+| `SUSPENDED / DEGRADED / ESCALATION_ONLY → ACTIVE` | Operator | Post-Incident Review with documented justification (audit trail required) |
 | `SUSPENDED → RETIRED` | Operator | Post-inspection decision |
 
 **Critical rules:**
 
-1. **Agent authority over own state is minimal:** An agent may only call `registry.request_retire()`. It cannot transition itself to ACTIVE, SUSPENDED, or ESCALATED. All such transitions are Kernel/operator decisions.
+1. **Agent authority over own state is minimal:** An agent may only call `registry.request_retire()`. It cannot transition itself to ACTIVE, SUSPENDED, DEGRADED, or ESCALATION_ONLY. All such transitions are Governance Monitor or operator decisions.
 2. **SUSPENDED does not mean RETIRED:** A SUSPENDED agent's resource locks are released, but its Responsibility Contract and Memory Context remain intact. Operator inspection determines final disposition.
-3. **ESCALATED is a pause, not a failure:** The DecisionFlow is paused at `ESCALATED`. The agent is not suspended  -  it is waiting. Human decision resumes or terminates the flow.
+3. **`ESCALATED` is a DecisionFlow state, not an Agent state:** A single flow pauses at `ESCALATED` awaiting human input (Section 4.3). `ESCALATION_ONLY` is an Agent Registry mode where every new proposal requires human review. See [DIR_Governance.md](../04-governance/DIR_Governance.md), Section 4.3.
 4. **Registry update vs. state transition:** Updating a contract version is NOT a state transition. A contract update that passes validation leaves the agent in `ACTIVE`. A failed update attempt does NOT change lifecycle state.
 
 **`AgentLifecycleState` enum:**
@@ -853,11 +855,12 @@ stateDiagram-v2
 from enum import Enum
 
 class AgentLifecycleState(str, Enum):
-    INITIALIZING = "INITIALIZING"
-    ACTIVE       = "ACTIVE"
-    SUSPENDED    = "SUSPENDED"
-    ESCALATED    = "ESCALATED"
-    RETIRED      = "RETIRED"
+    INITIALIZING     = "INITIALIZING"
+    ACTIVE           = "ACTIVE"
+    SUSPENDED        = "SUSPENDED"
+    DEGRADED         = "DEGRADED"
+    ESCALATION_ONLY  = "ESCALATION_ONLY"
+    RETIRED          = "RETIRED"
 ```
 
 ### 3.6 ROA as Governance Wrapper for Generative Frameworks
@@ -1226,8 +1229,8 @@ stateDiagram-v2
     Validating --> Aborted : Validation FAILED (or REASONING_EXHAUSTION)
     Validating --> Escalated : Threshold Reached
 
-    Escalated --> Accepted : Human Override
-    Escalated --> Aborted : Human Reject
+    Escalated --> Validating : Human OVERRIDE / MODIFY (re-submit)
+    Escalated --> Aborted : Human ABORT
 
     Accepted --> Executing : JIT PASSED
     Accepted --> Aborted   : JIT STATE_DRIFT_DETECTED
@@ -1306,9 +1309,9 @@ flowchart LR
 |------|---------------|----------------|
 | **1  -  Schema & Integrity** | JSON matches versioned Pydantic schema; required fields present; no extra fields | `SCHEMA_INVALID` |
 | **2  -  Authority (RBAC)** | Permissions resolved from Agent Registry; agent authorized for this policy kind and instrument | `RBAC_DENIED` |
-| **3  -  State Consistency** | `context_ref` (`context_snapshot_id`) in proposal matches live state hash | `STALE_CONTEXT` |
+| **3  -  Snapshot Identity** | `context_ref` points to a known, binding `ContextSnapshot`; reject if unknown, unbound, or older than `max_context_age` | `STALE_CONTEXT` |
 | **4  -  Resource Locks** | Temporary lock/reservation on required assets placed; prevents horizontal contention between concurrent agents | `RESOURCE_CONTENTION` / `INSUFFICIENT_LIQUIDITY` |
-| **5  -  Mission Invariant** | `mission_context_hash` in proposal matches agent's registered mission contract | `MISSION_DISSONANCE` |
+| **5  -  Mission Invariant** | `mission_context_hash` matches registered mission snapshot in contract (not semantic mission understanding) | `MISSION_DISSONANCE` |
 
 **Lock Normalization (Deadlock Prevention):** Resources MUST be requested in alphabetical order of their Global Resource IDs. This is a **Kernel responsibility**  -  agents are NOT responsible for sorting. Mandatory `LockTimeout` (e.g., 5s) aborts stalled flows with `RESOURCE_CONTENTION_TIMEOUT`.
 
@@ -1399,7 +1402,7 @@ key = idempotency_key(
 )
 ```
 
-**CRITICAL:** `Attempt_Number` MUST NOT be part of the key. Including it would make each retry produce a different key, defeating idempotency. Log `Attempt_Number` for observability only.
+**CRITICAL:** `Attempt_Number` MUST NOT be part of the key. Including it would make each retry produce a different key, defeating idempotency. Log `Attempt_Number` for observability only. A retry with the same `Canonical_Params` returns the cached result; different parameters produce a different key — bounded by the Intent Retry Governor.
 
 **Why `context_ref` (the Context Snapshot hash) is deliberately excluded from the key:**
 
@@ -1505,9 +1508,7 @@ DIR treats every `ExecutionIntent` as **Atomic**. For complex workflows spanning
 1. **Parent Agent (Saga Manager):** Maintains state of complex transaction; emits Policy to spawn Child Flow for Step 1
 2. **Child Agent (Executor):** Acts atomically on the mandate (e.g., "Sell Asset A"); reports success/failure to Parent
 3. **Partial Failure → `DIRTY` State:** If Step 1 succeeds but Step 2 fails → flow tagged `PARTIAL_SUCCESS_DIRTY`
-4. **Compensation:** Runtime reports failure to Parent. Parent reasons about partial state and emits a Compensation Policy (e.g., "Re-buy Asset A" or "ALERT_HUMAN"). The Runtime does NOT reason about recovery. Recovery logic stays in User Space.
-
-Agents MUST select compensation actions from a **pre-defined, DIR-validated menu** (e.g., `REVERT`, `CLOSE_ALL`, `ALERT_HUMAN`). Agents MUST NOT generate "reasoning-based compensation" logic  -  the same reasoning capability that caused the failure cannot be trusted to fix it.
+4. **Compensation:** Runtime reports the `DIRTY` state to the Parent. The Parent selects a **Compensation Action** from a pre-defined, Runtime-validated menu (e.g., `REVERT`, `CLOSE_ALL`, `ALERT_HUMAN`). The Runtime executes that choice deterministically. The Parent MUST NOT generate reasoning-based compensation logic — the same capability that caused the failure cannot be trusted to design recovery.
 
 ### 4.9 Observability  -  Golden Signals
 

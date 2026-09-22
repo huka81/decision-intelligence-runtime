@@ -68,6 +68,8 @@ flowchart LR
 
 The invariant predicates themselves are established engineering mechanisms. The architectural contribution is their placement between open-ended probabilistic reasoning and deterministic state change. These are therefore not disjointed tools, but a single control path from generated proposal to governed execution.
 
+> **Note:** The diagram above is a placement sketch — it shows where each concern lives in the ecosystem. The authoritative control map for a single decision is the DIM validation pipeline defined in the [DIR Architectural Pattern](../02-decision-runtime/DIR_Architectural_Pattern.md), Section 6.
+
 ---
 
 ## 4. The DIR Architecture Stack

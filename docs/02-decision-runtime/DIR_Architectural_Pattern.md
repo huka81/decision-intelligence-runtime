@@ -153,7 +153,7 @@ In a static system, hard-coding agent permissions works. In AIvestor, as special
 
 DIR introduces an **Agent Registry**-a service discovery[^3] mechanism for intelligence.
 
-* **Registration:** On startup, an agent registers its `Responsibility Contract`: its ID, its subscribed inputs (Context), and its authorized outputs (Policy Types).
+* **Handshake (not self-registration):** On startup, an agent presents its identity and the contract version it expects (`agent_id`, `contract_version`). The Registry admits a session only if that version matches a **Signed Contract Release** already published via CI/CD. The agent does not upload or amend authority at runtime.
 * **Capability Contract:** The Registry acts as the source of truth for ROA constraints. When the Validation Layer asks "Can Agent X trade Asset Y?", it queries the Registry, not the Agent. This prevents agents from self-granting permissions via prompt injection.
 
 ### *Conceptual Decomposition (Single Service, Multiple Authorities)*
@@ -196,10 +196,10 @@ sequenceDiagram
 
     Note over Agent: **Startup Phase**<br/>Agent loads local config
 
-    Agent->>Registry: **REGISTER**<br/>{ ID: "Trader_Alpha", Ver: "1.2", Caps: ["TRADE"] }
+    Agent->>Registry: **REGISTER**<br/>{ agent_id: "Trader_Alpha", contract_version: "1.2.0" }
     
     activate Registry
-    Note right of Registry: **Verification Gate**<br/>1. Is "Trader_Alpha" allowed?<br/>2. Is v1.2 supported by v1.5 Runtime?
+    Note right of Registry: **Verification Gate**<br/>1. Does v1.2.0 exist as Signed Contract Release?<br/>2. Is contract_version supported by Runtime v1.5?
 
     alt Version Mismatch (e.g. Runtime is v2.0)
         Registry-->>Agent: **REJECT** (406 Not Acceptable)
@@ -384,6 +384,8 @@ Unlike a stateless HTTP request, a DecisionFlow is a stateful entity. It follows
 * **CLOSED:** Execution completed successfully.
 * **ABORTED:** The flow was terminated due to validation failure, timeout (TTL), or error.
 
+> **Note:** This is a summary view. The canonical DecisionFlow state machine — including `VALIDATING`, `ESCALATED`, `ACCEPTED`, and `EXECUTING` — is defined in [Section 9.1](#91-escalation-as-a-system-state).
+
 
 
 
@@ -462,10 +464,10 @@ The pipeline functions as a **Policy Enforcement Point (PEP)**. It evaluates pro
 
 1. **Schema & Integrity:** Does the JSON match the versioned schema?
 2. **Authority (RBAC):** Is this agent authorized in the *Agent Registry* to execute this Policy Kind?
-3. **State Consistency (Optimistic Concurrency)[^7]:** Does the `context_hash` in the proposal match the current system state? If slippage occurred, reject with `STALE_CONTEXT`.
+3. **Snapshot Identity:** Does the `context_ref` in the proposal point to a known, binding `ContextSnapshot` recorded by the Runtime? Reject with `STALE_CONTEXT` if the snapshot is unknown, unbound, or older than `max_context_age`. This gate verifies **which frozen reality** the agent reasoned against — not whether live market state has moved (that is JIT, Section 6.5).
 4. **Resource Availability (Semantic Locking):** To prevent "Horizontal Resource Contention" (where two agents compete for the same cash/inventory), the DIM places a temporary lock or reservation on the required assets during the validation phase. If Agent A has reserved the last unit of capital, Agent B's simultaneous request is rejected with `INSUFFICIENT_LIQUIDITY`, preventing race conditions.
-    *   **Linear Lock Acquisition:** To prevent deadlocks in multi-resource requests, resources MUST be requested in alphabetical order of their Global Resource IDs. Failure of the Agent to adhere to this sorting order in the Policy Proposal results in immediate rejection by the DIM. A mandatory `LockTimeout` (e.g., 5s) ensures that stalled flows are `ABORTED` with `RESOURCE_CONTENTION_TIMEOUT`.
-5. **Mission Invariant Check:** The DIM MUST verify that the Policy Proposal contains a `mission_context_hash`. The Runtime compares this against the registered Agent Mission. If the agent’s reasoning context has drifted from its assigned mission, the DIM rejects the proposal with `MISSION_DISSONANCE`.
+    *   **Lock Normalization:** To prevent deadlocks in multi-resource requests, the Runtime normalizes Global Resource IDs into alphabetical order before acquisition. Agents are not responsible for sorting. A mandatory `LockTimeout` (e.g., 5s) ensures that stalled flows are `ABORTED` with `RESOURCE_CONTENTION_TIMEOUT`.
+5. **Mission Invariant Check:** The DIM MUST verify that the Policy Proposal contains a `mission_context_hash`. The Runtime compares this against the registered mission snapshot in the contract. If the hash does not match, the DIM rejects with `MISSION_DISSONANCE`. The Runtime does not judge whether the agent understood its mission — only whether the proposal is bound to the approved mission snapshot.
 6. **Contract IR (Declarative Invariants):** The DIM evaluates the active Runtime Enforcement Projection's compiled `authority.invariants` using three native primitives: `range`, `set`, and `state_match`. A `set` rule declares either an `allowed` whitelist or a `denied` denylist; string denylists MAY use `match: substring`. `applies_to_policy_kinds` scopes a rule to named proposal phases without application-side filtering. Rejections emit stable `reason_code` values and `failed_invariant_id` in audit rows. This gate replaces ad-hoc limit and exclusion checks.
     > *The Runtime does not interpret mission semantics.
     > It validates **contractual alignment**, not semantic intent.
@@ -538,7 +540,7 @@ Within this model, an **Illegal Decision State** occurs when any declared condit
 | DIM Gate | LDS Component | Prevents |
 |---|---|---|
 | RBAC / Authority (6.2 step 2) | Authority (A) | Agent exceeding its defined permission boundaries (`¬A`) |
-| Context hash / Mission invariant (6.2 steps 3, 5) | Context (C) | Acting on stale, manipulated, or mission-drifted context (`¬C`) |
+| Snapshot identity / Mission invariant (6.2 steps 3, 5) | Context (C) | Acting on an unknown, unbound, or contract-mismatched snapshot (`¬C`) |
 | TTL / Decision Validity Window (6.4) | Time (T) | Executing decisions whose temporal window has expired (`¬T`) |
 | JIT State Re-verification (6.5) | Context (C) + Time (T) | TOCTOU drift between reasoning and execution (`¬C`, `¬T`) |
 | Schema & Integrity (6.2 step 1) | Intent (I) | Malformed or out-of-contract intent (`¬I`) |
@@ -613,7 +615,7 @@ LLMs can get stuck in loops, and network retries can deliver duplicate messages.
 *   **Step_ID:** For multi-step sequences.
 *   **Canonical_Params:** A sorted string of the action parameters.
 
-The `Attempt_Number` is logged for observability but MUST NOT be part of the key. This ensures that retries of the same intent resolve to the same side effect. If the Runtime sees a duplicate key, it returns the *cached result* of the previous execution rather than triggering the API again.
+The `Attempt_Number` is logged for observability but MUST NOT be part of the key. A retry with the same `Canonical_Params` returns the cached result of the previous execution. A retry with different parameters produces a different key and therefore a different intent — bounded by the Intent Retry Governor (Section 6.2.1).
 
 ```mermaid
 ---
@@ -669,14 +671,7 @@ For complex workflows (e.g., "Sell Asset A to fund purchase of Asset B"), DIR ut
 
 1.  **Parent Agent (Saga Manager):** Maintains the state of the complex transaction. It emits a Policy to spawn a Child Flow for Step 1.
 2.  **Child Agent (Executor):** Receives the mandate, acts atomically (e.g., "Sell A"), and reports success/failure to the Parent.
-3.  **Failure Handling:** If Step 1 succeeds but Step 2 fails, the *Runtime* does not guess how to rollback. Instead, it reports the failure to the Parent Agent. The Parent Agent then reasons about the partial state and emits a new Policy: **Compensation Action** (e.g., "Re-buy Asset A" or "Alert Human").
-
-This keeps the Runtime "dumb" and deterministic, while moving the complex recovery logic back to the entity capable of reasoning: the Agent
-Not all external APIs are transactional/atomic. A Policy might require executing a sequence of dependent actions (e.g., "Sell Asset A to fund purchase of Asset B").
-DIR rejects the "all-or-nothing" fantasy.
-
-*   **State: PARTIAL_SUCCESS_DIRTY:** If a 3-step policy fails at step 2, the DFID is not simply "failed." It is tagged as `DIRTY`.
-*   **Compensation:** This triggers a **Saga Compensation** workflow[^9]. Unlike a simple retry, this logic attempts to undo Step 1 or flag the anomaly for human resolution. Dirty states freeze the Agent instance in `MAINTENANCE_MODE` until a Compensation Policy is executed or human intervention clears the lock.
+3.  **Failure Handling:** If Step 1 succeeds but Step 2 fails, the Runtime does not guess how to rollback. It tags the parent DFID as `DIRTY` and reports the partial state to the Parent Agent. The Parent selects a **Compensation Action** from a pre-defined, Runtime-validated menu (e.g., `REVERT`, `CLOSE_ALL`, `ALERT_HUMAN`). The Runtime executes that choice deterministically. The Parent MUST NOT generate reasoning-based compensation logic — the same capability that caused the failure cannot be trusted to design recovery.
 
 ---
 
@@ -701,6 +696,15 @@ To organize this information effectively, the **Context Store** manages four dis
 4. **Execution Context:** The ephemeral state of the current flow (e.g., previous steps in the current DecisionFlow, immediate validation feedback).
 
 These four domains collectively form the boundary of CaC. If information does not fit into one of these buckets, it is not part of the system's formal Context.
+
+The **Context Store** (see ROA Manifesto, Section 7) implements these domains through four storage layers:
+
+| Context Store layer | Domain served |
+|---|---|
+| **State** | Operational Context |
+| **Memory** | Business Context (including mission as a contract snapshot) |
+| **Artifacts** | Governance Context |
+| **Session** | Execution Context (current DecisionFlow) |
 
 ### 8.2 Context Compilation Pipeline
 
@@ -851,11 +855,11 @@ stateDiagram-v2
     Validating --> Escalated : Threshold Reached
 
     %% Escalation Logic (Human-in-the-Loop)
-    Escalated --> Accepted : Human Override
-    Escalated --> Aborted : Human Reject
+    Escalated --> Validating : Human OVERRIDE / MODIFY (re-submit)
+    Escalated --> Aborted : Human ABORT
 
     %% Execution Logic
-    Accepted --> Executing : Create Execution Intent
+    Accepted --> Executing : JIT PASSED → Execution Intent
     Executing --> Closed : Success
     Executing --> Aborted : Runtime Error
 
@@ -875,10 +879,10 @@ stateDiagram-v2
     end note
 ```
 
-* *Nodes:* CREATED -> ACTIVE -> (Validation) -> [ACCEPTED | REJECTED | ESCALATED].
+* *Nodes:* CREATED → ACTIVE → VALIDATING → [ACCEPTED | ABORTED | ESCALATED].
 * *Transitions:*
-* `ACCEPTED` -> EXECUTION -> CLOSED.
-* `ESCALATED` -> (Human Review) -> [RESUME | ABORT].
+* `ACCEPTED` → JIT → EXECUTING → CLOSED.
+* `ESCALATED` → (Human Review) → re-submit to VALIDATING (`OVERRIDE` / `MODIFY`) or `ABORTED`. A rejected proposal does not become `ACCEPTED` by human click alone; scalar boundary changes use `ContractParameterAmendment` within signed `min_floor` / `max_ceiling` envelopes (Section 9.5).
 
 
 

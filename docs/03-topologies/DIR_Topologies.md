@@ -467,7 +467,7 @@ In older aircraft (like standard scripts), the pilot's stick was mechanically co
 
 **Topology C** represents the ultimate stage of formal verification within the Decision Intelligence Runtime framework. It shifts the focus from "trusting the agent" (EOAM) or "constraining the agent" (SDS) to **"verifying the artifact."**
 
-> **LDS Role — Cryptographic State Certificate (`A ∧ C ∧ T ∧ I ∧ E`):** DL+PCI does not protect a single LDS component — it demands cryptographic proof that **all five held simultaneously** at the moment the intent was formed. The Proof-Carrying Intent is not a request for trust; it is a self-contained certificate asserting that Authority was in scope, Context was authentic, Time had not expired, Intent was within bounds, and Evidence was verifiable. The Proof Checker verifies this certificate deterministically, without reasoning. The Decision Ledger stores the certificate immutably. The result is a topology where safety is a structural property of the data artifact itself — independent of the agent, the runtime, or any network condition.
+> **LDS Role — Cryptographic Binding Certificate:** DL+PCI carries a self-contained proof of **state binding, contract binding, rule binding, and identity binding** at the moment the intent was formed. The Proof Checker verifies these bindings deterministically, without reasoning. The Decision Ledger stores the certificate immutably. Evidence in the Kernel is verified as a required, structurally valid package — not as semantic truth. The result is a topology where declared bindings are a structural property of the artifact itself, verifiable offline without access to the live Runtime.
 
 ### 4.1 The Philosophy: Proof-Carrying Intents (PCI)
 

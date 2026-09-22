@@ -337,6 +337,8 @@ Post-Execution Governance is therefore not supplementary—it is the mathematica
 
 ### 4.3 The Circuit Breaker: Graduated Response
 
+> **Agent status vs. DecisionFlow state:** `SUSPENDED`, `DEGRADED`, and `ESCALATION_ONLY` are **Agent Registry operational modes** — they govern all future proposals from that agent identity. `ESCALATED` (in the DIR Architectural Pattern, Section 9.1) is a **DecisionFlow state** — it pauses one specific flow awaiting human input. `ESCALATION_ONLY` means every new proposal requires human review; `ESCALATED` means this one flow is waiting.
+
 If an aggregate monitor detects that a trend has crossed a predefined business threshold, it must intervene immediately. Unlike the DIM, which rejects a single bad proposal, the monitor acts on the agent's global identity.
 
 A full suspension is not always the appropriate response. In critical environments - customer support queues, logistics operations, real-time trading - a hard stop can cause more operational damage than the drift it was designed to prevent. The Circuit Breaker therefore supports a **graduated response**, calibrated to the severity and type of drift detected.
