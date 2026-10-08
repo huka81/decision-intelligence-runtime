@@ -1,0 +1,18 @@
+---
+config:
+  look: handDrawn
+---
+flowchart TB
+ subgraph ROA_Agent["ROA Agent"]
+        PolicyForm["Policy Formulation"]
+        Explain["Explain: Interpreting Context"]
+        SelfCheck["Self Check: Alignment Check"]
+        Emit["Emit: Policy Proposal"]
+  end
+    Context["Context Store"] -- Input --> Explain
+    Explain -- Narrative --> PolicyForm
+    PolicyForm -- Intent --> SelfCheck
+    SelfCheck -- Validated Intent --> Emit
+    Emit -- Syscall (JSON Claim) --> Runtime[["Deterministic Runtime"]]
+
+    Context@{ shape: cyl}

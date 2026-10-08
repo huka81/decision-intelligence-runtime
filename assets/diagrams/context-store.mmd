@@ -1,0 +1,44 @@
+---
+title: Context Store and Execution Flow
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
+flowchart LR
+    %% Professional color scheme
+    classDef storage fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef terminal fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+
+    %% Input Source
+    CS["`**Context Store**<br/>State Repository`"]:::storage
+
+    %% User Space: The Agent's Reasoning
+    subgraph UserSpace["`**USER SPACE**<br/>Agent Reasoning`"]
+        EXP["`**Explain**<br/>Interpret Situation`"]:::userSpace
+        POL["`**Policy**<br/>Propose Intent`"]:::userSpace
+        
+        EXP ==> POL
+    end
+
+    %% Kernel Space: The Runtime's Enforcement
+    subgraph KernelSpace["`**KERNEL SPACE**<br/>Runtime Enforcement`"]
+        DIM["`**Validate**<br/>Decision Integrity Module`"]:::kernelSpace
+        EXEC["`**Execute**<br/>Deterministic Action`"]:::kernelSpace
+        
+        DIM ==> EXEC
+    end
+
+    %% Output
+    SE(["`**Side Effect**<br/>Real World Action`"]):::terminal
+
+    %% Connections
+    CS -.->|Reads State| EXP
+    POL ==>|Policy Proposal| DIM
+    EXEC ==>|Execution Intent| SE
+
+    %% Subgraph styling
+    style UserSpace fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px
+    style KernelSpace fill:#FAFAFA,stroke:#388E3C,stroke-width:3px

@@ -1,0 +1,80 @@
+graph LR
+    %% ==============================================================================
+    %% STYLES AND DEFINITIONS
+    %% ==============================================================================
+    
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:3px,color:#1B5E20
+    classDef infraSpace fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,stroke-dasharray: 5 5
+    
+    classDef inference fill:#D1C4E9,stroke:#512DA8,stroke-width:2px,color:#311B92,font-weight:bold
+
+    %% ==============================================================================
+    %% 1. USER SPACE (Reasoning)
+    %% ==============================================================================
+    
+    subgraph User_Space ["👤 USER SPACE (Probabilistic Reasoning)"]
+        style User_Space fill:#FAFAFA,stroke:#3F51B5,stroke-width:2px
+        direction TB
+
+        Agent_Logic(["Tactical Agent<br/>(Policy Formation)"]):::userSpace
+        
+        subgraph Inference_Constraint ["Constrained Inference"]
+            direction LR
+            LLM[["LLM Engine"]]:::inference
+        end
+    end
+
+    %% ==============================================================================
+    %% 2. KERNEL SPACE (The Runtime)
+    %% ==============================================================================
+
+    subgraph Kernel_Space ["🏁 KERNEL SPACE (Deterministic Execution)"]
+        style Kernel_Space fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+        direction TB
+
+        subgraph Preparation ["Stage 1: Prep"]
+            Context_Comp["Context Compiler<br/>(Atomic Bundle)"]:::kernelSpace
+            Grammar_Factory["Grammar Factory<br/>(JSON Constraints)"]:::kernelSpace
+        end
+
+        subgraph Constraints ["Inference Control"]
+            Grammar_Lock{"Grammar<br/>Straightjacket"}:::kernelSpace
+        end
+
+        subgraph Validation_Exec ["Stage 2: Commit"]
+            JIT_FastPass{{"JIT Fast-Pass<br/>(Drift Check Only)"}}:::kernelSpace
+            Atomic_Exec["Atomic Executor<br/>(Idempotency)"]:::kernelSpace
+        end
+    end
+
+    %% ==============================================================================
+    %% 3. INFRA SPACE (External World)
+    %% ==============================================================================
+
+    subgraph Infra_Space ["☁️ EXTERNAL SYSTEMS"]
+        style Infra_Space fill:none,stroke:#F57C00,stroke-width:2px,stroke-dasharray: 5 5
+        Raw_Event(("Raw Event<br/>(Trigger)")):::infraSpace
+        API_Call(("External API<br/>(Execution)")):::infraSpace
+    end
+
+    %% ==============================================================================
+    %% DATA FLOW
+    %% ==============================================================================
+
+    Raw_Event ==> Context_Comp
+    
+    Context_Comp -- "Atomic Context" --> Agent_Logic
+    Grammar_Factory -- "JSON Grammar" --> Grammar_Lock
+    
+    Agent_Logic ==> LLM
+    Grammar_Lock -.- LLM
+    
+    LLM ==>|Syntactically Bound Proposal| JIT_FastPass
+    
+    JIT_FastPass ==>|Verified| Atomic_Exec
+    Atomic_Exec ==> API_Call
+
+    %% Link Styling
+    linkStyle 4 stroke:#3F51B5,stroke-width:3px
+    linkStyle 6 stroke:#388E3C,stroke-width:3px

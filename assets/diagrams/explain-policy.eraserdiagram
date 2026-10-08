@@ -1,0 +1,21 @@
+title ROA Decision Lifecycle
+direction right
+
+// Nodes and groups
+Context and Signals [shape: oval, color: lightgrey, icon: database]
+
+Agent Thinking Zone [color: blue, icon: activity] {
+  Explain [icon: search, color: lightblue]
+  Policy Formulation [icon: file-text, color: blue]
+  Self Check [icon: shield, color: blue]
+}
+
+Policy Proposal [shape: rectangle, color: grey, icon: send]
+To Runtime [shape: oval, color: lightgrey, icon: play]
+
+// Relationships
+Context and Signals > Explain
+Explain > Policy Formulation
+Policy Formulation > Self Check
+Self Check > Policy Proposal
+Policy Proposal > To Runtime
