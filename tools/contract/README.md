@@ -239,6 +239,9 @@ server console for full system/user prompts and raw LLM responses.
 2. Describe the agent's domain, mission, accountable owner, allowed actions, and
   irreversible limits in chat. The LLM returns a canonical contract patch and
   a governance analysis (goal, actions, invariant candidates).
+   Executable transaction rules are stored under `authority.invariants` using
+   the Runtime `InvariantSpec` shape; `governance_analysis.invariant_candidates`
+   records their rationale and source traceability, not a replacement schema.
 3. After every successful chat turn, Studio normalizes the patch, runs schema +
   Bootstrap + governance validation, renders canonical YAML, and appends an
   immutable revision with governance assessment to SQLite.

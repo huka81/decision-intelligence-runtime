@@ -323,3 +323,71 @@ responsibility:
     result = verify_contract_yaml(yaml_text, preset="generic")
     assert result["integrity_ok"] is True
     assert result["checks"]["bootstrap"]["ok"] is True
+
+
+def test_normalize_llm_resource_scope_and_invariant_candidate() -> None:
+    from tools.contract.invariants import compile_authority_invariants
+    from tools.contract.llm_interview import validate_contract_soft
+    from tools.contract.schema import CanonicalContract, normalize_contract_dict
+
+    raw = empty_draft_contract("generic")
+    raw["metadata"].update(
+        contract_id="storm_claims_agent",
+        owner="claims.owner@example.org",
+    )
+    raw["subject"]["agent_id"] = "storm_claims_agent"
+    raw["mission"]["statement"] = "Review residential storm damage claims."
+    raw["authority"]["limits"] = {
+        "max_transaction_usd": {"value": 5000.0, "unit": "USD"}
+    }
+    raw["authority"]["resource_scope"] = {
+        "coverage": ["homeowner policy endorsement"],
+        "category": ["fine arts and rugs"],
+        "exclusions": {},
+        "match": {
+            "substring": ["contents coverage", "fine arts and rugs"]
+        },
+    }
+    raw["authority"]["invariants"] = [
+        {
+            "invariant_id": "INV-RUG-PAYMENT-RANGE",
+            "constraint_class": "transaction_invariant",
+            "predicate": {
+                "op": "and",
+                "left": {
+                    "op": "ge",
+                    "variable": "proposed_rug_payment_usd",
+                    "value": 0,
+                },
+                "right": {
+                    "op": "le",
+                    "variable": "proposed_rug_payment_usd",
+                    "value": 5000,
+                },
+            },
+            "code": "POLICY_SUBLIMIT_EXCEEDED",
+            "applies_to_actions": ["PROPOSE_SETTLEMENT"],
+            "linked_limit_key": "max_transaction_usd",
+        }
+    ]
+
+    normalized = normalize_contract_dict(raw)
+    contract = CanonicalContract.model_validate(normalized)
+    validated, validation_ok, errors, _ = validate_contract_soft(
+        normalized, preset="generic"
+    )
+    invariants = compile_authority_invariants(contract)
+    rug_limit = next(inv for inv in invariants if inv.id == "INV-RUG-PAYMENT-RANGE")
+
+    assert validated is not None
+    assert validation_ok, errors
+    assert contract.authority.exclusions == {}
+    assert contract.authority.resource_scope["match"] == {
+        "substring": ["contents coverage", "fine arts and rugs"]
+    }
+    assert rug_limit.type == "range"
+    assert rug_limit.field == "params.proposed_rug_payment_usd"
+    assert rug_limit.min == 0
+    assert rug_limit.max == 5000
+    assert rug_limit.reason_code == "POLICY_SUBLIMIT_EXCEEDED"
+    assert rug_limit.applies_to_policy_kinds == ["PROPOSE_SETTLEMENT"]

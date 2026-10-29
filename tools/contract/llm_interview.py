@@ -99,6 +99,17 @@ Rules:
 - subject.role is one of: STRATEGIST, EXECUTOR, MONITOR, INTERFACE.
 - mission is an object with a non-empty statement.
 - Put instruments under authority.resource_scope.instruments.
+- Each resource_scope value must be a list of strings, except a selector may use
+  match: {{"substring": ["..."]}}. Put exclusions at authority.exclusions, not
+  inside resource_scope.
+- Executable transaction invariants belong in contract_patch.authority.invariants
+  using the Runtime schema: id, type, field, min/max or allowed/denied, and
+  reason_code. Example: {{"id": "INV-RUG-SUBLIMIT", "type": "range",
+  "field": "params.rug_payment_usd", "min": 0, "max": 5000,
+  "reason_code": "POLICY_SUBLIMIT_EXCEEDED"}}.
+- governance_analysis.invariant_candidates are explanatory candidates only; do
+  not copy their analysis fields (invariant_id, constraint_class, predicate,
+  linked_limit_key) into authority.invariants. Keep both representations aligned.
 - Put escalation mode and confidence under responsibility.escalation only (never aggregate_policies).
 - governance.aggregate_policies: post-execution rolling-window rules only (see authoring ontology below).
   Required fields: policy_id, metric, window, operator, threshold, unit, response.

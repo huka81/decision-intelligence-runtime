@@ -132,6 +132,86 @@ def is_temporal_aggregate_window(window: str) -> bool:
     return bool(_TEMPORAL_WINDOW_RE.match(token))
 
 
+def _range_invariant_from_candidate(entry: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Translate a governance range candidate into the executable invariant schema."""
+    predicate = entry.get("predicate")
+    if not isinstance(predicate, dict):
+        return None
+
+    bounds: Dict[str, Any] = {}
+
+    def collect(node: Any) -> Optional[str]:
+        if not isinstance(node, dict):
+            return None
+        op = node.get("op")
+        if op == "and":
+            left_field = collect(node.get("left"))
+            right_field = collect(node.get("right"))
+            if left_field is None or right_field is None or left_field != right_field:
+                return None
+            return left_field
+
+        variable = node.get("variable")
+        value = node.get("value")
+        if (
+            op not in {"ge", "le"}
+            or not isinstance(variable, str)
+            or not variable.strip()
+            or isinstance(value, bool)
+            or not isinstance(value, (int, float))
+        ):
+            return None
+
+        bound = float(value)
+        if op == "ge":
+            bounds["min"] = max(bounds.get("min", bound), bound)
+        else:
+            bounds["max"] = min(bounds.get("max", bound), bound)
+        return variable.strip()
+
+    field = collect(predicate)
+    if field is None or not bounds:
+        return None
+    if "min" in bounds and "max" in bounds and bounds["min"] > bounds["max"]:
+        return None
+
+    normalized = {
+        "id": entry.get("id") or entry.get("invariant_id"),
+        "type": "range",
+        "field": field if "." in field else f"params.{field}",
+        **bounds,
+    }
+    reason_code = entry.get("reason_code") or entry.get("code")
+    if reason_code is not None:
+        normalized["reason_code"] = reason_code
+    if "applies_to_actions" in entry:
+        normalized["applies_to_policy_kinds"] = entry["applies_to_actions"]
+    return normalized
+
+
+def _normalize_authority_invariants(value: Any) -> Any:
+    if not isinstance(value, list):
+        return value
+
+    normalized: List[Any] = []
+    for entry in value:
+        if not isinstance(entry, dict):
+            normalized.append(entry)
+            continue
+        candidate = _range_invariant_from_candidate(entry)
+        if candidate is not None:
+            normalized.append(candidate)
+            continue
+
+        invariant = dict(entry)
+        if "id" not in invariant and "invariant_id" in invariant:
+            invariant["id"] = invariant.pop("invariant_id")
+        if "reason_code" not in invariant and "code" in invariant:
+            invariant["reason_code"] = invariant.pop("code")
+        normalized.append(invariant)
+    return normalized
+
+
 def normalize_contract_dict(data: Dict[str, Any]) -> Dict[str, Any]:
     """Normalize legacy and LLM-authored input to the canonical envelope."""
     out = dict(data)
@@ -155,6 +235,16 @@ def normalize_contract_dict(data: Dict[str, Any]) -> Dict[str, Any]:
     resource_scope = dict(authority.get("resource_scope") or {})
     if "authorized_instruments" in authority:
         resource_scope.setdefault("instruments", authority.pop("authorized_instruments"))
+    nested_exclusions = resource_scope.pop("exclusions", None)
+    if isinstance(nested_exclusions, dict):
+        authority["exclusions"] = {
+            **nested_exclusions,
+            **dict(authority.get("exclusions") or {}),
+        }
+    if "invariants" in authority:
+        authority["invariants"] = _normalize_authority_invariants(
+            authority["invariants"]
+        )
 
     raw_limits = dict(authority.get("limits") or {})
     nested_limits = authority.pop("irreversible_limits", None)
@@ -263,7 +353,9 @@ class AuthoritySpec(BaseModel):
     """Deterministic boundaries enforced by DIM in Kernel Space."""
 
     allowed_policy_types: List[str] = Field(default_factory=list)
-    resource_scope: Dict[str, List[str]] = Field(default_factory=dict)
+    resource_scope: Dict[str, List[str] | Dict[str, List[str]]] = Field(
+        default_factory=dict
+    )
     limits: Dict[str, LimitSpec] = Field(default_factory=dict)
     invariants: List[InvariantSpec] = Field(default_factory=list)
     exclusions: Dict[str, Any] = Field(default_factory=dict)

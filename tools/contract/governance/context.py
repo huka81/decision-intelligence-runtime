@@ -168,8 +168,10 @@ def compile_authoring_rules_for_prompt() -> str:
 
     lines.append("")
     lines.append(
-        "Transaction invariants: record ONLY in governance_analysis.invariant_candidates "
-        "(with predicate + linked_limit_key), NOT in governance.aggregate_policies."
+        "Transaction invariant candidates belong in governance_analysis.invariant_candidates "
+        "for traceability; executable rules belong in contract authority.invariants using "
+        "the Runtime InvariantSpec schema. Do not put transaction invariants in "
+        "governance.aggregate_policies."
     )
     lines.append(
         "Single-transaction limits: authority.limits only. "
