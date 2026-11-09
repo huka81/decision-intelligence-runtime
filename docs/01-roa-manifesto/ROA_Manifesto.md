@@ -1,4 +1,4 @@
-<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2025-12-11 | Last updated: 2026-08-11 </sup>
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2025-12-11 | Last updated: 2026-11-09 </sup>
 
 ---
 
@@ -278,7 +278,7 @@ The `role` field in the Responsibility Contract aligns an agent with its structu
 1. **`INTERFACE` (The Receptionist):** Operates at the edge (DMZ) communicating with external systems or users. Its `Working Context` is deliberately starved of business logic to prevent IP exfiltration. It possesses zero execution authority and can only emit normalized Input Artifacts (bounded JSON payloads) to the internal Event Bus. It is explicitly forbidden from generating a `PolicyProposal`, an `EvidencePackage`, or a `PCI`.
 2. **`STRATEGIST` (The Planner):** A high-level agent operating in the Internal Core. It synthesizes broad context over long horizons. It delegates specific tasks to Executors, monitors macro trends, and manages parent DecisionFlows (Sagas).
 3. **`EXECUTOR` (The Operator):** The standard tactical agent. Reads parsed payloads from `INTERFACE` agents or delegates from a `STRATEGIST`. Analyzes specific scenarios against rich business rules in its Context Store and produces `PolicyProposals` aimed at the Kernel Space validator (DIM).
-4. **`MONITOR` (The Auditor):** A specialized read-only or post-execution governance agent. It audits the `explain` histories of other agents asynchronously to detect phenomena like Semantic Drift. It cannot execute business actions, but it can trigger circuit breakers to suspend other agents.
+4. **`MONITOR` (The Auditor):** A specialized read-only or post-execution governance agent. It audits the `explain` histories of other agents asynchronously to detect phenomena like Semantic Drift. It cannot execute business actions and never calls the Agent Registry directly. To request a circuit breaker it emits a `PolicyProposal` (e.g., `policy_kind: SET_AGENT_STATUS`) that the DIM validates against the MONITOR's own contract (`allowed_policy_types`, `resource_scope` limited to the monitored agents). Deterministic Aggregate Monitors in Kernel Space may set agent status directly ([Governance, Section 4.3](../04-governance/DIR_Governance.md)).
 
 These roles ensure that agents are explicitly engineered for their topological function, heavily enforcing the principle of Least Privilege on their Context Stores and Authority Levels.
 
@@ -414,7 +414,7 @@ A powerful pattern enabled by the ROA framework is the **Agentic DMZ (Demilitari
 
 If a conversational agent knows the negotiation limits (e.g., maximum discount, pricing algorithms), a malicious actor can often manipulate it into revealing them. The Agentic DMZ solves this by applying the principle of **Information Hiding**:
 
-1. **The `INTERFACE` Agent (The Receptionist):** Placed in the DMZ (the outer edge of User Space). This agent converses with the outside world. Crucially, it suffers from **Epistemic Amnesia** (implemented as Context Starvation). Its `Working Context` contains ONLY rules for parsing user intent into a structural JSON payload. It knows *zero* business logic, pricing limits, or strategic rules. It cannot leak IP because it simply does not possess it. Its `AuthorityLevel` is strictly zero for structural mutation—it can only emit the parsed payload to the internal Event Bus.
+1. **The `INTERFACE` Agent (The Receptionist):** Placed in the DMZ (the outer edge of User Space). This agent converses with the outside world. Crucially, it suffers from **Epistemic Amnesia** (implemented as Context Starvation). Its `Working Context` contains ONLY rules for parsing user intent into a structural JSON payload. It knows *zero* business logic, pricing limits, or strategic rules. It cannot leak IP because it simply does not possess it. Its contract grants no `allowed_policy_types`, so it has zero authority over structural mutation—it can only emit the parsed payload to the internal Event Bus.
 2. **The `STRATEGIST` / `EXECUTOR` Agent (The Brain):** Placed in the Internal Core (Air-Gapped). This agent never speaks to the external user. It reads the clean JSON payload from the Event Bus, queries the Context Store, applies proprietary business logic, and generates a `PolicyProposal` towards the Kernel Space (DIM) for execution.
 
 By separating the conversational frontend from the authorized backend, the architecture trades some conversational fluidity (UX friction) for absolute protection of Intellectual Property and business rules against conversational attacks.
@@ -975,11 +975,12 @@ Instead, they use the Context Store as the lens through which they interpret the
 
 ### Agents write to the context to:
 
-* update state after reflection,
-* append decision rationales,
+* append reflections and decision rationales,
 * store explanations,
 * mark policy progress or completion,
 * extend their memory trajectory.
+
+Agents do not write to the Context Store directly. They return these write-back artifacts with their output, and the Kernel appends them, tagged with the DFID, to the Session and Memory layers. The State layer changes only through validated execution; write-back never grants authority.
 
 This allows the system to remain consistent even when the agent’s internal reasoning is non-deterministic.
 
@@ -1431,8 +1432,8 @@ This effectively "sandboxes" the swarm. It allows for high-variance, creative re
 Standard agent frameworks operate on a "Trigger → Action" loop.
 The ROA Wrapper transforms this into a "Trigger → Proposal → Validation → Action" pipeline.
 
-*   **Without ROA:** A trading agent analyzes market data, identifies a "strong buy" signal, and immediately executes `exchange.create_order(symbol="BTC-USD", amount=100)`. If the decimal separator was misinterpreted or the model hallucinated the position size, a catastrophic financial loss occurs instantly.
-*   **With ROA:** The same agent produces a `PolicyProposal(action="BUY", instrument="BTC-USD", amount=100)`. The ROA Runtime receives this, checks the **Responsibility Contract**, sees that this agent has a hard limit of `max_order_size=5.0 BTC`, and rejects the proposal *before* it reaches the exchange.
+*   **Without ROA:** A trading agent analyzes market data, identifies a "strong buy" signal, and immediately executes `exchange.create_order(symbol="ETH-USD", amount=15500)`. If the decimal separator was misinterpreted or the model hallucinated the position size, a catastrophic financial loss occurs instantly.
+*   **With ROA:** The same agent produces a `PolicyProposal(policy_kind="BUY", params={"instrument": "ETH-USD", "quantity": 15500, "order_value": 38750000})`. The ROA Runtime receives this, checks the **Responsibility Contract**, sees that this agent has a hard limit of `max_order_size` (USD 50,000), and rejects the proposal *before* it reaches the exchange.
 
 *Implementation Note:* In practice, this is achieved by providing the internal agent with a **single** tool: `submit_policy_proposal`. When the agent calls this tool, the wrapper intercepts the payload, terminates the agent's execution loop, and passes the structured proposal to the DIR Runtime for validation (see `samples/34_langchain_roa_wrapper`).
 

@@ -1,4 +1,4 @@
-<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-04-02 | Last updated: 2026-08-11 </sup>
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-04-02 | Last updated: 2026-11-09 </sup>
 
 ---
 
@@ -368,6 +368,8 @@ AgentRegistry.set_agent_status(
     reason="LOW_CONFIDENCE_TREND"
 )
 ```
+
+> **Who may change agent status:** Only deterministic Kernel components call `set_agent_status`: Aggregate Monitors (this section) and the Escalation Manager, which suspends an agent whose escalation budget is exhausted ([DIR Architectural Pattern, Section 9.3](../02-decision-runtime/DIR_Architectural_Pattern.md)). An LLM-based `MONITOR` agent requests a status change by emitting a `PolicyProposal` (`policy_kind: SET_AGENT_STATUS`) that passes the DIM like any other proposal. Operators restore `ACTIVE` after Post-Incident Review. Every transition records `triggered_by`: `registry`, `governance_monitor` (including executed MONITOR proposals, with their DFID), `escalation_manager`, `operator`, or `agent` (self-retirement only).
 
 ```mermaid
 ---

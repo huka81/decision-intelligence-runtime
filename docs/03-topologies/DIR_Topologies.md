@@ -1,4 +1,4 @@
-<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-01-15 | Last updated: 2026-08-11 </sup>
+<sup> Author: Artur Huk | [GitHub](https://github.com/huka81/decision-intelligence-runtime) | Created: 2026-01-15 | Last updated: 2026-11-09 </sup>
 
 ---
 
@@ -141,8 +141,9 @@ In a decentralized mesh, mitigating noise and cost is critical.
 
 1.  **Observation:** A raw signal triggers a new **DecisionFlow**. The Runtime generates an authoritative **Context Snapshot** (cached to prevent **Read Contention** on the database).
 2.  **Distributed Parallel Reasoning:** Agents reason in parallel, producing **PolicyProposals**.
-3.  **Priority-Based Preemption Model:** The Runtime utilizes a priority-driven logic rather than a simple time window. It collects proposals and applies the **Agent Registry Priority Matrix** to select the winner. High-priority agents (e.g., Risk Monitors) can preempt or invalidate earlier strategic proposals, ensuring safety always overrides strategy.
-4.  **JIT Verification:** The Runtime compares the live state against the `ContextSnapshotID`. If the **Drift** exceeds the agent-defined **Drift Envelope** (a contract-level parameter stored in the Registry), the execution is rejected. This prevents actions based on stale data (e.g., execution against a price that has moved beyond the allowable slippage/latency threshold).
+3.  **Arbitration (Priority-Based Preemption):** The Arbiter, a Kernel component outside the DIM, collects the proposals answering this DecisionFlow's trigger until an arbitration deadline (bounded by the snapshot's `max_context_age`). Arrival order does not decide the outcome: the Arbiter applies the **Agent Registry Priority Matrix** to select the winner. High-priority agents (e.g., Risk Monitors) can preempt or invalidate strategic proposals, ensuring safety always overrides strategy. Proposals arriving after the deadline are rejected with `ARBITRATION_CLOSED`.
+4.  **DIM Validation:** Only the winning proposal enters the DIM hard gates ([DIR Architectural Pattern, Section 6.2](../02-decision-runtime/DIR_Architectural_Pattern.md)).
+5.  **JIT Verification:** Immediately before the side effect, the Execution Engine compares the live state against the `ContextSnapshotID`. If the **Drift** exceeds the agent-defined **Drift Envelope** (a contract-level parameter stored in the Registry), the execution is rejected. This prevents actions based on stale data (e.g., execution against a price that has moved beyond the allowable slippage/latency threshold).
 
 ```mermaid
 ---
@@ -173,18 +174,20 @@ flowchart LR
     end
 
     subgraph Kernel_Arbitration ["`**3. ARBITRATION & VALIDATION**`"]
-        Arbitrator{"`**Priority Matrix**<br/>Preemption`"}:::kernelSpace
-        JIT{"`**JIT Check**<br/>Drift Verification`"}:::kernelSpace
+        Arbitrator{"`**Arbiter**<br/>Priority Matrix`"}:::kernelSpace
+        DIM{"`**DIM**<br/>Hard Gates`"}:::kernelSpace
     end
     
-    subgraph Execution ["`**4. ACTION**`"]
-        Exec["`**Execution Intent**`"]:::infraSpace
+    subgraph Execution ["`**4. ACTION (Execution Engine)**`"]
+        JIT{"`**JIT Check**<br/>Drift Verification`"}:::kernelSpace
+        Exec["`**Side Effect**`"]:::infraSpace
     end
 
     Agent1 -->|Proposal A| Arbitrator
     Agent2 -->|Proposal B| Arbitrator
     
-    Arbitrator -->|Winner Selected| JIT
+    Arbitrator -->|Winner Selected| DIM
+    DIM -->|ExecutionIntent| JIT
     JIT -->|Pass| Exec
 
     style Kernel_Prep fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
@@ -200,8 +203,8 @@ Within the EOAM topology, a critical semantic design pattern is the **Agentic DM
 Instead of introducing a new topology, the DMZ acts as a strict arrangement of agents within the Event-Oriented Agent Mesh, leveraging the fundamental division of **Action (Write) boundaries vs. Observation (Read) boundaries**:
 
 1. **The `INTERFACE` Agent (The Receptionist):** Positioned at the Edge. This agent interacts directly with external entities. Under the principle of Context Starvation (Epistemic Amnesia), it has absolute zero knowledge of the business logic. It simply parses noisy conversational input into clean structural events. It is explicitly forbidden from generating a `PolicyProposal`, an `EvidencePackage`, or a `PCI`.
-2. **The Event Bus (Observation Boundary):** The Event Bus facilitates communication between the Edge Zone and the Internal Core without activating the Decision Integrity Module (DIM). **Crucially:** Communications across the bus do not require DIM validation because the bus carries signal distribution—not execution intent. It holds no *executable* authority. However, to prevent data leaks (like a DMZ agent intercepting sensitive internal payloads), the bus requires strict **information-flow control** managed by the Agent Registry (Least Privilege subscription). DIM protects the mutation boundary, while the Registry and Event Bus protect the disclosure boundary.
-3. **The `STRATEGIST` / `EXECUTOR` Agent (The Brain):** Positioned in the Internal Core, structurally "air-gapped" from the external world. It subscribes to the Event Bus, reads the structural JSON payload emitted by the Receptionist, and applies its proprietary business intelligence to emit a true `PolicyProposal`. Since it does not interact directly with external prompts, its contextual knowledge remains secure.
+2. **The Event Bus (Observation Boundary):** The Event Bus facilitates communication between the Edge Zone and the Internal Core without activating the Decision Integrity Module (DIM). **Crucially:** Communications across the bus do not require DIM validation because the bus carries signal distribution—not execution intent. It holds no *executable* authority. However, to prevent data leaks (like a DMZ agent intercepting sensitive internal payloads), the bus requires strict **information-flow control** managed by the Agent Registry (Least Privilege subscription). DIM protects the mutation boundary, while the Registry and Event Bus protect the disclosure boundary. The Event Bus is operated by the Kernel (see Section 2.6): agents may publish observations and subscribe to permitted topics, but proposals are never published on the bus.
+3. **The `STRATEGIST` / `EXECUTOR` Agent (The Brain):** Positioned in the Internal Core, structurally "air-gapped" from the external world. It subscribes to the Event Bus, reads the structural JSON payload emitted by the Receptionist, and applies its proprietary business intelligence to emit a true `PolicyProposal` through the Runtime's proposal intake (Arbiter → DIM). Since it does not interact directly with external prompts, its contextual knowledge remains secure.
 
 This pattern demonstrates the EOAM philosophy: the mesh handles the distribution of non-executable signals safely under static least-privilege rules (the Event Bus), while the DIM stands guard exclusively at the final Rubicon of state mutation (the The Wall / Outbound Execution).
 
@@ -316,10 +319,12 @@ The cornerstone of SDS is the use of grammars (e.g., via libraries like *Outline
 In SDS, there is no emergent context or asynchronous message passing. The **Context Compiler** assembles an **Atomic Context**-a pre-validated package containing:
 
 1.  **The Mission** (from ROA).
-2.  **The Constraints** (from dir_core Hard Gates).
+2.  **The Constraints** (from dir_core Hard Gates), including the grammar compiled by the Kernel's Grammar Factory from the Runtime Enforcement Projection.
 3.  **The Snapshot** (from the Context Store).
 
-**Critical Binding:** The Agent's output (The Intent) **MUST** include the `ContextSnapshotID` hash-binding from the input. The DIR verifies this JIT to prevent execution against a drift-unverified state. The combination of the **Atomic Context**, the **Intent**, and the **Signature** forms the final **Decision Atom**.
+The grammar is a Kernel artifact applied during User Space inference. Because the Kernel cannot observe how the sampler used it, the DIM still validates the resulting proposal (Section 3.2).
+
+**Critical Binding:** The Agent's output (The Intent) **MUST** include the `ContextSnapshotID` hash-binding from the input. The DIM verifies the binding (Snapshot Identity gate), and the Execution Engine's JIT check verifies drift against that snapshot to prevent execution against a drift-unverified state. The combination of the **Atomic Context**, the **Intent**, and the **Signature** forms the final **Decision Atom**.
 
 ### 3.2 The SDS Decision Lifecycle
 
@@ -327,8 +332,8 @@ The SDS lifecycle collapses the multi-agent choreography of EOAM into a streamli
 
 1.  **Ingest & Compile:** A trigger event initializes a **DecisionFlow (DFID)**. The Runtime compiles the "Decision Atom," injecting authority limits directly into the prompt metadata.
 2.  **Constrained Reasoning (SDS Loop):** The agent performs its **Explain** phase. When transitioning to the **Policy** phase, the inference engine switches to a constrained mode, utilizing the DIR-provided grammar to ensure the proposal is "**Syntactically Bound by Design**".
-3.  **Authoritative DIM Validation and JIT Check:** Because grammar-representable intent checks were already applied during generation, the DIM may fast-path their repeated evaluation. It remains the authoritative gate for the active contract version, agent authority, evidence bindings, current state, and temporal drift.
-4.  **Execution:** The **PolicyProposal** is immediately transformed into an **Execution Intent**.
+3.  **Authoritative DIM Validation:** Because grammar-representable intent checks were already applied during generation, the DIM may fast-path their repeated evaluation. It remains the authoritative gate for the active contract version, agent authority, snapshot identity, evidence bindings, and time.
+4.  **Execution:** The DIM issues the **Execution Intent**; the Execution Engine performs the JIT drift check and dispatches the side effect.
 
 ```mermaid
 ---
@@ -357,15 +362,17 @@ flowchart LR
         Atom --> Inference
     end
 
-    subgraph Fast_Pass ["`**3. JIT FAST-PASS**`"]
-        JIT{"`**Lightweight JIT**<br/>Drift Check`"}:::kernelSpace
+    subgraph Fast_Pass ["`**3. DIM (FAST-PATH)**`"]
+        DIM{"`**DIM**<br/>Grammar rules not re-evaluated`"}:::kernelSpace
     end
     
-    subgraph Exec_Layer ["`**4. EXECUTION**`"]
-        Intent["`**Execution Intent**<br/>Atomic Action`"]:::infraSpace
+    subgraph Exec_Layer ["`**4. EXECUTION ENGINE**`"]
+        JIT{"`**JIT Check**<br/>Drift Verification`"}:::kernelSpace
+        Intent["`**Side Effect**<br/>Atomic Action`"]:::infraSpace
     end
 
-    Inference -->|Valid Proposal| JIT
+    Inference -->|Valid Proposal| DIM
+    DIM -->|ExecutionIntent| JIT
     JIT -->|Pass| Intent
 
     style Compile fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
@@ -402,8 +409,8 @@ flowchart LR
     direction TB
         Context_Compiler["Context Compiler"]
         Grammar_Factory["Grammar Factory"]
-        JIT_Validator["JIT Validator"]
-        Executor["Atomic Executor"]
+        JIT_Validator["DIM (fast-path)"]
+        Executor["Atomic Executor<br>(JIT + dispatch)"]
         Risk_Governor["Risk Governor"]
         Registry[("Agent Registry")]
   end
@@ -578,12 +585,12 @@ Consider a concrete scenario that exposes the architectural difference:
 > **Six months after execution, a regulator asks: "Why did the system sell 500 shares of XYZ on March 15th at 14:32?"**
 >
 > *   **Topology B (SDS):** The Runtime has logs. The DFID links the trigger to the action. But the JIT check was performed by a Runtime that has since undergone three software updates. The auditor must *trust* that the logs were not altered and that the validation logic at the time of execution matched the current version. The proof is *reconstructed* from system state-it was never an independent object.
-> *   **Topology C (DL+PCI):** The auditor retrieves the PCI from the immutable Decision Ledger. They re-calculate the `evidence_hash` using the archived $H_s$, $H_c$, and $H_r$. They verify the `roa_signature` against the registered public key. **No access to the live Runtime is required.** The proof is a *property of the artifact*, not a property of the system that produced it.
+> *   **Topology C (DL+PCI):** The auditor retrieves the PCI from the immutable Decision Ledger. They re-calculate the `evidence_hash` from the $H_s$, $H_c$, $H_r$, and $H_i$ archived with the Ledger entry, and verify the `roa_signature` over that hash against the agent's registered public key. **No access to the live Runtime is required.** The proof is a *property of the artifact*, not a property of the system that produced it. The auditor verifies the integrity of the bindings; the JIT drift result is a fact recorded in the Ledger entry at commit time, not something that can be recomputed later.
 
 This is not "B plus logging." It is a fundamentally different trust architecture:
 
 *   **SDS guarantees:** "This intent was structurally valid *at the moment of generation*."
-*   **DL+PCI guarantees:** "This intent was formally compliant, and *anyone can verify this at any time*, without trusting the system that produced it."
+*   **DL+PCI guarantees:** "This intent was formally compliant, and *anyone can verify this at any time*, without trusting the live system that produced it." Trust reduces to the custody of signing keys and the archive of hash preimages.
 
 The distinction mirrors the difference between **runtime type-checking** (safe while the program runs) and **proof-carrying code** (safe regardless of the execution environment). Both are valid; they serve different classes of problems. Topology C exists for scenarios where the proof must *outlive* the system that generated it.
 
@@ -682,29 +689,33 @@ A robust **Decision Intelligence** system can support all topologies simultaneou
 # agents/trader_mesh_agent.py
 class TacticalTrader(ResponsibleAgent):
     def register(self):
-        # Register for semantic routing
-        self.registry.handshake(self.agent_id, contract, topology="EOAM")
+        # Handshake only: the contract release was registered by CI/CD
+        self.registry.handshake(self.agent_id, contract_version="1.2.0", topology="EOAM")
 
     def on_observation(self, event: ObservationEvent):
-        # 1. Mesh Logic: Reactive, Parallel
-        context = ContextCompiler.assemble(event.snapshot_id)
+        # 1. Mesh Logic: Reactive, Parallel. The Runtime compiled the WorkingContext.
+        context = event.working_context
         explanation = self.llm.explain(context, self.mission)
         policy_intent = self.llm.generate_policy(context, explanation)
         
-        # 2. Emit Proposal to Bus for Preemption/Selection
+        # 2. Submit to the Runtime intake (Arbiter -> DIM), never to the Event Bus
         proposal = PolicyProposal(
             dfid=event.dfid,
-            params=policy_intent,
-            constraints={"drift_envelope_bps": 50}, # JIT Drift Parameter
+            agent_id=self.agent_id,
+            policy_kind=policy_intent.policy_kind,
+            params=policy_intent.params,
+            execution_constraints={"drift_envelope_bps": 50}, # JIT Drift Parameter
             context_ref=event.snapshot_id
         )
-        EventBus.publish(proposal) 
+        self.runtime.submit_proposal(proposal)
 ```
 
 ### 7.2 Topology B: Stream Handler (SDS)
 
 ```python
 # sds/core_handler.py
+from typing import Literal
+
 from outlines import models, generate
 from pydantic import BaseModel, Field
 
@@ -714,8 +725,9 @@ class SDSExecutionConstraints(BaseModel):
     authorized_instruments: list[str] = ["BTC-USD", "ETH-USD"]
 
 class SDSPolicy(BaseModel):
-    action: str # Must match Literal ["BUY", "SELL", "HOLD"]
-    amount: float
+    policy_kind: Literal["BUY", "SELL", "HOLD"]
+    instrument: str
+    quantity: float
     rationale: str # The 'Explain' component
 
 def execute_sovereign_stream(dfid: str, context_snapshot: dict):
@@ -732,9 +744,9 @@ def execute_sovereign_stream(dfid: str, context_snapshot: dict):
         prompt=f"Mission: {contract.mission}\nContext: {context_snapshot.data}"
     )
     
-    # 4. JIT Verification & Execution (Minimal Latency)
-    # Requires hash-binding check against context_snapshot
-    return DIR.jit_execute(dfid, policy_proposal, context_snapshot.hash)
+    # 4. DIM validation (grammar rules fast-pathed), then JIT + dispatch in the Execution Engine
+    intent = DIM.validate(dfid, policy_proposal, context_ref=context_snapshot.hash)
+    return ExecutionEngine.dispatch(intent)
 ```
 
 ### 7.3 Topology C: Ledger Handler (DL+PCI)
@@ -743,27 +755,36 @@ def execute_sovereign_stream(dfid: str, context_snapshot: dict):
 # sds/ledger_intent_compiler.py
 class ProofCarryingIntent(BaseModel):
     dfid: str
-    intent: SDSPolicy # Syntactically bound
-    proof: dict = {
-        "rule_checks": ["RBAC", "LIMITS", "FRESHNESS"],
-        "evidence_hash": "sha256_of_state_and_contract"
-    }
-    signature: str # Cryptographic bond to ROA identity
+    intent_payload: SDSPolicy # Syntactically bound
+    context_ref: str          # ContextSnapshotID (content hash of the snapshot)
+    evidence_hash: str        # SHA256(DFID || H_s || H_c || H_r || H_i)
+    roa_signature: str        # Sign(K_agent, evidence_hash); K_agent never leaves the Kernel KMS
 
 class ProofChecker:
-    def verify(self, pci: ProofCarryingIntent, ledger: DecisionLedger):
-        # 1. Cryptographic Verification
-        if not self.verify_signature(pci.signature, pci.dfid):
+    def verify(self, pci: ProofCarryingIntent, ledger: DecisionLedger) -> bool:
+        # 1. Identity Attestation
+        public_key = self.registry.get_public_key(self.flow_store.get_agent_id(pci.dfid))
+        if not verify_signature(public_key, pci.roa_signature, pci.evidence_hash):
             raise InvalidSignatureError()
 
-        # 2. Logical Verification
-        # Does the evidence hash match the current ledger state?
-        current_state_hash = ledger.get_state_hash()
-        if pci.proof["evidence_hash"] != current_state_hash:
-             raise StateDriftError("Proof invalid for current state")
-             
-        # 3. Commit
-        ledger.append(pci)
+        # 2. Context Binding
+        if pci.context_ref != self.flow_store.get_snapshot_id(pci.dfid):
+            raise ContextBindingError()
+
+        # 3. JIT Drift Verification (the Ledger commit is the side-effect boundary)
+        if not self.within_drift_envelope(pci.context_ref):
+            raise StateDriftError("Live state outside drift envelope")
+
+        # 4. Hash Validation
+        h_s = sha256(pci.context_ref)
+        h_c = sha256(self.registry.get_contract_release(pci.dfid))
+        h_r = sha256(self.dim_rules.get_ruleset(pci.dfid))
+        h_i = sha256(canonical_json(pci.intent_payload))
+        if pci.evidence_hash != sha256(pci.dfid + h_s + h_c + h_r + h_i):
+            raise ProofVerificationFailed("Evidence hash mismatch")
+
+        # 5. Commitment, archiving the hash preimages for offline audit
+        ledger.append(pci, h_s=h_s, h_c=h_c, h_r=h_r, h_i=h_i)
         return True
 ```
 
@@ -952,8 +973,8 @@ A **Proof-Carrying Intent** is the definitive communication primitive for Topolo
 | `dfid` | UUID | The immutable **DecisionFlow ID** linking the intent to its causal trigger. |
 | `intent_payload` | JSON | The **Syntactically Bound** policy generated via SDS Constrained Decoding. |
 | `context_ref` | Hash | The **ContextSnapshotID** representing the "frozen reality" used during reasoning. |
-| `evidence_hash` | Hash | The composite hash proving alignment between state, contract, and rules. |
-| `roa_signature` | Signature | The cryptographic signature of the agent, verifying identity and authority. |
+| `evidence_hash` | Hash | The composite hash proving alignment between state, contract, rules, and the intent payload. |
+| `roa_signature` | Signature | Signature over `evidence_hash` with the agent identity key $K_{agent}$. The key is held in the Kernel's KMS and bound to the agent's registered identity; the agent requests signing through the Runtime's submission path and never holds the key. |
 
 ---
 
@@ -963,19 +984,25 @@ The **Evidence Hash** is not a simple checksum; it is a **Merkle-root-style** de
 
 ### 3.1 Components of the Hash
 
-The hash is derived from three immutable inputs provided by the **Decision Intelligence Runtime (DIR)**:
+The hash is derived from four immutable inputs provided by the **Decision Intelligence Runtime (DIR)**:
 
-1. **State Snapshot Hash ($H_s$):** The SHA-256 hash of the `ContextSnapshotID`.
+1. **State Snapshot Hash ($H_s$):** The SHA-256 hash of the `ContextSnapshotID`. The `ContextSnapshotID` MUST itself be a content hash of the canonical snapshot, so $H_s$ binds the snapshot content, not just a label.
 2. **Contract Hash ($H_c$):** The SHA-256 hash of the **Responsibility Contract** active in the **Agent Registry** at $T_{start}$.
 3. **Rule-Set Hash ($H_r$):** The hash of the deterministic validation rules (Hard Gates) applied by the DIM.
+4. **Intent Hash ($H_i$):** The SHA-256 hash of the canonical JSON (sorted keys) of `intent_payload`.
 
 ### 3.2 Derivation Formula
 
 The `evidence_hash` ($H_{evidence}$) is calculated as follows:
 
-$$ H_{evidence} = \text{SHA256}( \text{DFID} \parallel H_s \parallel H_c \parallel H_r ) $$
+$$ H_{evidence} = \text{SHA256}( \text{DFID} \parallel H_s \parallel H_c \parallel H_r \parallel H_i ) $$
 
-This ensures that the proof is unique to the specific **DecisionFlow** and cannot be replayed in a different context or by an agent with a different contract.
+This ensures that the proof is unique to the specific **DecisionFlow** and cannot be replayed in a different context, by an agent with a different contract, or with a modified payload.
+
+### 3.3 Signature and Archival
+
+*   **Signature:** `roa_signature` $= \text{Sign}(K_{agent}, H_{evidence})$. $K_{agent}$ is bound to the agent identity in the Agent Registry and held in the Kernel's KMS, consistent with the rule that agents never hold credentials.
+*   **Archival:** Each Ledger entry stores the PCI together with $H_s$, $H_c$, $H_r$, $H_i$, the JIT drift result, and the commit timestamp. These are the inputs an external auditor needs to re-verify the entry offline.
 
 ---
 
@@ -983,11 +1010,13 @@ This ensures that the proof is unique to the specific **DecisionFlow** and canno
 
 In Topology C, the **Decision Integrity Module (DIM)** functions as a minimalist **Proof Checker**. It executes the following deterministic steps before committing the intent to the **Decision Ledger**:
 
-1. **Identity Attestation:** Verifies that the `roa_signature` matches the public key registered in the **Agent Registry**.
-2. **Context Binding:** Retrieves the current system state and verifies that the `context_ref` in the PCI matches the `ContextSnapshotID` generated at the start of the flow.
-3. **JIT Drift Verification:** Performs a final check to ensure the live environment state is within the **Drift Envelope** defined in the contract.
-4. **Hash Validation:** Re-calculates the `evidence_hash` using the Registry's authoritative data and compares it against the hash provided in the PCI.
-5. **Commitment:** If all checks pass, the PCI is appended to the **Decision Ledger**, and the **Execution Engine** is triggered.
+1. **Identity Attestation:** Verifies the `roa_signature` over `evidence_hash` against the public key registered for the agent in the **Agent Registry**.
+2. **Context Binding:** Verifies that the `context_ref` in the PCI matches the `ContextSnapshotID` generated at the start of the flow.
+3. **JIT Drift Verification:** Performs a final check to ensure the live environment state is within the **Drift Envelope** defined in the contract. Because the Ledger commit is the side-effect boundary in Topology C, this is the same JIT check the Execution Engine performs in the other topologies ([DIR Architectural Pattern, Section 6.5](../02-decision-runtime/DIR_Architectural_Pattern.md)).
+4. **Hash Validation:** Re-calculates the `evidence_hash` ($H_s$, $H_c$, $H_r$, $H_i$) using the Registry's authoritative data and compares it against the hash provided in the PCI.
+5. **Commitment:** If all checks pass, the PCI and its archived hashes are appended to the **Decision Ledger**, and the **Execution Engine** is triggered.
+
+All reads during verification are Kernel-local (Registry cache, Context Store, rule set); the Proof Checker performs no external network I/O.
 
 ```mermaid
 ---
@@ -1002,21 +1031,22 @@ sequenceDiagram
     participant L as Decision Ledger (Immutable)
     participant E as Execution Engine
 
-    Note over A: Generates Syntactic Intent<br/>+ Evidence Hash
-    A->>K: Submit PCI (Intent + Proof)
+    Note over A: Generates Syntactic Intent<br/>+ Evidence Hash (signed via Kernel KMS)
+    A->>K: Submit PCI (Intent + Proof + Signature)
     
     activate K
-    K->>K: Verify Signature
-    K->>K: Validate Evidence Hash<br/>(State + Contract + Rules)
-    K->>K: JIT Drift Check<br/>(within Envelope?)
+    K->>K: 1. Verify roa_signature over evidence_hash
+    K->>K: 2. Context binding<br/>(context_ref = flow ContextSnapshotID)
+    K->>K: 3. JIT Drift Check<br/>(within Envelope?)
+    K->>K: 4. Recompute evidence_hash<br/>(H_s, H_c, H_r, H_i)
     
     alt Verification Passed
-        K->>L: Append PCI to Ledger
+        K->>L: 5. Append PCI + archived hashes + JIT result
         K->>E: Trigger Deterministic Action
         E-->>K: Success (ResultID)
         K-->>A: Closed (Status: Success)
     else Verification Failed
-        K-->>A: Aborted (Status: REJECT_DRIFT / REJECT_AUTH)
+        K-->>A: Aborted (Status: REJECT_AUTH / REJECT_BINDING / REJECT_DRIFT / REJECT_HASH)
     end
     deactivate K
 
