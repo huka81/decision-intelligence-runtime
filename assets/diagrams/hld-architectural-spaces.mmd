@@ -1,0 +1,44 @@
+---
+title: High-Level Architecture - Architectural Spaces
+config:
+  theme: neutral
+  look: classic
+---
+flowchart TB
+    %% Professional color scheme
+    classDef userLayer fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef kernelLayer fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold;
+    classDef infraLayer fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+
+    subgraph User_Space["`**USER SPACE**<br/>Probabilistic Reasoning`"]
+        A1(["`**Strategy Agent**`"]):::userLayer
+        A2(["`**Risk Agent**`"]):::userLayer
+        A3(["`**Monitor Agent**`"]):::userLayer
+    end
+
+    subgraph DIR_Kernel["`**DIR KERNEL**<br/>Deterministic Runtime`"]
+        B1["`**Context Compiler**`"]:::kernelLayer
+        B2{"`**DIM**<br/>Validation`"}:::kernelLayer
+        B3["`**Execution Orchestrator**`"]:::kernelLayer
+    end
+
+    subgraph Infrastructure["`**INFRASTRUCTURE**<br/>External Systems`"]
+        C1["`**Broker API**`"]:::infraLayer
+        C2["`**Market Data Feed**`"]:::infraLayer
+        C3["`**Database & Logs**`"]:::infraLayer
+    end
+
+    B1 -.->|Working Context| A1
+    A1 ==>|Policy Proposal| B2
+    A2 ==>|Policy Proposal| B2
+    B2 ==>|Accepted| B3
+    B2 -.->|Rejected| A1
+    B3 ==>|Execution Intent| C1
+    C2 -.->|Raw Events| B1
+    C1 -.->|Trade Confirmation| B1
+    B3 -->|Audit Log| C3
+
+    %% Subgraph styling
+    style User_Space fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px
+    style DIR_Kernel fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+    style Infrastructure fill:#FAFAFA,stroke:#F57C00,stroke-width:3px

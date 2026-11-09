@@ -1,0 +1,54 @@
+---
+config:
+  layout: dagre
+  theme: neutral
+  look: classic
+title: Policy Validation Pipeline - Decision Integrity Module
+---
+flowchart TB
+ subgraph User_Space["**USER SPACE**<br>Probabilistic Reasoning"]
+        Agent(["**ROA Agent**"])
+        Policy@{ label: "**Policy Proposal**<br>'I want to buy X'<br>(Claim)" }
+  end
+ subgraph DIM["**Decision Integrity Module**"]
+        Check1{"**1. Schema Check**<br>Valid JSON?"}
+        Check2{"**2. Authority Check**<br>Allowed in Registry?"}
+        Check3{"**3. State &amp; Time Check**<br>Valid TTL &amp; Context?"}
+  end
+ subgraph Kernel_Space["**KERNEL SPACE**<br>Deterministic Runtime"]
+        DIM
+        Intent@{ label: "**Execution Intent**<br>'Execute Buy X'<br>(Fact)" }
+        Executor(["**Deterministic Executor**"])
+        Reject(["**REJECT / ESCALATE**"])
+  end
+    Agent == Emits ==> Policy
+    Policy == Submits to ==> Check1
+    Check1 == Pass ==> Check2
+    Check1 L_Check1_Reject_0@-. Fail: Invalid Syntax .-> Reject
+    Check2 == Pass ==> Check3
+    Check2 -. Fail: Unauthorized .-> Reject
+    Check3 == Pass ==> Intent
+    Check3 -. Fail: Stale/Expired .-> Reject
+    Intent == Authorized ==> Executor
+
+    Policy@{ shape: rect}
+    Intent@{ shape: rect}
+     Agent:::userSpace
+     Policy:::artifact
+     Check1:::gate
+     Check2:::gate
+     Check3:::gate
+     Intent:::artifact
+     Executor:::success
+     Reject:::fail
+    classDef userSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold
+    classDef kernelSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20,font-weight:bold
+    classDef artifact fill:#ffffff,stroke:#616161,stroke-width:2px,color:#1a1a1a
+    classDef gate fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold
+    classDef success fill:#E8F5E9,stroke:#2e7d32,stroke-width:2px,color:#1B5E20,font-weight:bold
+    classDef fail fill:#FFEBEE,stroke:#C62828,stroke-width:2px,color:#B71C1C,font-weight:bold
+    style DIM fill:#FAFAFA,stroke:#F57C00,stroke-width:2px
+    style User_Space fill:#FAFAFA,stroke:#3F51B5,stroke-width:3px
+    style Kernel_Space fill:#FAFAFA,stroke:#388E3C,stroke-width:3px
+
+    L_Check1_Reject_0@{ curve: natural }

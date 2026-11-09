@@ -1,0 +1,37 @@
+---
+title: Software Agent Hierarchy Flow Chart
+config:
+  layout: elk
+  theme: neutral
+  look: classic
+---
+flowchart LR
+    %% Define class styles following project standards
+    classDef strategyStyle fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E,font-weight:bold;
+    classDef instrumentStyle fill:#E1F5FE,stroke:#0277BD,stroke-width:2px,color:#01579B,font-weight:bold;
+    classDef positionStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100,font-weight:bold;
+
+    %% Strategy Agent
+    StrategyAgent(["`**Strategy Agent**`"]):::strategyStyle
+
+    %% Instrument Agents Group
+    subgraph InstrumentAgents ["`**Instrument Agents**`"]
+        direction TB
+        InstrumentBTC["`**Instrument Agent**<br/>BTC`"]:::instrumentStyle
+        InstrumentETH["`**Instrument Agent**<br/>ETH`"]:::instrumentStyle
+    end
+
+    %% Dynamic Position Agents Group
+    subgraph DynamicPositionAgents ["`**Dynamic Position Agents**`"]
+        direction TB
+        Position101["`**Position Agent**<br/>101`"]:::positionStyle
+        Position102["`**Position Agent**<br/>102`"]:::positionStyle
+    end
+
+    %% Relationships
+    StrategyAgent ==> InstrumentAgents
+    InstrumentBTC ==> DynamicPositionAgents
+
+    %% Style subgraphs
+    style InstrumentAgents fill:#FAFAFA,stroke:#0277BD,stroke-width:3px
+    style DynamicPositionAgents fill:#FAFAFA,stroke:#F57C00,stroke-width:3px

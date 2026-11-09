@@ -1,0 +1,66 @@
+---
+title: Topology Comparison - Monolith vs Distributed Architecture
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#f0f4f8"
+    primaryTextColor: "#1a202c"
+    primaryBorderColor: "#4a5568"
+    lineColor: "#4a5568"
+    secondaryColor: "#e2e8f0"
+    tertiaryColor: "#cbd5e0"
+---
+flowchart TB
+    %% Professional Color Scheme
+    classDef component fill:#ffffff,stroke:#2d3748,stroke-width:2px,color:#1a202c
+    classDef agentNode fill:#667eea,stroke:#5a67d8,stroke-width:2px,color:#ffffff
+    classDef queueNode fill:#48bb78,stroke:#38a169,stroke-width:2px,color:#ffffff
+    classDef runtimeNode fill:#ed8936,stroke:#dd6b20,stroke-width:2px,color:#ffffff
+    classDef dbNode fill:#4299e1,stroke:#3182ce,stroke-width:2px,color:#ffffff
+    classDef busNode fill:#f6ad55,stroke:#ed8936,stroke-width:2px,color:#1a202c
+
+    %% TOPOLOGY A: MONOLITH
+    subgraph Topology_A [" 🏢 Topology A: Single-Process Monolith "]
+        direction TB
+        
+        subgraph Single_Process [" 📦 Single Python Process / Container "]
+            direction TB
+            Mono_Agent1[Agent Logic 1]:::agentNode
+            Mono_Agent2[Agent Logic 2]:::agentNode
+            Mono_Queue((In-Memory Queue)):::queueNode
+            Mono_Runtime[DIR Runtime Core]:::runtimeNode
+        end
+        
+        Mono_DB[(Local DB<br/>SQLite)]:::dbNode
+
+        %% Connections A
+        Mono_Agent1 -.->|Object Ref| Mono_Queue
+        Mono_Agent2 -.->|Object Ref| Mono_Queue
+        Mono_Queue ==>|Async Event| Mono_Runtime
+        Mono_Runtime <===>|Direct I/O| Mono_DB
+    end
+
+    %% TOPOLOGY B: DISTRIBUTED MESH
+    subgraph Topology_B [" ☁️ Topology B: Distributed Event Mesh "]
+        direction TB
+        
+        Dist_Agent1[Agent Service 1<br/>Pod A]:::agentNode
+        Dist_Agent2[Agent Service 2<br/>Pod B]:::agentNode
+        
+        Dist_Bus[/Message Bus<br/>Kafka / NATS / RabbitMQ/]:::busNode
+        
+        Dist_Runtime[DIR Runtime Service<br/>Pod C]:::runtimeNode
+        Dist_DB[(Distributed State<br/>Redis / Postgres)]:::dbNode
+
+        %% Connections B
+        Dist_Agent1 ==>|Pub: PolicyProposal| Dist_Bus
+        Dist_Agent2 ==>|Pub: PolicyProposal| Dist_Bus
+        Dist_Bus ==>|Sub: PolicyProposal| Dist_Runtime
+        Dist_Runtime ==>|Pub: ExecutionIntent| Dist_Bus
+        Dist_Runtime <===>|ACID Trans| Dist_DB
+    end
+
+    %% Style Subgraphs
+    style Topology_A fill:#f7fafc,stroke:#4a5568,stroke-width:3px,rx:10,ry:10
+    style Topology_B fill:#f7fafc,stroke:#4a5568,stroke-width:3px,rx:10,ry:10
+    style Single_Process fill:#edf2f7,stroke:#667eea,stroke-width:2px,rx:8,ry:8

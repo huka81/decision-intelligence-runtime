@@ -1,0 +1,19 @@
+title Software Agent Hierarchy Flow Chart
+direction right
+
+// Nodes and groups
+Strategy Agent [shape: oval, color: blue, icon: users]
+
+Instrument Agents [color: lightblue, icon: layers] {
+  Instrument Agent BTC [color: green, icon: dollar-sign]
+  Instrument Agent ETH [color: green, icon: dollar-sign]
+}
+
+Dynamic Position Agents [color: orange, icon: activity] {
+  Position Agent 101 [color: orange, icon: user]
+  Position Agent 102 [color: orange, icon: user]
+}
+
+// Relationships
+Strategy Agent > Instrument Agents
+Instrument Agent BTC > Dynamic Position Agents

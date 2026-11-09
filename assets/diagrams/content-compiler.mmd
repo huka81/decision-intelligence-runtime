@@ -1,0 +1,41 @@
+---
+config:
+  look: handDrawn
+  layout: dagre
+---
+flowchart TB
+ subgraph Store["Context Store"]
+    direction TB
+        L1["1. Session<br>(Ephemeral Events)"]
+        L2["2. State<br>(Authoritative Truth)"]
+        L3["3. Memory<br>(Long-term Insights)"]
+        L4["4. Artifacts<br>(Static Rules/Docs)"]
+  end
+ subgraph Compiler["Context Compiler"]
+    direction TB
+        Filter["Relevance Filter<br>(RAG &amp; Time Window)"]
+        Format["Token Serializer<br>(JSON/XML/Text)"]
+  end
+ subgraph Ledger["Runtime Storage"]
+        DB[("Snapshot Database<br>(Immutable Record)")]
+  end
+    L1 ==> Filter
+    L2 ==> Filter
+    L3 ==> Filter
+    L4 ==> Filter
+    Filter ==> Format
+    Format == Persist ==> DB
+    DB == Serve Immutable Context ==> Agent(["Agent Limitied Scope<br>(Read-Only Access)"])
+
+    L1@{ shape: stored-data}
+    L2@{ shape: stored-data}
+    L3@{ shape: stored-data}
+    L4@{ shape: stored-data}
+     L1:::store
+     L2:::store
+     L3:::store
+     L4:::store
+     Filter:::process
+     Format:::process
+     DB:::db
+     Agent:::agent

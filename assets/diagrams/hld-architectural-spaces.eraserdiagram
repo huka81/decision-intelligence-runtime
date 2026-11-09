@@ -1,0 +1,64 @@
+// Title: Decision Intelligence Runtime (DIR) Architecture
+// Description: Separation of User Space (Reasoning) and Kernel Space (Execution)
+
+// --- Layer 1: User Space (Agents) ---
+// Where reasoning happens. Probabilistic and creative.
+Group User Space (Reasoning) {
+  Agent [icon: bot, label: "Responsible Agent"]
+  Explanation [icon: search, label: "Explain (Reasoning)"]
+  PolicyProposal [icon: file-text, label: "Policy Proposal (JSON)"]
+
+  
+}
+
+Agent > PolicyProposal : JSON
+Agent > Explanation : Plain Text
+
+// --- Layer 2: Kernel Space (DIR Middleware) ---
+// Where validation and execution happen. Deterministic and safe.
+Group Kernel Space (DIR Runtime) {
+  Orchestrator [icon: cpu, label: "Orchestrator"]
+  
+  ContextCompiler [icon: layers, label: "Context Compiler"]
+  ContextStore [icon: database, label: "Context Store (4 Layers)"]
+  
+  DIM [icon: shield, label: "Decision Integrity Module (DIM)"]
+  AgentRegistry [icon: book, label: "Agent Registry (RBAC)"]
+  
+  ExecutionEngine [icon: zap, label: "Execution Engine"]
+  IdempotencyMap [icon: lock, label: "Idempotency Map"]
+}
+
+// --- Layer 3: Infrastructure (External Systems) ---
+// The real world. Unreliable and external.
+Group Infrastructure {
+  BrokerAPI [icon: globe, label: "Broker / Exchange API"]
+  MarketData [icon: activity, label: "Market Data Feed"]
+  Notifications [icon: bell, label: "User Alerts"]
+}
+
+// --- Relationships & Data Flow ---
+
+// 1. Context Compilation
+MarketData > ContextStore: Ingest Live Data
+ContextStore > ContextCompiler: Raw Data
+ContextCompiler > Agent: 1. Working Context (Snapshot)
+
+// 2. Proposal Submission
+PolicyProposal > Orchestrator: 2. Submit Intent
+Orchestrator > DIM: Validate Policy
+
+// 3. Validation Logic
+DIM > AgentRegistry: Check Permissions
+DIM > ContextStore: Check State Freshness
+DIM > Orchestrator: Validation Result (Accept/Reject)
+
+// 4. Execution Logic
+Orchestrator > ExecutionEngine: 3. Execution Intent
+ExecutionEngine > IdempotencyMap: Check Duplicates
+ExecutionEngine > BrokerAPI: 4. Execute Action (Side Effect)
+
+// 5. Feedback Loop
+BrokerAPI > ExecutionEngine: Result (Success/Fail)
+ExecutionEngine > ContextStore: 5. Update Session Log
+ContextStore > Agent: Feedback Loop

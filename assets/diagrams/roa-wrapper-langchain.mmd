@@ -1,0 +1,43 @@
+---
+config:
+  look: handDrawn
+  theme: mc
+---
+graph TB
+    
+    classDef roaSpace fill:#E8F5E9,stroke:#388E3C,stroke-width:3px,color:#1B5E20,font-weight:bold
+    classDef frameworkSpace fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#1A237E
+    classDef kernelSpace fill:#FAFAFA,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    
+    classDef internal fill:#FFFFFF,stroke:#3F51B5,stroke-width:1px,color:#3F51B5
+    classDef output fill:#FFF9C4,stroke:#FBC02D,stroke-width:1px,color:#333
+
+    subgraph ROA_Agent ["ROA AGENT"]
+        style ROA_Agent fill:#E8F5E9,stroke:#388E3C,stroke-width:3px
+        
+        Contract["Responsibility Contract<br/>(North Star & Limits)"]:::roaSpace
+        Context_In["Context Store<br/>(Authoritative Snapshot)"]:::roaSpace
+
+        subgraph Inner_Intelligence ["LangChain Engine (Sandboxed)"]
+            style Inner_Intelligence fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px
+            
+            Agent_Logic["LangChain Agent / Chain<br/>(Probabilistic Reasoning)"]:::internal
+            Tool_Mock["Filtered Tool Space<br/>(Emit Only)"]:::internal
+        end
+
+        Final_Check["Self-Check Logic<br/>(Mission Alignment)"]:::roaSpace
+    end
+
+    subgraph DIR_Kernel ["KERNEL SPACE (DIR)"]
+        style DIR_Kernel fill:#FAFAFA,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+        DIM{{"Decision Integrity Module<br/>(Deterministic Gate)"}}
+    end
+    Context_In ==>|Authoritative Data| Agent_Logic
+    Contract -.->|Injected as Constraints| Agent_Logic
+    Agent_Logic <==>|Recursive Reasoning| Tool_Mock
+    Agent_Logic ==>|Proposed Action| Final_Check
+    Final_Check ==>|PolicyProposal JSON| DIM
+    linkStyle 0 stroke:#388E3C,stroke-width:2px
+    linkStyle 1 stroke:#388E3C,stroke-width:2px,stroke-dasharray: 3 3
+    linkStyle 2 stroke:#3F51B5,stroke-width:2px
+    linkStyle 4 stroke:#2E7D32,stroke-width:3px
