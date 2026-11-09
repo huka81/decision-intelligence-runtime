@@ -148,7 +148,7 @@ Canonical nested contracts are flattened for `dir_core.ResponsibilityContract` (
 
 `INTERFACE` maps to `EXECUTOR` at flatten time because `dir_core` has no INTERFACE role yet.
 
-`YamlContractProvider` in `samples/shared/contracts/provider.py` auto-flattens when `authority` is present.
+`YamlContractProvider` in `samples/shared/contracts/provider.py` does **not** use this adapter: samples never import `tools.*`. It loads canonical contracts via `dir_core.project_contract` and `dir_core.responsibility_contract_from_projection`. The flatten adapter above is for Build-Time use only (e.g. `from-sample`).
 
 ## Answers file example
 

@@ -130,6 +130,7 @@ class RuntimeContractProjection(BaseModel):
     release: ContractReleaseRef = Field(default_factory=ContractReleaseRef)
     agent_id: str
     role: ContractRole = ContractRole.EXECUTOR
+    parent_agent_id: Optional[str] = None
     mission: str = ""
     allowed_policy_types: List[str] = Field(default_factory=list)
     resource_scope: Dict[str, List[str]] = Field(default_factory=dict)

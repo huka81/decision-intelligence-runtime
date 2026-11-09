@@ -267,6 +267,7 @@ The same protocol pattern applies to all other storage subsystems: `ContextStora
 | `dir_core.wakeup` | `should_wake`, `WakeupPredicate` | EOAM Token-Burn prevention predicates |
 | `dir_core.dfid` | `new_dfid`, `new_dfid_with_parent` | DFID generation and parent correlation |
 | `dir_core.models` | `PolicyProposal`, `ExecutionIntent`, `ResponsibilityContract`, ... | All core domain Pydantic models |
+| `dir_core.contract_projection` | `project_contract`, `responsibility_contract_from_projection` | Canonical/legacy contract → `RuntimeContractProjection` → flat `ResponsibilityContract` for agents |
 | `dir_core.storage` | `StorageBundle`, `sqlite_storage`, `memory_storage`, protocols | Storage layer: protocols and built-in backends |
 
 ---

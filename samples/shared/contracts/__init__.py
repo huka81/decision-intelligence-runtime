@@ -9,7 +9,6 @@ from .provider import (
     DatabaseContractProvider,
     OpaRegoContractProvider,
 )
-from .flatten import flatten_canonical, flatten_contract_dict, inflate_flat_to_canonical
 
 __all__ = [
     "ContractProvider",
@@ -17,7 +16,4 @@ __all__ = [
     "JsonContractProvider",
     "DatabaseContractProvider",
     "OpaRegoContractProvider",
-    "flatten_canonical",
-    "flatten_contract_dict",
-    "inflate_flat_to_canonical",
 ]

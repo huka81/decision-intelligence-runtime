@@ -371,38 +371,6 @@ def test_normalize_preserves_explicit_currency_limit() -> None:
     assert contract.authority.limits["max_refund_eur"].unit == "EUR"
 
 
-def test_yaml_contract_provider_flattens_nested() -> None:
-    from samples.shared.contracts.provider import YamlContractProvider
-
-    nested = {
-        "agents": [
-            {
-                "agent_id": "nested_agent",
-                "contract": {
-                    "role": "EXECUTOR",
-                    "mission": "Test nested load.",
-                    "authority": {
-                        "allowed_policy_types": ["ACTION"],
-                        "max_transaction_usd": 100.0,
-                    },
-                    "responsibility": {"escalate_on_uncertainty": 0.6},
-                },
-            }
-        ]
-    }
-    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as handle:
-        yaml.dump(nested, handle)
-        path = handle.name
-
-    try:
-        provider = YamlContractProvider(path)
-        contract = provider.get_contract("nested_agent")
-        assert contract.agent_id == "nested_agent"
-        assert contract.allowed_policy_types == ["ACTION"]
-    finally:
-        Path(path).unlink(missing_ok=True)
-
-
 def test_yaml_contract_provider_loads_canonical_envelope() -> None:
     nested = {
         "agents": [
