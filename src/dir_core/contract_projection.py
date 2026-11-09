@@ -10,6 +10,7 @@ from .models import (
     ContractParameterAmendment,
     ContractReleaseRef,
     InvariantSpec,
+    ResponsibilityContract,
     RuntimeContractProjection,
 )
 
@@ -105,6 +106,7 @@ def _build_projection_from_contract_mapping(data: Mapping[str, Any]) -> RuntimeC
         release=release,
         agent_id=str(subject.get("agent_id", data.get("agent_id", ""))),
         role=subject.get("role", data.get("role", "EXECUTOR")),
+        parent_agent_id=subject.get("parent_agent_id", data.get("parent_agent_id")),
         mission=str(mission_value),
         allowed_policy_types=list(
             authority.get("allowed_policy_types")
@@ -186,3 +188,51 @@ def project_contract(contract: Mapping[str, Any]) -> RuntimeContractProjection:
     if _is_projection_dump(data):
         return _parse_projection_dump(data)
     return ensure_projection_invariants(_build_projection_from_contract_mapping(data))
+
+
+def _limit_value(projection: RuntimeContractProjection, key: str) -> float | None:
+    raw = projection.transaction_limits.get(key)
+    if not isinstance(raw, Mapping):
+        return None
+    value = raw.get("value")
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+def responsibility_contract_from_projection(
+    projection: RuntimeContractProjection,
+) -> ResponsibilityContract:
+    """Derive the flat agent-facing ``ResponsibilityContract`` from a projection.
+
+    ``max_drawdown_limit`` is a fraction (0.04 = 4%); ``max_drawdown_limit_pct`` is in percent points.
+    """
+    fields: dict[str, Any] = {
+        "agent_id": projection.agent_id,
+        "role": projection.role,
+        "mission": projection.mission,
+        "authorized_instruments": list(
+            projection.resource_scope.get("instruments")
+            or projection.resource_scope.get("categories")
+            or []
+        ),
+        "allowed_policy_types": list(projection.allowed_policy_types),
+        "parent_agent_id": projection.parent_agent_id,
+    }
+
+    confidence_below = projection.escalation_policy.get("confidence_below")
+    if confidence_below is not None:
+        fields["escalate_on_uncertainty"] = float(confidence_below)
+
+    wake_up = projection.execution_conditions.get("wake_up_threshold_pct")
+    if wake_up is not None:
+        fields["wake_up_threshold_pct"] = float(wake_up)
+
+    drawdown = _limit_value(projection, "max_drawdown_limit")
+    if drawdown is None:
+        drawdown_pct = _limit_value(projection, "max_drawdown_limit_pct")
+        drawdown = drawdown_pct / 100.0 if drawdown_pct is not None else None
+    if drawdown is not None:
+        fields["max_drawdown_limit"] = drawdown
+
+    return ResponsibilityContract(**fields)

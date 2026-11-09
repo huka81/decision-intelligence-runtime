@@ -11,10 +11,11 @@ from typing import Any, Dict
 
 import yaml
 
-from dir_core import ResponsibilityContract
-
-from .canonical import canonical_contract_to_runtime
-from .flatten import flatten_contract_dict
+from dir_core import (
+    ResponsibilityContract,
+    project_contract,
+    responsibility_contract_from_projection,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +64,12 @@ class YamlContractProvider(ContractProvider):
     def _parse_contract(self, c_dict: Dict[str, Any], agent_id: str) -> ResponsibilityContract:
         c_dict = dict(c_dict)
         c_dict["agent_id"] = agent_id
-        if c_dict.get("api_version") or "subject" in c_dict:
-            c_dict = canonical_contract_to_runtime(c_dict, agent_id)
-        if "authority" in c_dict:
-            c_dict = flatten_contract_dict(c_dict)
-        return self._contract_model(**c_dict)
+        if "api_version" not in c_dict:
+            # Flat Runtime shape (e.g. 00_quick_start).
+            return self._contract_model(**c_dict)
+        c_dict["subject"] = {**dict(c_dict.get("subject") or {}), "agent_id": agent_id}
+        runtime = responsibility_contract_from_projection(project_contract(c_dict))
+        return self._contract_model(**runtime.model_dump())
 
     def get_contract(self, agent_id: str) -> ResponsibilityContract:
         # In many samples, contracts are under an 'agents' list

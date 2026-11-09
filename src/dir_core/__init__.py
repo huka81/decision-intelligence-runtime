@@ -94,7 +94,7 @@ from .pci import (
     hash_content,
     proposal_params_for_hash,
 )
-from .contract_projection import project_contract
+from .contract_projection import project_contract, responsibility_contract_from_projection
 from .invariants import evaluate_invariants
 from .amendments import validate_amendment_patch
 from .wakeup import (
@@ -227,6 +227,7 @@ __all__ = [
     "ContractParameterAmendment",
     "AmendmentResult",
     "project_contract",
+    "responsibility_contract_from_projection",
     "evaluate_invariants",
     "validate_amendment_patch",
     "PolicyProposal",

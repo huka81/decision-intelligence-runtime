@@ -87,3 +87,7 @@ python samples/40_retention_airlock/run.py
 ```
 
 Each sample has its own `README.md` with goal, how to run, and expected output.
+
+## Dependency rule
+
+Samples are Runtime consumers and depend only on `dir_core` (plus `samples/shared`). They must not import `tools.*` (Build-Time Contract Studio). Contracts are loaded through `shared.contracts.YamlContractProvider`: canonical YAML (`api_version: roa.dir/v1`) → `dir_core.project_contract` → `dir_core.responsibility_contract_from_projection`. `tests/test_samples_isolation.py` enforces this.
