@@ -70,6 +70,8 @@ nav:
       - Ports & Adapters: 09-pages/package/ports_and_adapters.md
       - Core Components: 09-pages/package/core_components.md
       - Models & DTOs: 09-pages/package/models.md
+  - Contract Studio:
+      - Overview: 09-pages/contract-studio/index.md
   - API Reference:
       - Overview: 10-api-reference/index.md
       - Core Framework: 10-api-reference/core.md

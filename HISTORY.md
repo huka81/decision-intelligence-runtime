@@ -137,3 +137,117 @@ Chronology of **what changed for readers and operators** of the Decision Intelli
 - **GitHub Pages** deployment makes updates part of the normal delivery rhythm instead of a manual export.
 - **Diagrams render on the site** so architecture reviews can point to the same figures online and in decks.
 - **Samples are surfaced in navigation** so evaluation teams can jump from concept to runnable scenario quickly.
+
+---
+
+## 2026-04-12 to 2026-04-16 — Runtime becomes an installable library
+
+- The runtime is **renamed and repackaged as `dir_core`**, with **storage abstracted behind swappable backends** (in-memory, SQLite, PostgreSQL), so adopters can plug DIR into their own persistence instead of inheriting a fixed one.
+- The code is **prepared for a hexagonal (ports-and-adapters) layout** and gains **explicit data types** for decision artefacts, making contracts between kernel, agents, and integrations easier to review and test.
+
+---
+
+## 2026-04-17 — Full sample catalogue, one simple entry point
+
+- Runnable scenarios are rebuilt on top of the library: **finance trading, fraud gate, insurance underwriting, LangChain and CrewAI wrappers**, and the three **drift** references (discount optimisation, semantic refund, environmental bidding).
+- A **00 Quick Start** sample and a **facade over the kernel** give new teams a short path to a first governed decision without wiring every component by hand.
+- A **package README** describes what `dir_core` offers and how to consume it.
+
+---
+
+## 2026-04-21 to 2026-04-23 — Contract lifecycle, custom persistence, first release
+
+- **Governance documentation** adds a **contract lifecycle** and a **graduated circuit breaker**, so operators see how rules are introduced, tightened, and halted when behaviour degrades.
+- A **custom PostgreSQL repository sample (08)** shows how to bring your own storage; topology samples **09, 10, and 11** are aligned with the new runtime.
+- A **basic Ollama test** covers the local-LLM path.
+- **`dir-core` v0.1.0 is published**, the first versioned release that teams can pin in their own environments.
+- Documentation-site publishing is **fixed and re-pointed** (workflow trigger, `mkdocstrings` dependency, MkDocs configuration), so the public site reliably reflects the release.
+
+---
+
+## 2026-05 — Canonical data model and v0.2.0
+
+- The **canonical data model** is refined and documented in the database schema reference, and the **decision lifecycle and context store** are aligned with it across storage backends.
+- Samples **emit consistent telemetry**, so results from different scenarios can be compared in the same reporting shape.
+- The **Gemini LLM client is fixed** for live runs.
+- The documentation build gets **dedicated requirements and pipeline updates**.
+- **Version 0.2.0** is released (2026-05-20).
+
+---
+
+## 2026-06-02 — Meta-context sample matured
+
+- The **meta-context engineering sample (88)** is restructured into a clear chain: **intent, DIR boundaries, threat model, acceptance criteria, coding standards, and a context-compiler prompt**.
+- A runnable **context compiler** and **Semgrep rules** (agent isolation, kernel determinism, security) turn those artefacts into **automatically enforceable checks**.
+
+---
+
+## 2026-06-09 — Semantic governance and “The Compliant Lie”
+
+- New material on **semantic governance** explains how an agent can follow every formal rule and still mislead, and what evidence the runtime must demand to catch it.
+- Two samples demonstrate it: **12 Compliant Lie** and **39 Fintech Evidence Governance** (alignment checks, approval monitoring, evidence-backed decisions).
+- Long-form documents are **published as web pages only**; the duplicate PDF exports are removed, and the site navigation and sample pages are corrected.
+
+---
+
+## 2026-06-26 to 2026-06-30 — Persisted decision ledger and “architecture of trust”
+
+- A **`decision_ledger_entries` table** joins the reference data model, and the ledger gains persistence in every storage backend, so **pre-commit intent (PCI) records survive restarts** and can be audited later. Insurance and fintech samples use it.
+- **Version 0.3.0** is released.
+- The **retention airlock sample (40)** shows several validation types working together: evidence checks, a context tax, reconstruction of agent claims, and temporal monitoring.
+
+---
+
+## 2026-07-06 — Agentic DMZ security pattern
+
+- The **Agentic DMZ** is introduced to stop attackers from extracting intellectual property or probing rules through agent responses:
+  - a new **`INTERFACE` role** with strict context starvation;
+  - a kernel-level **outbound translation gate** that neutralises detailed DIM rejections, defeating oracle and fuzzing attacks;
+  - the invariant **“disclosure is a side effect”**, with information-flow controls for the event bus.
+- The ROA manifesto, DIR pattern, topologies, and minified specification are updated accordingly.
+
+---
+
+## 2026-07-21 to 2026-07-29 — LLM configuration and a clearer LDS order
+
+- The **Gemini client is updated**, and **LLM configuration uses placeholders**, so no credentials or vendor choices are baked into samples.
+- The five **Legal Decision State (LDS)** dimensions are **reordered as Authority, Context, Time, Intent, Evidence (“ACTIE”)** across the README and all long-form documents, and the LDS graphic is refreshed, so the figures match the text.
+
+---
+
+## 2026-07-31 — Contract Studio
+
+- **Contract Studio** is added as a tool for **bootstrapping contracts**: guided interview, LLM-assisted drafting, a **web UI**, CLI, rendering to YAML, integrity checks, and import from existing samples. Teams no longer have to hand-write contracts from scratch.
+
+---
+
+## 2026-08-11 to 2026-08-18 — Invariant-driven governance and a unified Contract Studio
+
+- Documentation integrates **invariant-driven governance**:
+  - **build-time human-in-the-loop review** and **intent compression** govern rules generated by LLMs;
+  - **boundaries** (topology and structure) are separated from **invariants** (state and logic);
+  - the DIM is modelled as a **kernel invariant evaluator** whose limits follow from Rice’s theorem;
+  - **ex-post governance (circuit breakers)** is required because the world is open;
+  - **tooling** (coverage matrix, SMT solvers) is defined to prevent rubber-stamping;
+  - the minified specification is synchronised as the single AI-context reference.
+- Contract Studio gains **unified configuration**, **manual YAML editing**, an **invariant ontology**, **governance authoring rules**, and **stricter validation of aggregate policies**; a parsing defect in the LLM interview is fixed.
+- The runtime **projects canonical contracts** into its own model, and all samples load contracts through a **shared provider**.
+- Test coverage grows to include the contract tool, governance validation, the runtime, PostgreSQL repository, and ledger storage.
+
+---
+
+## 2026-09-22 — Dynamic invariants
+
+- The runtime now supports **dynamic invariants**: invariants are **compiled** from contracts, evaluated by the DIM, and **amended** under control, instead of being hard-coded in each sample.
+- The **insurance underwriting sample** is migrated to contract-driven invariants (its bespoke gate module is removed), and a **finance trading contract** is added.
+- Documentation across the manifesto, pattern, topologies, governance, minified spec, and Context as Code is **reconciled** so every document describes the same model.
+- New tests cover invariants, the insurance agent and reports, LLM JSON parsing, and logging.
+
+---
+
+## 2026-10-08 to 2026-11-09 — Version 0.4.0 and a cleaner runtime boundary
+
+- **Version 0.4.0** is released (2026-10-08).
+- A Contract Studio fix aligns the **governance context, LLM interview, and schema**.
+- The runtime **no longer depends on Contract Studio**: canonical-contract handling moves into `dir_core` (contract projection and a responsibility adapter) and the samples’ shared contract helpers are slimmed down. Adopters can use the library without the authoring tool.
+- New tests guard this boundary (**samples isolation**, **responsibility adapter**), and the READMEs for the package, samples, and the tool are updated.

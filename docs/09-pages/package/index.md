@@ -59,3 +59,4 @@ This means that at any point in the future, human operators can reconstruct the 
 - Proceed to [Architecture](architecture.md) to understand the deterministic lifecycle.
 - Read [Ports & Adapters](ports-and-adapters.md) to see how to inject custom implementations.
 - Explore [Core Components](core-components.md) for details on DIM, Registry, and Context.
+- Learn how contracts and invariants are authored in [Contract Studio](../contract-studio/index.md).

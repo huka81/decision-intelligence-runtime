@@ -985,7 +985,6 @@ For enterprise scale, DIR maps naturally to an **Event-Driven Architecture**[^11
 
 
 ```mermaid
-
 ---
 title: Topology Comparison - Monolith vs Distributed Architecture
 config:
