@@ -75,7 +75,7 @@ def validate_governance_analysis(
         )
 
     _validate_references(analysis, valid_clause_ids, blocking, warnings)
-    _validate_invariant_candidates(analysis.invariant_candidates, blocking, warnings)
+    _validate_invariant_candidates(analysis.invariant_candidates, warnings)
     _validate_ast_and_sat(analysis.invariant_candidates, blocking, warnings, formal_checks)
     _validate_semantic_coverage(
         analysis, contract_dict, preset, warnings
@@ -147,16 +147,19 @@ def _validate_references(
 
 def _validate_invariant_candidates(
     candidates: List[InvariantCandidate],
-    blocking: List[ValidationIssue],
     warnings: List[ValidationIssue],
 ) -> None:
     for inv in candidates:
         if inv.linked_limit_key and inv.linked_limit_key not in IRREVERSIBLE_LIMIT_KEYS:
-            blocking.append(
+            warnings.append(
                 ValidationIssue(
                     code="INVALID_LIMIT_KEY",
-                    message=f"linked_limit_key '{inv.linked_limit_key}' is not canonical",
-                    severity="blocking",
+                    message=(
+                        f"linked_limit_key '{inv.linked_limit_key}' is not canonical "
+                        f"for invariant '{inv.invariant_id}'. "
+                        f"Allowed keys: {', '.join(IRREVERSIBLE_LIMIT_KEYS)}."
+                    ),
+                    severity="warning",
                     field="linked_limit_key",
                 )
             )

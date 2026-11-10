@@ -21,11 +21,50 @@ const exportBtn = document.getElementById("exportBtn");
 const validateBtn = document.getElementById("validateBtn");
 const integrityBadge = document.getElementById("integrityBadge");
 const integrityPanel = document.getElementById("integrityPanel");
+const integritySummary = document.getElementById("integritySummary");
+const integrityContent = document.getElementById("integrityContent");
+const governanceCounts = document.getElementById("governanceCounts");
+const yamlHighlight = document.getElementById("yamlHighlight");
+const yamlEditorShell = document.getElementById("yamlEditorShell");
 
 let currentSessionId = null;
 let currentSessionTitle = "";
 let savedYaml = "";
 let exportAllowed = false;
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[char]);
+}
+
+function syncYamlScroll() {
+  yamlHighlight.scrollTop = yamlEditor.scrollTop;
+  yamlHighlight.scrollLeft = yamlEditor.scrollLeft;
+}
+
+function highlightYaml() {
+  // Tokenize for display only: the textarea remains the exact source of truth.
+  const tokens = /("(?:\\.|[^"\\])*"|'(?:''|[^'])*'|(?:^|[ \t])#[^\n]*|\b(?:true|false|null)\b|~|[+-]?\b\d+(?:\.\d+)?(?:e[+-]?\d+)?\b|[{}\[\],:|>]|^[ \t]*-(?=\s)|[^\s{}\[\],:#]+(?=:[ \t]|:$))/gim;
+  const text = yamlEditor.value;
+  let end = 0;
+  let html = "";
+  for (const match of text.matchAll(tokens)) {
+    html += escapeHtml(text.slice(end, match.index));
+    const token = match[0];
+    let kind = "punctuation";
+    if (token.trimStart().startsWith("#")) kind = "comment";
+    else if (/^["']/.test(token)) kind = "string";
+    else if (/^(true|false|null|~)$/i.test(token)) kind = "literal";
+    else if (/^[+-]?\d/.test(token)) kind = "number";
+    else if (!/^[{}\[\],:|>\s-]+$/.test(token)) kind = "key";
+    html += `<span class="yaml-${kind}">${escapeHtml(token)}</span>`;
+    end = match.index + token.length;
+  }
+  yamlHighlight.innerHTML = html + escapeHtml(text.slice(end)) + "\n";
+  yamlEditorShell.classList.add("highlight-ready");
+  syncYamlScroll();
+}
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -62,22 +101,23 @@ function renderGovernance(analysis) {
   const invariants = analysis.invariant_candidates || [];
   const ambiguities = analysis.ambiguities || [];
   const questions = analysis.open_questions || [];
+  governanceCounts.textContent = `${actions.length} actions · ${invariants.length} candidates`;
 
   governanceContent.innerHTML = `
     <div class="gov-section">
       <div class="gov-label">Goal</div>
-      <p>${goal.objective || "(not set)"}</p>
+      <p>${escapeHtml(goal.objective || "(not set)")}</p>
     </div>
     <div class="gov-section">
       <div class="gov-label">Actions (${actions.length})</div>
-      <ul>${actions.map((a) => `<li>${a.action_type} — ${a.reversibility}${a.linked_limit_key ? ` → ${a.linked_limit_key}` : ""}</li>`).join("") || "<li>none</li>"}</ul>
+      <ul>${actions.map((a) => `<li>${escapeHtml(a.action_type)} — ${escapeHtml(a.reversibility)}${a.linked_limit_key ? ` → ${escapeHtml(a.linked_limit_key)}` : ""}</li>`).join("") || "<li>none</li>"}</ul>
     </div>
     <div class="gov-section">
       <div class="gov-label">Invariant candidates (${invariants.length})</div>
-      <ul>${invariants.map((i) => `<li>${i.invariant_id} [${i.constraint_class}] → ${i.linked_limit_key || "—"}</li>`).join("") || "<li>none</li>"}</ul>
+      <ul>${invariants.map((i) => `<li>${escapeHtml(i.invariant_id)} [${escapeHtml(i.constraint_class)}] → ${escapeHtml(i.linked_limit_key || "—")}</li>`).join("") || "<li>none</li>"}</ul>
     </div>
-    ${ambiguities.length ? `<div class="gov-section"><div class="gov-label">Ambiguities</div><ul>${ambiguities.map((a) => `<li>${a}</li>`).join("")}</ul></div>` : ""}
-    ${questions.length ? `<div class="gov-section"><div class="gov-label">Open questions</div><ul>${questions.map((q) => `<li>${q}</li>`).join("")}</ul></div>` : ""}
+    ${ambiguities.length ? `<div class="gov-section"><div class="gov-label">Ambiguities</div><ul>${ambiguities.map((a) => `<li>${escapeHtml(a)}</li>`).join("")}</ul></div>` : ""}
+    ${questions.length ? `<div class="gov-section"><div class="gov-label">Open questions</div><ul>${questions.map((q) => `<li>${escapeHtml(q)}</li>`).join("")}</ul></div>` : ""}
   `;
 }
 
@@ -95,6 +135,7 @@ function refreshDirtyState() {
 
 function setEditorContent(text) {
   yamlEditor.value = text;
+  highlightYaml();
   savedYaml = text;
   refreshDirtyState();
 }
@@ -150,20 +191,20 @@ function renderIntegrity(result) {
       const ok = info.ok;
       const cls = ok === true ? "ok" : ok === false ? "fail" : "";
       const mark = ok === true ? "PASS" : ok === false ? "FAIL" : "—";
-      return `<li class="${cls}"><strong>${name}</strong> [${mark}] — ${info.detail || ""}</li>`;
+      return `<li class="${cls}"><strong>${escapeHtml(name)}</strong> [${mark}] — ${escapeHtml(info.detail || "")}</li>`;
     })
     .join("");
 
   const hash = result.sha256
-    ? `<p class="hash">sha256: ${result.sha256}</p>`
+    ? `<p class="hash">sha256: ${escapeHtml(result.sha256)}</p>`
     : "";
 
   const summary = result.contract
-    ? `<p>${result.contract.agent_id} · ${result.contract.role} · v${result.contract.version} · ${result.contract.owner}</p>`
+    ? `<p>${escapeHtml(result.contract.agent_id)} · ${escapeHtml(result.contract.role)} · v${escapeHtml(result.contract.version)} · ${escapeHtml(result.contract.owner)}</p>`
     : "";
 
-  integrityPanel.innerHTML = `
-    <h3>${result.integrity_ok ? "YAML integrity confirmed" : "YAML integrity check failed"}</h3>
+  integritySummary.textContent = result.integrity_ok ? "YAML integrity confirmed" : "YAML integrity check failed";
+  integrityContent.innerHTML = `
     ${summary}
     <ul>${rows}</ul>
     ${hash}
@@ -199,6 +240,10 @@ async function loadSessions() {
 
 async function loadSession(id) {
   const data = await api(`/api/sessions/${id}`);
+  if (currentSessionId !== id) {
+    integrityPanel.open = false;
+    governancePanel.open = false;
+  }
   currentSessionId = id;
   sessionSelect.value = id;
   currentSessionTitle = data.session.title || "";
@@ -228,9 +273,8 @@ async function createSession() {
     method: "POST",
     body: JSON.stringify({ title: trimmed, preset }),
   });
-  currentSessionId = data.session.id;
   await loadSessions();
-  await loadSession(currentSessionId);
+  await loadSession(data.session.id);
 }
 
 async function renameSession() {
@@ -302,7 +346,11 @@ async function saveContract() {
   }
 }
 
-yamlEditor.addEventListener("input", refreshDirtyState);
+yamlEditor.addEventListener("input", () => {
+  highlightYaml();
+  refreshDirtyState();
+});
+yamlEditor.addEventListener("scroll", syncYamlScroll);
 
 yamlEditor.addEventListener("keydown", (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -316,6 +364,7 @@ saveBtn.addEventListener("click", () => saveContract());
 revertBtn.addEventListener("click", () => {
   if (!confirmDiscardEdits()) return;
   yamlEditor.value = savedYaml;
+  highlightYaml();
   refreshDirtyState();
 });
 
@@ -395,7 +444,8 @@ validateBtn.addEventListener("click", async () => {
     integrityBadge.textContent = "integrity fail";
     integrityBadge.className = "badge badge-integrity-fail";
     integrityPanel.hidden = false;
-    integrityPanel.innerHTML = `<h3>Validation request failed</h3><p class="fail">${err.message}</p>`;
+    integritySummary.textContent = "Validation request failed";
+    integrityContent.innerHTML = `<p class="fail">${escapeHtml(err.message)}</p>`;
   } finally {
     validateBtn.disabled = false;
   }

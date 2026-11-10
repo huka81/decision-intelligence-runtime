@@ -192,6 +192,9 @@ server console for full system/user prompts and raw LLM responses.
 4. Review the YAML preview, governance panel, blocking errors, and semantic
   warnings. Warnings do not block export. The session remains `drafting` until
   blocking validation passes; then `ready`.
+   A noncanonical `linked_limit_key` in a governance invariant candidate produces
+   an `INVALID_LIMIT_KEY` warning listing the allowed canonical keys. It does not
+   block export; schema, Bootstrap, and executable invariant errors still do.
 5. Edit the YAML pane directly when chat is not the fastest route. A **Save**
   button (also `Ctrl+S`) and an `unsaved edits` badge appear as soon as the text
   differs from the stored revision; **Revert** restores it. See
@@ -216,6 +219,17 @@ Revision history is persisted in SQLite and exposed by the API, although the
 current UI displays only the latest revision.
 
 ### Manual YAML editing
+
+The integrity result and governance analysis are collapsible panels, initially
+closed. Their headers show the result and action/candidate counts; expand them
+with a click or the keyboard. Your expanded state is retained while updating the
+same session and resets when switching sessions. Blocking errors remain visible.
+
+The YAML editor colors keys, quoted strings, numbers, booleans/null, comments and
+punctuation as you type. This is visual highlighting, not syntax validation;
+Save and Verify integrity still perform validation. Highlighting does not modify
+the submitted text. The editor retains horizontal/vertical scrolling, selection,
+clipboard and undo; forced-colors mode uses readable plain text.
 
 The YAML pane is a plain editor; `PUT /api/sessions/{id}/contract` saves and
 validates in one request:

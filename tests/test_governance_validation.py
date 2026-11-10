@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from tools.contract.governance.models import (
     ActionClass,
-    GovernanceAnalysis,
     GoalModel,
+    GovernanceAnalysis,
     InvariantCandidate,
     PredicateAST,
     SourceBinding,
 )
 from tools.contract.governance.validation import validate_governance_analysis
+from tools.contract.schema import IRREVERSIBLE_LIMIT_KEYS
 
 
 def _valid_analysis() -> GovernanceAnalysis:
@@ -130,3 +131,24 @@ def test_valid_analysis_passes() -> None:
     }
     report = validate_governance_analysis(analysis=analysis, contract_dict=contract)
     assert report.blocking_ok
+
+
+def test_noncanonical_linked_limit_is_warning_with_allowed_keys() -> None:
+    analysis = _valid_analysis()
+    analysis.invariant_candidates[0].linked_limit_key = "max_payout_usd"
+    report = validate_governance_analysis(
+        analysis=analysis,
+        contract_dict={
+            "authority": {
+                "allowed_policy_types": ["BUY"],
+                "limits": {"max_order_size_usd": {"value": 50000.0, "unit": "USD"}},
+            },
+        },
+    )
+
+    assert report.blocking_ok
+    issue = next(issue for issue in report.warnings if issue.code == "INVALID_LIMIT_KEY")
+    assert issue.severity == "warning"
+    assert "max_payout_usd" in issue.message
+    for key in IRREVERSIBLE_LIMIT_KEYS:
+        assert key in issue.message

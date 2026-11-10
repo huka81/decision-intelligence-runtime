@@ -57,20 +57,28 @@
           <button type="button" id="saveBtn" class="primary" title="Save and validate (Ctrl+S)">Save</button>
         </div>
       </div>
-      <div id="integrityPanel" class="integrity-panel" hidden></div>
-      <div id="governancePanel" class="governance-panel" hidden>
-        <h3>Governance analysis</h3>
-        <div id="governanceContent"></div>
-      </div>
+      <details id="integrityPanel" class="integrity-panel" hidden>
+        <summary id="integritySummary">YAML integrity</summary>
+        <div id="integrityContent" class="panel-content"></div>
+      </details>
+      <details id="governancePanel" class="governance-panel" hidden>
+        <summary>Governance analysis <span id="governanceCounts" class="panel-counts"></span></summary>
+        <div id="governanceContent" class="panel-content"></div>
+      </details>
       <ul id="validationList" class="validation-list"></ul>
       <ul id="warningList" class="warning-list"></ul>
-      <textarea
-        id="yamlEditor"
-        class="yaml-editor"
-        spellcheck="false"
-        autocomplete="off"
-        aria-label="Editable contract YAML"
-      ># Start a session and chat to build your contract.</textarea>
+      <div class="yaml-editor-shell" id="yamlEditorShell">
+        <pre class="yaml-highlight" id="yamlHighlight" aria-hidden="true"></pre>
+        <textarea
+          id="yamlEditor"
+          class="yaml-editor"
+          spellcheck="false"
+          autocomplete="off"
+          autocapitalize="off"
+          wrap="off"
+          aria-label="Editable contract YAML"
+        ># Start a session and chat to build your contract.</textarea>
+      </div>
     </section>
   </main>
 

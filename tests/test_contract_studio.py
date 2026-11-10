@@ -76,6 +76,42 @@ def test_process_chat_turn_mock() -> None:
     assert turn.change_summary
 
 
+def test_noncanonical_analysis_key_remains_warning_through_integrity() -> None:
+    from tools.contract.integrity import verify_contract_yaml
+    from tools.contract.schema import IRREVERSIBLE_LIMIT_KEYS
+
+    def strategy(prompt: str, system: str | None = None) -> str:
+        response = json.loads(mock_contract_llm_strategy(prompt, system))
+        response["governance_analysis"]["invariant_candidates"][0][
+            "linked_limit_key"
+        ] = "max_payout_usd"
+        return json.dumps(response)
+
+    turn = process_chat_turn(
+        MockLLMClient(strategy=strategy),
+        current_contract=empty_draft_contract("trading"),
+        chat_history=[],
+        user_message="Build a crypto trading agent with limits",
+        preset="trading",
+    )
+    assert turn.validation_ok
+    assert not turn.blocking_errors
+    assert any("INVALID_LIMIT_KEY" in warning for warning in turn.warnings)
+
+    result = verify_contract_yaml(
+        turn.contract_yaml,
+        preset="trading",
+        governance_analysis=turn.governance_analysis,
+    )
+    assert result["integrity_ok"]
+    assert result["checks"]["contract_validation"]["ok"]
+    assert not result["errors"]
+    warning = next(w for w in result["validation_warnings"] if "INVALID_LIMIT_KEY" in w)
+    assert "max_payout_usd" in warning
+    for key in IRREVERSIBLE_LIMIT_KEYS:
+        assert key in warning
+
+
 @pytest.fixture
 def studio_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     pytest.importorskip("fastapi")
@@ -239,6 +275,12 @@ def test_index_serves_versioned_assets(studio_client) -> None:
     assert 'id="yamlEditor"' in res.text
     assert "/static/app.js?v=" in res.text
     assert "/static/styles.css?v=" in res.text
+    assert '<details id="integrityPanel"' in res.text
+    assert '<details id="governancePanel"' in res.text
+    assert 'id="integritySummary"' in res.text
+    assert 'id="yamlHighlight" aria-hidden="true"' in res.text
+    assert 'wrap="off"' in res.text
+    assert "<details" in res.text and " open" not in res.text
 
 
 def test_verify_contract_yaml_rejects_garbage() -> None:

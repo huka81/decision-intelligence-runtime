@@ -24,9 +24,14 @@ body {
   font-family: var(--font-ui);
   background: linear-gradient(160deg, #0b1018 0%, #121c2a 45%, #0f1419 100%);
   color: var(--text);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 .topbar {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -95,11 +100,13 @@ button:disabled {
 
 .layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  height: calc(100vh - 64px);
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .pane {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -108,6 +115,7 @@ button:disabled {
 
 .yaml-pane {
   border-right: none;
+  overflow-y: auto;
 }
 
 .chat-log {
@@ -120,6 +128,7 @@ button:disabled {
 }
 
 .msg {
+  overflow-wrap: anywhere;
   max-width: 92%;
   padding: 0.65rem 0.85rem;
   border-radius: 10px;
@@ -164,6 +173,8 @@ button:disabled {
 }
 
 .yaml-header {
+  flex-wrap: wrap;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -252,14 +263,39 @@ button:disabled {
   background: rgba(26, 35, 50, 0.6);
 }
 
-.integrity-panel[hidden] {
-  display: none;
+details {
+  flex-shrink: 0;
 }
 
-.integrity-panel h3 {
-  margin: 0 0 0.4rem;
-  font-size: 0.85rem;
+summary {
+  cursor: pointer;
   font-weight: 600;
+  padding: 0.25rem 0;
+}
+
+.panel-counts {
+  color: var(--muted);
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
+.panel-content {
+  max-height: 22vh;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding-top: 0.5rem;
+}
+
+button:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.integrity-panel[hidden] {
+  display: none;
 }
 
 .integrity-panel ul {
@@ -286,6 +322,10 @@ button:disabled {
 }
 
 .validation-list {
+  max-height: 12vh;
+  overflow: auto;
+  flex-shrink: 0;
+  overflow-wrap: anywhere;
   margin: 0;
   padding: 0.5rem 1rem;
   list-style: none;
@@ -298,6 +338,10 @@ button:disabled {
 }
 
 .warning-list {
+  max-height: 10vh;
+  overflow: auto;
+  flex-shrink: 0;
+  overflow-wrap: anywhere;
   margin: 0;
   padding: 0.5rem 1rem;
   list-style: none;
@@ -325,12 +369,6 @@ button:disabled {
   display: none;
 }
 
-.governance-panel h3 {
-  margin: 0 0 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
 .governance-panel .gov-section {
   margin: 0.35rem 0;
 }
@@ -347,8 +385,20 @@ button:disabled {
   padding-left: 1.1rem;
 }
 
-.yaml-editor {
+.yaml-editor-shell {
   flex: 1;
+  min-height: 160px;
+  position: relative;
+  background: #0b1018;
+  border-top: 1px solid var(--border);
+}
+
+.yaml-editor,
+.yaml-highlight {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   margin: 0;
   padding: 1rem;
   overflow: auto;
@@ -358,11 +408,35 @@ button:disabled {
   font-family: var(--font-mono);
   font-size: 0.82rem;
   line-height: 1.5;
-  background: #0b1018;
+  background: transparent;
   color: #c8d4e8;
   border: none;
-  border-top: 1px solid var(--border);
+  border-radius: 0;
+  letter-spacing: normal;
+  font-weight: normal;
+  font-variant-ligatures: none;
 }
+
+.yaml-highlight {
+  pointer-events: none;
+}
+
+.highlight-ready .yaml-editor {
+  color: transparent;
+  caret-color: var(--text);
+}
+
+.yaml-editor::selection {
+  background: rgba(61, 139, 253, 0.4);
+  color: var(--text);
+}
+
+.yaml-key { color: #82aaff; }
+.yaml-string { color: #c3e88d; }
+.yaml-number { color: #f78c6c; }
+.yaml-literal { color: #c792ea; }
+.yaml-comment { color: #8b9cb3; }
+.yaml-punctuation { color: #89ddff; }
 
 .yaml-editor:focus {
   outline: none;
@@ -370,16 +444,29 @@ button:disabled {
 }
 
 @media (max-width: 900px) {
+  body {
+    height: auto;
+  }
+
   .layout {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: auto auto;
     height: auto;
-    min-height: calc(100vh - 64px);
+    min-height: 0;
   }
 
   .pane {
-    min-height: 45vh;
+    height: 70dvh;
+    min-height: 420px;
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
+
+  .topbar-actions { width: 100%; }
+  #sessionSelect { max-width: 100%; }
+}
+
+@media (forced-colors: active) {
+  .yaml-highlight { display: none; }
+  .highlight-ready .yaml-editor { color: CanvasText; caret-color: CanvasText; }
 }

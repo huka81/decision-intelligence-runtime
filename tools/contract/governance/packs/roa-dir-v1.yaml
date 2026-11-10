@@ -1,0 +1,89 @@
+pack_id: roa-dir-v1
+version: "1.0.0"
+description: >-
+  Foundational ROA and DIR governance clauses for Contract Studio. Quotes are
+  verified against the canonical source documents in docs/.
+clauses:
+  - clause_id: DIR-BOOTSTRAP-001
+    source_document: DIR_GOVERNANCE
+    source_anchor: "2.2 The Bootstrap Contract - Minimum Viable Governance"
+    statement: Every irreversible action class must have a hard numerical limit in contract v1.0.0.
+    quote: "**Every irreversible action class must have a hard numerical limit in v1.0.0 of the contract. Nothing else is required to start.**"
+    quote_hash: 9d66bc1a9b5bf8c7cbd2e8eed43bf36f9545f2690da4539b2a94275791b3d3e9
+    constraint_class: transaction_invariant
+    normative_level: mandatory
+    presets: [trading, fraud_gate, underwriting, retention_refund, generic, interface_dmz, strategist, monitor]
+    roles: [EXECUTOR]
+    fundamental: true
+
+  - clause_id: ROA-AUTHORITY-001
+    source_document: ROA_MANIFESTO
+    source_anchor: "3.3 Role, Authority, and Boundaries"
+    statement: Agents must operate within explicit authority boundaries; no agent has unlimited freedom.
+    quote: "In ROA, no agent has unlimited freedom."
+    quote_hash: e733275927a47656b131a28a9cdab1eed6696efd878bbf87e3557cac43b66e76
+    constraint_class: architectural_boundary
+    normative_level: mandatory
+    presets: [trading, fraud_gate, underwriting, retention_refund, generic, interface_dmz, strategist, monitor]
+    roles: [INTERFACE, STRATEGIST, EXECUTOR, MONITOR]
+    fundamental: true
+
+  - clause_id: ROA-MISSION-001
+    source_document: ROA_MANIFESTO
+    source_anchor: "3.2 Mission (Goal Function)"
+    statement: Mission provides direction but is not a substitute for execution authority.
+    quote: "A mission provides continuity, coherence, and direction - elements missing from most contemporary agent patterns, where behavior is dominated by the short-term semantics of a single prompt."
+    quote_hash: 6112e15addad577093c9103faabae087dd5f54bc4c94def5292f20e5c4df30af
+    constraint_class: process_rule
+    normative_level: mandatory
+    presets: [trading, fraud_gate, underwriting, retention_refund, generic, strategist]
+    roles: [STRATEGIST, EXECUTOR]
+    fundamental: true
+
+  - clause_id: ROA-RESPONSIBILITY-001
+    source_document: ROA_MANIFESTO
+    source_anchor: "3.4 Responsibility (Governance)"
+    statement: Responsibility obligations are distinct from post-execution aggregate governance.
+    quote: "The `responsibility` block defines obligations on the agent's reasoning and proposal pipeline."
+    quote_hash: 700869103079eb29da0ddf0d7843346556a888385292699f42af8fb320a4dc06
+    constraint_class: evidence_obligation
+    normative_level: mandatory
+    presets: [trading, fraud_gate, underwriting, retention_refund, generic, interface_dmz, strategist, monitor]
+    roles: [INTERFACE, STRATEGIST, EXECUTOR, MONITOR]
+    fundamental: false
+
+  - clause_id: DIR-MONITOR-001
+    source_document: DIR_GOVERNANCE
+    source_anchor: "4.1 The Aggregate Monitor"
+    statement: Aggregate monitors evaluate executed decisions outside the critical path of a single decision.
+    quote: "Monitors are dedicated components that operate outside the critical path of a single DecisionFlow. They run periodically or reactively after each executed decision."
+    quote_hash: 919917c323bd26f647f36e3ae14701437ecae471b6b6e1c835db65966b3d2b8b
+    constraint_class: aggregate_policy
+    normative_level: mandatory
+    presets: [trading, fraud_gate, underwriting, retention_refund, generic, monitor]
+    roles: [MONITOR]
+    fundamental: false
+
+  - clause_id: DIR-AGGREGATE-001
+    source_document: DIR_GOVERNANCE
+    source_anchor: "4. Post-Execution Governance"
+    statement: Aggregate policies assess trajectory over a time window and must not be confused with per-transaction invariants.
+    quote: "A transaction invariant accepts or rejects one proposed transition. An aggregate policy evaluates a derived metric over a window and changes the agent's future operating mode when the trajectory becomes unhealthy."
+    quote_hash: 8b155c09f04020eefad1cd37b9cce6bff3e1b00c4b628901b2257ec8f8ab894f
+    constraint_class: aggregate_policy
+    normative_level: mandatory
+    presets: [trading, fraud_gate, underwriting, retention_refund, generic, monitor]
+    roles: [MONITOR, EXECUTOR]
+    fundamental: false
+
+  - clause_id: DIR-TRAJECTORY-001
+    source_document: DIR_GOVERNANCE
+    source_anchor: "4.1 The Aggregate Monitor"
+    statement: Aggregate governance should evaluate trends over rolling decision windows.
+    quote: "By querying the last $N$ decisions (a **rolling window**), the monitor calculates aggregate metrics - such as moving averages, violation rates, or estimated ROI."
+    quote_hash: f482b7ebe7cc811dc49f4fc4621374d87ec80fc86fc3d384277347f1ee03ce74
+    constraint_class: aggregate_policy
+    normative_level: recommended
+    presets: [trading, fraud_gate, underwriting, retention_refund, generic, monitor]
+    roles: [MONITOR]
+    fundamental: false
