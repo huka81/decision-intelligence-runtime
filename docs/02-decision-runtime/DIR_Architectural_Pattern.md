@@ -710,7 +710,9 @@ flowchart LR
     Result -- FAILURE --> Handler{"`**Error Type?**`"}:::kernelSpace
     Handler -- TRANSIENT --> Retry["`**Retry**<br/>(Backoff)`"]:::infraSpace
     Handler -- TERMINAL --> Abort(["`**Mark Failed**`"]):::stop
-    
+
+    Result -- NO ACK --> Unknown(["`**UNKNOWN**<br/>Reconcile before new intent`"]):::stop
+
     Retry -.-> Intent
 ```
 
@@ -1044,7 +1046,7 @@ For enterprise scale, DIR maps naturally to an **Event-Driven Architecture**[^11
 * **Infrastructure:** Microservices (Agents are services, Runtime is a service).
 * **Communication:** Message Bus (e.g., Kafka, RabbitMQ, NATS).
 * **State:** Distributed Key-Value Store (Redis) + Time Series DB.
-* **Pattern:** The **Event-Oriented Agent Mesh**. Agents emit `PolicyProposal` events to a topic; the Runtime consumes them, validates, and emits `ExecutionIntent` events.
+* **Pattern:** The **Event-Oriented Agent Mesh**. Agents publish `PolicyProposal` messages to a dedicated proposal intake queue consumed only by the Runtime; the Runtime validates them and emits `ExecutionIntent` events. This intake queue is separate from the observational Event Bus: agents never submit proposals to the Event Bus (Section 4.1 of the minified spec).
 
 
 ```mermaid
@@ -1097,15 +1099,16 @@ flowchart TB
         Dist_Agent1[Agent Service 1<br/>Pod A]:::agentNode
         Dist_Agent2[Agent Service 2<br/>Pod B]:::agentNode
         
+        Dist_Intake[/Proposal Intake Queue<br/>Runtime-only consumer/]:::busNode
         Dist_Bus[/Message Bus<br/>Kafka / NATS / RabbitMQ/]:::busNode
         
         Dist_Runtime[DIR Runtime Service<br/>Pod C]:::runtimeNode
         Dist_DB[(Distributed State<br/>Redis / Postgres)]:::dbNode
 
         %% Connections B
-        Dist_Agent1 ==>|Pub: PolicyProposal| Dist_Bus
-        Dist_Agent2 ==>|Pub: PolicyProposal| Dist_Bus
-        Dist_Bus ==>|Sub: PolicyProposal| Dist_Runtime
+        Dist_Agent1 ==>|Pub: PolicyProposal| Dist_Intake
+        Dist_Agent2 ==>|Pub: PolicyProposal| Dist_Intake
+        Dist_Intake ==>|Sub: PolicyProposal| Dist_Runtime
         Dist_Runtime ==>|Pub: ExecutionIntent| Dist_Bus
         Dist_Runtime <===>|ACID Trans| Dist_DB
     end
@@ -1154,8 +1157,9 @@ To pass a "Production Readiness" audit, the Runtime must be observable. Operator
 
 | Metric | Type | Description |
 | :--- | :--- | :--- |
-| `validation_latency_ms` | Histogram | Time spent in DIM. Split by `type=hard` (code) and `type=soft` (LLM). |
-| `stale_context_reject_rate` | Counter | Number of proposals rejected by JIT State Check (`STATE_DRIFT`). High rates indicate need for optimization. |
+| `validation_latency_ms` | Histogram | Time in the DIM (pre-checks + Gates 1–7, deterministic code only). |
+| `soft_guard_latency_ms` | Histogram | Time in the optional Semantic Alignment Soft Guard (LLM). Reported separately because it is not part of the DIM. |
+| `stale_context_reject_rate` | Counter | Flows aborted by the Execution Engine's JIT check (`STATE_DRIFT_DETECTED`). High rates indicate need for optimization of snapshot freshness. |
 | `escalation_count` | Counter | Total escalations, tagged by `agent_id` and `reason`. Helps identify "needy" agents. |
 | `resource_lock_contention` | Gauge | Number of active locks vs. configured limits. |
 | `token_budget_burn` | Histogram | Tokens consumed per DecisionFlow. |
