@@ -15,26 +15,24 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from ..bootstrap_rules import BootstrapValidationError, validate_bootstrap
 from ..db.store import ContractStudioStore
 from ..env import load_contract_env
-from ..integrity import verify_contract_yaml
 from ..governance.context import build_governance_context
 from ..governance.models import GovernanceAnalysis
+from ..integrity import verify_contract_yaml
 from ..llm_interview import (
     empty_draft_contract,
     mock_contract_llm_strategy,
     process_chat_turn,
-    validate_contract_soft,
 )
 from ..render import render_registry_yaml, write_emitted_files
-from ..schema import CanonicalContract
 from ..settings import (
     DebugLoggingLLM,
     StudioSettings,
     configure_studio_logging,
     load_studio_settings,
 )
+from ..validation import validate_contract
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +183,12 @@ def create_app(settings: Optional[StudioSettings] = None) -> FastAPI:
         else (settings.llm_provider or "auto")
     )
 
+    def _revision_analysis(revision_id: str) -> GovernanceAnalysis | None:
+        assessment = store.get_governance_assessment(revision_id)
+        if assessment is None or not assessment.analysis_json:
+            return None
+        return GovernanceAnalysis.model_validate_json(assessment.analysis_json)
+
     def _governance_payload(session_id: str, revision_id: Optional[str]) -> Dict[str, Any]:
         if not revision_id:
             return {
@@ -274,7 +278,7 @@ def create_app(settings: Optional[StudioSettings] = None) -> FastAPI:
         context_snapshot = build_governance_context(preset=payload.preset, role=draft["subject"]["role"])
         store.ensure_governance_snapshot(session.id, context_snapshot)
 
-        contract, ok, errors, warnings = validate_contract_soft(draft, preset=payload.preset)
+        contract, ok, errors, warnings = validate_contract(draft, preset=payload.preset)
         yaml_text = "# Draft contract — describe your agent in chat\n"
         if contract:
             yaml_text = render_registry_yaml(contract)
@@ -510,7 +514,7 @@ def create_app(settings: Optional[StudioSettings] = None) -> FastAPI:
         if not isinstance(parsed, dict):
             return _rejected(["yaml: contract must be a YAML mapping"])
 
-        contract, validation_ok, errors, warnings = validate_contract_soft(
+        contract, validation_ok, errors, warnings = validate_contract(
             parsed,
             preset=session.preset,
             governance_analysis=prior_analysis,
@@ -558,7 +562,7 @@ def create_app(settings: Optional[StudioSettings] = None) -> FastAPI:
 
     @app.post("/api/sessions/{session_id}/validate")
     async def validate_session(session_id: str, payload: ValidateRequest) -> Dict[str, Any]:
-        """Parse YAML and confirm schema + Bootstrap integrity."""
+        """Run shared validation, stored governance checks and revision hash comparison."""
         try:
             session = store.get_session(session_id)
             revision = store.get_current_revision(session_id)
@@ -582,20 +586,21 @@ def create_app(settings: Optional[StudioSettings] = None) -> FastAPI:
             yaml_text,
             preset=session.preset,
             expected_json=expected,
+            governance_analysis=_revision_analysis(revision.id) if revision else None,
         )
 
-        if result["integrity_ok"] and session.status == "drafting":
+        validation_ok = result["integrity_ok"] and revision is not None and revision.validation_ok
+        if validation_ok and session.status == "drafting":
             store.update_session(session_id, status="ready")
             result["status"] = "ready"
         else:
-            result["status"] = session.status if result["integrity_ok"] else "drafting"
+            result["status"] = session.status if validation_ok else "drafting"
 
-        result["validation_ok"] = result["integrity_ok"]
+        result["validation_ok"] = validation_ok
         result["validation_errors"] = result.get("errors") or []
         if revision is not None:
             assessment = store.get_governance_assessment(revision.id)
             if assessment:
-                result["validation_warnings"] = store.assessment_warnings(assessment)
                 try:
                     result["governance_report"] = json.loads(assessment.report_json)
                 except json.JSONDecodeError:
@@ -620,11 +625,13 @@ def create_app(settings: Optional[StudioSettings] = None) -> FastAPI:
                 detail={"message": "Contract fails Bootstrap validation", "errors": errors},
             )
 
-        contract = CanonicalContract.model_validate(json.loads(revision.contract_json))
-        try:
-            validate_bootstrap(contract, preset=session.preset)
-        except BootstrapValidationError as exc:
-            raise HTTPException(status_code=400, detail={"errors": exc.errors}) from exc
+        contract, ok, errors, _ = validate_contract(
+            json.loads(revision.contract_json),
+            preset=session.preset,
+            governance_analysis=_revision_analysis(revision.id),
+        )
+        if not ok or contract is None:
+            raise HTTPException(status_code=400, detail={"errors": errors})
 
         out_dir = Path(payload.out) if payload.out else _REPO_ROOT / "contracts"
         written = write_emitted_files(contract, emit=payload.emit, out_dir=out_dir)  # type: ignore[arg-type]

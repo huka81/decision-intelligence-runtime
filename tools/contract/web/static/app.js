@@ -169,7 +169,7 @@ function renderIntegrity(result) {
     ${hash}
   `;
 
-  exportAllowed = result.integrity_ok;
+  exportAllowed = result.validation_ok;
   refreshDirtyState();
   if (result.status) {
     statusBadge.textContent = result.status;

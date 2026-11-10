@@ -1,48 +1,204 @@
-"""Tests for tools/contract Bootstrap wizard."""
+"""Tests for contract validation, compilation and canonical rendering."""
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 
+import pytest
 import yaml
 
-from dir_core import ResponsibilityContract, RuntimeContractProjection, project_contract
-from tools.contract.bootstrap_rules import validate_bootstrap
-from tools.contract.flatten import flatten_canonical, flatten_contract_dict
-from tools.contract.from_sample import answers_from_sample
-from tools.contract.render import render_registry_yaml, render_sample_fragment
-from tools.contract.schema import CanonicalContract, InterviewAnswers
+from dir_core import RuntimeContractProjection, project_contract
 from samples.shared.contracts.provider import YamlContractProvider
+from tools.contract.bootstrap_rules import validate_bootstrap
+from tools.contract.cli import main
+from tools.contract.render import render_registry_yaml, render_sample_fragment
+from tools.contract.schema import CanonicalContract
+from tools.contract.validation import validate_contract
 
 
-def test_interview_answers_to_canonical_and_validate() -> None:
-    answers = InterviewAnswers(
-        preset="fraud_gate",
+@pytest.fixture
+def contract_path(tmp_path: Path) -> Path:
+    contract = CanonicalContract(
+        agent_id="payments_01",
+        owner="payments.owner@example.org",
+        mission="Issue bounded refunds.",
+        authority={
+            "allowed_policy_types": ["REFUND"],
+            "limits": {"max_refund_usd": {"value": 50.0, "unit": "USD"}},
+            "invariants": [
+                {
+                    "id": "INV_COUNTRY",
+                    "type": "set",
+                    "field": "state.property.country",
+                    "denied": ["KP", "IR", "SY"],
+                }
+            ],
+        },
+    )
+    path = tmp_path / "contract.yaml"
+    path.write_text(render_registry_yaml(contract), encoding="utf-8")
+    return path
+
+
+def test_cli_validate(contract_path: Path, capsys) -> None:
+    assert main(["validate", str(contract_path)]) == 0
+    captured = capsys.readouterr()
+    assert captured.out.startswith("OK:")
+    assert "ANALYSIS_MISSING" in captured.err
+
+
+def test_cli_compile_stdout_is_projection_json(contract_path: Path, capsys) -> None:
+    assert main(["compile", str(contract_path)]) == 0
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+    projection = RuntimeContractProjection.model_validate(result)
+    expected = project_contract(
+        CanonicalContract.from_raw(yaml.safe_load(contract_path.read_text(encoding="utf-8")))
+        .model_dump(mode="json", exclude_none=True)
+    )
+    assert projection == expected
+    assert projection.release.contract_id == "payments_01"
+    assert projection.release.contract_version == "1.0.0"
+    assert any(spec.field == "state.property.country" for spec in projection.invariants)
+    assert any(spec.max == 50 for spec in projection.invariants)
+    assert "ANALYSIS_MISSING" in captured.err
+    assert main(["compile", str(contract_path)]) == 0
+    assert capsys.readouterr().out == captured.out
+
+
+def test_cli_compile_file(contract_path: Path, tmp_path: Path, capsys) -> None:
+    output = tmp_path / "projection.json"
+    assert main(["compile", str(contract_path), "--out", str(output)]) == 0
+    assert capsys.readouterr().out == ""
+    projection = RuntimeContractProjection.model_validate_json(output.read_text(encoding="utf-8"))
+    assert projection.agent_id == "payments_01"
+
+
+@pytest.mark.parametrize("command", ["validate", "compile"])
+@pytest.mark.parametrize("content", ["", "- item", "authority: {{{", "null", "42"])
+def test_cli_invalid_yaml(command: str, content: str, tmp_path: Path, capsys) -> None:
+    path = tmp_path / "invalid.yaml"
+    path.write_text(content, encoding="utf-8")
+    assert main([command, str(path)]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "failed" in captured.err.lower()
+
+
+@pytest.mark.parametrize("command", ["validate", "compile"])
+def test_cli_missing_file(command: str, tmp_path: Path, capsys) -> None:
+    assert main([command, str(tmp_path / "missing.yaml")]) == 1
+    assert capsys.readouterr().err
+
+
+def test_cli_invalid_contract_does_not_overwrite_output(contract_path: Path, tmp_path: Path, capsys) -> None:
+    contract_path.write_text(
+        contract_path.read_text(encoding="utf-8").replace("payments.owner@example.org", "owner@example.com"),
+        encoding="utf-8",
+    )
+    output = tmp_path / "projection.json"
+    output.write_text("unchanged", encoding="utf-8")
+    assert main(["compile", str(contract_path), "--out", str(output)]) == 1
+    assert output.read_text(encoding="utf-8") == "unchanged"
+    assert "PLACEHOLDER_IDENTITY" in capsys.readouterr().err
+
+
+def test_cli_compile_reports_write_failure(contract_path: Path, tmp_path: Path, capsys) -> None:
+    assert main(["compile", str(contract_path), "--out", str(tmp_path)]) == 1
+    assert "compile failed" in capsys.readouterr().err
+
+
+def test_cli_preset_validation(contract_path: Path, capsys) -> None:
+    assert main(["validate", str(contract_path), "--preset", "trading"]) == 1
+    assert "max_order_size_usd" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("command", ["init", "from-sample"])
+def test_cli_authoring_commands_removed(command: str, capsys) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main([command])
+    assert exc.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err
+
+
+def test_shared_validation_rejects_runtime_incompatible_role(contract_path: Path) -> None:
+    data = yaml.safe_load(contract_path.read_text(encoding="utf-8"))
+    data["subject"]["role"] = "INTERFACE"
+    data["authority"] = {}
+    contract, ok, errors, _ = validate_contract(data)
+    assert contract is not None
+    assert not ok
+    assert any("RUNTIME_PROJECTION_INVALID" in error for error in errors)
+    assert data["subject"]["role"] == "INTERFACE"
+
+
+@pytest.mark.parametrize("command", ["validate", "compile"])
+def test_cli_rejects_runtime_incompatible_scope(command: str, contract_path: Path, capsys) -> None:
+    data = yaml.safe_load(contract_path.read_text(encoding="utf-8"))
+    data["authority"]["resource_scope"] = {"match": {"substring": ["home"]}}
+    contract_path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    assert main([command, str(contract_path)]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "RUNTIME_PROJECTION_INVALID" in captured.err
+
+
+def test_shared_validation_rejects_invalid_invariant(contract_path: Path) -> None:
+    data = yaml.safe_load(contract_path.read_text(encoding="utf-8"))
+    data["authority"]["invariants"][0]["allowed"] = ["US"]
+    _, ok, errors, _ = validate_contract(data)
+    assert not ok
+    assert any("INVARIANT_SET_MODE" in error for error in errors)
+
+
+def test_integrity_revalidates_governance_analysis(contract_path: Path) -> None:
+    from tools.contract.governance.models import GoalModel, GovernanceAnalysis, SourceBinding
+    from tools.contract.integrity import verify_contract_yaml
+
+    analysis = GovernanceAnalysis(
+        goal=GoalModel(
+            objective="Issue bounded refunds",
+            source_bindings=[SourceBinding(clause_id="UNKNOWN_CLAUSE")],
+        )
+    )
+    result = verify_contract_yaml(
+        contract_path.read_text(encoding="utf-8"), governance_analysis=analysis
+    )
+    assert not result["integrity_ok"]
+    assert any("INVALID_CLAUSE_REF" in error for error in result["errors"])
+
+
+def test_canonical_contract_and_validate() -> None:
+    contract = CanonicalContract(
         agent_id="fraud_guard_v1",
-        owner="owner@example.com",
+        owner="fraud.owner@example.org",
         role="EXECUTOR",
         mission="Evaluate transactions.",
-        allowed_policy_types=["ALLOW", "BLOCK"],
-        irreversible_limits={"max_transaction_usd": 5000.0},
+        authority={
+            "allowed_policy_types": ["ALLOW", "BLOCK"],
+            "limits": {"max_transaction_usd": {"value": 5000.0, "unit": "USD"}},
+        },
     )
-    contract = answers.to_canonical()
     validate_bootstrap(contract, preset="fraud_gate")
     limit = contract.authority.limits["max_transaction_usd"]
     assert limit.value == 5000.0
     assert limit.unit == "USD"
     assert contract.subject.agent_id == "fraud_guard_v1"
-    assert contract.metadata.owner == "owner@example.com"
+    assert contract.metadata.owner == "fraud.owner@example.org"
 
 
 def test_renderers_emit_only_canonical_contract_shape() -> None:
-    contract = InterviewAnswers(
+    contract = CanonicalContract(
         agent_id="bot_01",
         owner="owner@example.com",
         mission="Trade safely.",
-        allowed_policy_types=["BUY"],
-        irreversible_limits={"max_order_size_usd": 1000.0},
-    ).to_canonical()
+        authority={
+            "allowed_policy_types": ["BUY"],
+            "limits": {"max_order_size_usd": {"value": 1000.0, "unit": "USD"}},
+        },
+    )
 
     for rendered in (render_registry_yaml(contract), render_sample_fragment(contract)):
         data = yaml.safe_load(rendered)
@@ -172,41 +328,6 @@ def test_validate_authoring_rejects_placeholder_and_dup_limit() -> None:
     assert any("AGGREGATE_DUP_LIMIT" in e for e in errors)
 
 
-def test_flatten_round_trip_dir_core() -> None:
-    contract = CanonicalContract(
-        agent_id="bot_01",
-        owner="o@example.com",
-        mission="Trade safely.",
-        authority={
-            "authorized_instruments": ["ETH-USD"],
-            "allowed_policy_types": ["BUY"],
-            "max_order_size_usd": 1000.0,
-            "max_drawdown_limit_pct": 4.0,
-        },
-    )
-    flat = flatten_canonical(contract)
-    rc = ResponsibilityContract(**flat)
-    assert rc.agent_id == "bot_01"
-    assert rc.max_drawdown_limit == 0.04
-    assert flat["permissions"]["max_order_size_usd"] == 1000.0
-
-
-def test_flatten_contract_dict_nested() -> None:
-    nested = {
-        "agent_id": "a1",
-        "role": "EXECUTOR",
-        "mission": "m",
-        "authority": {
-            "allowed_policy_types": ["HOLD"],
-            "max_order_size_usd": 500.0,
-        },
-        "responsibility": {"escalate_on_uncertainty": 0.8},
-    }
-    flat = flatten_contract_dict(nested)
-    assert flat["allowed_policy_types"] == ["HOLD"]
-    assert flat["permissions"]["max_order_size_usd"] == 500.0
-
-
 def test_project_contract_canonical_shape() -> None:
     projection = project_contract(
         {
@@ -322,31 +443,6 @@ def test_explicit_invariant_conflict_detected() -> None:
         }
     )
     assert errors
-
-
-def test_from_sample_quick_start() -> None:
-    repo_root = Path(__file__).resolve().parents[1]
-    answers = answers_from_sample(repo_root / "samples" / "00_quick_start")
-    assert answers.agent_id == "trading_bot_01"
-    assert "max_order_size_usd" in answers.irreversible_limits
-    assert "max_drawdown_limit_pct" in answers.irreversible_limits
-    contract = answers.to_canonical()
-    validate_bootstrap(contract, preset=answers.preset)
-
-
-def test_from_sample_preserves_canonical_invariant_ir() -> None:
-    repo_root = Path(__file__).resolve().parents[1]
-    answers = answers_from_sample(
-        repo_root / "samples" / "33_insurance_underwriting"
-    )
-    contract = answers.to_canonical()
-    limit = next(
-        spec
-        for spec in contract.authority.invariants
-        if spec.id == "INV_LIMIT_PROPOSAL_TIV"
-    )
-    assert limit.max == 3000000.0
-    assert limit.field == "params.total_insured_value"
 
 
 def test_normalize_preserves_explicit_currency_limit() -> None:

@@ -3,19 +3,18 @@
 from __future__ import annotations
 
 import json
-import os
 import tempfile
 from pathlib import Path
 
 import pytest
 
+from samples.shared.llm.clients import MockLLMClient
 from tools.contract.db.store import ContractStudioStore
 from tools.contract.llm_interview import (
     empty_draft_contract,
     mock_contract_llm_strategy,
     process_chat_turn,
 )
-from samples.shared.llm.clients import MockLLMClient
 
 
 @pytest.fixture
@@ -118,14 +117,15 @@ def test_api_create_chat_export(studio_client) -> None:
     assert vbody["checks"]["bootstrap"]["ok"] is True
     assert vbody["sha256"]
 
-    export = studio_client.post(
-        f"/api/sessions/{session_id}/export",
-        json={"emit": "registry"},
-    )
-    assert export.status_code == 200
-    paths = export.json()["paths"]
-    assert any(p.endswith(".yaml") for p in paths)
-    assert Path(paths[0]).is_file()
+    with tempfile.TemporaryDirectory() as output_dir:
+        export = studio_client.post(
+            f"/api/sessions/{session_id}/export",
+            json={"emit": "registry", "out": output_dir},
+        )
+        assert export.status_code == 200
+        paths = export.json()["paths"]
+        assert any(p.endswith(".yaml") for p in paths)
+        assert Path(paths[0]).is_file()
 
     revisions = studio_client.get(f"/api/sessions/{session_id}/revisions")
     assert revisions.status_code == 200
@@ -249,6 +249,32 @@ def test_verify_contract_yaml_rejects_garbage() -> None:
     assert result["checks"]["yaml_parse"]["ok"] is False
 
 
+def test_integrity_preserves_authoring_export_block(studio_client) -> None:
+    session_id = studio_client.post(
+        "/api/sessions", json={"title": "Blocked", "preset": "trading"}
+    ).json()["session"]["id"]
+    chat = studio_client.post(
+        f"/api/sessions/{session_id}/chat", json={"message": "Build a crypto trading agent"}
+    ).json()
+    edited = chat["contract_yaml"].replace("jane.doe@example.com", "owner@example.com")
+    saved = studio_client.put(
+        f"/api/sessions/{session_id}/contract", json={"yaml": edited}
+    ).json()
+    assert saved["saved"]
+    assert not saved["validation_ok"]
+    result = studio_client.post(
+        f"/api/sessions/{session_id}/validate", json={}
+    ).json()
+    assert not result["integrity_ok"]
+    assert not result["validation_ok"]
+    assert not result["checks"]["contract_validation"]["ok"]
+    assert any("PLACEHOLDER_IDENTITY" in error for error in result["validation_errors"])
+    assert studio_client.get(f"/api/sessions/{session_id}").json()["session"]["status"] == "drafting"
+    assert studio_client.post(
+        f"/api/sessions/{session_id}/export", json={}
+    ).status_code == 400
+
+
 def test_rename_and_delete_session(studio_client) -> None:
     a = studio_client.post("/api/sessions", json={"title": "Alpha", "preset": "generic"})
     b = studio_client.post("/api/sessions", json={"title": "Beta", "preset": "trading"})
@@ -327,8 +353,8 @@ responsibility:
 
 def test_normalize_llm_resource_scope_and_invariant_candidate() -> None:
     from tools.contract.invariants import compile_authority_invariants
-    from tools.contract.llm_interview import validate_contract_soft
     from tools.contract.schema import CanonicalContract, normalize_contract_dict
+    from tools.contract.validation import validate_contract
 
     raw = empty_draft_contract("generic")
     raw["metadata"].update(
@@ -373,14 +399,15 @@ def test_normalize_llm_resource_scope_and_invariant_candidate() -> None:
 
     normalized = normalize_contract_dict(raw)
     contract = CanonicalContract.model_validate(normalized)
-    validated, validation_ok, errors, _ = validate_contract_soft(
+    validated, validation_ok, errors, _ = validate_contract(
         normalized, preset="generic"
     )
     invariants = compile_authority_invariants(contract)
     rug_limit = next(inv for inv in invariants if inv.id == "INV-RUG-PAYMENT-RANGE")
 
     assert validated is not None
-    assert validation_ok, errors
+    assert not validation_ok
+    assert any("RUNTIME_PROJECTION_INVALID" in error for error in errors)
     assert contract.authority.exclusions == {}
     assert contract.authority.resource_scope["match"] == {
         "substring": ["contents coverage", "fine arts and rugs"]
@@ -391,3 +418,7 @@ def test_normalize_llm_resource_scope_and_invariant_candidate() -> None:
     assert rug_limit.max == 5000
     assert rug_limit.reason_code == "POLICY_SUBLIMIT_EXCEEDED"
     assert rug_limit.applies_to_policy_kinds == ["PROPOSE_SETTLEMENT"]
+
+    del normalized["authority"]["resource_scope"]["match"]
+    _, validation_ok, errors, _ = validate_contract(normalized, preset="generic")
+    assert validation_ok, errors

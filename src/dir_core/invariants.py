@@ -30,11 +30,24 @@ def get_nested_value(obj: Any, path: str) -> Any:
     return current
 
 
+def resolve_field(
+    field: str,
+    proposal: PolicyProposal,
+    context: Optional[dict[str, Any]] = None,
+) -> Any:
+    """Resolve a rule field: ``state.*`` reads authoritative state, anything else the proposal."""
+    if field.startswith("state."):
+        state = (context or {}).get("state")
+        return get_nested_value(state, field.removeprefix("state."))
+    return get_nested_value(proposal, field)
+
+
 def evaluate_range_rule(
     rule: InvariantSpec,
     proposal: PolicyProposal,
+    context: Optional[dict[str, Any]] = None,
 ) -> Optional[InvariantEvaluationFailure]:
-    value = get_nested_value(proposal, rule.field)
+    value = resolve_field(rule.field, proposal, context)
     if value is None:
         return InvariantEvaluationFailure(
             reason=DimReasonCode.CONTRACT_PARAMETER_MISSING,
@@ -63,8 +76,9 @@ def evaluate_range_rule(
 def evaluate_set_rule(
     rule: InvariantSpec,
     proposal: PolicyProposal,
+    context: Optional[dict[str, Any]] = None,
 ) -> Optional[InvariantEvaluationFailure]:
-    value = get_nested_value(proposal, rule.field)
+    value = resolve_field(rule.field, proposal, context)
     if value is None:
         return InvariantEvaluationFailure(
             reason=DimReasonCode.CONTRACT_PARAMETER_MISSING,
@@ -184,9 +198,9 @@ def evaluate_invariants(
         ):
             continue
         if rule.type == "range":
-            failure = evaluate_range_rule(rule, proposal)
+            failure = evaluate_range_rule(rule, proposal, context)
         elif rule.type == "set":
-            failure = evaluate_set_rule(rule, proposal)
+            failure = evaluate_set_rule(rule, proposal, context)
         elif rule.type == "state_match":
             failure = evaluate_state_match_rule(rule, proposal, context)
         else:

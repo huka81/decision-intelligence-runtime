@@ -1,65 +1,73 @@
-# Bootstrap Contract Tool (`tools/contract`)
+# Contract Studio (`tools/contract`)
 
-Wizard for creating initial **Bootstrap Responsibility Contracts** (v1.0.0) for ROA agents.
+Create **Bootstrap Responsibility Contracts** (v1.0.0) for ROA agents in the
+local web UI. The CLI only validates and compiles existing contracts; it does not
+author them or call an LLM.
 
-Aligned with:
+## Install and run
 
-- ROA Manifesto section 3.1 (canonical nested schema)
-- DIR Governance section 2.2 (Bootstrap rule: hard limits on irreversible actions)
-
-## Quick start
-
-From the repository root:
+From the repository root (Python 3.12+):
 
 ```bash
-# Interactive interview
-python -m tools.contract init --preset trading --emit both
-
-# Non-interactive (CI or scripted)
-python -m tools.contract init --answers my_answers.yaml --emit registry
-
-# Seed from an existing sample config
-python -m tools.contract from-sample samples/00_quick_start --non-interactive --emit both
-
-# Validate a registry YAML file
-python -m tools.contract validate contracts/trading_bot_01.v1.0.0.yaml --preset trading
+pip install -e ".[studio]"
+python -m tools.contract.web
 ```
 
-## Commands
+Open <http://127.0.0.1:8765>. Put `GEMINI_API_KEY` in `tools/contract/.env`;
+non-secret settings belong in `tools/contract/config.yaml`.
+For offline use, set `studio.use_mock_llm: true` in that configuration or use:
 
-| Command | Description |
-|---------|-------------|
-| `init` | Run interview (or load `--answers`) and emit contract files |
-| `validate` | Check canonical YAML against schema + Bootstrap rules |
-| `from-sample` | Alias for `init --from-sample <dir>` |
+```powershell
+$env:USE_MOCK_LLM="1"
+python -m tools.contract.web
+```
 
-### `init` options
+Aligned with ROA Manifesto section 3.1 (canonical nested schema) and DIR
+Governance section 2.2 (Bootstrap limits on irreversible actions).
 
-- `--preset` — domain template: `trading`, `fraud_gate`, `underwriting`, `retention_refund`, `generic`, `interface_dmz`, `strategist`, `monitor`
-- `--emit` — `sample`, `registry`, or `both` (default: `both`)
-- `--out` — output directory (default: `contracts/`)
-- `--answers` — YAML file with interview answers (non-interactive)
-- `--from-sample` — seed from `samples/<NN>_<use_case>/config.yaml`
-- `--agent-id` — pick agent when config has multiple `agents`
-- `--non-interactive` — skip prompts when using `--from-sample`
+## CLI: validation and compilation
 
-## Emit modes
+Use an existing canonical YAML contract, normally exported from Studio:
 
-### Registry (`--emit registry`)
+```powershell
+python -m tools.contract validate contracts\trading_bot_01.v1.0.0.yaml --preset trading
+python -m tools.contract compile contracts\trading_bot_01.v1.0.0.yaml --preset trading
+python -m tools.contract compile contracts\trading_bot_01.v1.0.0.yaml --out contracts\trading_bot_01.runtime.json
+```
 
-Standalone nested YAML for CI/CD → Agent Registry:
+- `validate <path> [--preset <name>]` checks schema, Bootstrap, authoring rules,
+  invariant IR, governance pack integrity, and runtime projection compatibility.
+- `compile <path> [--preset <name>] [--out <file>]` runs the same checks and
+  emits the existing `dir_core.RuntimeContractProjection` as deterministic JSON.
+  Without `--out`, stdout contains only JSON; diagnostics and warnings go to
+  stderr. With `--out`, the parent directory must already exist.
+- Success exits with code `0`; validation or I/O failure exits with `1`;
+  invalid command-line arguments exit with `2`. Failed validation never writes
+  a projection. Warnings alone do not block compilation.
+- The CLI does not load chat sessions or their governance analysis. An
+  `ANALYSIS_MISSING` warning means goal and source traceability were not checked;
+  it does not disable contract or projection validation.
 
-`contracts/<agent_id>.v1.0.0.yaml`
+The projection contains release references, identity, mission, authority,
+execution/evidence/escalation conditions, aggregate policies, and compiled
+invariants. It is a derived artifact, not a signed release or an independent
+source of authority. Compilation neither signs nor registers a contract.
 
-### Sample (`--emit sample`)
+Runtime model limitations are explicit: for example, `INTERFACE` and nested
+`resource_scope` selectors are not supported by the current projection model.
+Such drafts may be saved in Studio, but cannot become ready, be exported, or
+compile until the runtime supports them or the contract is corrected.
+Roles and scopes are never silently remapped.
 
-Canonical contract ready to paste under `contract:` or `agents[].contract` in
-`samples/*/config.yaml`:
+### Migration from CLI authoring
 
-`contracts/<agent_id>.sample-contract.yaml`
+`init`, `from-sample`, answers files, and the terminal interview have been
+removed. Create and review contracts in `python -m tools.contract.web`, or edit
+canonical YAML directly and validate/compile it. There is no separate answers
+format or sample-to-contract adapter to maintain.
 
-Both emit modes use the same canonical contract shape. They differ only in file
-name and placement intent; the sample mode no longer generates a legacy flat contract.
+Studio's registry and sample exports still use the same canonical contract
+shape. They differ only in file name and intended placement.
 
 ## Generated contract shape
 
@@ -104,7 +112,7 @@ Contract Studio injects [`tools/contract/governance/authoring_rules.yaml`](gover
 | Layer | Where it lives | Enforcement | Scope |
 |-------|----------------|-------------|-------|
 | Authority limit | `authority.limits` | DIM | Single transaction |
-| Transaction invariant | `governance_analysis.invariant_candidates` (SQLite only) | DIM | Single proposal predicate |
+| Transaction invariant | `authority.invariants` (candidate rationale in SQLite) | DIM | Single proposal predicate |
 | Aggregate policy | `governance.aggregate_policies` | MONITOR | Rolling time window |
 
 Bootstrap v1.0.0 may ship with `governance.aggregate_policies: []`. Single-transaction caps belong in `authority.limits`, not aggregate policies with `window: 1t`. Confidence thresholds belong in `responsibility.escalation`, not aggregates.
@@ -134,57 +142,9 @@ governance:
 
 Presets define required limit keys per domain. `INTERFACE` and `MONITOR` roles have relaxed rules.
 
-## Flatten adapter
-
-Canonical nested contracts are flattened for `dir_core.ResponsibilityContract` (no kernel model change):
-
-| Canonical (`authority`) | Flat (`dir_core`) |
-|-------------------------|-------------------|
-| `resource_scope.instruments` | `authorized_instruments` |
-| `allowed_policy_types` | `allowed_policy_types` |
-| `limits.max_drawdown_limit_pct.value` (4.0 = 4%) | `max_drawdown_limit` (0.04 fraction) |
-| `limits.<key>.value` | `permissions.<key>` |
-| `responsibility.escalation.confidence_below` | `escalate_on_uncertainty` |
-
-`INTERFACE` maps to `EXECUTOR` at flatten time because `dir_core` has no INTERFACE role yet.
-
-`YamlContractProvider` in `samples/shared/contracts/provider.py` does **not** use this adapter: samples never import `tools.*`. It loads canonical contracts via `dir_core.project_contract` and `dir_core.responsibility_contract_from_projection`. The flatten adapter above is for Build-Time use only (e.g. `from-sample`).
-
-## Answers file example
-
-```yaml
-preset: trading
-agent_id: trading_bot_01
-owner: jane.doe@example.com
-role: EXECUTOR
-mission: Execute market orders safely within capital limits.
-allowed_policy_types: ["BUY", "SELL", "HOLD"]
-authorized_instruments: ["ETH-USD"]
-irreversible_limits:
-  max_order_size_usd: 50000.0
-  max_drawdown_limit_pct: 4.0
-limit_units:
-  max_order_size_usd: USD
-  max_drawdown_limit_pct: percent
-explainability: required
-evidence_level: high
-escalation: mandatory
-escalate_on_uncertainty: 0.7
-version: "1.0.0"
-```
-
-`limit_units` is optional for answers files. The tool infers `USD`, `EUR`, and
-`percent` from conventional key suffixes, and preserves explicit units imported
-from canonical sample contracts.
-
-## Cursor interview
-
-Use `.cursor/prompts/contract-bootstrap.prompt.md` for the same interview flow inside Cursor.
-
 ## Contract Studio (local web UI)
 
-Contract Studio is the browser UI for the same canonical Bootstrap Contract
-generator. It provides an LLM-assisted interview, governance-aware analysis,
+Contract Studio provides an LLM-assisted interview, governance-aware analysis,
 an editable live YAML pane, Bootstrap validation, integrity verification,
 and persistent sessions backed by SQLite.
 
@@ -205,28 +165,12 @@ They are **not** embedded in exported registry YAML.
 
 | Check type | Blocks export? |
 |------------|----------------|
-| Schema, Bootstrap, pack integrity, invalid clause refs, AST/SAT | Yes |
+| Schema, Bootstrap, authoring/IR, runtime compatibility, pack integrity, invalid clause refs, AST/SAT failures | Yes |
 | Goal coverage, unclassified actions, ambiguities | No (warnings) |
 
-### Install
-
-```bash
-pip install -e ".[studio]"
-```
-
-### Run
-
-```bash
-# Offline mock (set in config.yaml): studio.use_mock_llm: true
-python -m tools.contract.web
-
-# Or one-off override
-$env:USE_MOCK_LLM="1"
-python -m tools.contract.web
-```
-
-The server listens on <http://127.0.0.1:8765>. Put `GEMINI_API_KEY` in
-`tools/contract/.env`; everything else belongs in `tools/contract/config.yaml`.
+AST/SAT checks apply to the supported governance-analysis predicates, not every
+executable IR rule. Missing Z3 is reported as `SAT_SKIPPED` and remains a warning;
+the `studio` extra installs it.
 
 For prompt debugging, set `studio.debug: true` in `config.yaml` and watch the
 server console for full system/user prompts and raw LLM responses.
@@ -252,9 +196,9 @@ server console for full system/user prompts and raw LLM responses.
   button (also `Ctrl+S`) and an `unsaved edits` badge appear as soon as the text
   differs from the stored revision; **Revert** restores it. See
   [Manual YAML editing](#manual-yaml-editing).
-6. Use **Verify integrity** to run YAML parsing, canonical schema validation,
-  Bootstrap validation, and a SHA-256 content comparison with the stored
-  revision.
+6. Use **Verify integrity** to run the shared contract checks, the stored
+  governance analysis checks, and a SHA-256 content comparison with the stored
+  revision. Integrity success does not bypass blocking revision validation.
 7. Use **Export YAML** after validation. The current UI always exports `both`:
   a registry file and a canonical sample fragment under `contracts/`. A
   successful export changes the session status to `exported`.

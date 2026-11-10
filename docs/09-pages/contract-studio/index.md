@@ -4,7 +4,18 @@ title: Overview
 
 # Contract Studio
 
-**Contract Studio** (`tools/contract`) is a proof-of-concept **Build-Time** tool for creating **Bootstrap Responsibility Contracts** (v1.0.0) for ROA agents. It offers a guided interview, an LLM-assisted browser UI, and a CLI, and it produces the canonical contract YAML that the Agent Registry and the DIM later enforce.
+**Contract Studio** (`tools/contract`) is a proof-of-concept **Build-Time** tool for creating **Bootstrap Responsibility Contracts** (v1.0.0) for ROA agents. Its LLM-assisted browser UI produces canonical contract YAML; the CLI only validates and compiles existing contracts.
+
+## Install and run
+
+From the repository root (Python 3.12+):
+
+```bash
+pip install -e ".[studio]"
+python -m tools.contract.web
+```
+
+Open <http://127.0.0.1:8765>. Configure the provider as described below.
 
 > **Not part of the runtime.** Contract Studio is an authoring tool, not a component of `dir-core`. The runtime never imports `tools.*`; it only consumes the exported contract (via `dir_core.project_contract`). You can use `dir-core` without Studio.
 
@@ -103,16 +114,7 @@ Rules of thumb enforced by Studio:
 - Aggregate policies need `policy_id`, `metric`, `window`, `operator`, `threshold`, `unit`, and `response` (`SUSPENDED`, `ESCALATION_ONLY`, or `DEGRADED`); ids starting with `INV-` are reserved.
 - Invariants marked `runtime_amendable` may later be tightened or adjusted within an envelope through a human-gated amendment, without a full contract release (*two-speed contract mutation*).
 
-## Running locally
-
-From the repository root:
-
-```bash
-pip install -e ".[studio]"
-python -m tools.contract.web
-```
-
-The server listens on <http://127.0.0.1:8765>.
+## Provider configuration
 
 - **Offline mode:** set `studio.use_mock_llm: true` in `tools/contract/config.yaml`, or run with `USE_MOCK_LLM=1`, to use a deterministic mock instead of a real LLM.
 - **Gemini:** put `GEMINI_API_KEY` in `tools/contract/.env` (see `.env.example`).
@@ -123,14 +125,22 @@ The provider is selected at startup in this order: mock flag, explicit `studio.l
 
 ### CLI
 
-The same generator is available without the browser:
+The CLI validates existing canonical YAML and compiles the full
+`RuntimeContractProjection` as JSON without LLM calls:
 
-```bash
-python -m tools.contract init --preset trading --emit both
-python -m tools.contract from-sample samples/00_quick_start --non-interactive --emit both
-python -m tools.contract validate contracts/trading_bot_01.v1.0.0.yaml --preset trading
+```powershell
+python -m tools.contract validate contracts\trading_bot_01.v1.0.0.yaml --preset trading
+python -m tools.contract compile contracts\trading_bot_01.v1.0.0.yaml --out contracts\trading_bot_01.runtime.json
 ```
 
+Both commands share Studio's deterministic contract checks, including runtime
+compatibility. Diagnostics go to stderr; `compile` without `--out` writes only
+JSON to stdout. Compilation does not sign or register a release. The previous
+`init`, `from-sample`, and answers-file workflows have been removed.
+
+The current runtime projection does not support `INTERFACE` or nested scope
+selectors. These drafts can be saved but fail validation/export/compilation
+explicitly rather than being silently remapped.
 ## Studio workflow
 
 1. Pick a domain **preset** and create a session.
@@ -156,4 +166,4 @@ Governance analysis and validation reports are kept in SQLite only; they are **n
 - [Governance & Agent Drift](../../04-governance/DIR_Governance.md) - Contract Lifecycle and Invariant-Driven Build-Time Governance
 - [Responsibility-Oriented Agents manifesto](../../01-roa-manifesto/ROA_Manifesto.md) - canonical contract schema
 - [Samples](../samples/index.md) - contracts used by the runnable scenarios
-- [Full tool reference (README)](https://github.com/huka81/decision-intelligence-runtime/blob/main/tools/contract/README.md) - CLI options, answers files, manual-edit API, SQLite schema
+- [Full tool reference (README)](https://github.com/huka81/decision-intelligence-runtime/blob/main/tools/contract/README.md) - validation/compilation CLI, manual-edit API, SQLite schema

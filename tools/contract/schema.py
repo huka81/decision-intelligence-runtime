@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional
-
 import re
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -488,65 +487,3 @@ class CanonicalContract(BaseModel):
     def from_raw(cls, data: Dict[str, Any]) -> "CanonicalContract":
         """Validate after normalizing nested limits / aliases."""
         return cls.model_validate(normalize_contract_dict(data))
-
-
-class InterviewAnswers(BaseModel):
-    """Collected answers from CLI or Cursor interview."""
-
-    preset: str = "generic"
-    agent_id: str
-    owner: str
-    role: ContractRoleLiteral = "EXECUTOR"
-    mission: str
-    allowed_policy_types: List[str] = Field(default_factory=list)
-    authorized_instruments: List[str] = Field(default_factory=list)
-    irreversible_limits: Dict[str, float] = Field(
-        default_factory=dict,
-        description="Bootstrap hard limits keyed by authority field name",
-    )
-    limit_units: Dict[str, str] = Field(
-        default_factory=dict,
-        description="Units for irreversible_limits; inferred when omitted",
-    )
-    invariants: List[InvariantSpec] = Field(
-        default_factory=list,
-        description="Explicit authority invariant IR preserved by bootstrap tooling",
-    )
-    explainability: ExplainabilityLiteral = "required"
-    evidence_level: EvidenceLevelLiteral = "medium"
-    escalation: EscalationLiteral = "mandatory"
-    escalate_on_uncertainty: float = 0.7
-    version: str = "1.0.0"
-
-    def to_canonical(self) -> CanonicalContract:
-        """Build CanonicalContract from interview answers."""
-        authority_data: Dict[str, Any] = {
-            "resource_scope": {"instruments": self.authorized_instruments},
-            "allowed_policy_types": self.allowed_policy_types,
-            "limits": {
-                key: {
-                    "value": value,
-                    "unit": self.limit_units.get(key, _limit_unit(key)),
-                }
-                for key, value in self.irreversible_limits.items()
-            },
-            "invariants": self.invariants,
-        }
-        return CanonicalContract(
-            metadata={
-                "contract_id": self.agent_id,
-                "version": self.version,
-                "owner": self.owner,
-            },
-            subject={"agent_id": self.agent_id, "role": self.role},
-            mission={"statement": self.mission},
-            authority=AuthoritySpec(**authority_data),
-            responsibility=ResponsibilitySpec(
-                explainability=self.explainability,
-                evidence={"level": self.evidence_level},
-                escalation={
-                    "mode": self.escalation,
-                    "confidence_below": self.escalate_on_uncertainty,
-                },
-            ),
-        )

@@ -1,14 +1,9 @@
-"""
-Bootstrap Responsibility Contract wizard for ROA agents.
+"""Contract Studio authoring UI and deterministic validation/compilation CLI."""
 
-Run: python -m tools.contract init
-"""
-
-from .schema import AuthoritySpec, CanonicalContract, InterviewAnswers, ResponsibilitySpec
+from .schema import AuthoritySpec, CanonicalContract, ResponsibilitySpec
 
 __all__ = [
     "AuthoritySpec",
     "CanonicalContract",
-    "InterviewAnswers",
     "ResponsibilitySpec",
 ]

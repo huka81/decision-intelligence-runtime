@@ -203,3 +203,49 @@ def test_evaluate_invariants_collects_all_failures() -> None:
         "PROHIBITED_TERRITORY",
         "AUTHORITY_CEILING",
     ]
+
+
+def test_set_rule_allowlist_reads_authoritative_state() -> None:
+    rule = InvariantSpec(
+        id="INV_SUPPORTED_POLICY_TYPES",
+        type="set",
+        field="state.policy.type",
+        allowed=["HOMEOWNERS", "CONDO"],
+        reason_code="UNSUPPORTED_POLICY_TYPE",
+    )
+    proposal = _proposal(params={})
+    assert evaluate_set_rule(rule, proposal, {"state": {"policy": {"type": "CONDO"}}}) is None
+    failure = evaluate_set_rule(rule, proposal, {"state": {"policy": {"type": "COMMERCIAL"}}})
+    assert failure is not None
+    assert failure.reason == "UNSUPPORTED_POLICY_TYPE"
+
+
+def test_set_rule_on_state_ignores_value_claimed_by_agent() -> None:
+    rule = InvariantSpec(
+        id="INV_RESTRICTED_COUNTRIES",
+        type="set",
+        field="state.property.country",
+        denied=["KP", "IR", "SY"],
+        reason_code="COUNTRY_NOT_PERMITTED",
+    )
+    lying_proposal = _proposal(params={"property_country": "US"})
+    failure = evaluate_set_rule(
+        rule,
+        lying_proposal,
+        {"state": {"property": {"country": "KP"}}},
+    )
+    assert failure is not None
+    assert failure.reason == "COUNTRY_NOT_PERMITTED"
+
+
+def test_range_rule_on_state_fails_closed_when_state_missing() -> None:
+    rule = InvariantSpec(
+        id="INV_STATE_LIMIT",
+        type="range",
+        field="state.claim.reserve_usd",
+        max=1000,
+    )
+    failure = evaluate_range_rule(rule, _proposal(params={"reserve_usd": 1}), {"state": {}})
+    assert failure is not None
+    assert failure.reason == DimReasonCode.CONTRACT_PARAMETER_MISSING
+    assert evaluate_range_rule(rule, _proposal(params={}), None) is not None

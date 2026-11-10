@@ -11,13 +11,13 @@ from pydantic import ValidationError
 
 from dir_core.utils.llm_client import LLMClient
 
-from .bootstrap_rules import BootstrapValidationError, validate_bootstrap
-from .governance.context import compile_context_for_prompt, build_governance_context
+from .governance.context import build_governance_context, compile_context_for_prompt
 from .governance.models import ChatTurnResult, GovernanceAnalysis, LLMContractResponse
-from .governance.validation import validate_governance_analysis, validate_authoring_contract
+from .governance.validation import validate_governance_analysis
 from .presets import get_preset
 from .render import render_registry_yaml
-from .schema import CanonicalContract, IRREVERSIBLE_LIMIT_KEYS, normalize_contract_dict
+from .schema import IRREVERSIBLE_LIMIT_KEYS, normalize_contract_dict
+from .validation import validate_contract
 
 logger = logging.getLogger(__name__)
 
@@ -257,60 +257,6 @@ def parse_llm_response(raw: str) -> LLMContractResponse:
     return LLMContractResponse.model_validate(data)
 
 
-def validate_contract_soft(
-    contract_dict: Dict[str, Any],
-    preset: Optional[str] = None,
-    *,
-    governance_analysis: Optional[GovernanceAnalysis] = None,
-    pack_id: str = "roa-dir-v1",
-) -> Tuple[Optional[CanonicalContract], bool, List[str], List[str]]:
-    """
-    Validate contract and governance analysis.
-
-    Returns (model or None, validation_ok, blocking_errors, warnings).
-    validation_ok is True only when schema + bootstrap + governance blocking pass.
-    """
-    blocking: List[str] = []
-    warnings: List[str] = []
-
-    normalized = normalize_contract_dict(contract_dict)
-    contract: Optional[CanonicalContract] = None
-    try:
-        contract = CanonicalContract.model_validate(normalized)
-    except Exception as exc:
-        blocking.append(f"schema: {exc}")
-        return None, False, blocking, warnings
-
-    bootstrap_ok = True
-    try:
-        validate_bootstrap(contract, preset=preset)
-    except BootstrapValidationError as exc:
-        bootstrap_ok = False
-        blocking.extend(exc.errors)
-
-    authoring_errors = validate_authoring_contract(contract)
-    blocking.extend(authoring_errors)
-
-    gov_report = validate_governance_analysis(
-        analysis=governance_analysis,
-        contract_dict=contract.model_dump(exclude_none=True),
-        pack_id=pack_id,
-        preset=preset,
-    )
-    for issue in gov_report.blocking_errors:
-        blocking.append(f"{issue.code}: {issue.message}")
-    for issue in gov_report.warnings:
-        warnings.append(f"{issue.code}: {issue.message}")
-
-    validation_ok = (
-        bootstrap_ok
-        and gov_report.blocking_ok
-        and not blocking
-        and not authoring_errors
-    )
-    return contract, validation_ok, blocking, warnings
-
-
 def process_chat_turn(
     llm: LLMClient,
     *,
@@ -378,7 +324,7 @@ def process_chat_turn(
 
     merged = normalize_contract_dict(deep_merge(current_contract, parsed.contract_patch))
     analysis = parsed.governance_analysis or prior_analysis
-    contract, validation_ok, blocking, warnings = validate_contract_soft(
+    contract, validation_ok, blocking, warnings = validate_contract(
         merged,
         preset=preset,
         governance_analysis=analysis,
