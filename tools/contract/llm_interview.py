@@ -13,11 +13,10 @@ from dir_core.utils.llm_client import LLMClient
 
 from .governance.context import build_governance_context, compile_context_for_prompt
 from .governance.models import ChatTurnResult, GovernanceAnalysis, LLMContractResponse
-from .governance.validation import validate_governance_analysis
 from .presets import get_preset
 from .render import render_registry_yaml
 from .schema import IRREVERSIBLE_LIMIT_KEYS, normalize_contract_dict
-from .validation import validate_contract
+from .validation import validate_contract_detailed
 
 logger = logging.getLogger(__name__)
 
@@ -324,35 +323,31 @@ def process_chat_turn(
 
     merged = normalize_contract_dict(deep_merge(current_contract, parsed.contract_patch))
     analysis = parsed.governance_analysis or prior_analysis
-    contract, validation_ok, blocking, warnings = validate_contract(
+    validation = validate_contract_detailed(
         merged,
         preset=preset,
         governance_analysis=analysis,
     )
-    gov_report = validate_governance_analysis(
-        analysis=analysis,
-        contract_dict=merged,
-        preset=preset,
-    )
 
+    contract = validation.contract
     if contract is not None:
         yaml_text = render_registry_yaml(contract)
         merged = contract.model_dump(exclude_none=True)
     else:
         yaml_text = "# Contract incomplete — fix validation errors\n" + "\n".join(
-            f"# - {e}" for e in blocking
+            f"# - {e}" for e in validation.errors
         )
 
     return ChatTurnResult(
         assistant_reply=parsed.assistant_reply,
         merged_contract=merged,
         contract_yaml=yaml_text,
-        validation_ok=validation_ok,
-        blocking_errors=blocking,
-        warnings=warnings,
+        validation_ok=validation.validation_ok,
+        blocking_errors=validation.errors,
+        warnings=validation.warnings,
         change_summary=parsed.change_summary,
         governance_analysis=analysis,
-        validation_report=gov_report,
+        validation_report=validation.governance_report,
         llm_response=parsed,
     )
 

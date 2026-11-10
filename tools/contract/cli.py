@@ -13,7 +13,7 @@ import yaml
 from dir_core import project_contract
 
 from .presets import list_preset_names
-from .validation import validate_contract
+from .validation import validate_contract_detailed
 
 
 def _read_contract(path: Path) -> dict[str, Any]:
@@ -26,11 +26,19 @@ def _read_contract(path: Path) -> dict[str, Any]:
 def cmd_contract(args: argparse.Namespace) -> int:
     try:
         data = _read_contract(Path(args.path))
-        contract, ok, errors, warnings = validate_contract(data, preset=args.preset)
-        for warning in warnings:
+        validation = validate_contract_detailed(data, preset=args.preset)
+        contract = validation.contract
+        for warning in validation.warnings:
             print(f"Warning: {warning}", file=sys.stderr)
-        if not ok or contract is None:
-            for error in errors:
+        if validation.governance_report:
+            for check in validation.governance_report.formal_checks.values():
+                if check.status != "not_applicable":
+                    print(
+                        f"Formal check ({check.source}): {check.status} — {check.detail}",
+                        file=sys.stderr,
+                    )
+        if not validation.validation_ok or contract is None:
+            for error in validation.errors:
                 print(f"Validation failed: {error}", file=sys.stderr)
             return 1
 

@@ -4,16 +4,23 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Set
 
-from ..schema import IRREVERSIBLE_LIMIT_KEYS, normalize_contract_dict, PLACEHOLDER_AGENT_IDS, PLACEHOLDER_OWNERS
 from ..invariants import compile_authority_invariants
+from ..schema import (
+    IRREVERSIBLE_LIMIT_KEYS,
+    PLACEHOLDER_AGENT_IDS,
+    PLACEHOLDER_OWNERS,
+    normalize_contract_dict,
+)
 from .loader import load_governance_pack, verify_pack_integrity
 from .models import (
+    FormalCheckResult,
     GovernanceAnalysis,
     GovernanceValidationReport,
     InvariantCandidate,
     PredicateAST,
     ValidationIssue,
 )
+from .solver import check_governance_ast, check_runtime_invariants
 
 _SUPPORTED_PREDICATE_OPS = frozenset(
     {"eq", "neq", "lt", "le", "gt", "ge", "in", "not_in", "and", "or", "not"}
@@ -30,13 +37,14 @@ def validate_governance_analysis(
     """
     Run blocking formal checks and non-blocking semantic warnings.
 
-    Blocking: pack integrity, invalid clause refs, duplicate ids, AST shape,
-    unsupported predicate ops when predicate present.
-    Warnings: coverage gaps, missing goal, unclassified actions, etc.
+    Blocking: pack integrity, invalid clause refs, duplicate ids, malformed AST,
+    and contradictions in compiled runtime invariants.
+    Warnings: candidate-AST contradictions, unverified solver checks, coverage
+    gaps, missing goals, and unclassified actions.
     """
     blocking: List[ValidationIssue] = []
     warnings: List[ValidationIssue] = []
-    formal_checks: Dict[str, Any] = {"sat": None, "liveness": None}
+    formal_checks: Dict[str, FormalCheckResult] = {}
 
     try:
         pack = load_governance_pack(pack_id)
@@ -60,7 +68,17 @@ def validate_governance_analysis(
         )
         valid_clause_ids = set()
 
+    runtime_check = check_runtime_invariants(contract_dict)
+    formal_checks[runtime_check.source] = runtime_check
+    _append_formal_check_issue(runtime_check, blocking, warnings)
+
     if analysis is None:
+        ast_check = FormalCheckResult(
+            source="governance_ast",
+            status="not_applicable",
+            detail="No governance analysis predicates to check.",
+        )
+        formal_checks[ast_check.source] = ast_check
         warnings.append(
             ValidationIssue(
                 code="ANALYSIS_MISSING",
@@ -76,7 +94,12 @@ def validate_governance_analysis(
 
     _validate_references(analysis, valid_clause_ids, blocking, warnings)
     _validate_invariant_candidates(analysis.invariant_candidates, warnings)
-    _validate_ast_and_sat(analysis.invariant_candidates, blocking, warnings, formal_checks)
+    for candidate in analysis.invariant_candidates:
+        if candidate.predicate is not None:
+            _validate_ast_node(candidate.predicate, candidate.invariant_id, blocking)
+    ast_check = check_governance_ast(analysis.invariant_candidates)
+    formal_checks[ast_check.source] = ast_check
+    _append_formal_check_issue(ast_check, blocking, warnings)
     _validate_semantic_coverage(
         analysis, contract_dict, preset, warnings
     )
@@ -217,100 +240,35 @@ def _validate_ast_node(
             _validate_ast_node(node.left, f"{path}.left", blocking)
 
 
-def _validate_ast_and_sat(
-    candidates: List[InvariantCandidate],
+def _append_formal_check_issue(
+    result: FormalCheckResult,
     blocking: List[ValidationIssue],
     warnings: List[ValidationIssue],
-    formal_checks: Dict[str, Any],
 ) -> None:
-    numeric_bounds: List[tuple[str, str, float]] = []
-    for inv in candidates:
-        if inv.predicate is not None:
-            _validate_ast_node(inv.predicate, inv.invariant_id, blocking)
-            _collect_numeric_bounds(inv, numeric_bounds)
-
-    if not numeric_bounds:
-        formal_checks["sat"] = {"ok": True, "detail": "no formal numeric predicates"}
-        formal_checks["liveness"] = {"ok": True, "detail": "no constraints to check"}
+    if result.status in {"verified", "not_applicable"}:
         return
-
-    try:
-        from z3 import And, Real, Solver, sat
-
-        solver = Solver()
-        variables: Dict[str, Any] = {}
-        for var_name, _, _ in numeric_bounds:
-            if var_name not in variables:
-                variables[var_name] = Real(var_name)
-        constraints = []
-        for var_name, op, bound in numeric_bounds:
-            v = variables[var_name]
-            if op == "le":
-                constraints.append(v <= bound)
-            elif op == "lt":
-                constraints.append(v < bound)
-            elif op == "ge":
-                constraints.append(v >= bound)
-            elif op == "gt":
-                constraints.append(v > bound)
-            elif op == "eq":
-                constraints.append(v == bound)
-        if constraints:
-            solver.add(And(*constraints))
-            sat_result = solver.check()
-            formal_checks["sat"] = {
-                "ok": sat_result == sat,
-                "detail": str(sat_result),
-            }
-            if sat_result != sat:
-                blocking.append(
-                    ValidationIssue(
-                        code="SAT_UNSAT",
-                        message="Invariant numeric bounds are mutually unsatisfiable.",
-                        severity="blocking",
-                    )
-                )
-            witness = Solver()
-            for c in constraints:
-                witness.add(c)
-            witness.add(variables[list(variables.keys())[0]] >= 0)
-            liveness = witness.check()
-            formal_checks["liveness"] = {
-                "ok": liveness == sat,
-                "detail": str(liveness),
-            }
-            if liveness != sat:
-                warnings.append(
-                    ValidationIssue(
-                        code="LIVENESS_GAP",
-                        message="No witness found for permitted numeric region (may be over-constrained).",
-                        severity="warning",
-                    )
-                )
-    except ImportError:
-        formal_checks["sat"] = {
-            "ok": None,
-            "detail": "z3-solver not installed; skipped SAT check",
-        }
-        warnings.append(
-            ValidationIssue(
-                code="SAT_SKIPPED",
-                message="z3-solver not available; formal satisfiability not verified.",
-                severity="warning",
-            )
-        )
-
-
-def _collect_numeric_bounds(
-    inv: InvariantCandidate,
-    bounds: List[tuple[str, str, float]],
-) -> None:
-    if inv.predicate is None:
-        return
-    node = inv.predicate
-    if node.variable and node.op in ("le", "lt", "ge", "gt", "eq") and node.value is not None:
-        if isinstance(node.value, (int, float)):
-            bounds.append((node.variable, node.op, float(node.value)))
+    code = (
+        "RUNTIME_INVARIANTS_UNSAT"
+        if result.source == "runtime_invariants" and result.status == "contradictory"
+        else "GOVERNANCE_AST_UNSAT"
+        if result.source == "governance_ast" and result.status == "contradictory"
+        else f"{result.source.upper()}_NOT_VERIFIED"
+    )
+    issue = ValidationIssue(
+        code=code,
+        message=result.detail,
+        severity=(
+            "blocking"
+            if result.source == "runtime_invariants"
+            and result.status == "contradictory"
+            else "warning"
+        ),
+        field=result.source,
+    )
+    if issue.severity == "blocking":
+        blocking.append(issue)
+    else:
+        warnings.append(issue)
 
 
 def _validate_semantic_coverage(

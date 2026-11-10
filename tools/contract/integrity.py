@@ -11,7 +11,7 @@ import yaml
 from .bootstrap_rules import BootstrapValidationError, validate_bootstrap
 from .governance.models import GovernanceAnalysis
 from .schema import CanonicalContract
-from .validation import validate_contract
+from .validation import validate_contract_detailed
 
 
 def strip_yaml_comments(text: str) -> str:
@@ -81,36 +81,51 @@ def verify_contract_yaml(
             "integrity_ok": False,
             "checks": checks,
             "errors": errors,
+            "formal_checks": {},
             "contract": None,
             "sha256": None,
         }
 
     checks["yaml_parse"] = {"ok": True, "detail": "YAML parsed successfully"}
 
-    contract, validation_ok, validation_errors, warnings = validate_contract(
-        data, preset=preset, governance_analysis=governance_analysis
+    validation = validate_contract_detailed(
+        data,
+        preset=preset,
+        governance_analysis=governance_analysis,
     )
+    contract = validation.contract
     checks["contract_validation"] = {
-        "ok": validation_ok,
-        "detail": "; ".join(validation_errors) if validation_errors else "Contract validation passed",
+        "ok": validation.validation_ok,
+        "detail": "; ".join(validation.errors)
+        if validation.errors
+        else "Contract validation passed",
     }
+    formal_checks = (
+        {
+            key: value.model_dump(mode="json")
+            for key, value in validation.governance_report.formal_checks.items()
+        }
+        if validation.governance_report
+        else {}
+    )
     if contract is not None:
         checks["schema"] = {
             "ok": True,
             "detail": f"CanonicalContract valid for agent_id={contract.subject.agent_id}",
         }
     else:
-        checks["schema"] = {"ok": False, "detail": "; ".join(validation_errors)}
-        errors.extend(validation_errors)
+        checks["schema"] = {"ok": False, "detail": "; ".join(validation.errors)}
+        errors.extend(validation.errors)
         return {
             "integrity_ok": False,
             "checks": checks,
             "errors": errors,
+            "formal_checks": formal_checks,
             "contract": data,
             "sha256": None,
         }
 
-    errors.extend(validation_errors)
+    errors.extend(validation.errors)
     dumped = contract.model_dump(exclude_none=True)
     digest = contract_content_hash(dumped)
     checks["content_hash"]["sha256"] = digest
@@ -148,7 +163,7 @@ def verify_contract_yaml(
         checks["yaml_parse"]["ok"]
         and checks["schema"]["ok"]
         and checks["bootstrap"]["ok"]
-        and validation_ok
+        and validation.validation_ok
         and checks["content_hash"]["ok"] is not False
     )
 
@@ -156,7 +171,8 @@ def verify_contract_yaml(
         "integrity_ok": integrity_ok,
         "checks": checks,
         "errors": errors,
-        "validation_warnings": warnings,
+        "validation_warnings": validation.warnings,
+        "formal_checks": formal_checks,
         "contract": {
             "agent_id": contract.subject.agent_id,
             "version": contract.metadata.version,

@@ -32,7 +32,7 @@ from ..settings import (
     configure_studio_logging,
     load_studio_settings,
 )
-from ..validation import validate_contract
+from ..validation import validate_contract, validate_contract_detailed
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +250,7 @@ def create_app(settings: Optional[StudioSettings] = None) -> FastAPI:
             "validation_warnings": gov["validation_warnings"],
             "governance_analysis": gov["governance_analysis"],
             "governance_report": gov["governance_report"],
+            "formal_checks": (gov["governance_report"] or {}).get("formal_checks", {}),
             "governance_context_hash": snapshot.context_hash if snapshot else None,
             "revision_no": revision.revision_no if revision else 0,
         }
@@ -455,6 +456,7 @@ def create_app(settings: Optional[StudioSettings] = None) -> FastAPI:
             "validation_errors": turn.blocking_errors,
             "validation_warnings": turn.warnings,
             "governance_analysis": assessment_payload["analysis"],
+            "formal_checks": assessment_payload["report"].get("formal_checks", {}),
             "status": status,
             "change_summary": turn.change_summary,
         }
@@ -514,16 +516,28 @@ def create_app(settings: Optional[StudioSettings] = None) -> FastAPI:
         if not isinstance(parsed, dict):
             return _rejected(["yaml: contract must be a YAML mapping"])
 
-        contract, validation_ok, errors, warnings = validate_contract(
+        validation = validate_contract_detailed(
             parsed,
             preset=session.preset,
             governance_analysis=prior_analysis,
         )
+        contract = validation.contract
+        validation_ok = validation.validation_ok
+        errors = validation.errors
+        warnings = validation.warnings
         if contract is None:
             return _rejected(errors)
 
         contract_dict = contract.model_dump(exclude_none=True)
         canonical_yaml = render_registry_yaml(contract)
+        formal_checks = (
+            {
+                key: value.model_dump(mode="json")
+                for key, value in validation.governance_report.formal_checks.items()
+            }
+            if validation.governance_report
+            else {}
+        )
         new_revision = store.add_revision(
             session_id,
             contract_json=json.dumps(contract_dict),
@@ -533,7 +547,11 @@ def create_app(settings: Optional[StudioSettings] = None) -> FastAPI:
             change_summary="Manual YAML edit",
             governance_assessment={
                 "analysis": prior_analysis_json,
-                "report": {"blocking_ok": validation_ok, "warnings": warnings},
+                "report": {
+                    "blocking_ok": validation_ok,
+                    "warnings": warnings,
+                    "formal_checks": formal_checks,
+                },
                 "warnings": warnings,
             },
         )
@@ -556,6 +574,7 @@ def create_app(settings: Optional[StudioSettings] = None) -> FastAPI:
             "validation_errors": errors,
             "validation_warnings": warnings,
             "governance_analysis": prior_analysis_json,
+            "formal_checks": formal_checks,
             "status": status,
             "change_summary": "Manual YAML edit",
         }

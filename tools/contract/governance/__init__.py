@@ -5,6 +5,7 @@ from .loader import load_governance_pack, verify_pack_integrity
 from .models import (
     ActionClass,
     ChatTurnResult,
+    FormalCheckResult,
     GovernanceAnalysis,
     GovernanceClause,
     GovernanceContextPack,
@@ -15,11 +16,12 @@ from .models import (
     SourceBinding,
     ValidationIssue,
 )
-from .validation import validate_governance_analysis, validate_authoring_contract
+from .validation import validate_authoring_contract, validate_governance_analysis
 
 __all__ = [
     "ActionClass",
     "ChatTurnResult",
+    "FormalCheckResult",
     "GovernanceAnalysis",
     "GovernanceClause",
     "GovernanceContextPack",

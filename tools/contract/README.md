@@ -165,12 +165,33 @@ They are **not** embedded in exported registry YAML.
 
 | Check type | Blocks export? |
 |------------|----------------|
-| Schema, Bootstrap, authoring/IR, runtime compatibility, pack integrity, invalid clause refs, AST/SAT failures | Yes |
-| Goal coverage, unclassified actions, ambiguities | No (warnings) |
+| Schema, Bootstrap, authoring/IR, runtime compatibility, pack integrity, invalid clause refs, contradictory compiled runtime invariants | Yes |
+| Contradictory LLM candidate predicates, unsupported solver semantics, solver `unknown`/timeout, goal coverage and ambiguities | No (warnings) |
 
-AST/SAT checks apply to the supported governance-analysis predicates, not every
-executable IR rule. Missing Z3 is reported as `SAT_SKIPPED` and remains a warning;
-the `studio` extra installs it.
+### Formal consistency checks
+
+The existing `z3-solver` dependency checks two sources separately:
+
+- **Compiled runtime invariants** use the same compiler as the runtime projection.
+  The solver checks supported `range` and `set` constraints for compatible
+  fields and policy-kind scopes. A proven contradiction blocks validation and
+  reports the conflicting invariant IDs.
+- **Governance candidate predicates** are translated recursively for supported
+  comparisons, membership, `and`, `or`, and `not`. A contradiction in this
+  LLM-derived analysis is advisory and does not block export.
+
+Results are reported as verified, contradictory, not verified, or not applicable.
+Unsupported semantics, solver `unknown`/timeout, and a missing Z3 installation
+are warnings—not successful checks. Dynamic `state_match` invariants and
+case-insensitive string denials are not currently modeled by Z3. The UI shows
+the structured outcomes in the integrity panel and warnings; CLI validation
+prints them to stderr so compiled JSON output stays machine-readable.
+
+“Verified” means only that the constraints in the supported subset are
+satisfiable; it does not prove that a proposal field exists, that the whole
+contract is correct, or that the agent is safe or live. The former liveness
+heuristic has been removed because it did not model system state transitions.
+The `studio` extra installs Z3.
 
 For prompt debugging, set `studio.debug: true` in `config.yaml` and watch the
 server console for full system/user prompts and raw LLM responses.

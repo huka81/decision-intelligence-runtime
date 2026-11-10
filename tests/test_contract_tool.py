@@ -47,6 +47,7 @@ def test_cli_validate(contract_path: Path, capsys) -> None:
     captured = capsys.readouterr()
     assert captured.out.startswith("OK:")
     assert "ANALYSIS_MISSING" in captured.err
+    assert "Formal check (runtime_invariants): not_verified" in captured.err
 
 
 def test_cli_compile_stdout_is_projection_json(contract_path: Path, capsys) -> None:

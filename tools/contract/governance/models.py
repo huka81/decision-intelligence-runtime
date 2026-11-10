@@ -21,6 +21,10 @@ PredicateOpLiteral = Literal[
 ]
 VariableTypeLiteral = Literal["number", "string", "boolean", "enum"]
 SeverityLiteral = Literal["blocking", "warning", "info"]
+FormalCheckSourceLiteral = Literal["runtime_invariants", "governance_ast"]
+FormalCheckStatusLiteral = Literal[
+    "verified", "contradictory", "not_verified", "not_applicable"
+]
 
 ALLOWED_CONTRACT_PATCH_ROOTS = frozenset(
     {
@@ -161,10 +165,19 @@ class ValidationIssue(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class FormalCheckResult(BaseModel):
+    source: FormalCheckSourceLiteral
+    status: FormalCheckStatusLiteral
+    detail: str
+    invariant_ids: List[str] = Field(default_factory=list)
+
+    model_config = {"extra": "forbid"}
+
+
 class GovernanceValidationReport(BaseModel):
     blocking_errors: List[ValidationIssue] = Field(default_factory=list)
     warnings: List[ValidationIssue] = Field(default_factory=list)
-    formal_checks: Dict[str, Any] = Field(default_factory=dict)
+    formal_checks: Dict[str, FormalCheckResult] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
 

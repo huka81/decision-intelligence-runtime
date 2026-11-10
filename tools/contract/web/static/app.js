@@ -195,6 +195,24 @@ function renderIntegrity(result) {
     })
     .join("");
 
+  const formalChecks = Object.entries(result.formal_checks || {})
+    .map(([name, check]) => {
+      const status = {
+        verified: ["ok", "verified"],
+        contradictory: [
+          check.source === "runtime_invariants" ? "fail" : "warning",
+          check.source === "runtime_invariants" ? "contradictory" : "contradictory (advisory)",
+        ],
+        not_verified: ["warning", "not verified"],
+        not_applicable: ["unknown", "not applicable"],
+      }[check.status] || ["unknown", "unknown"];
+      const ids = check.invariant_ids?.length
+        ? `<span class="formal-invariant-ids">(${escapeHtml(check.invariant_ids.join(", "))})</span>`
+        : "";
+      return `<li class="formal-check ${status[0]}"><strong>${escapeHtml(name)}</strong> [${status[1]}] — ${escapeHtml(check.detail || "")} ${ids}</li>`;
+    })
+    .join("");
+
   const hash = result.sha256
     ? `<p class="hash">sha256: ${escapeHtml(result.sha256)}</p>`
     : "";
@@ -207,6 +225,7 @@ function renderIntegrity(result) {
   integrityContent.innerHTML = `
     ${summary}
     <ul>${rows}</ul>
+    ${formalChecks ? `<h3>Formal solver checks</h3><ul>${formalChecks}</ul>` : ""}
     ${hash}
   `;
 

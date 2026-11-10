@@ -307,12 +307,24 @@ textarea:focus-visible {
   margin: 0.15rem 0;
 }
 
+.integrity-panel .formal-check {
+  overflow-wrap: anywhere;
+}
+
+.integrity-panel .formal-invariant-ids {
+  color: var(--muted);
+}
+
 .integrity-panel .ok {
   color: var(--ok);
 }
 
 .integrity-panel .fail {
   color: var(--err);
+}
+
+.integrity-panel .warning {
+  color: var(--warn);
 }
 
 .integrity-panel .hash {

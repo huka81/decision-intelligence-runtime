@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 from samples.shared.llm.clients import MockLLMClient
 from tools.contract.db.store import ContractStudioStore
@@ -140,6 +141,8 @@ def test_api_create_chat_export(studio_client) -> None:
     assert body["validation_ok"] is True
     assert "trading_bot_01" in body["contract_yaml"]
     assert body.get("governance_analysis") is not None
+    assert body["formal_checks"]["runtime_invariants"]["status"] == "verified"
+    assert body["formal_checks"]["governance_ast"]["status"] == "verified"
 
     validate = studio_client.post(
         f"/api/sessions/{session_id}/validate",
@@ -151,6 +154,8 @@ def test_api_create_chat_export(studio_client) -> None:
     assert vbody["checks"]["yaml_parse"]["ok"] is True
     assert vbody["checks"]["schema"]["ok"] is True
     assert vbody["checks"]["bootstrap"]["ok"] is True
+    assert vbody["formal_checks"]["runtime_invariants"]["status"] == "verified"
+    assert vbody["formal_checks"]["governance_ast"]["status"] == "verified"
     assert vbody["sha256"]
 
     with tempfile.TemporaryDirectory() as output_dir:
@@ -166,6 +171,48 @@ def test_api_create_chat_export(studio_client) -> None:
     revisions = studio_client.get(f"/api/sessions/{session_id}/revisions")
     assert revisions.status_code == 200
     assert len(revisions.json()["revisions"]) >= 2
+
+
+def test_api_runtime_invariant_contradiction_blocks_export(studio_client, tmp_path: Path) -> None:
+    created = studio_client.post(
+        "/api/sessions", json={"title": "Contradictory runtime", "preset": "trading"}
+    )
+    session_id = created.json()["session"]["id"]
+    chat = studio_client.post(
+        f"/api/sessions/{session_id}/chat",
+        json={"message": "Build a crypto trading agent with limits"},
+    )
+    contract = yaml.safe_load(chat.json()["contract_yaml"])
+    contract["authority"]["invariants"] = [
+        {
+            "id": "INV-TEST-MIN",
+            "type": "range",
+            "field": "params.test_amount",
+            "min": 20,
+        },
+        {
+            "id": "INV-TEST-MAX",
+            "type": "range",
+            "field": "params.test_amount",
+            "max": 10,
+        },
+    ]
+
+    saved = studio_client.put(
+        f"/api/sessions/{session_id}/contract",
+        json={"yaml": yaml.safe_dump(contract, sort_keys=False)},
+    )
+    assert saved.status_code == 200
+    body = saved.json()
+    assert body["validation_ok"] is False
+    assert body["formal_checks"]["runtime_invariants"]["status"] == "contradictory"
+    assert any("RUNTIME_INVARIANTS_UNSAT" in error for error in body["validation_errors"])
+
+    exported = studio_client.post(
+        f"/api/sessions/{session_id}/export",
+        json={"emit": "registry", "out": str(tmp_path)},
+    )
+    assert exported.status_code == 400
 
 
 def test_api_manual_yaml_edit_saves_new_revision(studio_client) -> None:
